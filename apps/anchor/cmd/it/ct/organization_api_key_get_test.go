@@ -16,7 +16,6 @@ import (
 )
 
 func TestOrganizationAPIKeyGet(t *testing.T) {
-	// Checks organization API key lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -41,7 +40,6 @@ func TestOrganizationAPIKeyGet(t *testing.T) {
 	require.Equal(t, http.StatusCreated, createResp.StatusCode())
 
 	t.Run("Get organization API key by organization and id", func(t *testing.T) {
-		// Get organization API key by organization and id.
 		getResp, getErr := apiKeyClient.GetOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -56,7 +54,6 @@ func TestOrganizationAPIKeyGet(t *testing.T) {
 	})
 
 	t.Run("Get with wrong organization returns not found", func(t *testing.T) {
-		// Get with wrong organization returns not found.
 		otherDescription := itshared.Faker.Lorem().Sentence(4)
 		otherOrg := product.CreateOrganization(t, "Org-"+uuid.NewString(), &otherDescription)
 
@@ -71,7 +68,6 @@ func TestOrganizationAPIKeyGet(t *testing.T) {
 	})
 
 	t.Run("Get expired organization API key returns inactive status after queue processing", func(t *testing.T) {
-		// Get expired organization API key returns inactive status after queue processing.
 		expiresAt := nearFutureExpiry()
 		expiredResp, expiredErr := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,

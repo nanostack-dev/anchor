@@ -15,12 +15,10 @@ import (
 )
 
 func TestUserOrganizationsOfAProductUser(t *testing.T) {
-	// A product user's organizations include membership and role details while enforcing access scopes.
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("EmptyListWhenUserHasNoMemberships", func(t *testing.T) {
-		// Empty list when user has no memberships.
+	t.Run("Empty list when user has no memberships", func(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
@@ -40,8 +38,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 		}
 	})
 
-	t.Run("ReturnsOrganizationsWithRoleDetails", func(t *testing.T) {
-		// The API returns organizations with role details.
+	t.Run("The API returns organizations with role details", func(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -91,8 +88,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 		}
 	})
 
-	t.Run("ReturnsMultipleOrganizations", func(t *testing.T) {
-		// The API returns multiple organizations.
+	t.Run("The API returns multiple organizations", func(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -142,67 +138,68 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 		}
 	})
 
-	t.Run("IncludeRolePermissions", func(t *testing.T) {
-		// Requesting role permissions includes the member's assigned role permissions in the response.
-		productCtx := createTestProductContext(t)
-		productCtx.CreateDefaultProductResourcePermissions(t)
-		productUser := createDSLProductUser(t, productCtx)
-		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
+	t.Run(
+		"Requesting role permissions includes the member's assigned role permissions in the response",
+		func(t *testing.T) {
+			productCtx := createTestProductContext(t)
+			productCtx.CreateDefaultProductResourcePermissions(t)
+			productUser := createDSLProductUser(t, productCtx)
+			apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
 
-		// Create an organization
-		orgResp, err := apiKeyClient.CreateProductOrganizationWithResponse(
-			ctx,
-			productCtx.ProductID,
-			ct.CreateProductOrganizationJSONRequestBody{
-				Name:        "Permissions Test Org",
-				Description: new("Org for permissions testing"),
-			},
-		)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusCreated, orgResp.StatusCode())
+			// Create an organization
+			orgResp, err := apiKeyClient.CreateProductOrganizationWithResponse(
+				ctx,
+				productCtx.ProductID,
+				ct.CreateProductOrganizationJSONRequestBody{
+					Name:        "Permissions Test Org",
+					Description: new("Org for permissions testing"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, orgResp.StatusCode())
 
-		// Create role with permissions
-		role := createDSLProductRoleWithPermissions(
-			t,
-			productCtx,
-			"Editor",
-			new("Editor role with permissions"),
-			[]string{"file:read", "file:update"},
-		)
-		createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
+			// Create role with permissions
+			role := createDSLProductRoleWithPermissions(
+				t,
+				productCtx,
+				"Editor",
+				new("Editor role with permissions"),
+				[]string{"file:read", "file:update"},
+			)
+			createDSLMembership(t, productCtx, productUser.ID, orgResp.JSON201.Id, role.ID)
 
-		// List with include=role_permissions
-		readClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
-		include := []ct.UserOrganizationInclude{ct.UserOrganizationIncludeRolePermissions}
-		listResp, err := readClient.SearchUserOrganizationsWithResponse(
-			ctx,
-			productCtx.ProductID,
-			productUser.ID,
-			&ct.SearchUserOrganizationsParams{
-				Include: &include,
-			},
-			ct.SearchUserOrganizationsJSONRequestBody{},
-		)
+			// List with include=role_permissions
+			readClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
+			include := []ct.UserOrganizationInclude{ct.UserOrganizationIncludeRolePermissions}
+			listResp, err := readClient.SearchUserOrganizationsWithResponse(
+				ctx,
+				productCtx.ProductID,
+				productUser.ID,
+				&ct.SearchUserOrganizationsParams{
+					Include: &include,
+				},
+				ct.SearchUserOrganizationsJSONRequestBody{},
+			)
 
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, listResp.StatusCode())
-		if assert.NotNil(t, listResp.JSON200) {
-			require.Len(t, listResp.JSON200.Items, 1)
-			item := listResp.JSON200.Items[0]
-			assert.NotNil(t, item.Role.Permissions, "permissions should be included")
-			if item.Role.Permissions != nil {
-				assert.ElementsMatch(
-					t,
-					[]string{"file:read", "file:update"},
-					*item.Role.Permissions,
-					"permissions should match assigned role permissions",
-				)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, listResp.StatusCode())
+			if assert.NotNil(t, listResp.JSON200) {
+				require.Len(t, listResp.JSON200.Items, 1)
+				item := listResp.JSON200.Items[0]
+				assert.NotNil(t, item.Role.Permissions, "permissions should be included")
+				if item.Role.Permissions != nil {
+					assert.ElementsMatch(
+						t,
+						[]string{"file:read", "file:update"},
+						*item.Role.Permissions,
+						"permissions should match assigned role permissions",
+					)
+				}
 			}
-		}
-	})
+		},
+	)
 
-	t.Run("NonExistentUserReturns404", func(t *testing.T) {
-		// Nonexistent user returns 404.
+	t.Run("Nonexistent user returns 404", func(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
@@ -219,8 +216,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), "should return 404 for non-existent user")
 	})
 
-	t.Run("InsufficientPermissionsReturns403", func(t *testing.T) {
-		// Insufficient permissions returns 403.
+	t.Run("Insufficient permissions returns 403", func(t *testing.T) {
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 

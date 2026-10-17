@@ -9,7 +9,6 @@ import (
 )
 
 func TestOpenAPIProtected403(t *testing.T) {
-	// Protected OpenAPI operations refuse authenticated API keys that lack the required scope.
 	t.Parallel()
 	noAuth := map[string]struct{}{
 		"post /v1/auth/login":    {},
@@ -23,8 +22,7 @@ func TestOpenAPIProtected403(t *testing.T) {
 	// expiredToken, err =
 	for _, op := range ops {
 		t.Run(
-			op.OpKey+"_false_jwt", func(t *testing.T) {
-				// The protected operation refuses a forged bearer token.
+			"A forged bearer token cannot access "+op.OpKey, func(t *testing.T) {
 				headers := map[string]string{
 					"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30",
 				}
@@ -43,8 +41,7 @@ func TestOpenAPIProtected403(t *testing.T) {
 			},
 		)
 		t.Run(
-			op.OpKey+"_expired_jwt", func(t *testing.T) {
-				// The protected operation refuses an expired bearer token.
+			"An expired bearer token cannot access "+op.OpKey, func(t *testing.T) {
 				headers := map[string]string{
 					//TODO: replace this with a real expired token
 					"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidXNlcl8yeFRvWXhiYUlQSW5lRDZJRjJ1M0lFSGpIVnkiLCJpc3MiOiJuYW5vc3RhY2siLCJzdWIiOiJ1c2VyXzJ4VG9ZeGJhSVBJbmVENklGMnUzSUVIakhWeSIsImF1ZCI6WyJuYW5vc3RhY2tfYWNjZXNzIl0sImV4cCI6MTc0Nzk3MTQ3NSwiaWF0IjoxNzQ3OTcxNDc1LCJ0ZW5hbnRfaWQiOiJ0ZW5hbnRfMnhUb1l2ZFpjWFA0b1JHNDRRTDFLTVl0UGJEIn0.05CqzPQbJQZhIVOpZvwMlDnR_c1b6zidq96Lc3kfcKE",

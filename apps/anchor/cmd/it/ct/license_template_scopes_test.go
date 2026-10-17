@@ -15,10 +15,8 @@ import (
 // the contract declares security; this proves the four scopes are genuinely
 // distinct, so a read-only key cannot rewrite what a tier grants.
 func TestLicenseTemplateScopes(t *testing.T) {
-	// Template routes require the scope of the requested operation rather than another licensing scope.
 	t.Parallel()
-	t.Run("read scope cannot write", func(t *testing.T) {
-		// Read scope cannot write.
+	t.Run("Read scope cannot write", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 		readOnly, _ := tc.product.CreateAPIKeyClientWithScopes([]string{"license_template:read"})
@@ -56,8 +54,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, del.StatusCode())
 	})
 
-	t.Run("write scopes cannot read", func(t *testing.T) {
-		// Write scopes cannot read.
+	t.Run("Write scopes cannot read", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		writeOnly, _ := tc.product.CreateAPIKeyClientWithScopes(
 			[]string{"license_template:create", "license_template:update", "license_template:delete"},
@@ -88,8 +85,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, list.StatusCode())
 	})
 
-	t.Run("delete scope cannot archive, update scope cannot delete", func(t *testing.T) {
-		// Delete scope cannot archive, update scope cannot delete.
+	t.Run("Delete scope cannot archive, update scope cannot delete", func(t *testing.T) {
 		// Archive is an edit to the row's status, not a removal of the row, and is
 		// scoped as one: license_template:update, not license_template:delete. A
 		// key trusted only to remove templates outright must not thereby be
@@ -128,8 +124,7 @@ func TestLicenseTemplateScopes(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, deleted.StatusCode(), string(deleted.Body))
 	})
 
-	t.Run("a license schema scope does not reach templates", func(t *testing.T) {
-		// A license schema scope does not reach templates.
+	t.Run("A license schema scope does not reach templates", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		// The two resources are separate entries in the permission catalog, so a
 		// key trusted to declare what a license may contain is not thereby

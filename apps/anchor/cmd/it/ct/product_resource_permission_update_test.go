@@ -13,158 +13,177 @@ import (
 )
 
 func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
-	// Updating a product resource permission succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Updating a product resource permission succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:          "file:read",
-		Description:   new("Read file contents"),
-		ScopeModifier: new("own"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:          "file:read",
+			Description:   new("Read file contents"),
+			ScopeModifier: new("own"),
+		}
 
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: new("Updated read file contents"),
-	}
-
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName, updateInput,
-	)
-	require.NoError(t, err, "update product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
-
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-		assert.Equal(t, createInput.Name, resp.JSON200.Name)
-		assert.Equal(t, updateInput.Description, resp.JSON200.Description)
-		assert.Equal(t, createInput.ScopeModifier, resp.JSON200.ScopeModifier)
-		assert.NotZero(t, resp.JSON200.CreatedAt)
-		assert.NotZero(t, resp.JSON200.UpdatedAt)
-		assert.True(
-			t, resp.JSON200.UpdatedAt.After(resp.JSON200.CreatedAt),
-			"updated_at should be after created_at",
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
 		)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
+
+		permissionName := createResp.JSON201.Name
+
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: new("Updated read file contents"),
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName, updateInput,
+		)
+		require.NoError(t, err, "update product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+			assert.Equal(t, createInput.Name, resp.JSON200.Name)
+			assert.Equal(t, updateInput.Description, resp.JSON200.Description)
+			assert.Equal(t, createInput.ScopeModifier, resp.JSON200.ScopeModifier)
+			assert.NotZero(t, resp.JSON200.CreatedAt)
+			assert.NotZero(t, resp.JSON200.UpdatedAt)
+			assert.True(
+				t, resp.JSON200.UpdatedAt.After(resp.JSON200.CreatedAt),
+				"updated_at should be after created_at",
+			)
+		}
+	})
 }
 
 func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
-	// Product resource permission update emits webhook.
 	t.Parallel()
-	ctx := context.Background()
-	productContext := createTestProductContext(t)
-	sink := productContext.CaptureEvents()
-	createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
-		ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
-			Name: "events:write",
-		},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, createResp.StatusCode())
-	sink.WaitFor("product.resource_permission.created", map[string]string{
-		"permission_name": createResp.JSON201.Name,
-	})
 
-	updateResp, err := productContext.OwnerAuthenticatedClient().UpdateProductResourcePermissionWithResponse(
-		ctx, productContext.ProductID, createResp.JSON201.Name,
-		ct.UpdateProductResourcePermissionRequest{Description: new("updated")},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, updateResp.StatusCode())
-	sink.WaitFor("product.resource_permission.updated", map[string]string{
-		"permission_name": createResp.JSON201.Name,
+	t.Run("Product resource permission update emits webhook", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
+			ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
+				Name: "events:write",
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, createResp.StatusCode())
+		sink.WaitFor("product.resource_permission.created", map[string]string{
+			"permission_name": createResp.JSON201.Name,
+		})
+
+		updateResp, err := productContext.OwnerAuthenticatedClient().UpdateProductResourcePermissionWithResponse(
+			ctx, productContext.ProductID, createResp.JSON201.Name,
+			ct.UpdateProductResourcePermissionRequest{Description: new("updated")},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, updateResp.StatusCode())
+		sink.WaitFor("product.resource_permission.updated", map[string]string{
+			"permission_name": createResp.JSON201.Name,
+		})
 	})
 }
 
 func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
-	// Updating a product resource permission different case name succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
-	permissionName := "File:ReadCase:" + ids.MustNew("test")
+	t.Run("Updating a product resource permission different case name succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		ct.CreateProductResourcePermissionRequest{
-			Name:        permissionName,
-			Description: new("Read file contents"),
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		ctx := context.Background()
 
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: new("Updated read file contents"),
-	}
+		testProduct := createTestProductContext(t)
+		permissionName := "File:ReadCase:" + ids.MustNew("test")
 
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, strings.ToLower(permissionName), updateInput,
-	)
-	require.NoError(t, err, "update product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			ct.CreateProductResourcePermissionRequest{
+				Name:        permissionName,
+				Description: new("Read file contents"),
+			},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
 
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, permissionName, resp.JSON200.Name)
-		assert.Equal(t, updateInput.Description, resp.JSON200.Description)
-	}
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: new("Updated read file contents"),
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, strings.ToLower(permissionName), updateInput,
+		)
+		require.NoError(t, err, "update product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, permissionName, resp.JSON200.Name)
+			assert.Equal(t, updateInput.Description, resp.JSON200.Description)
+		}
+	})
 }
 
 func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
-	// Product resource permission update rejects an unknown identifier.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Product resource permission update rejects an unknown identifier", func(t *testing.T) {
+		t.Parallel()
 
-	nonExistentPermissionName := "non:existent"
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: new("Updated description"),
-	}
+		ctx := context.Background()
 
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, nonExistentPermissionName, updateInput,
-	)
-	require.NoError(t, err, "update non-existent resource permission request should not error")
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		testProduct := createTestProductContext(t)
+
+		nonExistentPermissionName := "non:existent"
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: new("Updated description"),
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, nonExistentPermissionName, updateInput,
+		)
+		require.NoError(t, err, "update non-existent resource permission request should not error")
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
-	// Updating a product resource permission with nonexistent product returns not found.
 	t.Parallel()
-	ctx := context.Background()
 
-	nonExistentProductID := ids.MustNew("prod")
-	permissionName := "file:read"
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: new("Updated description"),
-	}
+	t.Run("Updating a product resource permission with nonexistent product returns not found", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, nonExistentProductID, permissionName, updateInput,
-	)
-	require.NoError(
-		t, err, "update resource permission for non-existent product request should not error",
-	)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		ctx := context.Background()
+
+		nonExistentProductID := ids.MustNew("prod")
+		permissionName := "file:read"
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: new("Updated description"),
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, nonExistentProductID, permissionName, updateInput,
+		)
+		require.NoError(
+			t, err, "update resource permission for non-existent product request should not error",
+		)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
-	// Checks product resource permission update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -191,7 +210,6 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 		input       ct.UpdateProductResourcePermissionRequest
 		expectedErr string
 	}{
-		// The permission operation rejects description too long.
 		{
 			name: "description too long",
 			input: ct.UpdateProductResourcePermissionRequest{
@@ -203,8 +221,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(
-			tc.name, func(t *testing.T) {
-				// Permission updates refuse this invalid field value.
+			"Updating a resource permission refuses "+tc.name, func(t *testing.T) {
 				resp, validationErr := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -219,132 +236,144 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
-	// Updating a product resource permission null description succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Updating a product resource permission null description succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Original description"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:        "file:read",
+			Description: new("Original description"),
+		}
 
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: nil,
-	}
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
 
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName, updateInput,
-	)
-	require.NoError(t, err, "update product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
+		permissionName := createResp.JSON201.Name
 
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-		assert.Equal(t, createInput.Name, resp.JSON200.Name)
-		assert.Nil(t, resp.JSON200.Description)
-		assert.NotZero(t, resp.JSON200.CreatedAt)
-		assert.NotZero(t, resp.JSON200.UpdatedAt)
-	}
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: nil,
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName, updateInput,
+		)
+		require.NoError(t, err, "update product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+			assert.Equal(t, createInput.Name, resp.JSON200.Name)
+			assert.Nil(t, resp.JSON200.Description)
+			assert.NotZero(t, resp.JSON200.CreatedAt)
+			assert.NotZero(t, resp.JSON200.UpdatedAt)
+		}
+	})
 }
 
 func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
-	// Updating a product resource permission empty request succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Updating a product resource permission empty request succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Original description"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
-	originalCreatedAt := createResp.JSON201.CreatedAt
-	originalUpdatedAt := createResp.JSON201.UpdatedAt
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:        "file:read",
+			Description: new("Original description"),
+		}
 
-	updateInput := ct.UpdateProductResourcePermissionRequest{}
-
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName, updateInput,
-	)
-	require.NoError(t, err, "update product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
-
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-		assert.Equal(t, createInput.Name, resp.JSON200.Name)
-		assert.Equal(t, updateInput.Description, resp.JSON200.Description)
-		assert.Equal(t, originalCreatedAt, resp.JSON200.CreatedAt)
-
-		assert.True(
-			t,
-			resp.JSON200.UpdatedAt.Equal(originalUpdatedAt) || resp.JSON200.UpdatedAt.After(originalUpdatedAt),
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
 		)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
+
+		permissionName := createResp.JSON201.Name
+		originalCreatedAt := createResp.JSON201.CreatedAt
+		originalUpdatedAt := createResp.JSON201.UpdatedAt
+
+		updateInput := ct.UpdateProductResourcePermissionRequest{}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName, updateInput,
+		)
+		require.NoError(t, err, "update product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+			assert.Equal(t, createInput.Name, resp.JSON200.Name)
+			assert.Equal(t, updateInput.Description, resp.JSON200.Description)
+			assert.Equal(t, originalCreatedAt, resp.JSON200.CreatedAt)
+
+			assert.True(
+				t,
+				resp.JSON200.UpdatedAt.Equal(originalUpdatedAt) || resp.JSON200.UpdatedAt.After(originalUpdatedAt),
+			)
+		}
+	})
 }
 
 func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
-	// Updating a product resource permission multiple fields succeeds.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Updating a product resource permission multiple fields succeeds", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Original description"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:        "file:read",
+			Description: new("Original description"),
+		}
 
-	updateInput := ct.UpdateProductResourcePermissionRequest{
-		Description: new("Completely updated description with more details"),
-	}
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
 
-	resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName, updateInput,
-	)
-	require.NoError(t, err, "update product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
+		permissionName := createResp.JSON201.Name
 
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-		assert.Equal(t, createInput.Name, resp.JSON200.Name)
-		assert.Equal(t, updateInput.Description, resp.JSON200.Description)
-		assert.NotZero(t, resp.JSON200.CreatedAt)
-		assert.NotZero(t, resp.JSON200.UpdatedAt)
-		assert.True(t, resp.JSON200.UpdatedAt.After(resp.JSON200.CreatedAt))
-	}
+		updateInput := ct.UpdateProductResourcePermissionRequest{
+			Description: new("Completely updated description with more details"),
+		}
+
+		resp, err := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName, updateInput,
+		)
+		require.NoError(t, err, "update product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+			assert.Equal(t, createInput.Name, resp.JSON200.Name)
+			assert.Equal(t, updateInput.Description, resp.JSON200.Description)
+			assert.NotZero(t, resp.JSON200.CreatedAt)
+			assert.NotZero(t, resp.JSON200.UpdatedAt)
+			assert.True(t, resp.JSON200.UpdatedAt.After(resp.JSON200.CreatedAt))
+		}
+	})
 }

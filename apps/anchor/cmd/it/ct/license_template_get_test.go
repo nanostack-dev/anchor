@@ -10,10 +10,8 @@ import (
 )
 
 func TestLicenseTemplateGet(t *testing.T) {
-	// Checks license template lookup across the scenarios below.
 	t.Parallel()
-	t.Run("reads a template back", func(t *testing.T) {
-		// The API reads a template back.
+	t.Run("The API reads a template back", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -29,8 +27,7 @@ func TestLicenseTemplateGet(t *testing.T) {
 		assert.InDelta(t, 500.0, resp.JSON200.Values["flows"], 0)
 	})
 
-	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
-		// The API returns 404 when the product has no template with that identifier.
+	t.Run("The API returns 404 when the product has no template with that identifier", func(t *testing.T) {
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().GetLicenseTemplateWithResponse(

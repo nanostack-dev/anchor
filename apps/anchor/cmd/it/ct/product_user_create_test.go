@@ -16,13 +16,11 @@ import (
 )
 
 func TestCreateProductUser(t *testing.T) {
-	// Checks product user creation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
-		"SuccessfulCreateProductUser", func(t *testing.T) {
-			// Creating a product user succeeds.
+		"Creating a product user succeeds", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -57,8 +55,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductUserWithInvalidEmail", func(t *testing.T) {
-			// Creating a product user with invalid email returns a bad request.
+		"Creating a product user with invalid email returns a bad request", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			invalidEmail := "invalid-email"
@@ -90,8 +87,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductUserWithMissingName", func(t *testing.T) {
-			// Creating a product user with missing name returns a bad request.
+		"Creating a product user with missing name returns a bad request", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -121,8 +117,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductUserWithEmptyName", func(t *testing.T) {
-			// Creating a product user with empty name returns a bad request.
+		"Creating a product user with empty name returns a bad request", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -154,8 +149,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductUserWithInactiveStatus", func(t *testing.T) {
-			// Creating a product user with inactive status succeeds.
+		"Creating a product user with inactive status succeeds", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -189,8 +183,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductUserWithDuplicateEmail", func(t *testing.T) {
-			// Creating a product user with an existing email returns a conflict.
+		"Creating a product user with an existing email returns a conflict", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -244,8 +237,7 @@ func TestCreateProductUser(t *testing.T) {
 		},
 	)
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		productContext := createTestProductContext(t)
 		sink := productContext.CaptureEvents()
 		apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:create"})

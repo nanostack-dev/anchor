@@ -57,40 +57,52 @@ func signedInAt(t *testing.T, state *itdsl.State, user *itdsl.PlatformUser, auth
 }
 
 func TestRefreshExtendsTheSessionByTheIdleLifetime(t *testing.T) {
-	// Refresh extends the session by the idle lifetime.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	require.NotNil(t, resp.JSON200)
+	t.Run("Refresh extends the session by the idle lifetime", func(t *testing.T) {
+		t.Parallel()
 
-	idleEnd := time.Now().Add(seconds(authCfg.RefreshTokenLifetime))
-	assert.WithinDuration(t, idleEnd, refreshTokenExpiry(t, resp.JSON200.RefreshToken), time.Minute)
-	assert.WithinDuration(t, idleEnd, refreshCookieExpiry(t, resp.HTTPResponse), time.Minute)
+		_, user := givenSignedInAdmin(t)
+
+		resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON200)
+
+		idleEnd := time.Now().Add(seconds(authCfg.RefreshTokenLifetime))
+		assert.WithinDuration(t, idleEnd, refreshTokenExpiry(t, resp.JSON200.RefreshToken), time.Minute)
+		assert.WithinDuration(t, idleEnd, refreshCookieExpiry(t, resp.HTTPResponse), time.Minute)
+	})
 }
 
 func TestRefreshNeverExtendsPastTheSessionMaxLifetime(t *testing.T) {
-	// Never refresh extends past the session maximum lifetime.
 	t.Parallel()
-	state, user := givenSignedInAdmin(t)
-	sessionEnd := time.Now().Add(time.Hour)
-	refreshToken := signedInAt(t, state, user, sessionEnd.Add(-seconds(authCfg.SessionMaxLifetime)))
 
-	resp := itdsl.Auth(t).RefreshRaw(refreshToken)
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	require.NotNil(t, resp.JSON200)
+	t.Run("Refreshing never extends the session past its maximum lifetime", func(t *testing.T) {
+		t.Parallel()
 
-	assert.WithinDuration(t, sessionEnd, refreshTokenExpiry(t, resp.JSON200.RefreshToken), time.Minute)
-	assert.WithinDuration(t, sessionEnd, refreshCookieExpiry(t, resp.HTTPResponse), time.Minute)
+		state, user := givenSignedInAdmin(t)
+		sessionEnd := time.Now().Add(time.Hour)
+		refreshToken := signedInAt(t, state, user, sessionEnd.Add(-seconds(authCfg.SessionMaxLifetime)))
+
+		resp := itdsl.Auth(t).RefreshRaw(refreshToken)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON200)
+
+		assert.WithinDuration(t, sessionEnd, refreshTokenExpiry(t, resp.JSON200.RefreshToken), time.Minute)
+		assert.WithinDuration(t, sessionEnd, refreshCookieExpiry(t, resp.HTTPResponse), time.Minute)
+	})
 }
 
 func TestRefreshAfterTheSessionMaxLifetimeIsRefused(t *testing.T) {
-	// After the session maximum lifetime refresh is refused.
 	t.Parallel()
-	state, user := givenSignedInAdmin(t)
-	refreshToken := signedInAt(t, state, user, time.Now().Add(-seconds(authCfg.SessionMaxLifetime)-time.Minute))
 
-	resp := itdsl.Auth(t).RefreshRaw(refreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	t.Run("After the session maximum lifetime refresh is refused", func(t *testing.T) {
+		t.Parallel()
+
+		state, user := givenSignedInAdmin(t)
+		refreshToken := signedInAt(t, state, user, time.Now().Add(-seconds(authCfg.SessionMaxLifetime)-time.Minute))
+
+		resp := itdsl.Auth(t).RefreshRaw(refreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	})
 }

@@ -13,10 +13,8 @@ import (
 )
 
 func TestLicenseSchemaGet(t *testing.T) {
-	// Checks license schema lookup across the scenarios below.
 	t.Parallel()
-	t.Run("reads back the declaration", func(t *testing.T) {
-		// The API reads back the declaration.
+	t.Run("The API reads back the declaration", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		state := itdsl.Given(t).
 			ExistingProduct(itdsl.ExistingProductOpts{Alias: "p", Context: tc.product}).
@@ -59,8 +57,7 @@ func TestLicenseSchemaGet(t *testing.T) {
 		assert.Nil(t, resp.JSON200.Fields[2].UsageShape)
 	})
 
-	t.Run("404 when the product has declared no schema", func(t *testing.T) {
-		// The API returns 404 when the product has declared no schema.
+	t.Run("The API returns 404 when the product has declared no schema", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().GetLicenseSchemaWithResponse(

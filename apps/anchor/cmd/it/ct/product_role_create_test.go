@@ -16,7 +16,6 @@ import (
 )
 
 func TestProductRole_Create(t *testing.T) {
-	// Checks product role creation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -24,8 +23,7 @@ func TestProductRole_Create(t *testing.T) {
 	productID := testCtx.ProductID
 
 	t.Run(
-		"SuccessfulCreateProductRole", func(t *testing.T) {
-			// Creating a product role succeeds.
+		"Creating a product role succeeds", func(t *testing.T) {
 			roleName := "Editor_" + ids.MustNew("test")
 			roleDesc := "Can edit content"
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -50,8 +48,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleNameThatIsSubstringOfExistingIsAllowed", func(t *testing.T) {
-			// Product role name that creation is substring of existing is allowed.
+		"Product role name that creation is substring of existing is allowed", func(t *testing.T) {
 			// Regression: role-name uniqueness must be an exact match, not a
 			// substring match. Creating "<base>-admin" must not block "<base>".
 			base := "Lead_" + ids.MustNew("test")
@@ -81,8 +78,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithEmptyName", func(t *testing.T) {
-			// Creating a product role with empty name returns a bad request.
+		"Creating a product role with empty name returns a bad request", func(t *testing.T) {
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "",
@@ -97,8 +93,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithInvalidNameLength", func(t *testing.T) {
-			// Creating a product role with invalid name length returns a bad request.
+		"Creating a product role with invalid name length returns a bad request", func(t *testing.T) {
 			longName := strings.Repeat("a", 101)
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -117,8 +112,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithInvalidDescriptionLength", func(t *testing.T) {
-			// Creating a product role with invalid description length returns a bad request.
+		"Creating a product role with invalid description length returns a bad request", func(t *testing.T) {
 			longDesc := strings.Repeat("a", 501)
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -138,8 +132,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithDuplicateName", func(t *testing.T) {
-			// Creating a role with an existing name returns a conflict.
+		"Creating a role with an existing name returns a conflict", func(t *testing.T) {
 			roleName := "DuplicateRole_" + ids.MustNew("test")
 
 			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -170,8 +163,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithDuplicateNameDifferentCase", func(t *testing.T) {
-			// Role names remain unique regardless of letter case.
+		"Role names remain unique regardless of letter case", func(t *testing.T) {
 			roleName := "DuplicateRoleCase_" + ids.MustNew("test")
 
 			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -191,8 +183,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithPermissions", func(t *testing.T) {
-			// Creating a product role with permissions succeeds.
+		"Creating a product role with permissions succeeds", func(t *testing.T) {
 			perm1 := testCtx.DefaultResourcePermissions[0].Name
 			perm2 := testCtx.DefaultResourcePermissions[1].Name
 
@@ -216,8 +207,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleWithPermissionsDifferentCase", func(t *testing.T) {
-			// Creating a product role with permissions different case succeeds.
+		"Creating a product role with permissions different case succeeds", func(t *testing.T) {
 			permissionName := testCtx.DefaultResourcePermissions[0].Name
 
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -234,8 +224,7 @@ func TestProductRole_Create(t *testing.T) {
 		},
 	)
 
-	t.Run("CreateProductRoleWithAPIKeyScope", func(t *testing.T) {
-		// Creating a product role with API key scope succeeds.
+	t.Run("Creating a product role with API key scope succeeds", func(t *testing.T) {
 		apiKeyClient, _ := testCtx.CreateAPIKeyClientWithScopes([]string{"product_role:create"})
 
 		roleName := "APIKeyRole_" + ids.MustNew("test")
@@ -251,8 +240,7 @@ func TestProductRole_Create(t *testing.T) {
 	})
 
 	t.Run(
-		"CreateProductRoleWithNonexistentPermissions", func(t *testing.T) {
-			// Creating a product role with nonexistent permissions returns a bad request.
+		"Creating a product role with nonexistent permissions returns a bad request", func(t *testing.T) {
 			permissions := []string{itshared.Faker.Lorem().Word() + ":" + itshared.Faker.Lorem().Word()}
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -272,8 +260,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"EmitsWebhook", func(t *testing.T) {
-			// A successful change emits the corresponding signed product event.
+		"A successful change emits the corresponding signed product event", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 			sink := productContext.CaptureEvents()
 			resp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
@@ -288,8 +275,7 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
-		"CreateProductRoleForNonexistentProduct", func(t *testing.T) {
-			// Creating a product role for nonexistent product returns a bad request.
+		"Creating a product role for nonexistent product returns a bad request", func(t *testing.T) {
 			nonExistentProductID := ids.MustNew("prd")
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, nonExistentProductID, ct.CreateProductRoleJSONRequestBody{

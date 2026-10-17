@@ -9,10 +9,8 @@ import (
 )
 
 func TestUsageScopes(t *testing.T) {
-	// Usage reporting requires its own write scope rather than a licensing scope.
 	t.Parallel()
-	t.Run("a license scope cannot report usage", func(t *testing.T) {
-		// A license scope cannot report usage.
+	t.Run("A license scope cannot report usage", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		licenseOnly, _ := w.product.CreateAPIKeyClientWithScopes(
 			[]string{
@@ -27,8 +25,7 @@ func TestUsageScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("the usage scope cannot read the license", func(t *testing.T) {
-		// The usage scope cannot read the license.
+	t.Run("The usage scope cannot read the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		usageOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"license_usage:create"})
 
@@ -39,8 +36,7 @@ func TestUsageScopes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.License().As(usageOnly).DiffRaw().StatusCode())
 	})
 
-	t.Run("a license template scope does not reach usage", func(t *testing.T) {
-		// A license template scope does not reach usage.
+	t.Run("A license template scope does not reach usage", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		templateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
 			[]string{"license_template:read", "license_template:create", "license_template:update"},

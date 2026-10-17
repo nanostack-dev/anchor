@@ -14,7 +14,6 @@ import (
 )
 
 func TestEmailTemplateUpdate(t *testing.T) {
-	// Checks email template update across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -33,8 +32,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 	require.Equal(t, http.StatusCreated, created.StatusCode())
 	tplID := created.JSON201.Id
 
-	t.Run("updates name", func(t *testing.T) {
-		// The API updates name.
+	t.Run("The API updates name", func(t *testing.T) {
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -47,8 +45,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 		assert.Equal(t, "Renamed", resp.JSON200.Name)
 	})
 
-	t.Run("updates description", func(t *testing.T) {
-		// The API updates description.
+	t.Run("The API updates description", func(t *testing.T) {
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -59,8 +56,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
 	})
 
-	t.Run("deactivates template", func(t *testing.T) {
-		// Updating the active flag deactivates the email template.
+	t.Run("Updating the active flag deactivates the email template", func(t *testing.T) {
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -73,8 +69,7 @@ func TestEmailTemplateUpdate(t *testing.T) {
 		assert.False(t, resp.JSON200.IsActive)
 	})
 
-	t.Run("returns 404 for unknown ID", func(t *testing.T) {
-		// The API returns 404 for unknown ID.
+	t.Run("The API returns 404 for unknown ID", func(t *testing.T) {
 		resp, updateErr := client.UpdateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -88,60 +83,61 @@ func TestEmailTemplateUpdate(t *testing.T) {
 
 // Not parallel: it holds a row lock and waits for the rename to queue behind it.
 func TestEmailTemplateRenameKeepsExamplesSavedConcurrently(t *testing.T) {
-	// Email template rename keeps examples saved concurrently.
-	tc := newEmailTestCtx(t)
-	client := tc.product.OwnerAuthenticatedClient()
-	created, err := client.CreateEmailTemplateWithResponse(
-		t.Context(),
-		tc.product.ProductID,
-		ct.CreateEmailTemplateJSONRequestBody{
-			Slug:     uniqueSlug(),
-			Name:     "Original",
-			Subject:  "Subj",
-			BodyHtml: "<p>Body</p>",
-		},
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, created.StatusCode())
-	tplID := created.JSON201.Id
+	t.Run("Email template rename keeps examples saved concurrently", func(t *testing.T) {
+		tc := newEmailTestCtx(t)
+		client := tc.product.OwnerAuthenticatedClient()
+		created, err := client.CreateEmailTemplateWithResponse(
+			t.Context(),
+			tc.product.ProductID,
+			ct.CreateEmailTemplateJSONRequestBody{
+				Slug:     uniqueSlug(),
+				Name:     "Original",
+				Subject:  "Subj",
+				BodyHtml: "<p>Body</p>",
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, created.StatusCode())
+		tplID := created.JSON201.Id
 
-	saveInFlight, err := testDB.BeginTx(t.Context(), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = saveInFlight.Rollback() })
-	_, err = saveInFlight.ExecContext(
-		t.Context(),
-		`UPDATE email_templates SET example_data = $2 WHERE id = $1`,
-		tplID, `[{"id": "ex-1", "name": "Happy path", "variables": {"first_name": "Ada"}}]`,
-	)
-	require.NoError(t, err)
-	var savePID int
-	require.NoError(t, saveInFlight.QueryRowContext(t.Context(), `SELECT pg_backend_pid()`).Scan(&savePID))
+		saveInFlight, err := testDB.BeginTx(t.Context(), nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = saveInFlight.Rollback() })
+		_, err = saveInFlight.ExecContext(
+			t.Context(),
+			`UPDATE email_templates SET example_data = $2 WHERE id = $1`,
+			tplID, `[{"id": "ex-1", "name": "Happy path", "variables": {"first_name": "Ada"}}]`,
+		)
+		require.NoError(t, err)
+		var savePID int
+		require.NoError(t, saveInFlight.QueryRowContext(t.Context(), `SELECT pg_backend_pid()`).Scan(&savePID))
 
-	renamed := make(chan functional.Result[*ct.UpdateEmailTemplateResponse], 1)
-	go func() {
-		renamed <- functional.New(client.UpdateEmailTemplateWithResponse(
-			t.Context(), tc.product.ProductID, tplID, ct.UpdateEmailTemplateJSONRequestBody{Name: new("Renamed")},
-		))
-	}()
-	require.Eventually(t, func() bool {
-		var blocked bool
-		scanErr := testDB.QueryRowContext(t.Context(),
-			`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`, savePID,
-		).Scan(&blocked)
-		return scanErr == nil && blocked
-	}, 5*time.Second, 10*time.Millisecond)
-	require.NoError(t, saveInFlight.Commit())
+		renamed := make(chan functional.Result[*ct.UpdateEmailTemplateResponse], 1)
+		go func() {
+			renamed <- functional.New(client.UpdateEmailTemplateWithResponse(
+				t.Context(), tc.product.ProductID, tplID, ct.UpdateEmailTemplateJSONRequestBody{Name: new("Renamed")},
+			))
+		}()
+		require.Eventually(t, func() bool {
+			var blocked bool
+			scanErr := testDB.QueryRowContext(t.Context(),
+				`SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`, savePID,
+			).Scan(&blocked)
+			return scanErr == nil && blocked
+		}, 5*time.Second, 10*time.Millisecond)
+		require.NoError(t, saveInFlight.Commit())
 
-	rename, err := (<-renamed).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, rename.StatusCode(), string(rename.Body))
-	assert.Equal(t, "Renamed", rename.JSON200.Name)
+		rename, err := (<-renamed).Value()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, rename.StatusCode(), string(rename.Body))
+		assert.Equal(t, "Renamed", rename.JSON200.Name)
 
-	examples, err := client.GetEmailTemplateExamplesWithResponse(t.Context(), tc.product.ProductID, tplID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, examples.StatusCode())
-	require.NotNil(t, examples.JSON200)
-	assert.Equal(t, []ct.TemplateExample{
-		{Id: "ex-1", Name: "Happy path", Variables: map[string]any{"first_name": "Ada"}},
-	}, examples.JSON200.Examples)
+		examples, err := client.GetEmailTemplateExamplesWithResponse(t.Context(), tc.product.ProductID, tplID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, examples.StatusCode())
+		require.NotNil(t, examples.JSON200)
+		assert.Equal(t, []ct.TemplateExample{
+			{Id: "ex-1", Name: "Happy path", Variables: map[string]any{"first_name": "Ada"}},
+		}, examples.JSON200.Examples)
+	})
 }

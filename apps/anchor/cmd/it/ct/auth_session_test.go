@@ -46,139 +46,183 @@ func endRotationGrace(t *testing.T, refreshToken string) {
 }
 
 func TestRefreshAfterLogoutIsRefused(t *testing.T) {
-	// After logout refresh is refused.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	itdsl.Auth(t).Logout(user.AccessToken)
+	t.Run("After logout refresh is refused", func(t *testing.T) {
+		t.Parallel()
 
-	resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
-	assert.Empty(t, resp.Body)
+		_, user := givenSignedInAdmin(t)
+
+		itdsl.Auth(t).Logout(user.AccessToken)
+
+		resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		assert.Empty(t, resp.Body)
+	})
 }
 
 func TestRefreshOfATokenRotatedBeforeLogoutIsRefused(t *testing.T) {
-	// Of a token rotated before logout refresh is refused.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
-	rotated := itdsl.Auth(t).Refresh(user.RefreshToken)
 
-	itdsl.Auth(t).Logout(rotated.AccessToken)
+	t.Run("Of a token rotated before logout refresh is refused", func(t *testing.T) {
+		t.Parallel()
 
-	resp := itdsl.Auth(t).RefreshRaw(rotated.RefreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		_, user := givenSignedInAdmin(t)
+		rotated := itdsl.Auth(t).Refresh(user.RefreshToken)
+
+		itdsl.Auth(t).Logout(rotated.AccessToken)
+
+		resp := itdsl.Auth(t).RefreshRaw(rotated.RefreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestLogoutLeavesTheUsersOtherSessionsSignedIn(t *testing.T) {
-	// Logout leaves the users other sessions signed in.
 	t.Parallel()
-	state, user := givenSignedInAdmin(t)
-	otherDevice := state.NewSession(sessionUserAlias)
 
-	itdsl.Auth(t).Logout(user.AccessToken)
+	t.Run("Logout leaves the users other sessions signed in", func(t *testing.T) {
+		t.Parallel()
 
-	itdsl.Auth(t).Refresh(otherDevice.RefreshToken)
+		state, user := givenSignedInAdmin(t)
+		otherDevice := state.NewSession(sessionUserAlias)
+
+		itdsl.Auth(t).Logout(user.AccessToken)
+
+		itdsl.Auth(t).Refresh(otherDevice.RefreshToken)
+	})
 }
 
 func TestLogoutWithoutABearerTokenRevokesNothing(t *testing.T) {
-	// Logout without a bearer token revokes nothing.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	resp, err := testTenant(t).NoAuthClient.LogoutWithResponse(t.Context())
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	t.Run("Logout without a bearer token revokes nothing", func(t *testing.T) {
+		t.Parallel()
 
-	itdsl.Auth(t).Refresh(user.RefreshToken)
+		_, user := givenSignedInAdmin(t)
+
+		resp, err := testTenant(t).NoAuthClient.LogoutWithResponse(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+
+		itdsl.Auth(t).Refresh(user.RefreshToken)
+	})
 }
 
 func TestLogoutWithAnUnverifiableBearerTokenRevokesNothing(t *testing.T) {
-	// Logout with an unverifiable bearer token revokes nothing.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	itdsl.Auth(t).Logout("not-a-jwt")
+	t.Run("Logout with an unverifiable bearer token revokes nothing", func(t *testing.T) {
+		t.Parallel()
 
-	itdsl.Auth(t).Refresh(user.RefreshToken)
+		_, user := givenSignedInAdmin(t)
+
+		itdsl.Auth(t).Logout("not-a-jwt")
+
+		itdsl.Auth(t).Refresh(user.RefreshToken)
+	})
 }
 
 func TestAccessTokenStaysValidUntilItExpiresAfterLogout(t *testing.T) {
-	// Logging out leaves the existing access token valid until its expiry.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	itdsl.Auth(t).Logout(user.AccessToken)
+	t.Run("Logging out leaves the existing access token valid until its expiry", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := user.AuthenticatedClient.GetCurrentUserWithResponse(t.Context())
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		_, user := givenSignedInAdmin(t)
+
+		itdsl.Auth(t).Logout(user.AccessToken)
+
+		resp, err := user.AuthenticatedClient.GetCurrentUserWithResponse(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestRefreshRotatesTheRefreshToken(t *testing.T) {
-	// Refresh rotates the refresh token.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-	require.NotNil(t, resp.JSON200)
-	rotated := *resp.JSON200
+	t.Run("Refresh rotates the refresh token", func(t *testing.T) {
+		t.Parallel()
 
-	assert.NotEqual(t, user.RefreshToken, rotated.RefreshToken)
-	require.NotNil(t, resp.Headers200)
-	require.NotNil(t, resp.Headers200.SetCookie)
-	assert.Contains(t, *resp.Headers200.SetCookie, "refresh_token="+rotated.RefreshToken)
-	itdsl.Auth(t).Refresh(rotated.RefreshToken)
+		_, user := givenSignedInAdmin(t)
+
+		resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON200)
+		rotated := *resp.JSON200
+
+		assert.NotEqual(t, user.RefreshToken, rotated.RefreshToken)
+		require.NotNil(t, resp.Headers200)
+		require.NotNil(t, resp.Headers200.SetCookie)
+		assert.Contains(t, *resp.Headers200.SetCookie, "refresh_token="+rotated.RefreshToken)
+		itdsl.Auth(t).Refresh(rotated.RefreshToken)
+	})
 }
 
 func TestRotatedRefreshTokenIsAcceptedWithinTheGrace(t *testing.T) {
-	// Rotated refresh token is accepted within the grace.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
 
-	firstTab := itdsl.Auth(t).Refresh(user.RefreshToken)
-	secondTab := itdsl.Auth(t).Refresh(user.RefreshToken)
+	t.Run("Rotated refresh token is accepted within the grace", func(t *testing.T) {
+		t.Parallel()
 
-	itdsl.Auth(t).Refresh(firstTab.RefreshToken)
-	itdsl.Auth(t).Refresh(secondTab.RefreshToken)
+		_, user := givenSignedInAdmin(t)
+
+		firstTab := itdsl.Auth(t).Refresh(user.RefreshToken)
+		secondTab := itdsl.Auth(t).Refresh(user.RefreshToken)
+
+		itdsl.Auth(t).Refresh(firstTab.RefreshToken)
+		itdsl.Auth(t).Refresh(secondTab.RefreshToken)
+	})
 }
 
 func TestRotatedRefreshTokenIsRefusedAfterTheGrace(t *testing.T) {
-	// Rotated refresh token is refused after the grace.
 	t.Parallel()
-	_, user := givenSignedInAdmin(t)
-	itdsl.Auth(t).Refresh(user.RefreshToken)
-	endRotationGrace(t, user.RefreshToken)
 
-	resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	t.Run("Rotated refresh token is refused after the grace", func(t *testing.T) {
+		t.Parallel()
+
+		_, user := givenSignedInAdmin(t)
+		itdsl.Auth(t).Refresh(user.RefreshToken)
+		endRotationGrace(t, user.RefreshToken)
+
+		resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestReplayedRotatedRefreshTokenRevokesTheWholeSession(t *testing.T) {
-	// Replayed rotated refresh token revokes the whole session.
 	t.Parallel()
-	state, user := givenSignedInAdmin(t)
-	otherDevice := state.NewSession(sessionUserAlias)
-	rotated := itdsl.Auth(t).Refresh(user.RefreshToken)
-	endRotationGrace(t, user.RefreshToken)
 
-	replay := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	require.Equal(t, http.StatusUnauthorized, replay.StatusCode(), string(replay.Body))
+	t.Run("Replayed rotated refresh token revokes the whole session", func(t *testing.T) {
+		t.Parallel()
 
-	resp := itdsl.Auth(t).RefreshRaw(rotated.RefreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
-	itdsl.Auth(t).Refresh(otherDevice.RefreshToken)
+		state, user := givenSignedInAdmin(t)
+		otherDevice := state.NewSession(sessionUserAlias)
+		rotated := itdsl.Auth(t).Refresh(user.RefreshToken)
+		endRotationGrace(t, user.RefreshToken)
+
+		replay := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		require.Equal(t, http.StatusUnauthorized, replay.StatusCode(), string(replay.Body))
+
+		resp := itdsl.Auth(t).RefreshRaw(rotated.RefreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		itdsl.Auth(t).Refresh(otherDevice.RefreshToken)
+	})
 }
 
 func TestRefreshOfADeletedPlatformUserIsRefused(t *testing.T) {
-	// Of a deleted platform user refresh is refused.
 	t.Parallel()
-	state, user := givenSignedInAdmin(t)
-	deleteResp, err := state.Tenant(user.TenantAlias).OwnerClient.
-		DeletePlatformUserWithResponse(t.Context(), user.ID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, deleteResp.StatusCode(), string(deleteResp.Body))
 
-	resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	t.Run("Of a deleted platform user refresh is refused", func(t *testing.T) {
+		t.Parallel()
+
+		state, user := givenSignedInAdmin(t)
+		deleteResp, err := state.Tenant(user.TenantAlias).OwnerClient.
+			DeletePlatformUserWithResponse(t.Context(), user.ID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, deleteResp.StatusCode(), string(deleteResp.Body))
+
+		resp := itdsl.Auth(t).RefreshRaw(user.RefreshToken)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+	})
 }

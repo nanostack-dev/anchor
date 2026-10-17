@@ -9,7 +9,6 @@ import (
 )
 
 func TestOpenAPIProtected401(t *testing.T) {
-	// Protected OpenAPI operations refuse missing, forged, or expired credentials.
 	t.Parallel()
 	noAuth := map[string]struct{}{
 		"post /v1/auth/login":    {},
@@ -21,8 +20,7 @@ func TestOpenAPIProtected401(t *testing.T) {
 	spec, components, paramDefs := parseOpenAPISpec(t)
 	for _, op := range extractOperations(spec, components, paramDefs, noAuth, itshared.ServerURL) {
 		t.Run(
-			op.OpKey, func(t *testing.T) {
-				// The protected operation refuses a request without credentials.
+			"Missing credentials cannot access "+op.OpKey, func(t *testing.T) {
 				resp, err := sendRequest(op, components, nil)
 				if err != nil {
 					t.Fatalf("failed to %s %s: %v", op.Verb, op.URL, err)

@@ -12,7 +12,6 @@ import (
 )
 
 func TestEmailTemplatePreview(t *testing.T) {
-	// Checks email template preview across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -32,8 +31,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 	require.Equal(t, http.StatusCreated, created.StatusCode())
 	tplID := created.JSON201.Id
 
-	t.Run("renders draft with variables", func(t *testing.T) {
-		// The API renders draft with variables.
+	t.Run("The API renders draft with variables", func(t *testing.T) {
 		vars := map[string]any{"name": "Alice"}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
@@ -49,8 +47,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 		assert.Contains(t, resp.JSON200.BodyText, "Alice")
 	})
 
-	t.Run("renders without variables (empty substitution)", func(t *testing.T) {
-		// The API renders without variables (empty substitution).
+	t.Run("The API renders without variables (empty substitution)", func(t *testing.T) {
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -61,8 +58,7 @@ func TestEmailTemplatePreview(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
 	})
 
-	t.Run("returns 404 for unknown template", func(t *testing.T) {
-		// The API returns 404 for unknown template.
+	t.Run("The API returns 404 for unknown template", func(t *testing.T) {
 		vars := map[string]any{}
 		resp, previewErr := client.PreviewEmailTemplateWithResponse(
 			context.Background(),

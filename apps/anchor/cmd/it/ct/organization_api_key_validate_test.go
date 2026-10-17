@@ -16,7 +16,6 @@ import (
 )
 
 func TestOrganizationAPIKeyValidate(t *testing.T) {
-	// Checks organization API key validation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -46,8 +45,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 
 	clearKey := createResp.JSON201.Value
 
-	t.Run("returns 200 when required scopes are satisfied", func(t *testing.T) {
-		// The API returns 200 when required scopes are satisfied.
+	t.Run("The API returns 200 when required scopes are satisfied", func(t *testing.T) {
 		resp, validateErr := adminClient.ValidateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -67,8 +65,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 		assert.Empty(t, resp.JSON200.MissingPrivileges)
 	})
 
-	t.Run("returns typed 403 when scopes are missing", func(t *testing.T) {
-		// The API returns typed 403 when scopes are missing.
+	t.Run("The API returns typed 403 when scopes are missing", func(t *testing.T) {
 		resp, validateErr := adminClient.ValidateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -88,8 +85,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 		assert.ElementsMatch(t, []string{permissions.FileCreate}, resp.JSON403.MissingPrivileges)
 	})
 
-	t.Run("returns typed 403 when api key is expired", func(t *testing.T) {
-		// The API returns typed 403 when API key is expired.
+	t.Run("The API returns typed 403 when API key is expired", func(t *testing.T) {
 		expiredAt := nearFutureExpiry()
 		expiredCreateResp, createErr := adminClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,

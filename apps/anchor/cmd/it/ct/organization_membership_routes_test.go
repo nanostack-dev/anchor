@@ -13,7 +13,6 @@ import (
 )
 
 func TestOrganizationMembershipRoutes(t *testing.T) {
-	// Organization membership routes preserve role assignments and enforce product and organization boundaries.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -29,8 +28,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 	require.Equal(t, http.StatusCreated, orgResp.StatusCode())
 	require.NotNil(t, orgResp.JSON201)
 
-	t.Run("AddMemberAndDuplicateReturnsConflict", func(t *testing.T) {
-		// Member and duplicate addition returns conflict.
+	t.Run("Member and duplicate addition returns conflict", func(t *testing.T) {
 		productUser := createDSLProductUser(t, productCtx)
 
 		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
@@ -66,8 +64,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		assert.Equal(t, "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS", dupResp.JSON409.Errors[0].Code)
 	})
 
-	t.Run("AddMemberWithNonExistentProductUserReturnsNotFound", func(t *testing.T) {
-		// Member with nonexistent product user addition returns not found.
+	t.Run("Member with nonexistent product user addition returns not found", func(t *testing.T) {
 		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
 			ctx,
 			productCtx.ProductID,
@@ -87,8 +84,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		assert.Equal(t, "PRODUCT_USER_NOT_FOUND_IN_REQUEST", addResp.JSON400.Errors[0].Code)
 	})
 
-	t.Run("AddMemberWithNonExistentOrganizationReturnsNotFound", func(t *testing.T) {
-		// Member with nonexistent organization addition returns not found.
+	t.Run("Member with nonexistent organization addition returns not found", func(t *testing.T) {
 		productUser := createDSLProductUser(t, productCtx)
 
 		addResp, addErr := apiKeyClient.AddOrganizationMemberWithResponse(
@@ -104,8 +100,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, addResp.StatusCode())
 	})
 
-	t.Run("SearchMembersByExternalID", func(t *testing.T) {
-		// Searching members by external ID succeeds.
+	t.Run("Searching members by external ID succeeds", func(t *testing.T) {
 		productUser := createDSLProductUser(t, productCtx)
 		externalID := "ext-search-member-1"
 		setDSLProductUserExternalID(t, productCtx, productUser.ID, externalID)
@@ -140,8 +135,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		assert.Equal(t, externalID, *searchResp.JSON200.Items[0].ExternalId)
 	})
 
-	t.Run("CreateOrganizationWithMemberIsIdempotent", func(t *testing.T) {
-		// Organization with member creation is idempotent.
+	t.Run("Organization with member creation is idempotent", func(t *testing.T) {
 		productUser := createDSLProductUser(t, productCtx)
 		requestBody := ct.CreateProductOrganizationJSONRequestBody{Name: "Atomic Create CT"}
 		requestBody.FoundingMember = &ct.FoundingMemberRequest{
@@ -170,8 +164,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		assert.Equal(t, firstResp.JSON201.Id, secondResp.JSON201.Id)
 	})
 
-	t.Run("EmitsWebhookOnAddUpdateRemove", func(t *testing.T) {
-		// The API emits webhook on add update remove.
+	t.Run("The API emits webhook on add update remove", func(t *testing.T) {
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

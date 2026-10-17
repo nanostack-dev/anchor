@@ -13,7 +13,6 @@ import (
 )
 
 func TestProductAPIKeySearch(t *testing.T) {
-	// Checks product API key search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -70,8 +69,7 @@ func TestProductAPIKeySearch(t *testing.T) {
 	require.NotNil(t, createResp3.JSON201)
 
 	t.Run(
-		"Search all API keys", func(t *testing.T) {
-			// Searching all API keys succeeds.
+		"Searching all API keys succeeds", func(t *testing.T) {
 			searchResp, searchErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{},
 			)
@@ -85,7 +83,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys by names", func(t *testing.T) {
-			// Search API keys by names.
 			searchResp, filterErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{
 					Filter: &ct.ProductAPIKeyFilter{
@@ -110,7 +107,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys by IDs", func(t *testing.T) {
-			// Search API keys by IDs.
 			targetIDs := []string{createResp1.JSON201.Id, createResp2.JSON201.Id}
 			searchResp, idsErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{
@@ -135,7 +131,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys by status", func(t *testing.T) {
-			// Search API keys by status.
 			searchResp, statusErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{
 					Filter: &ct.ProductAPIKeyFilter{
@@ -156,7 +151,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys with pagination", func(t *testing.T) {
-			// Search API keys with pagination.
 			limit := int32(2)
 			offset := int32(0)
 			pagination := ct.PaginationRequest{
@@ -183,7 +177,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys with sorting", func(t *testing.T) {
-			// Search API keys with sorting.
 			sortBy := ct.ProductAPIKeySearchRequestSortByName
 			sortDirection := ct.ASC
 			searchResp, sortErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
@@ -208,7 +201,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys with full text search", func(t *testing.T) {
-			// Search API keys with full text search.
 			fullTextSearch := "Search"
 			searchResp, fullTextErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{
@@ -232,7 +224,6 @@ func TestProductAPIKeySearch(t *testing.T) {
 
 	t.Run(
 		"Search API keys with no results", func(t *testing.T) {
-			// Search API keys with no results.
 			searchResp, noResultsErr := product.OwnerAuthenticatedClient().SearchProductAPIKeysWithResponse(
 				ctx, product.ProductID, ct.SearchProductAPIKeysJSONRequestBody{
 					Filter: &ct.ProductAPIKeyFilter{

@@ -15,7 +15,6 @@ import (
 )
 
 func TestProductOrganizationGet(t *testing.T) {
-	// Checks product organization lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -23,8 +22,7 @@ func TestProductOrganizationGet(t *testing.T) {
 	apiKeyClient, _ := testProduct.CreateAPIKeyClientWithAllScopes()
 
 	t.Run(
-		"SuccessfulGetOrganization", func(t *testing.T) {
-			// Reading an organization succeeds.
+		"Reading an organization succeeds", func(t *testing.T) {
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -63,8 +61,7 @@ func TestProductOrganizationGet(t *testing.T) {
 	)
 
 	t.Run(
-		"GetNonExistentOrganization", func(t *testing.T) {
-			// Reading nonexistent organization returns not found.
+		"Reading nonexistent organization returns not found", func(t *testing.T) {
 			getResponse, err := apiKeyClient.GetProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -81,8 +78,7 @@ func TestProductOrganizationGet(t *testing.T) {
 	)
 
 	t.Run(
-		"SecurityGetOrganizationWithInsufficientPermissions", func(t *testing.T) {
-			// Reading an organization requires the organization-read permission.
+		"Reading an organization requires the organization-read permission", func(t *testing.T) {
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,

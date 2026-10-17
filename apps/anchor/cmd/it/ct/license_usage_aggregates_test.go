@@ -91,10 +91,8 @@ func dropAllRawChunks(t *testing.T) {
 }
 
 func TestUsageAggregateExistence(t *testing.T) {
-	// Usage rollups exist as materialized continuous aggregates at every supported resolution.
 	t.Parallel()
-	t.Run("each level of the cascade is a materialized-only continuous aggregate", func(t *testing.T) {
-		// Each level of the cascade is a materialized-only continuous aggregate.
+	t.Run("Each level of the cascade is a materialized-only continuous aggregate", func(t *testing.T) {
 		// materialized_only rather than real-time aggregation: minute and hour are
 		// themselves the source of the next level, which TimescaleDB requires, and
 		// day matches them so every level's freshness is governed by the same
@@ -114,9 +112,7 @@ func TestUsageAggregateExistence(t *testing.T) {
 
 // Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregateBucketing(t *testing.T) {
-	// Minute buckets retain the last gauge or windowed-counter observation in that minute.
-	t.Run("a minute bucket keeps the last gauge value observed within it", func(t *testing.T) {
-		// A minute bucket keeps the last gauge value observed within it.
+	t.Run("A minute bucket keeps the last gauge value observed within it", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		minute := time.Date(2026, time.January, 5, 10, 30, 0, 0, time.UTC)
 
@@ -134,8 +130,7 @@ func TestUsageAggregateBucketing(t *testing.T) {
 		assert.InDelta(t, 37.0, series.Items[0].Value, 0, "last(value, observed_at) must win, not sum or average")
 	})
 
-	t.Run("a minute bucket keeps the last windowed counter observed within it", func(t *testing.T) {
-		// A minute bucket keeps the last windowed counter observed within it.
+	t.Run("A minute bucket keeps the last windowed counter observed within it", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		minute := time.Date(2026, time.January, 5, 11, 0, 0, 0, time.UTC)
 		earlyFrom, earlyTo := billingPeriod()
@@ -160,9 +155,7 @@ func TestUsageAggregateBucketing(t *testing.T) {
 
 // Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregateCascade(t *testing.T) {
-	// Hour and day rollups retain the last observation in their respective time ranges.
-	t.Run("hour and day roll up the last value across their span, for a gauge", func(t *testing.T) {
-		// Hour and day roll up the last value across their span, for a gauge.
+	t.Run("Hour and day roll up the last value across their span, for a gauge", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		day := time.Date(2026, time.January, 6, 0, 0, 0, 0, time.UTC)
 
@@ -186,8 +179,7 @@ func TestUsageAggregateCascade(t *testing.T) {
 		assert.InDelta(t, 400.0, daySeries.Items[0].Value, 0, "day must hold the last hour's value, not the first")
 	})
 
-	t.Run("hour and day roll up the last value across their span, for a windowed counter", func(t *testing.T) {
-		// Hour and day roll up the last value across their span, for a windowed counter.
+	t.Run("Hour and day roll up the last value across their span, for a windowed counter", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		day := time.Date(2026, time.January, 7, 0, 0, 0, 0, time.UTC)
 		earlyFrom, earlyTo := billingPeriod()
@@ -213,9 +205,7 @@ func TestUsageAggregateCascade(t *testing.T) {
 
 // Not parallel: it refreshes every continuous aggregate over its full range.
 func TestUsageAggregatePagination(t *testing.T) {
-	// Usage series page minute buckets in chronological order without repeating observations.
-	t.Run("paginates minute buckets and orders them chronologically", func(t *testing.T) {
-		// Paginates minute buckets and orders them chronologically.
+	t.Run("Paginates minute buckets and orders them chronologically", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		day := time.Date(2026, time.January, 8, 0, 0, 0, 0, time.UTC)
 
@@ -246,9 +236,7 @@ func TestUsageAggregatePagination(t *testing.T) {
 
 // Not parallel: it drops every raw usage chunk.
 func TestUsageAggregateRetention(t *testing.T) {
-	// Removing expired raw chunks preserves the coarser usage aggregates.
-	t.Run("dropping raw chunks leaves the coarser aggregates intact and queryable", func(t *testing.T) {
-		// Dropping raw chunks leaves the coarser aggregates intact and queryable.
+	t.Run("Dropping raw chunks leaves the coarser aggregates intact and queryable", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		day := time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)
 

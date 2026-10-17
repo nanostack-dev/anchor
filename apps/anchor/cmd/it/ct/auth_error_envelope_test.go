@@ -12,54 +12,64 @@ import (
 )
 
 func TestAuthMissingCredentialReturnsJSONErrorEnvelope(t *testing.T) {
-	// Auth missing credential returns JSON error envelope.
 	t.Parallel()
 
-	resp, err := testTenant(t).NoAuthClient.GetCurrentUserWithResponse(t.Context())
-	require.NoError(t, err)
+	t.Run("Auth missing credential returns JSON error envelope", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
-	assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
-	require.NotNil(t, resp.JSON401, string(resp.Body))
-	require.NotEmpty(t, resp.JSON401.Errors)
-	assert.Equal(t, "UNAUTHORIZED", resp.JSON401.Errors[0].Code)
+		resp, err := testTenant(t).NoAuthClient.GetCurrentUserWithResponse(t.Context())
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
+		require.NotNil(t, resp.JSON401, string(resp.Body))
+		require.NotEmpty(t, resp.JSON401.Errors)
+		assert.Equal(t, "UNAUTHORIZED", resp.JSON401.Errors[0].Code)
+	})
 }
 
 func TestAuthUnknownProductReturnsJSONErrorEnvelope(t *testing.T) {
-	// Auth unknown product returns JSON error envelope.
 	t.Parallel()
 
-	resp, err := testOwnerClient(t).GetProductWithResponse(t.Context(), ids.MustNew("prd"))
-	require.NoError(t, err)
+	t.Run("Auth unknown product returns JSON error envelope", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-	assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
-	require.NotNil(t, resp.JSON404, string(resp.Body))
-	require.NotEmpty(t, resp.JSON404.Errors)
-	assert.Equal(t, "PRODUCT_NOT_FOUND", resp.JSON404.Errors[0].Code)
+		resp, err := testOwnerClient(t).GetProductWithResponse(t.Context(), ids.MustNew("prd"))
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+		assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
+		require.NotNil(t, resp.JSON404, string(resp.Body))
+		require.NotEmpty(t, resp.JSON404.Errors)
+		assert.Equal(t, "PRODUCT_NOT_FOUND", resp.JSON404.Errors[0].Code)
+	})
 }
 
 func TestDeletedPlatformUserTokenReturnsJSONErrorEnvelope(t *testing.T) {
-	// Deleted platform user token returns JSON error envelope.
 	t.Parallel()
-	ctx := t.Context()
-	state := itdsl.Given(t).
-		Tenant(itdsl.TenantOpts{Alias: "tenant.deleted-user"}).
-		PlatformAdmin(itdsl.PlatformAdminOpts{Alias: "admin.deleted", TenantAlias: "tenant.deleted-user"}).
-		Build()
-	deletedUser := state.PlatformUser("admin.deleted")
-	ownerClient := state.Tenant("tenant.deleted-user").OwnerClient
 
-	deleteResp, err := ownerClient.DeletePlatformUserWithResponse(ctx, deletedUser.ID)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, deleteResp.StatusCode(), string(deleteResp.Body))
+	t.Run("Deleted platform user token returns JSON error envelope", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := deletedUser.AuthenticatedClient.GetCurrentUserWithResponse(ctx)
-	require.NoError(t, err)
+		ctx := t.Context()
+		state := itdsl.Given(t).
+			Tenant(itdsl.TenantOpts{Alias: "tenant.deleted-user"}).
+			PlatformAdmin(itdsl.PlatformAdminOpts{Alias: "admin.deleted", TenantAlias: "tenant.deleted-user"}).
+			Build()
+		deletedUser := state.PlatformUser("admin.deleted")
+		ownerClient := state.Tenant("tenant.deleted-user").OwnerClient
 
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
-	assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
-	require.NotNil(t, resp.JSON401, string(resp.Body))
-	require.NotEmpty(t, resp.JSON401.Errors, string(resp.Body))
-	assert.Equal(t, "UNAUTHORIZED", resp.JSON401.Errors[0].Code)
+		deleteResp, err := ownerClient.DeletePlatformUserWithResponse(ctx, deletedUser.ID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, deleteResp.StatusCode(), string(deleteResp.Body))
+
+		resp, err := deletedUser.AuthenticatedClient.GetCurrentUserWithResponse(ctx)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode(), string(resp.Body))
+		assert.Contains(t, resp.HTTPResponse.Header.Get("Content-Type"), "application/json")
+		require.NotNil(t, resp.JSON401, string(resp.Body))
+		require.NotEmpty(t, resp.JSON401.Errors, string(resp.Body))
+		assert.Equal(t, "UNAUTHORIZED", resp.JSON401.Errors[0].Code)
+	})
 }

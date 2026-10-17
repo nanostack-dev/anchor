@@ -53,7 +53,6 @@ func assertLicensingWriteConflict(t *testing.T, call func(context.Context) (*htt
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestLicensingWritesRejectConcurrentOperation(t *testing.T) {
-	// Overlapping licensing writes return a conflict while another operation holds the product lock.
 	w := newLicensedWorld(t)
 	other := newLicensedWorld(t)
 	unlicensedID := w.NewOrganization()
@@ -99,8 +98,7 @@ func TestLicensingWritesRejectConcurrentOperation(t *testing.T) {
 			})
 		}},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			// The operation refuses a conflicting concurrent write without partially changing its resource.
+		t.Run("Concurrent licensing writes are refused for "+test.name, func(t *testing.T) {
 			assertLicensingWriteConflict(t, test.call)
 		})
 	}
@@ -133,92 +131,98 @@ func (w *licenseWorld) waitForWriteLock() {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateRenameRejectsConcurrentValuesWrite(t *testing.T) {
-	// Template rename rejects concurrent values write.
-	w := newLicensedWorld(t)
-	rowLock, err := testDB.BeginTx(t.Context(), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = rowLock.Rollback() })
-	_, err = rowLock.ExecContext(
-		t.Context(),
-		`SELECT id FROM license_templates WHERE id = $1 FOR UPDATE`,
-		w.TemplateID(),
-	)
-	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	first := make(chan functional.Result[*ct.UpdateLicenseTemplateResponse], 1)
-	go func() {
-		first <- functional.New(w.client().UpdateLicenseTemplateWithResponse(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Renamed")}))
-	}()
-	w.waitForWriteLock()
-	values := templateValuesWith("flows", 900)
-	assertLicensingWriteConflict(t, func(ctx context.Context) (*http.Response, error) {
-		return w.client().
-			UpdateLicenseTemplate(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Values: &values})
+	t.Run("Template rename rejects concurrent values write", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		rowLock, err := testDB.BeginTx(t.Context(), nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = rowLock.Rollback() })
+		_, err = rowLock.ExecContext(
+			t.Context(),
+			`SELECT id FROM license_templates WHERE id = $1 FOR UPDATE`,
+			w.TemplateID(),
+		)
+		require.NoError(t, err)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+		first := make(chan functional.Result[*ct.UpdateLicenseTemplateResponse], 1)
+		go func() {
+			first <- functional.New(w.client().UpdateLicenseTemplateWithResponse(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Name: new("Renamed")}))
+		}()
+		w.waitForWriteLock()
+		values := templateValuesWith("flows", 900)
+		assertLicensingWriteConflict(t, func(ctx context.Context) (*http.Response, error) {
+			return w.client().
+				UpdateLicenseTemplate(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Values: &values})
+		})
+		require.NoError(t, rowLock.Rollback())
+		response, err := (<-first).Value()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, response.StatusCode(), string(response.Body))
+		w.Template().ReplaceValues(values)
+		waitForLicenseValues(t, w.License(), values)
+		assert.Equal(t, "Renamed", w.Template().Read().Name)
 	})
-	require.NoError(t, rowLock.Rollback())
-	response, err := (<-first).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, response.StatusCode(), string(response.Body))
-	w.Template().ReplaceValues(values)
-	waitForLicenseValues(t, w.License(), values)
-	assert.Equal(t, "Renamed", w.Template().Read().Name)
 }
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestMigrationHoldsWriteLockAcrossOrganizationTransactions(t *testing.T) {
-	// License migration holds its product lock until every selected organization's transaction has finished.
-	w := newLicensedWorld(t)
-	secondID := w.NewOrganization()
-	rowLock, err := testDB.BeginTx(t.Context(), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = rowLock.Rollback() })
-	_, err = rowLock.ExecContext(
-		t.Context(),
-		`SELECT id FROM organization_licenses WHERE organization_id = $1 FOR UPDATE`,
-		w.OrganizationID(),
+	t.Run(
+		"License migration holds its product lock until every selected organization's transaction has finished",
+		func(t *testing.T) {
+			w := newLicensedWorld(t)
+			secondID := w.NewOrganization()
+			rowLock, err := testDB.BeginTx(t.Context(), nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = rowLock.Rollback() })
+			_, err = rowLock.ExecContext(
+				t.Context(),
+				`SELECT id FROM organization_licenses WHERE organization_id = $1 FOR UPDATE`,
+				w.OrganizationID(),
+			)
+			require.NoError(t, err)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			first := make(chan functional.Result[*ct.MigrateOrganizationLicensesResponse], 1)
+			go func() {
+				first <- functional.New(w.client().MigrateOrganizationLicensesWithResponse(ctx, w.productID(), ct.MigrateOrganizationLicensesJSONRequestBody{
+					TemplateId: w.TemplateID(), OrganizationIds: new([]string{w.OrganizationID(), secondID}), OnDifference: new(ct.DISCARD),
+				}))
+			}()
+			w.waitForWriteLock()
+			values := templateValuesWith("flows", 900)
+			assertLicensingWriteConflict(t, func(ctx context.Context) (*http.Response, error) {
+				return w.client().
+					UpdateLicenseTemplate(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Values: &values})
+			})
+			require.NoError(t, rowLock.Rollback())
+			response, err := (<-first).Value()
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, response.StatusCode(), string(response.Body))
+			require.NotNil(t, response.JSON200)
+			assert.Zero(t, response.JSON200.Failed)
+			w.Template().ReplaceValues(values)
+			waitForLicenseValues(t, w.License(), values)
+			waitForLicenseValues(t, w.License().For(secondID), values)
+		},
 	)
-	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	first := make(chan functional.Result[*ct.MigrateOrganizationLicensesResponse], 1)
-	go func() {
-		first <- functional.New(w.client().MigrateOrganizationLicensesWithResponse(ctx, w.productID(), ct.MigrateOrganizationLicensesJSONRequestBody{
-			TemplateId: w.TemplateID(), OrganizationIds: new([]string{w.OrganizationID(), secondID}), OnDifference: new(ct.DISCARD),
-		}))
-	}()
-	w.waitForWriteLock()
-	values := templateValuesWith("flows", 900)
-	assertLicensingWriteConflict(t, func(ctx context.Context) (*http.Response, error) {
-		return w.client().
-			UpdateLicenseTemplate(ctx, w.productID(), w.TemplateID(), ct.UpdateLicenseTemplateJSONRequestBody{Values: &values})
-	})
-	require.NoError(t, rowLock.Rollback())
-	response, err := (<-first).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, response.StatusCode(), string(response.Body))
-	require.NotNil(t, response.JSON200)
-	assert.Zero(t, response.JSON200.Failed)
-	w.Template().ReplaceValues(values)
-	waitForLicenseValues(t, w.License(), values)
-	waitForLicenseValues(t, w.License().For(secondID), values)
 }
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateSyncRetriesLicensingWriteConflict(t *testing.T) {
-	// Template sync retries licensing write conflict.
-	w := newLicensedWorld(t)
-	payload, err := json.Marshal(
-		map[string]string{"tenant_id": w.tenantID, "product_id": w.productID(), "template_id": w.TemplateID()},
-	)
-	require.NoError(t, err)
-	release := w.holdWriteLock()
-	err = templateSync.ProcessQueueJob(t.Context(), queue.Job{Payload: payload})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Another licensing update is in progress")
-	assert.False(t, queue.IsNonRetryable(err))
-	release()
-	require.NoError(t, templateSync.ProcessQueueJob(t.Context(), queue.Job{Payload: payload}))
+	t.Run("Template sync retries licensing write conflict", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		payload, err := json.Marshal(
+			map[string]string{"tenant_id": w.tenantID, "product_id": w.productID(), "template_id": w.TemplateID()},
+		)
+		require.NoError(t, err)
+		release := w.holdWriteLock()
+		err = templateSync.ProcessQueueJob(t.Context(), queue.Job{Payload: payload})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Another licensing update is in progress")
+		assert.False(t, queue.IsNonRetryable(err))
+		release()
+		require.NoError(t, templateSync.ProcessQueueJob(t.Context(), queue.Job{Payload: payload}))
+	})
 }
 
 // holdRowForUpdate locks one row until the returned release, stalling any
@@ -267,120 +271,130 @@ func requireTemplateUpdated(t *testing.T, updated <-chan functional.Result[*ct.U
 }
 
 func TestConcurrentLicenseInstantiationsDoNotRefuseEachOther(t *testing.T) {
-	// Concurrent instantiations for different organizations all succeed.
 	t.Parallel()
-	const organizations = 8
-	w := newLicensedWorld(t)
-	client := w.client()
-	apiClient := w.product.AllScopeAPIKeyClient()
-	unlicensedIDs := make([]string, organizations)
-	names := make([]string, organizations)
-	statuses := make([]int, 2*organizations)
-	for i := range organizations {
-		unlicensedIDs[i] = w.NewOrganization()
-		names[i] = itdsl.UniqueOrganizationName()
-	}
 
-	start := make(chan struct{})
-	var writes sync.WaitGroup
-	for i := range organizations {
-		writes.Go(func() {
-			<-start
-			response, err := client.InstantiateOrganizationLicenseWithResponse(
-				context.Background(), w.productID(), unlicensedIDs[i],
-				ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: w.TemplateID()},
-			)
-			if err == nil {
-				statuses[2*i] = response.StatusCode()
-			}
-		})
-		writes.Go(func() {
-			<-start
-			response, err := apiClient.CreateProductOrganizationWithResponse(
-				context.Background(), w.productID(), organizationBody(names[i], new(w.TemplateID())),
-			)
-			if err == nil {
-				statuses[2*i+1] = response.StatusCode()
-			}
-		})
-	}
-	close(start)
-	writes.Wait()
+	t.Run("Concurrent instantiations for different organizations all succeed", func(t *testing.T) {
+		t.Parallel()
 
-	for i, status := range statuses {
-		assert.Equal(t, http.StatusCreated, status, "licensing write %d", i)
-	}
+		const organizations = 8
+		w := newLicensedWorld(t)
+		client := w.client()
+		apiClient := w.product.AllScopeAPIKeyClient()
+		unlicensedIDs := make([]string, organizations)
+		names := make([]string, organizations)
+		statuses := make([]int, 2*organizations)
+		for i := range organizations {
+			unlicensedIDs[i] = w.NewOrganization()
+			names[i] = itdsl.UniqueOrganizationName()
+		}
+
+		start := make(chan struct{})
+		var writes sync.WaitGroup
+		for i := range organizations {
+			writes.Go(func() {
+				<-start
+				response, err := client.InstantiateOrganizationLicenseWithResponse(
+					context.Background(), w.productID(), unlicensedIDs[i],
+					ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: w.TemplateID()},
+				)
+				if err == nil {
+					statuses[2*i] = response.StatusCode()
+				}
+			})
+			writes.Go(func() {
+				<-start
+				response, err := apiClient.CreateProductOrganizationWithResponse(
+					context.Background(), w.productID(), organizationBody(names[i], new(w.TemplateID())),
+				)
+				if err == nil {
+					statuses[2*i+1] = response.StatusCode()
+				}
+			})
+		}
+		close(start)
+		writes.Wait()
+
+		for i, status := range statuses {
+			assert.Equal(t, http.StatusCreated, status, "licensing write %d", i)
+		}
+	})
 }
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestLicenseInstantiationIgnoresTheProductLicensingLock(t *testing.T) {
-	// Instantiating an organization license succeeds even while the product licensing lock is held.
-	w := newLicensedWorld(t)
-	unlicensedID := w.NewOrganization()
-	name := itdsl.UniqueOrganizationName()
-	release := w.holdWriteLock()
+	t.Run(
+		"Instantiating an organization license succeeds even while the product licensing lock is held",
+		func(t *testing.T) {
+			w := newLicensedWorld(t)
+			unlicensedID := w.NewOrganization()
+			name := itdsl.UniqueOrganizationName()
+			release := w.holdWriteLock()
 
-	w.License().For(unlicensedID).Instantiate(w.TemplateID())
-	created := w.Organizations().Create(organizationBody(name, new(w.TemplateID())))
+			w.License().For(unlicensedID).Instantiate(w.TemplateID())
+			created := w.Organizations().Create(organizationBody(name, new(w.TemplateID())))
 
-	release()
-	require.NotNil(t, created.License)
-	assertValues(t, created.License.Values, validTemplateValues())
+			release()
+			require.NotNil(t, created.License)
+			assertValues(t, created.License.Values, validTemplateValues())
+		},
+	)
 }
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateUpdateDuringOrganizationCreationReachesTheNewLicense(t *testing.T) {
-	// Template update during organization creation reaches the new license.
-	w := newLicenseWorld(t)
-	founder := w.FoundingMember()
-	body := organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID()))
-	body.FoundingMember = &ct.FoundingMemberRequest{ProductUserId: founder.ProductUserID, RoleId: founder.RoleID}
-	updatedValues := templateValuesWith("flows", 900)
-	apiClient := w.product.AllScopeAPIKeyClient()
-	releaseRole := holdRowForUpdate(t, "product_roles", founder.RoleID)
+	t.Run("Template update during organization creation reaches the new license", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		founder := w.FoundingMember()
+		body := organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID()))
+		body.FoundingMember = &ct.FoundingMemberRequest{ProductUserId: founder.ProductUserID, RoleId: founder.RoleID}
+		updatedValues := templateValuesWith("flows", 900)
+		apiClient := w.product.AllScopeAPIKeyClient()
+		releaseRole := holdRowForUpdate(t, "product_roles", founder.RoleID)
 
-	created := make(chan functional.Result[*ct.CreateProductOrganizationResponse], 1)
-	go func() {
-		created <- functional.New(apiClient.CreateProductOrganizationWithResponse(context.Background(), w.productID(), body))
-	}()
-	waitUntilStatementWaitsOnALock(t, "INSERT", "organization_memberships")
-	updated := replaceTemplateValuesInBackground(w, updatedValues)
-	waitUntilStatementWaitsOnALock(t, "", "license_templates")
-	releaseRole()
+		created := make(chan functional.Result[*ct.CreateProductOrganizationResponse], 1)
+		go func() {
+			created <- functional.New(apiClient.CreateProductOrganizationWithResponse(context.Background(), w.productID(), body))
+		}()
+		waitUntilStatementWaitsOnALock(t, "INSERT", "organization_memberships")
+		updated := replaceTemplateValuesInBackground(w, updatedValues)
+		waitUntilStatementWaitsOnALock(t, "", "license_templates")
+		releaseRole()
 
-	response, err := (<-created).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, response.StatusCode(), string(response.Body))
-	require.NotNil(t, response.JSON201.License)
-	assertValues(t, response.JSON201.License.Values, validTemplateValues())
-	requireTemplateUpdated(t, updated)
-	waitForLicenseValues(t, w.License().For(response.JSON201.Id), updatedValues)
+		response, err := (<-created).Value()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, response.StatusCode(), string(response.Body))
+		require.NotNil(t, response.JSON201.License)
+		assertValues(t, response.JSON201.License.Values, validTemplateValues())
+		requireTemplateUpdated(t, updated)
+		waitForLicenseValues(t, w.License().For(response.JSON201.Id), updatedValues)
+	})
 }
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateUpdateDuringInstantiationReachesTheNewLicense(t *testing.T) {
-	// Template update during instantiation reaches the new license.
-	w := newLicenseWorld(t)
-	updatedValues := templateValuesWith("flows", 900)
-	client := w.client()
-	releaseOrganization := holdRowForUpdate(t, "organizations", w.OrganizationID())
+	t.Run("Template update during instantiation reaches the new license", func(t *testing.T) {
+		w := newLicenseWorld(t)
+		updatedValues := templateValuesWith("flows", 900)
+		client := w.client()
+		releaseOrganization := holdRowForUpdate(t, "organizations", w.OrganizationID())
 
-	instantiated := make(chan functional.Result[*ct.InstantiateOrganizationLicenseResponse], 1)
-	go func() {
-		instantiated <- functional.New(client.InstantiateOrganizationLicenseWithResponse(
-			context.Background(), w.productID(), w.OrganizationID(),
-			ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: w.TemplateID()},
-		))
-	}()
-	waitUntilStatementWaitsOnALock(t, "INSERT", "organization_licenses")
-	updated := replaceTemplateValuesInBackground(w, updatedValues)
-	waitUntilStatementWaitsOnALock(t, "", "license_templates")
-	releaseOrganization()
+		instantiated := make(chan functional.Result[*ct.InstantiateOrganizationLicenseResponse], 1)
+		go func() {
+			instantiated <- functional.New(client.InstantiateOrganizationLicenseWithResponse(
+				context.Background(), w.productID(), w.OrganizationID(),
+				ct.InstantiateOrganizationLicenseJSONRequestBody{TemplateId: w.TemplateID()},
+			))
+		}()
+		waitUntilStatementWaitsOnALock(t, "INSERT", "organization_licenses")
+		updated := replaceTemplateValuesInBackground(w, updatedValues)
+		waitUntilStatementWaitsOnALock(t, "", "license_templates")
+		releaseOrganization()
 
-	response, err := (<-instantiated).Value()
-	require.NoError(t, err)
-	require.Equal(t, http.StatusCreated, response.StatusCode(), string(response.Body))
-	assertValues(t, response.JSON201.Values, validTemplateValues())
-	requireTemplateUpdated(t, updated)
-	waitForLicenseValues(t, w.License(), updatedValues)
+		response, err := (<-instantiated).Value()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, response.StatusCode(), string(response.Body))
+		assertValues(t, response.JSON201.Values, validTemplateValues())
+		requireTemplateUpdated(t, updated)
+		waitForLicenseValues(t, w.License(), updatedValues)
+	})
 }

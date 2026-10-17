@@ -42,10 +42,8 @@ func migrateTo(templateID string, organizationIDs ...string) ct.OrganizationLice
 }
 
 func TestMigrateOrganizationLicenses(t *testing.T) {
-	// Organization migration licenses.
 	t.Parallel()
-	t.Run("takes the target template's values and restamps the provenance", func(t *testing.T) {
-		// The API takes the target template's values and restamps the provenance.
+	t.Run("The API takes the target template's values and restamps the provenance", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -64,8 +62,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.WithinRange(t, moved.InstantiatedAt, before, time.Now().Add(time.Second))
 	})
 
-	t.Run("reports what the organization moved from and what moved", func(t *testing.T) {
-		// The API reports what the organization moved from and what moved.
+	t.Run("The API reports what the organization moved from and what moved", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -84,8 +81,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.InDelta(t, 5000, flows.TemplateValue, 0)
 	})
 
-	t.Run("leaves the license alone when it already holds the target", func(t *testing.T) {
-		// The API leaves the license alone when it already holds the target.
+	t.Run("The API leaves the license alone when it already holds the target", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		instantiated := w.License().Get()
 
@@ -102,8 +98,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.Len(t, w.License().History().Items, 1)
 	})
 
-	t.Run("moves every organization the source template still holds", func(t *testing.T) {
-		// The API moves every organization the source template still holds.
+	t.Run("The API moves every organization the source template still holds", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		second := w.NewOrganization()
 		w.License().Instantiate(w.TemplateID())
@@ -121,8 +116,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assertValues(t, w.License().For(second).Get().Values, proValues())
 	})
 
-	t.Run("empties a withdrawn tier", func(t *testing.T) {
-		// The API empties a withdrawn tier.
+	t.Run("The API empties a withdrawn tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		w.Template().Archive()
@@ -138,8 +132,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.Equal(t, pro.Id, w.License().Get().TemplateId)
 	})
 
-	t.Run("records one history entry naming both tiers", func(t *testing.T) {
-		// The API records one history entry naming both tiers.
+	t.Run("The API records one history entry naming both tiers", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -158,8 +151,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assert.Equal(t, normaliseValues(proValues()), entry.NewValue)
 	})
 
-	t.Run("a license read before the run comes back on the new tier", func(t *testing.T) {
-		// A license read before the run comes back on the new tier.
+	t.Run("A license read before the run comes back on the new tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -175,8 +167,7 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 		assertValues(t, reread.Values, proValues())
 	})
 
-	t.Run("every organization in one run shares a changed_at", func(t *testing.T) {
-		// Every organization in one run shares a changed at.
+	t.Run("Every organization in one run shares a changed at", func(t *testing.T) {
 		w := newLicenseWorld(t)
 		second := w.NewOrganization()
 		w.License().Instantiate(w.TemplateID())
@@ -200,10 +191,8 @@ func TestMigrateOrganizationLicenses(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
-	// Organization migration licenses differences.
 	t.Parallel()
-	t.Run("carries a bespoke value forward onto the new tier", func(t *testing.T) {
-		// The API carries a bespoke value forward onto the new tier.
+	t.Run("The API carries a bespoke value forward onto the new tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		pro := w.NewTemplate(proValues())
@@ -221,8 +210,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		})
 	})
 
-	t.Run("a carried field is not reported as a change", func(t *testing.T) {
-		// A carried field is not reported as a change.
+	t.Run("A carried field is not reported as a change", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		pro := w.NewTemplate(proValues())
@@ -239,8 +227,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assert.Len(t, result.Changes, len(templateSchemaFields())-1)
 	})
 
-	t.Run("a propagated template edit is not carried forward", func(t *testing.T) {
-		// A propagated template edit is not carried forward.
+	t.Run("A propagated template edit is not carried forward", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.Template().ReplaceValues(templateValuesWith("flows", 900))
 		waitForLicenseValues(t, w.License(), templateValuesWith("flows", 900))
@@ -251,8 +238,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assertValues(t, w.License().Get().Values, proValues())
 	})
 
-	t.Run("discard takes the target template whole", func(t *testing.T) {
-		// Discard takes the target template whole.
+	t.Run("Discard takes the target template whole", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 		pro := w.NewTemplate(proValues())
@@ -265,8 +251,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assertValues(t, w.License().Get().Values, proValues())
 	})
 
-	t.Run("naming the tier it already holds resets it to that tier", func(t *testing.T) {
-		// Naming the tier it already holds resets it to that tier.
+	t.Run("Naming the tier it already holds resets it to that tier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -280,8 +265,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assertValues(t, w.License().Get().Values, validTemplateValues())
 	})
 
-	t.Run("carrying forward onto the tier it already holds changes nothing", func(t *testing.T) {
-		// Carrying forward onto the tier it already holds changes nothing.
+	t.Run("Carrying forward onto the tier it already holds changes nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -293,8 +277,7 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 		assert.InDelta(t, 800, w.License().Get().Values["flows"], 0)
 	})
 
-	t.Run("a field the target tier no longer declares is not carried forward", func(t *testing.T) {
-		// A field the target tier no longer declares is not carried forward.
+	t.Run("A field the target tier no longer declares is not carried forward", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		// The schema drops a field, so no template declares it any more. The
 		// license still holds it, and carrying it would resurrect a field
@@ -309,10 +292,8 @@ func TestMigrateOrganizationLicensesDifferences(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
-	// Organization migration licenses isolates failures.
 	t.Parallel()
-	t.Run("grants a first license to an organization holding none", func(t *testing.T) {
-		// The API grants a first license to an organization holding none.
+	t.Run("The API grants a first license to an organization holding none", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
 		pro := w.NewTemplate(proValues())
@@ -338,8 +319,7 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 		assert.Equal(t, normaliseValues(proValues()), entry.NewValue)
 	})
 
-	t.Run("one unknown organization does not abort the batch", func(t *testing.T) {
-		// One unknown organization does not abort the batch.
+	t.Run("One unknown organization does not abort the batch", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		missing := missingOrganizationID()
 		pro := w.NewTemplate(proValues())
@@ -358,8 +338,7 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 		assertValues(t, w.License().Get().Values, proValues())
 	})
 
-	t.Run("another product's organization cannot be reached", func(t *testing.T) {
-		// Another product's organization cannot be reached.
+	t.Run("Another product's organization cannot be reached", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicensedWorld(t)
 		pro := first.NewTemplate(proValues())
@@ -370,8 +349,7 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 		assertValues(t, second.License().Get().Values, validTemplateValues())
 	})
 
-	t.Run("an organization named twice is moved once", func(t *testing.T) {
-		// An organization named twice is moved once.
+	t.Run("An organization named twice is moved once", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -385,10 +363,8 @@ func TestMigrateOrganizationLicensesIsolatesFailures(t *testing.T) {
 }
 
 func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
-	// Organization migration licenses refusals.
 	t.Parallel()
-	t.Run("400 when neither selection is supplied", func(t *testing.T) {
-		// The API returns 400 when neither selection is supplied.
+	t.Run("The API returns 400 when neither selection is supplied", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -397,8 +373,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SELECTION_INVALID")
 	})
 
-	t.Run("400 when both selections are supplied", func(t *testing.T) {
-		// The API returns 400 when both selections are supplied.
+	t.Run("The API returns 400 when both selections are supplied", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -409,8 +384,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SELECTION_INVALID")
 	})
 
-	t.Run("400 when the selection names more than the cap", func(t *testing.T) {
-		// The API returns 400 when the selection names more than the cap.
+	t.Run("The API returns 400 when the selection names more than the cap", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -427,8 +401,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_TOO_LARGE")
 	})
 
-	t.Run("the cap admits a selection sitting exactly on it", func(t *testing.T) {
-		// The cap admits a selection sitting exactly on it.
+	t.Run("The cap admits a selection sitting exactly on it", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -447,8 +420,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assert.Equal(t, 1, migration.Changed)
 	})
 
-	t.Run("409 when the target template is archived", func(t *testing.T) {
-		// The API returns 409 when the target template is archived.
+	t.Run("The API returns 409 when the target template is archived", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		w.ArchiveTemplateByID(pro.Id)
@@ -459,8 +431,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON409.Errors, "LICENSE_TEMPLATE_ARCHIVED")
 	})
 
-	t.Run("400 when the target template does not exist", func(t *testing.T) {
-		// The API returns 400 when the target template does not exist.
+	t.Run("The API returns 400 when the target template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.Migration().RunRaw(migrateTo(missingTemplateID(), w.OrganizationID()))
@@ -468,8 +439,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "LICENSE_TEMPLATE_NOT_FOUND_IN_REQUEST")
 	})
 
-	t.Run("400 when the source template does not exist", func(t *testing.T) {
-		// The API returns 400 when the source template does not exist.
+	t.Run("The API returns 400 when the source template does not exist", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 
@@ -483,8 +453,7 @@ func TestMigrateOrganizationLicensesRefusals(t *testing.T) {
 		assertLicenseAPIError(t, resp.JSON400.Errors, "LICENSE_MIGRATION_SOURCE_TEMPLATE_NOT_FOUND")
 	})
 
-	t.Run("EmitsWebhook", func(t *testing.T) {
-		// A successful change emits the corresponding signed product event.
+	t.Run("A successful change emits the corresponding signed product event", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		sink := w.product.CaptureEvents()
 		pro := w.NewTemplate(proValues())

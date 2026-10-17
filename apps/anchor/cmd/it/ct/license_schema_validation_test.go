@@ -19,7 +19,6 @@ import (
 // observations": a nonsensical declaration is refused when the schema is
 // written, rather than the first time a value is checked against it.
 func TestLicenseSchemaValidation(t *testing.T) {
-	// Creating or updating a license schema refuses invalid field definitions and inconsistent rules.
 	t.Parallel()
 	cases := []struct {
 		name  string
@@ -27,14 +26,12 @@ func TestLicenseSchemaValidation(t *testing.T) {
 		code  string
 		rule  string
 	}{
-		// Schema creation and updates reject unknown field type.
 		{
 			name:  "unknown field type",
 			field: ct.LicenseFieldDeclaration{Name: "flows", Type: ct.LicenseFieldType("COUNTER")},
 			code:  "LICENSE_FIELD_RULE_INVALID",
 			rule:  "type",
 		},
-		// Schema creation and updates reject min above max.
 		{
 			name: "min above max",
 			field: ct.LicenseFieldDeclaration{
@@ -45,7 +42,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "min",
 		},
-		// Schema creation and updates reject negative minimum on a limit.
 		{
 			name: "negative minimum on a limit",
 			field: ct.LicenseFieldDeclaration{
@@ -56,7 +52,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "min",
 		},
-		// Schema creation and updates reject regular expression that does not compile.
 		{
 			name: "regular expression that does not compile",
 			field: ct.LicenseFieldDeclaration{
@@ -67,7 +62,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "pattern",
 		},
-		// Schema creation and updates reject enum with no allowed values.
 		{
 			name: "enum with no allowed values",
 			field: ct.LicenseFieldDeclaration{
@@ -78,7 +72,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "values",
 		},
-		// Schema creation and updates reject enum with a duplicate allowed value.
 		{
 			name: "enum with a duplicate allowed value",
 			field: ct.LicenseFieldDeclaration{
@@ -89,7 +82,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "values",
 		},
-		// Schema creation and updates reject numeric bound on a boolean field.
 		{
 			name: "numeric bound on a boolean field",
 			field: ct.LicenseFieldDeclaration{
@@ -100,7 +92,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "max",
 		},
-		// Schema creation and updates reject pattern on a numeric field.
 		{
 			name: "pattern on a numeric field",
 			field: ct.LicenseFieldDeclaration{
@@ -111,7 +102,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "pattern",
 		},
-		// Schema creation and updates reject allowed values on a string field.
 		{
 			name: "allowed values on a string field",
 			field: ct.LicenseFieldDeclaration{
@@ -122,7 +112,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "values",
 		},
-		// Schema creation and updates reject length bounds that cross.
 		{
 			name: "length bounds that cross",
 			field: ct.LicenseFieldDeclaration{
@@ -133,7 +122,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			code: "LICENSE_FIELD_RULE_INVALID",
 			rule: "min_length",
 		},
-		// Schema creation and updates reject a limit with no usage shape.
 		{
 			// Rules are well-formed on purpose: declareFields checks rules before
 			// usage_shape, so an ill-formed rule set would mask this case behind
@@ -146,7 +134,6 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			},
 			code: "LICENSE_FIELD_USAGE_SHAPE_MISSING",
 		},
-		// Schema creation and updates reject a usage shape on a field that is not a limit.
 		{
 			name: "a usage_shape on a field that is not a limit",
 			field: ct.LicenseFieldDeclaration{
@@ -159,8 +146,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run("create rejects "+c.name, func(t *testing.T) {
-			// Creating or updating a schema refuses this invalid field definition.
+		t.Run("Creating a license schema rejects "+c.name, func(t *testing.T) {
 			tc := newLicenseTestCtx(t)
 
 			resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithResponse(
@@ -181,8 +167,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, read.StatusCode())
 		})
 
-		t.Run("update rejects "+c.name, func(t *testing.T) {
-			// Creating or updating a schema refuses this invalid field definition.
+		t.Run("Updating a license schema rejects "+c.name, func(t *testing.T) {
 			tc := newLicenseTestCtx(t)
 			client := seedSchema(t, tc)
 
@@ -200,8 +185,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 		})
 	}
 
-	t.Run("rejects a field name declared twice", func(t *testing.T) {
-		// The API rejects a field name declared twice.
+	t.Run("The API rejects a field name declared twice", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 		name := uniqueFieldName()
 
@@ -223,8 +207,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 		assertFieldError(t, resp.JSON400.Errors, "LICENSE_FIELD_NAME_DUPLICATE", name, "")
 	})
 
-	t.Run("rejects a field with no name", func(t *testing.T) {
-		// The API rejects a field with no name.
+	t.Run("The API rejects a field with no name", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithResponse(
@@ -243,8 +226,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 	// the same reason usage reporting's "not a number" case does. The request
 	// validator excludes bodies from its own checks (ExcludeRequestBody), so
 	// this is what actually catches it.
-	t.Run("rejects a limit with an unrecognised usage_shape", func(t *testing.T) {
-		// The API rejects a limit with an unrecognised usage shape.
+	t.Run("The API rejects a limit with an unrecognised usage shape", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithBodyWithResponse(
@@ -265,8 +247,7 @@ func TestLicenseSchemaValidation(t *testing.T) {
 	// this pins its metadata contract, the same way
 	// usage_report_test.go's "refuses a license field that is not a limit"
 	// pins LICENSE_FIELD_NOT_A_LIMIT's.
-	t.Run("a not-applicable usage_shape names the field's actual type in metadata", func(t *testing.T) {
-		// A not-applicable usage shape names the field's actual type in metadata.
+	t.Run("A not-applicable usage shape names the field's actual type in metadata", func(t *testing.T) {
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().CreateLicenseSchemaWithResponse(

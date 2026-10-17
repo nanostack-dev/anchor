@@ -36,78 +36,98 @@ func (w world) assertInvitationGone(invitationID string) {
 }
 
 func TestDeleteProductRole_IsRefusedWhileAPendingInvitationNamesTheRole(t *testing.T) {
-	// Is refused while a pending invitation names the role during delete product role.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
 
-	resp := w.deleteRoleRaw(w.roleID)
+	t.Run("Is refused while a pending invitation names the role during delete product role", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, "ROLE_IN_USE", errorCode(t, resp.JSON409.Errors))
-	w.assertRoleExists(w.roleID)
-	assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+
+		resp := w.deleteRoleRaw(w.roleID)
+
+		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "ROLE_IN_USE", errorCode(t, resp.JSON409.Errors))
+		w.assertRoleExists(w.roleID)
+		assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
+	})
 }
 
 func TestDeleteProductRole_IsAllowedOnceThePendingInvitationChangesRole(t *testing.T) {
-	// Is allowed once the pending invitation changes role during delete product role.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	otherRole := w.newRole()
-	w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-		RoleId:    otherRole,
-		ExpiresAt: time.Now().Add(time.Hour),
+
+	t.Run("Is allowed once the pending invitation changes role during delete product role", func(t *testing.T) {
+		t.Parallel()
+
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		otherRole := w.newRole()
+		w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
+			RoleId:    otherRole,
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+
+		resp := w.deleteRoleRaw(w.roleID)
+
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
-
-	resp := w.deleteRoleRaw(w.roleID)
-
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-	assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
 }
 
 func TestDeleteProductRole_IsAllowedOnceThePendingInvitationIsDeleted(t *testing.T) {
-	// Is allowed once the pending invitation is deleted during delete product role.
 	t.Parallel()
-	w := newWorld(t)
-	created := w.invite(uniqueEmail())
-	w.invitations.Delete(w.organizationID, created.Id)
 
-	resp := w.deleteRoleRaw(w.roleID)
+	t.Run("Is allowed once the pending invitation is deleted during delete product role", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		w := newWorld(t)
+		created := w.invite(uniqueEmail())
+		w.invitations.Delete(w.organizationID, created.Id)
+
+		resp := w.deleteRoleRaw(w.roleID)
+
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+	})
 }
 
 func TestDeleteProductRole_DeletesAnExpiredInvitationAndEmitsItsDeletedEvent(t *testing.T) {
-	// Deletes an expired invitation and emits its deleted event during delete product role.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
-	w.expire(created.Id)
 
-	resp := w.deleteRoleRaw(w.roleID)
+	t.Run("Deletes an expired invitation and emits its deleted event during delete product role", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-	w.assertInvitationGone(created.Id)
-	sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+		w.expire(created.Id)
+
+		resp := w.deleteRoleRaw(w.roleID)
+
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		w.assertInvitationGone(created.Id)
+		sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+	})
 }
 
 func TestDeleteProductRole_DeletesAnAcceptedInvitationAndEmitsItsDeletedEvent(t *testing.T) {
-	// Deletes an accepted invitation and emits its deleted event during delete product role.
 	t.Parallel()
-	w, sink := newWorldCapturingEvents(t)
-	created := w.invite(uniqueEmail())
-	userID := w.newProductUser(uniqueEmail())
-	w.accept(created.Id, userID)
-	removed, err := w.product.AllScopeAPIKeyClient().RemoveOrganizationMemberWithResponse(
-		context.Background(), w.product.ProductID, w.organizationID, userID,
-	)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNoContent, removed.StatusCode(), string(removed.Body))
 
-	resp := w.deleteRoleRaw(w.roleID)
+	t.Run("Deletes an accepted invitation and emits its deleted event during delete product role", func(t *testing.T) {
+		t.Parallel()
 
-	require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-	w.assertInvitationGone(created.Id)
-	sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+		w, sink := newWorldCapturingEvents(t)
+		created := w.invite(uniqueEmail())
+		userID := w.newProductUser(uniqueEmail())
+		w.accept(created.Id, userID)
+		removed, err := w.product.AllScopeAPIKeyClient().RemoveOrganizationMemberWithResponse(
+			context.Background(), w.product.ProductID, w.organizationID, userID,
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, removed.StatusCode(), string(removed.Body))
+
+		resp := w.deleteRoleRaw(w.roleID)
+
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		w.assertInvitationGone(created.Id)
+		sink.WaitFor(eventInvitationDeleted, invitationFields(w, created.Id))
+	})
 }

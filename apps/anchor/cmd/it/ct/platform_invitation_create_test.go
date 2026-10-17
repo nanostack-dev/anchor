@@ -12,13 +12,11 @@ import (
 )
 
 func TestCreatePlatformInvitation(t *testing.T) {
-	// Checks platform invitation creation across the scenarios below.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
-		"ValidInvitation", func(t *testing.T) {
-			// A valid platform invitation can be created or read with its stored details.
+		"A valid platform invitation can be created or read with its stored details", func(t *testing.T) {
 			inviteReq := ct.CreatePlatformInvitationJSONRequestBody{
 				Email: "invitee_create@example.com",
 			}
@@ -34,8 +32,7 @@ func TestCreatePlatformInvitation(t *testing.T) {
 	)
 
 	t.Run(
-		"DuplicateInvitation", func(t *testing.T) {
-			// Creating an invitation for an already invited email is refused.
+		"Creating an invitation for an already invited email is refused", func(t *testing.T) {
 			// First invitation (should succeed)
 			inviteReq := ct.CreatePlatformInvitationJSONRequestBody{
 				Email: "invitee_duplicate@example.com",

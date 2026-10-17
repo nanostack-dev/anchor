@@ -13,11 +13,9 @@ import (
 )
 
 func TestGetPlatformInvitation(t *testing.T) {
-	// Checks platform invitation lookup across the scenarios below.
 	t.Parallel()
 	t.Run(
-		"ValidInvitation", func(t *testing.T) {
-			// A valid platform invitation can be created or read with its stored details.
+		"A valid platform invitation can be created or read with its stored details", func(t *testing.T) {
 			// Create invitation first
 			inviteReq := ct.CreatePlatformInvitationJSONRequestBody{
 				Email: "invitee_get@example.com",
@@ -43,8 +41,7 @@ func TestGetPlatformInvitation(t *testing.T) {
 	)
 
 	t.Run(
-		"NonexistentInvitation", func(t *testing.T) {
-			// An unknown platform invitation returns the expected not-found response.
+		"An unknown platform invitation returns the expected not-found response", func(t *testing.T) {
 			getResp, err := testOwnerClient(t).GetPlatformInvitationWithResponse(
 				context.Background(), ids.MustNew("pinv"),
 			)
@@ -54,8 +51,7 @@ func TestGetPlatformInvitation(t *testing.T) {
 	)
 
 	t.Run(
-		"InvalidInvitationID", func(t *testing.T) {
-			// A malformed platform invitation identifier is refused.
+		"A malformed platform invitation identifier is refused", func(t *testing.T) {
 			getResp, err := testOwnerClient(t).GetPlatformInvitationWithResponse(
 				context.Background(), "invalid-id-format",
 			)

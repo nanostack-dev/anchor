@@ -20,7 +20,6 @@ import (
 // typed error bodies — which the SDK deliberately hides; this one asserts the
 // behaviour a product backend actually programs against.
 func TestAnchorSDK(t *testing.T) {
-	// The Go SDK supports organization, member, workspace, API-key, and user operations through the real API.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -28,8 +27,7 @@ func TestAnchorSDK(t *testing.T) {
 
 	require.Equal(t, product.ProductID, sdk.ProductID(), "the product id is bound at construction")
 
-	t.Run("Organizations", func(t *testing.T) {
-		// The SDK creates, reads, updates, searches, and deletes organizations.
+	t.Run("The SDK creates, reads, updates, searches, and deletes organizations", func(t *testing.T) {
 		// Metadata is set here on purpose even though nothing asserts it back:
 		// the schema carries it on both the request and the response, but the
 		// server drops it — CreateOrganizationInput has no metadata field and
@@ -71,8 +69,7 @@ func TestAnchorSDK(t *testing.T) {
 		assert.ErrorIs(t, err, anchorsdk.ErrNotFound, "a deleted organization is gone")
 	})
 
-	t.Run("Members", func(t *testing.T) {
-		// The SDK adds, reads, updates, and removes organization members.
+	t.Run("The SDK adds, reads, updates, and removes organization members", func(t *testing.T) {
 		role := createDSLProductRole(t, product, "SDK Member Role", nil)
 		productUser := createDSLProductUser(t, product)
 
@@ -108,8 +105,7 @@ func TestAnchorSDK(t *testing.T) {
 		assert.ErrorIs(t, err, anchorsdk.ErrNotFound, "a removed member is gone")
 	})
 
-	t.Run("Workspaces", func(t *testing.T) {
-		// The SDK creates, reads, updates, searches, and deletes organization workspaces.
+	t.Run("The SDK creates, reads, updates, searches, and deletes organization workspaces", func(t *testing.T) {
 		org, err := sdk.Organizations().Create("SDK Workspaces " + itshared.Faker.UUID().V4()).Do(ctx)
 		require.NoError(t, err)
 		handle := sdk.Organization(org.Id)
@@ -136,8 +132,7 @@ func TestAnchorSDK(t *testing.T) {
 		require.NoError(t, handle.Workspaces().Delete(ctx, created.Id))
 	})
 
-	t.Run("APIKeys", func(t *testing.T) {
-		// The SDK manages organization API keys and preserves their permissions.
+	t.Run("The SDK manages organization API keys and preserves their permissions", func(t *testing.T) {
 		permissions := product.CreateDefaultProductResourcePermissions(t)
 		require.NotEmpty(t, permissions)
 		scope := permissions[0].Name
@@ -175,8 +170,7 @@ func TestAnchorSDK(t *testing.T) {
 		require.NoError(t, handle.APIKeys().Delete(ctx, created.Id))
 	})
 
-	t.Run("Introspect", func(t *testing.T) {
-		// API-key introspection resolves the owning organization and checks optional scopes.
+	t.Run("API-key introspection resolves the owning organization and checks optional scopes", func(t *testing.T) {
 		permissions := product.CreateProductResourcePermissions(t,
 			"sdk:read:"+itshared.Faker.UUID().V4(),
 			"sdk:write:"+itshared.Faker.UUID().V4(),
@@ -193,8 +187,7 @@ func TestAnchorSDK(t *testing.T) {
 			Do(ctx)
 		require.NoError(t, err)
 
-		t.Run("resolves the organization without being told it", func(t *testing.T) {
-			// The API resolves the organization without being told it.
+		t.Run("The API resolves the organization without being told it", func(t *testing.T) {
 			identity, introErr := sdk.Introspect(ctx, key.Value)
 			require.NoError(t, introErr)
 			assert.Equal(t, key.Id, identity.ApiKey.Id)
@@ -202,15 +195,13 @@ func TestAnchorSDK(t *testing.T) {
 			assert.ElementsMatch(t, []string{granted}, identity.Permissions)
 		})
 
-		t.Run("satisfied scopes succeed", func(t *testing.T) {
-			// Satisfied scopes succeed.
+		t.Run("Satisfied scopes succeed", func(t *testing.T) {
 			identity, introErr := sdk.Introspect(ctx, key.Value, granted)
 			require.NoError(t, introErr)
 			assert.Empty(t, identity.MissingPrivileges)
 		})
 
-		t.Run("a missing scope is forbidden and permanent", func(t *testing.T) {
-			// A missing scope is forbidden and permanent.
+		t.Run("A missing scope is forbidden and permanent", func(t *testing.T) {
 			_, introErr := sdk.Introspect(ctx, key.Value, withheld)
 			require.Error(t, introErr)
 			require.ErrorIs(t, introErr, anchorsdk.ErrForbidden)
@@ -222,16 +213,14 @@ func TestAnchorSDK(t *testing.T) {
 				"the body naming the missing scopes stays reachable on Error.Body")
 		})
 
-		t.Run("an unknown key is not found", func(t *testing.T) {
-			// An unknown key is not found.
+		t.Run("An unknown key is not found", func(t *testing.T) {
 			_, introErr := sdk.Introspect(ctx, "anchor_org_apikey_not_a_real_key")
 			require.Error(t, introErr)
 			assert.ErrorIs(t, introErr, anchorsdk.ErrNotFound)
 		})
 	})
 
-	t.Run("Users", func(t *testing.T) {
-		// The SDK manages product users and reads their organization memberships.
+	t.Run("The SDK manages product users and reads their organization memberships", func(t *testing.T) {
 		email := itshared.Faker.Internet().Email()
 
 		created, err := sdk.Users().Create(email).
@@ -251,8 +240,7 @@ func TestAnchorSDK(t *testing.T) {
 		require.Len(t, page.Items, 1)
 		assert.Equal(t, created.Id, page.Items[0].Id)
 
-		t.Run("organizations reflect membership", func(t *testing.T) {
-			// Organizations reflect membership.
+		t.Run("Organizations reflect membership", func(t *testing.T) {
 			role := createDSLProductRole(t, product, "SDK User Role", nil)
 			org, orgErr := sdk.Organizations().Create("SDK User Orgs " + itshared.Faker.UUID().V4()).Do(ctx)
 			require.NoError(t, orgErr)
@@ -280,8 +268,7 @@ func TestAnchorSDK(t *testing.T) {
 		assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
 	})
 
-	t.Run("ErrorClassification", func(t *testing.T) {
-		// The SDK classifies a missing resource as a permanent not-found error.
+	t.Run("The SDK classifies a missing resource as a permanent not-found error", func(t *testing.T) {
 		_, err := sdk.Organizations().Get(ctx, ids.MustNew("org"))
 		require.Error(t, err)
 
@@ -295,8 +282,7 @@ func TestAnchorSDK(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 	})
 
-	t.Run("RawReachesOperationsOutsideTheSDKScope", func(t *testing.T) {
-		// The SDK raw client can call operations outside its typed resource helpers.
+	t.Run("The SDK raw client can call operations outside its typed resource helpers", func(t *testing.T) {
 		// Product roles are admin surface and deliberately unwrapped; Raw is the
 		// documented escape hatch for them.
 		resp, err := sdk.Raw().SearchProductRolesWithResponse(

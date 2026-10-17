@@ -10,10 +10,8 @@ import (
 )
 
 func TestGetOrganizationLicenseDiff(t *testing.T) {
-	// Organization lookup license diff.
 	t.Parallel()
-	t.Run("a fresh copy differs in nothing", func(t *testing.T) {
-		// A fresh copy differs in nothing.
+	t.Run("A fresh copy differs in nothing", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		diff := w.License().Diff()
@@ -26,8 +24,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, 0, diff.Count)
 	})
 
-	t.Run("an adjusted license field is reported with both sides", func(t *testing.T) {
-		// An adjusted license field is reported with both sides.
+	t.Run("An adjusted license field is reported with both sides", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -43,8 +40,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, 1, diff.Count)
 	})
 
-	t.Run("a template edited after instantiation stops differing once followed", func(t *testing.T) {
-		// A template edited after instantiation stops differing once followed.
+	t.Run("A template edited after instantiation stops differing once followed", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		w.Template().ReplaceValues(templateValuesWith("flows", 2000))
@@ -55,8 +51,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, 0, diff.Count)
 	})
 
-	t.Run("a license field the template gained lands on the license", func(t *testing.T) {
-		// A license field the template gained lands on the license.
+	t.Run("A license field the template gained lands on the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		widenSchema(t, w)
 
@@ -64,8 +59,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Empty(t, w.License().Diff().Differences)
 	})
 
-	t.Run("a license field the template dropped leaves the license", func(t *testing.T) {
-		// A license field the template dropped leaves the license.
+	t.Run("A license field the template dropped leaves the license", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		narrowSchema(t, w)
 
@@ -73,8 +67,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Empty(t, w.License().Diff().Differences)
 	})
 
-	t.Run("differences are ordered by license field name", func(t *testing.T) {
-		// Differences are ordered by license field name.
+	t.Run("Differences are ordered by license field name", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{
 			"flows": 800, "sso": false, "region": "eu-west",
@@ -89,15 +82,13 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, []string{"flows", "region", "sso"}, fields)
 	})
 
-	t.Run("404 when the organization has no license", func(t *testing.T) {
-		// The API returns 404 when the organization has no license.
+	t.Run("The API returns 404 when the organization has no license", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		assert.Equal(t, http.StatusNotFound, w.License().DiffRaw().StatusCode())
 	})
 
-	t.Run("still answers after the template is archived", func(t *testing.T) {
-		// Still answers after the template is archived.
+	t.Run("Still answers after the template is archived", func(t *testing.T) {
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
 
@@ -112,8 +103,7 @@ func TestGetOrganizationLicenseDiff(t *testing.T) {
 		assert.Equal(t, "flows", diff.Differences[0].Field)
 	})
 
-	t.Run("does not diff another product's license", func(t *testing.T) {
-		// The API does not diff another product's license.
+	t.Run("The API does not diff another product's license", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 

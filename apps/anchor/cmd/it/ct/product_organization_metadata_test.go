@@ -13,7 +13,6 @@ import (
 )
 
 func TestProductOrganizationMetadata(t *testing.T) {
-	// Organization metadata is persisted, returned, and updated through the API.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -21,8 +20,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	apiKeyClient, _ := testProduct.CreateAPIKeyClientWithAllScopes()
 
 	t.Run(
-		"MetadataSurvivesCreateAndGet", func(t *testing.T) {
-			// Metadata survives create and get.
+		"Metadata survives create and get", func(t *testing.T) {
 			metadata := ct.Metadata{
 				"billing_ref": "cust_abc123",
 				"region":      "us-east-1",
@@ -65,8 +63,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"MetadataIsAbsentWhenNotProvided", func(t *testing.T) {
-			// Metadata is absent when not provided.
+		"Metadata is absent when not provided", func(t *testing.T) {
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -80,8 +77,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateReplacesMetadataInFull", func(t *testing.T) {
-			// Updating organization metadata replaces the previous metadata object in full.
+		"Updating organization metadata replaces the previous metadata object in full", func(t *testing.T) {
 			initial := ct.Metadata{"billing_ref": "cust_abc123", "region": "us-east-1"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -117,8 +113,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"UpdateWithoutMetadataClearsIt", func(t *testing.T) {
-			// Updating an organization without metadata clears its previous metadata.
+		"Updating an organization without metadata clears its previous metadata", func(t *testing.T) {
 			initial := ct.Metadata{"billing_ref": "cust_abc123"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -149,8 +144,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"RejectsNonScalarMetadataValue", func(t *testing.T) {
-			// The API rejects non scalar metadata value.
+		"The API rejects non scalar metadata value", func(t *testing.T) {
 			metadata := ct.Metadata{"billing": map[string]any{"ref": "cust_abc123"}}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -168,8 +162,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"RejectsOverlongMetadataValue", func(t *testing.T) {
-			// The API rejects overlong metadata value.
+		"The API rejects overlong metadata value", func(t *testing.T) {
 			metadata := ct.Metadata{"note": strings.Repeat("v", 513)}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -187,8 +180,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 	)
 
 	t.Run(
-		"MetadataIsExposedOnUserOrganization", func(t *testing.T) {
-			// Metadata is exposed on user organization.
+		"Metadata is exposed on user organization", func(t *testing.T) {
 			productCtx := createTestProductContext(t)
 			productUser := createDSLProductUser(t, productCtx)
 			orgClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()

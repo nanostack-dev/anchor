@@ -10,10 +10,8 @@ import (
 )
 
 func TestGetOrganizationLicense(t *testing.T) {
-	// Organization lookup license.
 	t.Parallel()
-	t.Run("reads the effective license in one call", func(t *testing.T) {
-		// The API reads the effective license in one call.
+	t.Run("The API reads the effective license in one call", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		organizationLicense := w.License().Get()
@@ -33,24 +31,21 @@ func TestGetOrganizationLicense(t *testing.T) {
 		assert.InDelta(t, 500.0, usage.Limit, 0)
 	})
 
-	t.Run("404 when the organization has no license", func(t *testing.T) {
-		// The API returns 404 when the organization has no license.
+	t.Run("The API returns 404 when the organization has no license", func(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().GetRaw()
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {
-		// The API returns 404 when the product has no organization with that identifier.
+	t.Run("The API returns 404 when the product has no organization with that identifier", func(t *testing.T) {
 		w := newLicensedWorld(t)
 
 		resp := w.License().For(missingOrganizationID()).GetRaw()
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
-	t.Run("does not read another product's license", func(t *testing.T) {
-		// The API does not read another product's license.
+	t.Run("The API does not read another product's license", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)
 

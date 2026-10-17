@@ -13,35 +13,39 @@ import (
 )
 
 func TestClerkWebhookUserDeletedEvent(t *testing.T) {
-	// A signed Clerk user-deleted event deletes the product user and emits its product event.
 	t.Parallel()
-	productContext := createTestProductContext(t)
-	sink := productContext.CaptureEvents()
-	createActiveClerkIntegrationInstance(t, productContext)
 
-	externalID := "user_clerk_" + itshared.Faker.UUID().V4()
-	createdPayload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "Delete", "Me")
-	createdResp := sendClerkWebhook(t, productContext.ProductID, createdPayload, clerkTestWebhookSecret)
-	require.Equal(t, http.StatusOK, createdResp.StatusCode())
-	var deletedUserID string
-	require.Eventually(t, func() bool {
-		beforeDelete := searchProductUsers(t, productContext)
-		if beforeDelete.JSON200.Total != 1 || len(beforeDelete.JSON200.Items) != 1 {
-			return false
-		}
-		deletedUserID = beforeDelete.JSON200.Items[0].Id
-		return true
-	}, 10*time.Second, 200*time.Millisecond)
+	t.Run("A signed Clerk user-deleted event deletes the product user and emits its product event", func(t *testing.T) {
+		t.Parallel()
 
-	deletedPayload := clerkUserDeletedPayload(t, externalID)
-	deletedResp := sendClerkWebhook(t, productContext.ProductID, deletedPayload, clerkTestWebhookSecret)
-	assert.Equal(t, http.StatusOK, deletedResp.StatusCode())
-	require.NotNil(t, deletedResp.JSON200)
-	assert.Equal(t, ct.IntegrationEventStatusPENDING, deletedResp.JSON200.Status)
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		createActiveClerkIntegrationInstance(t, productContext)
 
-	require.Eventually(t, func() bool {
-		afterDelete := searchProductUsers(t, productContext)
-		return afterDelete.JSON200.Total == 0
-	}, 10*time.Second, 200*time.Millisecond)
-	sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": deletedUserID})
+		externalID := "user_clerk_" + itshared.Faker.UUID().V4()
+		createdPayload := clerkUserCreatedPayload(t, externalID, itshared.Faker.Internet().Email(), "Delete", "Me")
+		createdResp := sendClerkWebhook(t, productContext.ProductID, createdPayload, clerkTestWebhookSecret)
+		require.Equal(t, http.StatusOK, createdResp.StatusCode())
+		var deletedUserID string
+		require.Eventually(t, func() bool {
+			beforeDelete := searchProductUsers(t, productContext)
+			if beforeDelete.JSON200.Total != 1 || len(beforeDelete.JSON200.Items) != 1 {
+				return false
+			}
+			deletedUserID = beforeDelete.JSON200.Items[0].Id
+			return true
+		}, 10*time.Second, 200*time.Millisecond)
+
+		deletedPayload := clerkUserDeletedPayload(t, externalID)
+		deletedResp := sendClerkWebhook(t, productContext.ProductID, deletedPayload, clerkTestWebhookSecret)
+		assert.Equal(t, http.StatusOK, deletedResp.StatusCode())
+		require.NotNil(t, deletedResp.JSON200)
+		assert.Equal(t, ct.IntegrationEventStatusPENDING, deletedResp.JSON200.Status)
+
+		require.Eventually(t, func() bool {
+			afterDelete := searchProductUsers(t, productContext)
+			return afterDelete.JSON200.Total == 0
+		}, 10*time.Second, 200*time.Millisecond)
+		sink.WaitFor("product_user.deleted", map[string]string{"product_user_id": deletedUserID})
+	})
 }

@@ -13,36 +13,40 @@ import (
 )
 
 func TestClerkWebhookUserCreatedEvent(t *testing.T) {
-	// A signed Clerk user-created event creates the product user and emits its product event.
 	t.Parallel()
-	productContext := createTestProductContext(t)
-	sink := productContext.CaptureEvents()
-	createActiveClerkIntegrationInstance(t, productContext)
 
-	externalID := "user_clerk_" + itshared.Faker.UUID().V4()
-	email := itshared.Faker.Internet().Email()
-	firstName := itshared.Faker.Person().FirstName()
-	lastName := itshared.Faker.Person().LastName()
-	payload := clerkUserCreatedPayload(t, externalID, email, firstName, lastName)
+	t.Run("A signed Clerk user-created event creates the product user and emits its product event", func(t *testing.T) {
+		t.Parallel()
 
-	webhookResp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
-	assert.Equal(t, http.StatusOK, webhookResp.StatusCode())
-	require.NotNil(t, webhookResp.JSON200)
+		productContext := createTestProductContext(t)
+		sink := productContext.CaptureEvents()
+		createActiveClerkIntegrationInstance(t, productContext)
 
-	// Webhook now returns PENDING; processing happens asynchronously.
-	assert.Equal(t, ct.IntegrationEventStatusPENDING, webhookResp.JSON200.Status)
+		externalID := "user_clerk_" + itshared.Faker.UUID().V4()
+		email := itshared.Faker.Internet().Email()
+		firstName := itshared.Faker.Person().FirstName()
+		lastName := itshared.Faker.Person().LastName()
+		payload := clerkUserCreatedPayload(t, externalID, email, firstName, lastName)
 
-	require.Eventually(t, func() bool {
-		searchResp := searchProductUsers(t, productContext)
-		if searchResp.JSON200.Total != 1 || len(searchResp.JSON200.Items) != 1 {
-			return false
-		}
+		webhookResp := sendClerkWebhook(t, productContext.ProductID, payload, clerkTestWebhookSecret)
+		assert.Equal(t, http.StatusOK, webhookResp.StatusCode())
+		require.NotNil(t, webhookResp.JSON200)
 
-		user := searchResp.JSON200.Items[0]
-		return user.Email == email &&
-			user.Name != nil && *user.Name == firstName+" "+lastName
-	}, 10*time.Second, 200*time.Millisecond)
+		// Webhook now returns PENDING; processing happens asynchronously.
+		assert.Equal(t, ct.IntegrationEventStatusPENDING, webhookResp.JSON200.Status)
 
-	createdUser := searchProductUsers(t, productContext).JSON200.Items[0]
-	sink.WaitFor("product_user.created", map[string]string{"product_user_id": createdUser.Id})
+		require.Eventually(t, func() bool {
+			searchResp := searchProductUsers(t, productContext)
+			if searchResp.JSON200.Total != 1 || len(searchResp.JSON200.Items) != 1 {
+				return false
+			}
+
+			user := searchResp.JSON200.Items[0]
+			return user.Email == email &&
+				user.Name != nil && *user.Name == firstName+" "+lastName
+		}, 10*time.Second, 200*time.Millisecond)
+
+		createdUser := searchProductUsers(t, productContext).JSON200.Items[0]
+		sink.WaitFor("product_user.created", map[string]string{"product_user_id": createdUser.Id})
+	})
 }

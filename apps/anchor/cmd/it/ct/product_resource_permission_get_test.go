@@ -12,80 +12,91 @@ import (
 )
 
 func TestProductResourcePermissionGetSuccess(t *testing.T) {
-	// Reading a product resource permission returns its saved fields.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Reading a product resource permission returns its saved fields", func(t *testing.T) {
+		t.Parallel()
 
-	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:          "file:read",
-		Description:   new("Read file contents"),
-		ScopeModifier: new("own"),
-	}
+		ctx := context.Background()
 
-	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-		ctx,
-		testProduct.ProductID,
-		createInput,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-	assert.NotNil(t, createResp.JSON201)
+		testProduct := createTestProductContext(t)
 
-	permissionName := createResp.JSON201.Name
+		createInput := ct.CreateProductResourcePermissionRequest{
+			Name:          "file:read",
+			Description:   new("Read file contents"),
+			ScopeModifier: new("own"),
+		}
 
-	resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, permissionName,
-	)
-	require.NoError(t, err, "get product resource permission request should not error")
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
+		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+			ctx,
+			testProduct.ProductID,
+			createInput,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+		assert.NotNil(t, createResp.JSON201)
 
-	if assert.NotNil(t, resp.JSON200) {
-		assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-		assert.Equal(t, createInput.Name, resp.JSON200.Name)
-		assert.Equal(t, createInput.Description, resp.JSON200.Description)
-		assert.Equal(t, createInput.ScopeModifier, resp.JSON200.ScopeModifier)
-		assert.NotZero(t, resp.JSON200.CreatedAt)
-		assert.NotZero(t, resp.JSON200.UpdatedAt)
-	}
+		permissionName := createResp.JSON201.Name
+
+		resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, permissionName,
+		)
+		require.NoError(t, err, "get product resource permission request should not error")
+		assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+		if assert.NotNil(t, resp.JSON200) {
+			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+			assert.Equal(t, createInput.Name, resp.JSON200.Name)
+			assert.Equal(t, createInput.Description, resp.JSON200.Description)
+			assert.Equal(t, createInput.ScopeModifier, resp.JSON200.ScopeModifier)
+			assert.NotZero(t, resp.JSON200.CreatedAt)
+			assert.NotZero(t, resp.JSON200.UpdatedAt)
+		}
+	})
 }
 
 func TestProductResourcePermissionGetNotFound(t *testing.T) {
-	// Reading an unknown resource permission returns not found.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Reading an unknown resource permission returns not found", func(t *testing.T) {
+		t.Parallel()
 
-	nonExistentPermissionName := "non:existent"
+		ctx := context.Background()
 
-	resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, testProduct.ProductID, nonExistentPermissionName,
-	)
-	require.NoError(t, err, "get non-existent resource permission request should not error")
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		testProduct := createTestProductContext(t)
+
+		nonExistentPermissionName := "non:existent"
+
+		resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, testProduct.ProductID, nonExistentPermissionName,
+		)
+		require.NoError(t, err, "get non-existent resource permission request should not error")
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionGetWithNonExistentProduct(t *testing.T) {
-	// Reading a permission under an unknown product returns not found.
 	t.Parallel()
-	ctx := context.Background()
 
-	nonExistentProductID := ids.MustNew("prod")
-	permissionName := "file:read"
+	t.Run("Reading a permission under an unknown product returns not found", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-		ctx, nonExistentProductID, permissionName,
-	)
-	require.NoError(
-		t, err, "get resource permission for non-existent product request should not error",
-	)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+		ctx := context.Background()
+
+		nonExistentProductID := ids.MustNew("prod")
+		permissionName := "file:read"
+
+		resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+			ctx, nonExistentProductID, permissionName,
+		)
+		require.NoError(
+			t, err, "get resource permission for non-existent product request should not error",
+		)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+	})
 }
 
 func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
-	// Reading a permission refuses a malformed permission name.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -96,13 +107,11 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 		permissionName string
 		expectedStatus int
 	}{
-		// The permission operation rejects empty permission name.
 		{
 			name:           "empty permission name",
 			permissionName: "",
 			expectedStatus: http.StatusBadRequest,
 		},
-		// The permission operation rejects permission name with special characters.
 		{
 			name:           "permission name with special characters",
 			permissionName: "file@read#test",
@@ -112,8 +121,7 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(
-			tc.name, func(t *testing.T) {
-				// Permission lookup refuses this malformed permission name.
+			"Reading a resource permission refuses "+tc.name, func(t *testing.T) {
 				resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -130,56 +138,60 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetMultiplePermissions(t *testing.T) {
-	// Each permission can be read independently by its name.
 	t.Parallel()
-	ctx := context.Background()
 
-	testProduct := createTestProductContext(t)
+	t.Run("Each permission can be read independently by its name", func(t *testing.T) {
+		t.Parallel()
 
-	permissions := []ct.CreateProductResourcePermissionRequest{
-		{
-			Name:          "file:read",
-			Description:   new("Read file contents"),
-			ScopeModifier: new("own"),
-		},
-		{
-			Name:          "file:write",
-			Description:   new("Write file contents"),
-			ScopeModifier: new("team"),
-		},
-		{
-			Name:        "file:delete",
-			Description: new("Delete file contents"),
-		},
-	}
+		ctx := context.Background()
 
-	var createdPermissions []ct.ProductResourcePermissionResponse
-	for _, permission := range permissions {
-		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
-			ctx,
-			testProduct.ProductID,
-			permission,
-		)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusCreated, createResp.StatusCode())
-		assert.NotNil(t, createResp.JSON201)
-		createdPermissions = append(createdPermissions, *createResp.JSON201)
-	}
+		testProduct := createTestProductContext(t)
 
-	for i, created := range createdPermissions {
-		resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
-			ctx, testProduct.ProductID, created.Name,
-		)
-		require.NoError(t, err, "get resource permission should not error")
-		assert.Equal(t, http.StatusOK, resp.StatusCode())
-
-		if assert.NotNil(t, resp.JSON200) {
-			assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
-			assert.Equal(t, permissions[i].Name, resp.JSON200.Name)
-			assert.Equal(t, permissions[i].Description, resp.JSON200.Description)
-			assert.Equal(t, permissions[i].ScopeModifier, resp.JSON200.ScopeModifier)
-			assert.NotZero(t, resp.JSON200.CreatedAt)
-			assert.NotZero(t, resp.JSON200.UpdatedAt)
+		permissions := []ct.CreateProductResourcePermissionRequest{
+			{
+				Name:          "file:read",
+				Description:   new("Read file contents"),
+				ScopeModifier: new("own"),
+			},
+			{
+				Name:          "file:write",
+				Description:   new("Write file contents"),
+				ScopeModifier: new("team"),
+			},
+			{
+				Name:        "file:delete",
+				Description: new("Delete file contents"),
+			},
 		}
-	}
+
+		var createdPermissions []ct.ProductResourcePermissionResponse
+		for _, permission := range permissions {
+			createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
+				ctx,
+				testProduct.ProductID,
+				permission,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusCreated, createResp.StatusCode())
+			assert.NotNil(t, createResp.JSON201)
+			createdPermissions = append(createdPermissions, *createResp.JSON201)
+		}
+
+		for i, created := range createdPermissions {
+			resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
+				ctx, testProduct.ProductID, created.Name,
+			)
+			require.NoError(t, err, "get resource permission should not error")
+			assert.Equal(t, http.StatusOK, resp.StatusCode())
+
+			if assert.NotNil(t, resp.JSON200) {
+				assert.Equal(t, testProduct.ProductID, resp.JSON200.ProductId)
+				assert.Equal(t, permissions[i].Name, resp.JSON200.Name)
+				assert.Equal(t, permissions[i].Description, resp.JSON200.Description)
+				assert.Equal(t, permissions[i].ScopeModifier, resp.JSON200.ScopeModifier)
+				assert.NotZero(t, resp.JSON200.CreatedAt)
+				assert.NotZero(t, resp.JSON200.UpdatedAt)
+			}
+		}
+	})
 }

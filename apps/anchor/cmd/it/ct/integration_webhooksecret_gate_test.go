@@ -19,48 +19,53 @@ import (
 //
 // Not parallel: it resets the shared mailpit inbox.
 func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
-	// SMTP active instance update does not require webhook secret.
-	mp := mailpit.Shared(t)
+	t.Run("SMTP active instance update does not require webhook secret", func(t *testing.T) {
+		mp := mailpit.Shared(t)
 
-	tc := newWebhookSecretTestCtx(t)
-	instance := seedActiveSMTPInstance(t, tc, mp)
+		tc := newWebhookSecretTestCtx(t)
+		instance := seedActiveSMTPInstance(t, tc, mp)
 
-	// A plain config update on the active instance — no webhook secret in sight.
-	cfg := ct.IntegrationProviderConfig{}
-	require.NoError(t, cfg.FromSmtpIntegrationConfig(ct.SmtpIntegrationConfig{
-		Host:        new(mp.SMTPHost),
-		Port:        new(mp.SMTPPort),
-		Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
-		AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
-		Username:    new("test"),
-		FromAddress: new("noreply@tryanchor.dev"),
-		FromName:    new("Anchor Updated"),
-	}))
+		// A plain config update on the active instance — no webhook secret in sight.
+		cfg := ct.IntegrationProviderConfig{}
+		require.NoError(t, cfg.FromSmtpIntegrationConfig(ct.SmtpIntegrationConfig{
+			Host:        new(mp.SMTPHost),
+			Port:        new(mp.SMTPPort),
+			Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
+			AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
+			Username:    new("test"),
+			FromAddress: new("noreply@tryanchor.dev"),
+			FromName:    new("Anchor Updated"),
+		}))
 
-	resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
-		Config: &cfg,
+		resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
+			Config: &cfg,
+		})
+
+		require.Equal(t, http.StatusOK, resp.StatusCode(), "body: %s", string(resp.Body))
+		require.NotNil(t, resp.JSON200)
+		assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, resp.JSON200.Status)
 	})
-
-	require.Equal(t, http.StatusOK, resp.StatusCode(), "body: %s", string(resp.Body))
-	require.NotNil(t, resp.JSON200)
-	assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, resp.JSON200.Status)
 }
 
 // TestClerkActiveInstanceStillRequiresWebhookSecret proves the gate is not
 // disabled wholesale: a webhook-ingesting provider (CLERK) that loses its
 // secret while active is still rejected.
 func TestClerkActiveInstanceStillRequiresWebhookSecret(t *testing.T) {
-	// Clerk active instance still requires webhook secret.
 	t.Parallel()
-	tc := newWebhookSecretTestCtx(t)
-	instance := seedActiveClerkInstance(t, tc)
 
-	resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
-		WebhookSecret: new(""),
+	t.Run("Clerk active instance still requires webhook secret", func(t *testing.T) {
+		t.Parallel()
+
+		tc := newWebhookSecretTestCtx(t)
+		instance := seedActiveClerkInstance(t, tc)
+
+		resp := updateInstance(t, tc, instance.ID, ct.UpdateIntegrationInstanceJSONRequestBody{
+			WebhookSecret: new(""),
+		})
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), "body: %s", string(resp.Body))
+		require.NotNil(t, resp.JSON400)
+		require.Len(t, resp.JSON400.Errors, 1)
+		assert.Equal(t, "INTEGRATION_WEBHOOK_SECRET_REQUIRED", resp.JSON400.Errors[0].Code)
 	})
-
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), "body: %s", string(resp.Body))
-	require.NotNil(t, resp.JSON400)
-	require.Len(t, resp.JSON400.Errors, 1)
-	assert.Equal(t, "INTEGRATION_WEBHOOK_SECRET_REQUIRED", resp.JSON400.Errors[0].Code)
 }
