@@ -10,6 +10,7 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/searchx"
 )
 
 func (s *AnchorAPI) AddOrganizationMember(
@@ -38,7 +39,7 @@ func (s *AnchorAPI) AddOrganizationMember(
 	}
 
 	return AddOrganizationMember201JSONResponse(
-		mapOrgMemberToResponse(membership, false),
+		mapOrgMemberToResponse(membership, organization.WithoutRolePermissions),
 	), nil
 }
 
@@ -97,7 +98,7 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 	}
 
 	return UpdateOrganizationMemberRole200JSONResponse(
-		mapOrgMemberToResponse(membership, false),
+		mapOrgMemberToResponse(membership, organization.WithoutRolePermissions),
 	), nil
 }
 
@@ -155,13 +156,14 @@ func mapSearchOrganizationMembersRequestToInput(
 		}
 	}
 
-	return req.WithFilter(filter).
-		WithSort(
-			request.Body.SortBy,
-			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
+	sortBy, sortDirection := searchx.Sort(
+		request.Body.SortBy, request.Body.SortDirection,
+		organization.SortFieldMemberJoinedAt, search.SortDescending,
 	)
+
+	return req.WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
 }
 
 func (s *AnchorAPI) SearchOrganizationMembers(
@@ -192,26 +194,18 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 			res.Items).Map(
 
 			func(m organization.Membership) OrganizationMemberResponse {
-				return mapOrgMemberToResponse(m, false)
+				return mapOrgMemberToResponse(m, organization.WithoutRolePermissions)
 			}),
 
-		Total: res.Total,
-		Count: len(res.Items),
+		Total:      res.Total,
+		NextCursor: nextCursor(res.NextCursor),
+		Count:      len(res.Items),
 	}
 
 	return SearchOrganizationMembers200JSONResponse(resp), nil
 }
 
 func mapOrgMemberToResponse(m organization.Membership, includePermissions bool) OrganizationMemberResponse {
-	var permissions *[]string
-	if includePermissions {
-		perms := m.RolePermissions
-		if perms == nil {
-			perms = []string{}
-		}
-		permissions = &perms
-	}
-
 	var name *string
 	if m.UserName != "" {
 		name = &m.UserName
@@ -230,7 +224,18 @@ func mapOrgMemberToResponse(m organization.Membership, includePermissions bool) 
 		}{
 			Id:          m.RoleID,
 			Name:        m.RoleName,
-			Permissions: permissions,
+			Permissions: includedRolePermissions(m.RolePermissions, includePermissions),
 		},
 	}
+}
+
+// includedRolePermissions keeps an omitted projection distinct from requested empty permissions.
+func includedRolePermissions(names []string, include bool) *[]string {
+	if !include {
+		return nil
+	}
+	if names == nil {
+		names = []string{}
+	}
+	return &names
 }

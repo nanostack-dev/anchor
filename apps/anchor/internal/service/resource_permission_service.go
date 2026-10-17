@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -12,6 +13,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -114,6 +116,9 @@ func (s *resourcePermissionService) Create(
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var createErr error
 		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)
+		if errors.Is(createErr, repository.ErrProductResourcePermissionExists) {
+			return NewResourcePermissionAlreadyExistsError(input.Name)
+		}
 		if createErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
@@ -308,7 +313,7 @@ func (s *resourcePermissionService) SearchByProduct(
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
 	}
 
@@ -316,6 +321,9 @@ func (s *resourcePermissionService) SearchByProduct(
 		ctx, input.ProductID, input.Request,
 	)
 	if err != nil {
+		if searchx.IsClientError(err) {
+			return search.Result[resourcepermission.ProductResourcePermission]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

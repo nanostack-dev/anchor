@@ -62,92 +62,39 @@ func TestOrganizationAPIKeyRepositorySearchByOrganizationIDPaginationBoundaries(
 		{Field: orgapikey.SortFieldOrganizationAPIKeyCreatedAt, Direction: search.SortAscending},
 	}
 
-	// Full page in one shot.
-	result, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
-		context.Background(),
-		orgapikey.SearchOrganizationAPIKeysInput{
-			OrganizationID: organizationID,
-			Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
-				Sort:       sortByCreatedAtAsc,
-				Pagination: search.Pagination{Limit: 10, Offset: 0},
-			},
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(total), result.Total)
-	assert.Equal(t, total, result.Count)
-	require.Len(t, result.Items, total)
-	for i, item := range result.Items {
-		assert.Equal(t, created[i], item.ID)
+	cases := []struct {
+		name          string
+		limit, offset int32
+		expectedIDs   []string
+		sort          []search.Sort[orgapikey.SortFieldOrganizationAPIKey]
+	}{
+		{"full", 10, 0, created, sortByCreatedAtAsc},
+		{"first", 2, 0, created[:2], sortByCreatedAtAsc},
+		{"second", 2, 2, created[2:4], sortByCreatedAtAsc},
+		{"partial", 2, 4, created[4:], sortByCreatedAtAsc},
+		{"beyond end without sort", 10, 50, nil, nil},
 	}
-
-	// Page 1 of 2: total still reflects all matches, not the page.
-	page1, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
-		context.Background(),
-		orgapikey.SearchOrganizationAPIKeysInput{
-			OrganizationID: organizationID,
-			Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
-				Sort:       sortByCreatedAtAsc,
-				Pagination: search.Pagination{Limit: 2, Offset: 0},
-			},
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(total), page1.Total)
-	assert.Equal(t, 2, page1.Count)
-	require.Len(t, page1.Items, 2)
-	assert.Equal(t, created[0], page1.Items[0].ID)
-	assert.Equal(t, created[1], page1.Items[1].ID)
-
-	// Page 2 of 2.
-	page2, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
-		context.Background(),
-		orgapikey.SearchOrganizationAPIKeysInput{
-			OrganizationID: organizationID,
-			Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
-				Sort:       sortByCreatedAtAsc,
-				Pagination: search.Pagination{Limit: 2, Offset: 2},
-			},
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(total), page2.Total)
-	assert.Equal(t, 2, page2.Count)
-	require.Len(t, page2.Items, 2)
-	assert.Equal(t, created[2], page2.Items[0].ID)
-	assert.Equal(t, created[3], page2.Items[1].ID)
-
-	// Page 3 of 2: partial, offset past most rows.
-	page3, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
-		context.Background(),
-		orgapikey.SearchOrganizationAPIKeysInput{
-			OrganizationID: organizationID,
-			Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
-				Sort:       sortByCreatedAtAsc,
-				Pagination: search.Pagination{Limit: 2, Offset: 4},
-			},
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(total), page3.Total)
-	assert.Equal(t, 1, page3.Count)
-	require.Len(t, page3.Items, 1)
-	assert.Equal(t, created[4], page3.Items[0].ID)
-
-	// Offset beyond total: no rows, total still accurate.
-	pageOOB, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
-		context.Background(),
-		orgapikey.SearchOrganizationAPIKeysInput{
-			OrganizationID: organizationID,
-			Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
-				Pagination: search.Pagination{Limit: 10, Offset: 50},
-			},
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(total), pageOOB.Total)
-	assert.Equal(t, 0, pageOOB.Count)
-	assert.Empty(t, pageOOB.Items)
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := repoCtx.OrganizationAPIKeyRepository.SearchByOrganizationID(
+				t.Context(),
+				orgapikey.SearchOrganizationAPIKeysInput{
+					OrganizationID: organizationID,
+					Request: search.Request[orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey]{
+						Sort:       test.sort,
+						Pagination: search.Pagination{Limit: test.limit, Offset: test.offset},
+					},
+				},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(total), result.Total)
+			assert.Equal(t, len(test.expectedIDs), result.Count)
+			require.Len(t, result.Items, len(test.expectedIDs))
+			for i, item := range result.Items {
+				assert.Equal(t, test.expectedIDs[i], item.ID)
+			}
+		})
+	}
 }
 
 func TestOrganizationAPIKeyRepositorySearchByOrganizationIDSortDirections(t *testing.T) {

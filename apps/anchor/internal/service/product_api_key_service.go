@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
@@ -134,6 +136,9 @@ func (s *productAPIKeyService) Create(
 	productAPIKey.Permissions = apiKeyPermissions
 
 	created, err := s.apiKeyRepo.Create(ctx, productAPIKey)
+	if errors.Is(err, repository.ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, "", NewProductAPIKeyNameExistsError(input.Name, input.ProductID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_api_key_id", productAPIKey.ID).
@@ -226,35 +231,10 @@ func (s *productAPIKeyService) Update(
 	}
 
 	if permissionsUpdated {
-		if !updatedAPIKey.Mutable {
-			return apikey.ProductAPIKey{}, NewProductAPIKeyPermissionsImmutableError(input.ID)
+		updatedAPIKey.Permissions, err = s.preparePermissionUpdate(ctx, input, updatedAPIKey, logger)
+		if err != nil {
+			return apikey.ProductAPIKey{}, err
 		}
-
-		permissions := *input.Permissions
-		if len(permissions) > 0 {
-			canonicalPermissions, permErr := s.permissionsValidation(
-				ctx,
-				input.ProductID,
-				permissions,
-				logger,
-			)
-			if permErr != nil {
-				return apikey.ProductAPIKey{}, permErr
-			}
-			permissions = canonicalPermissions
-		}
-
-		updatedAPIKey.Permissions = functional.Slice(
-			permissions).Map(
-
-			func(perm string) apikey.ProductAPIKeyPermission {
-				return apikey.ProductAPIKeyPermission{
-					APIKeyID:       input.ID,
-					ProductID:      input.ProductID,
-					PermissionName: perm,
-					CreatedAt:      time.Now(),
-				}
-			})
 	}
 
 	var updatedAPIKeyFromDB apikey.ProductAPIKey
@@ -294,6 +274,9 @@ func (s *productAPIKeyService) Update(
 		updatedAPIKeyFromDB = updated
 		return nil
 	})
+	if errors.Is(err, repository.ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, NewProductAPIKeyNameExistsError(updatedAPIKey.Name, input.ProductID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -318,6 +301,37 @@ func (s *productAPIKeyService) Update(
 		Msg("product API key updated")
 
 	return updatedAPIKeyFromDB, nil
+}
+
+func (s *productAPIKeyService) preparePermissionUpdate(
+	ctx context.Context, input apikey.UpdateProductAPIKeyInput, current apikey.ProductAPIKey, logger zerolog.Logger,
+) ([]apikey.ProductAPIKeyPermission, error) {
+	if !current.Mutable {
+		return nil, NewProductAPIKeyPermissionsImmutableError(input.ID)
+	}
+
+	permissions := *input.Permissions
+	if len(permissions) > 0 {
+		canonicalPermissions, permErr := s.permissionsValidation(
+			ctx,
+			input.ProductID,
+			permissions,
+			logger,
+		)
+		if permErr != nil {
+			return nil, permErr
+		}
+		permissions = canonicalPermissions
+	}
+
+	return functional.Slice(permissions).Map(func(perm string) apikey.ProductAPIKeyPermission {
+		return apikey.ProductAPIKeyPermission{
+			APIKeyID:       input.ID,
+			ProductID:      input.ProductID,
+			PermissionName: perm,
+			CreatedAt:      time.Now(),
+		}
+	}), nil
 }
 
 func (s *productAPIKeyService) Delete(
@@ -373,12 +387,15 @@ func (s *productAPIKeyService) Search(
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 
 	result, err := s.apiKeyRepo.SearchByProductID(ctx, input)
 	if err != nil {
+		if searchx.IsClientError(err) {
+			return nil, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

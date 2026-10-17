@@ -476,6 +476,17 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 				`"founding_member":{"product_user_id":"pusr_1","role_id":"prole_1"}}`,
 		},
 		{
+			name:  "organization create with initial workspace",
+			reply: stubResponse{status: http.StatusCreated, body: orgBody},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Organizations().Create("Acme").Workspace("Engineering").Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/organizations",
+			wantBody:   `{"name":"Acme","workspace":{"name":"Engineering"}}`,
+		},
+		{
 			name:  "organization search",
 			reply: stubResponse{status: http.StatusOK, body: listBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
@@ -788,8 +799,8 @@ func TestReadOperationsUseExpectedRoutes(t *testing.T) {
 				_, err := c.Users().Organizations(ctx, testUserID)
 				return err
 			},
-			wantMethod: http.MethodGet,
-			wantPath:   "/v1/products/prd_test/product-users/pusr_1/organizations",
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/product-users/pusr_1/organizations/search",
 		},
 		{
 			name:  "user organization",

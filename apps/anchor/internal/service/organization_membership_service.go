@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -179,7 +181,7 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 	logger zerolog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false,
+		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -203,7 +205,7 @@ func (s *organizationMembershipService) checkMembershipPresence(
 	logger zerolog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, productID, organizationID, productUserID, false,
+		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -240,6 +242,9 @@ func (s *organizationMembershipService) applyMembership(
 		}
 		return s.emitMembership(txCtx, eventType, productID, organizationID, productUserID)
 	}); txErr != nil {
+		if errors.Is(txErr, repository.ErrOrganizationMembershipExists) {
+			return organization.Membership{}, NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
+		}
 		logger.Error().Err(txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
@@ -269,7 +274,7 @@ func (s *organizationMembershipService) RemoveMember(
 	}
 
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
-		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, false,
+		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
 		logger.Error().Err(err).
@@ -360,7 +365,7 @@ func (s *organizationMembershipService) SearchMembers(
 ) (search.Result[organization.Membership], error) {
 	logger := s.logger.With().Str("operation", "SearchMembers").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[organization.Membership]{}, err
 	}
 
@@ -368,10 +373,12 @@ func (s *organizationMembershipService) SearchMembers(
 		ctx, input.ProductID, input.OrganizationID, input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Msg("failed to search members")
+		if !searchx.IsClientError(err) {
+			logger.Error().Err(err).
+				Str("product_id", input.ProductID).
+				Str("organization_id", input.OrganizationID).
+				Msg("failed to search members")
+		}
 		return search.Result[organization.Membership]{}, err
 	}
 

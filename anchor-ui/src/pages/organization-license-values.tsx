@@ -2,7 +2,6 @@ import type { LicenseTemplateValues } from "@/client";
 import {
 	adjustOrganizationLicenseMutation,
 	getLicenseSchemaOptions,
-	listLicenseTemplatesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
 import { LicenseAdjustmentBar } from "@/components/license/LicenseAdjustmentBar";
@@ -13,6 +12,7 @@ import {
 } from "@/components/license/license-field-format";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
 import { useProduct } from "@/context/product/ProductContext";
+import { allLicenseTemplatesOptions } from "@/hooks/useAllLicenseTemplates";
 import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
 import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
 import {
@@ -38,7 +38,7 @@ import { useState } from "react";
 
 const invalidatedByAdjustment = new Set([
 	"getOrganizationLicense",
-	"getOrganizationLicenseHistory",
+	"searchOrganizationLicenseHistory",
 	"searchOrganizationLicenses",
 ]);
 
@@ -74,9 +74,7 @@ export default function OrganizationLicenseValuesPage() {
 		retry: false,
 	});
 	const templatesQuery = useQuery({
-		...listLicenseTemplatesOptions({
-			path: { product_id: productId as string },
-		}),
+		...allLicenseTemplatesOptions(productId as string),
 		enabled: !!productId,
 	});
 
@@ -101,7 +99,13 @@ export default function OrganizationLicenseValuesPage() {
 	});
 
 	const license = licenseQuery.data;
-	const dirty = Object.keys(draft).length > 0;
+	const fields = schemaQuery.data?.fields ?? [];
+	const changed = fields.filter(
+		(field) =>
+			field.name in draft &&
+			!sameValue(draft[field.name], license?.values[field.name]),
+	);
+	const dirty = changed.length > 0;
 
 	// The draft lives in this component, so switching tab, following the back
 	// link, or reloading would drop an edit without saying so. Covers the
@@ -114,18 +118,11 @@ export default function OrganizationLicenseValuesPage() {
 
 	if (!license || !productId) return null;
 
-	const fields = schemaQuery.data?.fields ?? [];
 	const templateValues = templatesQuery.data?.items?.find(
 		(item) => item.id === license.template_id,
 	)?.values;
 
 	const values = { ...license.values, ...draft };
-
-	const changed = fields.filter(
-		(field) =>
-			field.name in draft &&
-			!sameValue(draft[field.name], license.values[field.name]),
-	);
 
 	const notes = Object.fromEntries(
 		fields

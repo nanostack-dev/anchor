@@ -7,6 +7,7 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -27,9 +28,7 @@ func mapToSearchProductInput(request *SearchProductsRequestObject) search.
 		WithSort(
 			request.Body.SortBy,
 			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
-	)
+		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
 }
 
 func mapProductToResponse(prod product.Product) ProductResponse {
@@ -113,9 +112,10 @@ func (s *AnchorAPI) SearchProducts(
 	}
 
 	return SearchProducts200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapProductToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -284,9 +284,7 @@ func mapToSearchProductUserInput(
 		WithSort(
 			request.Body.SortBy,
 			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(
-		request.Body.Pagination,
-	)
+		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
 }
 
 func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
@@ -351,9 +349,10 @@ func (s *AnchorAPI) SearchProductUsers(
 
 	// Using consistent structure with other list responses (items field)
 	return SearchProductUsers200JSONResponse{
-		Items: functional.Slice(result.Items).Map(mapProductUserToResponse),
-		Total: result.Total,
-		Count: result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductUserToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
+		Count:      result.Count,
 	}, nil
 }
 
@@ -432,6 +431,63 @@ func (s *AnchorAPI) ListUserOrganizations(
 	}, nil
 }
 
+func (s *AnchorAPI) SearchUserOrganizations(
+	ctx context.Context, request SearchUserOrganizationsRequestObject,
+) (SearchUserOrganizationsResponseObject, error) {
+	includePermissions := functional.FromPtr(request.Params.Include).
+		Exists(func(include []UserOrganizationInclude) bool {
+			return slices.Contains(include, UserOrganizationIncludeRolePermissions)
+		})
+
+	body := request.Body
+	if body == nil {
+		body = &SearchUserOrganizationsJSONRequestBody{}
+	}
+
+	result, err := s.ProductUserService.SearchUserOrganizations(ctx, user.SearchUserOrganizationsInput{
+		ProductID:          request.ProductId,
+		ProductUserID:      request.ProductUserId,
+		IncludePermissions: includePermissions,
+		Request:            mapToSearchUserOrganizationsRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).
+			Str("product_id", request.ProductId).
+			Str("product_user_id", request.ProductUserId).
+			Msg("failed to search user organizations")
+		return nil, err
+	}
+
+	return SearchUserOrganizations200JSONResponse{
+		Items: functional.Slice(result.Items).Map(
+			func(m user.OrganizationMembership) UserOrganizationResponse {
+				return mapUserOrgMembershipToResponse(m, includePermissions)
+			}),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}, nil
+}
+
+func mapToSearchUserOrganizationsRequest(
+	body *SearchUserOrganizationsJSONRequestBody,
+) search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f UserOrganizationFilter) user.SearchUserOrganizationsFilter {
+			return user.SearchUserOrganizationsFilter{OrganizationIDs: f.OrganizationIds, RoleIDs: f.RoleIds}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, user.SortFieldUserOrganizationJoinedAt, search.SortAscending,
+	)
+
+	return search.NewRequest[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
+}
+
 func (s *AnchorAPI) GetUserOrganization(
 	ctx context.Context, request GetUserOrganizationRequestObject,
 ) (GetUserOrganizationResponseObject, error) {
@@ -468,13 +524,7 @@ func mapUserOrgMembershipToResponse(
 		Id:   m.RoleID,
 		Name: m.RoleName,
 	}
-	if includePermissions {
-		permissions := m.RolePermissions
-		if permissions == nil {
-			permissions = []string{}
-		}
-		role.Permissions = &permissions
-	}
+	role.Permissions = includedRolePermissions(m.RolePermissions, includePermissions)
 
 	response := UserOrganizationResponse{
 		JoinedAt: m.JoinedAt,

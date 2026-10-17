@@ -43,19 +43,13 @@ And the users:
 
 ## 🚀 Getting Started
 
-*(High-level steps - provide details later)*
+Follow [local setup](docs/development/setup.md) for a standalone clone and [testing](docs/development/testing.md) for the managed disposable app and validation commands. The runtime creates its own local accounts and needs no shared workspace or external identity-provider credentials.
 
-1.  **Prerequisites:** Docker, Docker Compose installed.
-2.  **Clone:** `git clone <repo-url>`
-3.  **Configure:** Set up necessary environment variables (database connection, initial platform user, etc.) in `.env` or `docker-compose.yml`.
-4.  **Run:** `docker-compose up -d`
-5.  **DB Migrations:** Run the migration tool (e.g., `goose up`).
-6.  **Access:** API available at `http://localhost:<port>/v1`. Create your first Product and API Key via the API (using initial platform user credentials).
+## 📖 Documentation
 
-## 📖 API Documentation
-
-* The full API is defined in the [openapi.yaml](https://www.google.com/search?q=openapi.yaml) specification file.
-* (Optional: Link to generated HTML documentation if available).
+- [Agent guide](AGENTS.md), [domain vocabulary](CONTEXT.md) and [documentation index](docs/README.md).
+- [Architecture](docs/technical/architecture.md), [dependency ownership](docs/technical/dependencies.md) and [release runbooks](docs/runbooks/deployment.md).
+- [OpenAPI contract](apps/anchor/cmd/http/openapi.yaml), [Go SDK](clients/go/) and [frontend guide](anchor-ui/AGENTS.md).
 
 ## 🌍 Licensing & Community
 
@@ -64,13 +58,6 @@ And the users:
 * **Commercial restriction:** You may not offer Anchor itself, or a substantially similar competing service, as a commercial product under the FSL terms.
 * **Future license:** Each version converts to Apache 2.0 two years after it is made available.
 * **Current scope:** Single Platform Tenant mode. Broader multi-tenant platform support may be offered separately.
-* **Contribute:** We welcome contributions\! Please see [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTING.md) (TBD) and use GitHub Issues/Pull Requests.
+* **Contribute:** We welcome contributions\! Use the [agent delivery workflow](docs/development/agent-workflow.md) and GitHub Issues/Pull Requests.
 
-## 🔮 Roadmap (Potential Future Features)
-
-* User Invitation Flow
-* Audit Log Access via API
-* Webhook Event System
-* SCIM Protocol Support (for easier IdP integration)
-* Team/Group Management Features
-* Multi-`PlatformTenant` SaaS Version
+Current behavior and unresolved proposals are documented in the [documentation index](docs/README.md); verify proposal status against current source before planning a change.

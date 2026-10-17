@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -84,6 +86,18 @@ func NewProductResourcePermissionRepository(
 	}
 }
 
+// The name is the second half of the primary key, so the primary key guards a
+// byte-identical name and the 000019 index a name differing only in case.
+const (
+	productResourcePermissionPrimaryKey           = "product_resource_permissions_pkey"
+	productResourcePermissionNameLowerUniqueIndex = "idx_product_resource_permissions_product_lower_name_unique"
+)
+
+// ErrProductResourcePermissionExists is returned by Create when the product
+// already has a resource permission with that name: the unique guards settle
+// the race the service pre-check cannot.
+var ErrProductResourcePermissionExists = errors.New("product resource permission already exists in product")
+
 func (r *productResourcePermissionRepository) Create(
 	ctx context.Context, perm resourcepermission.ProductResourcePermission,
 ) (resourcepermission.ProductResourcePermission, error) {
@@ -95,6 +109,10 @@ func (r *productResourcePermissionRepository) Create(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
+	).OnUnique(
+		ErrProductResourcePermissionExists,
+		productResourcePermissionPrimaryKey,
+		productResourcePermissionNameLowerUniqueIndex,
 	).Value()
 }
 
@@ -149,6 +167,13 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 	input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	whereStmt := table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))
+	if input.FullTextSearch != nil {
+		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
+		whereStmt = whereStmt.AND(
+			postgres.LOWER(table.ProductResourcePermissions.Name).LIKE(pattern).
+				OR(postgres.LOWER(table.ProductResourcePermissions.Description).LIKE(pattern)),
+		)
+	}
 
 	if input.Filter != nil {
 		if len(input.Filter.Names) > 0 {
@@ -162,17 +187,33 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 		}
 	}
 
+	nameKey := transactor.StringKey(
+		table.ProductResourcePermissions.Name,
+		func(row model.ProductResourcePermissions) string { return row.Name },
+	)
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[resourcepermission.SortFieldProductResourcePermission]transactor.Key[model.ProductResourcePermissions]{
+			resourcepermission.SortFieldProductResourcePermissionCreatedAt: transactor.TimeKey(
+				table.ProductResourcePermissions.CreatedAt,
+				func(row model.ProductResourcePermissions) time.Time { return row.CreatedAt },
+			),
+			resourcepermission.SortFieldProductResourcePermissionUpdatedAt: transactor.TimeKey(
+				table.ProductResourcePermissions.UpdatedAt,
+				func(row model.ProductResourcePermissions) time.Time { return row.UpdatedAt },
+			),
+			resourcepermission.SortFieldProductResourcePermissionName: nameKey,
+		},
+		nameKey,
+	)
+	if err != nil {
+		return search.Result[resourcepermission.ProductResourcePermission]{}, err
+	}
+
 	return transactor.Page(r.db, r.mapper.ToDomain, table.ProductResourcePermissions.AllColumns).
 		From(table.ProductResourcePermissions).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[resourcepermission.SortFieldProductResourcePermission]postgres.Column{
-				resourcepermission.SortFieldProductResourcePermissionCreatedAt: table.ProductResourcePermissions.CreatedAt,
-				resourcepermission.SortFieldProductResourcePermissionUpdatedAt: table.ProductResourcePermissions.UpdatedAt,
-				resourcepermission.SortFieldProductResourcePermissionName:      table.ProductResourcePermissions.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

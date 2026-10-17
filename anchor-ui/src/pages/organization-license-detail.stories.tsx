@@ -79,7 +79,7 @@ const meta = {
 						items: [{ id: "prd_test", name: "Echopoint" }],
 						total: 1,
 					});
-				if (path.endsWith("/licensing/templates"))
+				if (path.endsWith("/licensing/templates/search"))
 					return Response.json({
 						items: [
 							{
@@ -89,6 +89,8 @@ const meta = {
 								values: { max_flows: 10000 },
 							},
 						],
+						count: 1,
+						total: 1,
 					});
 				if (path.endsWith("/licensing/organization-licenses/search"))
 					return Response.json({

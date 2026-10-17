@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"strings"
+	"errors"
+	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -15,6 +16,7 @@ import (
 	"anchor/internal/events"
 	invitationrepository "anchor/internal/invitation/repository"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -131,16 +133,20 @@ func (s *productRoleService) CreateProductRole(
 			return p
 		})
 
-	if err := s.permissionsValidation(ctx, input.ProductID, productRolePermission, logger); err != nil {
+	resolvedPermissions, err := s.resolveRolePermissions(ctx, input.ProductID, productRolePermission, logger)
+	if err != nil {
 		return role.ProductRole{}, err
 	}
 
-	productRole.Permissions = productRolePermission
+	productRole.Permissions = resolvedPermissions
 
 	var created role.ProductRole
-	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
+		if errors.Is(createErr, repository.ErrProductRoleNameExists) {
+			return NewRoleWithAlreadyExistingNameError(input.Name, input.ProductID)
+		}
 		if createErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
@@ -169,12 +175,15 @@ func (s *productRoleService) SearchProductRoles(
 ) (search.Result[role.ProductRole], error) {
 	logger := s.logger.With().Str("operation", "SearchProductRoles").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[role.ProductRole]{}, err
 	}
 
 	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
+		if searchx.IsClientError(err) {
+			return search.Result[role.ProductRole]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).
@@ -247,7 +256,8 @@ func (s *productRoleService) UpdateProductRole(
 		updatedRole.Description = *input.Description
 	}
 	if input.Permissions != nil {
-		if err = s.permissionsValidation(ctx, input.ProductID, input.Permissions, logger); err != nil {
+		input.Permissions, err = s.resolveRolePermissions(ctx, input.ProductID, input.Permissions, logger)
+		if err != nil {
 			return role.ProductRole{}, err
 		}
 		for i := range input.Permissions {
@@ -259,6 +269,9 @@ func (s *productRoleService) UpdateProductRole(
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		var updateErr error
 		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
+		if errors.Is(updateErr, repository.ErrProductRoleNameExists) {
+			return NewRoleWithAlreadyExistingNameError(updatedRole.Name, input.ProductID)
+		}
 		if updateErr != nil {
 			logger.Error().
 				Str("product_id", input.ProductID).
@@ -438,10 +451,11 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	newPermission.GenerateID()
 
 	permissions := []role.ProductRolePermission{newPermission}
-	if err := s.permissionsValidation(ctx, input.ProductID, permissions, logger); err != nil {
+	resolvedPermissions, err := s.resolveRolePermissions(ctx, input.ProductID, permissions, logger)
+	if err != nil {
 		return err
 	}
-	newPermission = permissions[0]
+	newPermission = resolvedPermissions[0]
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
@@ -585,11 +599,11 @@ func (s *productRoleService) nameDuplicationValidation(
 	return nil
 }
 
-func (s *productRoleService) permissionsValidation(
+func (s *productRoleService) resolveRolePermissions(
 	ctx context.Context, productID string, input []role.ProductRolePermission, logger zerolog.Logger,
-) error {
+) ([]role.ProductRolePermission, error) {
 	if len(input) == 0 {
-		return nil
+		return input, nil
 	}
 
 	permissionNames := functional.Slice(input).Map(func(p role.ProductRolePermission) string {
@@ -603,7 +617,7 @@ func (s *productRoleService) permissionsValidation(
 	}
 	if err := validate.ValidateStruct(inputValidator); err != nil {
 		logger.Debug().Err(err).Msg("too many permissions requested")
-		return err
+		return nil, err
 	}
 
 	searchReq := search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
@@ -622,28 +636,20 @@ func (s *productRoleService) permissionsValidation(
 			Str("product_id", productID).
 			Err(err).
 			Msg("failed to search resource permissions")
-		return fault.ErrUnexpected
+		return nil, fault.ErrUnexpected
 	}
 
 	foundNames := functional.Slice(result.Items).Map(func(p resourcepermission.ProductResourcePermission) string {
 		return p.Name
 	})
-	foundMap := functional.Slice(foundNames).ToMap(strings.ToLower)
-
-	var notFoundPermissions []string
-	for i := range input {
-		name := input[i].PermissionName
-		canonicalName, ok := foundMap[strings.ToLower(name)]
-		if !ok {
-			notFoundPermissions = append(notFoundPermissions, name)
-			continue
-		}
-		input[i].PermissionName = canonicalName
+	canonicalNames, missing := canonicalizePermissionNames(foundNames, permissionNames)
+	if len(missing) > 0 {
+		return nil, NewPermissionsNotFoundError(productID, missing)
 	}
 
-	if len(notFoundPermissions) > 0 {
-		return NewPermissionsNotFoundError(productID, notFoundPermissions)
+	resolved := slices.Clone(input)
+	for i, name := range canonicalNames {
+		resolved[i].PermissionName = name
 	}
-
-	return nil
+	return resolved, nil
 }

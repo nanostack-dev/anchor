@@ -119,3 +119,6 @@ worktrees/
 
 # Local UI review captures
 .ui-craft/
+
+# Developer-local Claude preferences and permissions
+.claude/settings.local.json

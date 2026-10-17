@@ -3,13 +3,16 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
@@ -59,17 +62,47 @@ func (r *organizationLicenseChangeRepositoryImpl) Append(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *organizationLicenseChangeRepositoryImpl) ListByOrganization(
-	ctx context.Context, in license.ListLicenseChangesInput,
+func (r *organizationLicenseChangeRepositoryImpl) Search(
+	ctx context.Context, in license.SearchLicenseChangesInput,
 ) (search.Result[license.OrganizationLicenseChange], error) {
 	changes := table.OrganizationLicenseChanges
+	where := organizationLicenseChangeScope(in.TenantID, in.ProductID, in.OrganizationID)
+
+	if filter := in.Request.Filter; filter != nil {
+		if len(filter.Types) > 0 {
+			types := functional.Slice(filter.Types).Map(func(changeType license.ChangeType) string {
+				return string(changeType)
+			})
+			where = where.AND(changes.ChangeType.IN(jetx.ToStringExpressions(types)...))
+		}
+		if filter.ChangedAfter != nil {
+			where = where.AND(changes.ChangedAt.GT_EQ(postgres.TimestampzT(*filter.ChangedAfter)))
+		}
+		if filter.ChangedBefore != nil {
+			where = where.AND(changes.ChangedAt.LT(postgres.TimestampzT(*filter.ChangedBefore)))
+		}
+	}
+
+	// The identifier breaks the tie because the entries of one adjustment share
+	// a single changed_at, and a page boundary landing inside one of them must
+	// not reorder or repeat a row.
+	order, err := transactor.StrictKeys(
+		in.Request.Sort,
+		map[license.SortFieldChange]transactor.Key[model.OrganizationLicenseChanges]{
+			license.SortFieldChangeChangedAt: transactor.TimeKey(
+				changes.ChangedAt, func(row model.OrganizationLicenseChanges) time.Time { return row.ChangedAt },
+			),
+		},
+		transactor.StringKey(changes.ID, func(row model.OrganizationLicenseChanges) string { return row.ID }),
+	)
+	if err != nil {
+		return search.Result[license.OrganizationLicenseChange]{}, err
+	}
+
 	return transactor.Page(r.db, r.mapper.ToDomain, changes.AllColumns).
 		From(changes).
-		Where(organizationLicenseChangeScope(in.TenantID, in.ProductID, in.OrganizationID)).
-		// The identifier breaks the tie because the entries of one adjustment
-		// share a single changed_at, and a page boundary landing inside one of
-		// them must not reorder or repeat a row.
-		OrderBy(changes.ChangedAt.DESC(), changes.ID.DESC()).
-		Run(ctx, in.Pagination).
+		Where(where).
+		Keyset(order).
+		Run(ctx, in.Request.Pagination).
 		Value()
 }

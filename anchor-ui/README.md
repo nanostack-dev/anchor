@@ -25,6 +25,10 @@ This project uses [Vitest](https://vitest.dev/) for testing. You can run the tes
 pnpm test
 ```
 
+Run the real login and Products browser journey with `pnpm test:e2e:smoke`.
+See [browser test setup and coverage](e2e/README.md) for the dev account,
+local and deployed targets, and the separate mutating suite.
+
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.

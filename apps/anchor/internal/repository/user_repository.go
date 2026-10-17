@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -65,6 +66,13 @@ func (u *userRepositoryImpl) Count(ctx context.Context) (
 	return transactor.QueryCount(ctx, u.db, table.Users.SELECT(postgres.COUNT(postgres.STAR))).Value()
 }
 
+const userEmailUniqueConstraint = "users_email_key"
+
+// ErrUserEmailExists is returned by Create when a user already has that email.
+// Two invitations for one email from different tenants do not serialize on an
+// invitation row, so the unique constraint settles that race.
+var ErrUserEmailExists = errors.New("user email already exists")
+
 func (u *userRepositoryImpl) Create(
 	ctx context.Context, user auth.User,
 ) (auth.User, error) {
@@ -74,7 +82,7 @@ func (u *userRepositoryImpl) Create(
 
 	return transactor.QueryMap(
 		ctx, u.db, stmt, u.userMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrUserEmailExists, userEmailUniqueConstraint).Value()
 }
 
 func NewUserRepository(

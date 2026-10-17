@@ -14,6 +14,8 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@nanostackorg/design-system/components/dropdown-menu";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Box } from "@nanostackorg/design-system/layout/box";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { AlertCircleIcon, ChevronDownIcon, SparklesIcon } from "lucide-react";
 
@@ -37,46 +39,64 @@ export function ProductTopBar() {
 	};
 
 	return (
-		<div className="flex min-w-0 items-center gap-2">
+		<Box className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
 			{currentProduct && !error && products.length > 0 && (
-				<DropdownMenu>
-					<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-						<span
-							className="size-2 shrink-0 rounded-full bg-success"
-							aria-hidden
-						/>
-						<span className="text-muted-foreground">Working on:</span>
-						<span className="truncate font-medium text-foreground">
-							{currentProduct.name}
-						</span>
-						<ChevronDownIcon className="text-muted-foreground" />
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start">
-						{products.map((product) => (
-							<DropdownMenuItem
-								key={product.id}
-								onClick={() => selectProduct(product)}
-							>
-								<div className="flex w-full flex-col">
-									<div className="flex items-center gap-2">
-										{currentProduct.id === product.id && (
+				<Box className="min-w-0 basis-32 grow">
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							aria-label={`Working on: ${currentProduct.name}`}
+							title={currentProduct.name}
+							render={<Button variant="outline" size="sm" width="fill" />}
+						>
+							<span
+								className="size-2 shrink-0 rounded-full bg-success"
+								aria-hidden
+							/>
+							<Box as="span" className="hidden shrink-0 sm:block">
+								<Text as="span" tone="muted">
+									Working on:
+								</Text>
+							</Box>
+							<Text as="span" weight="medium" truncate>
+								{currentProduct.name}
+							</Text>
+							<ChevronDownIcon className="text-muted-foreground" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" width="md">
+							{products.map((product) => (
+								<DropdownMenuItem
+									key={product.id}
+									onClick={() => selectProduct(product)}
+								>
+									<Box className="flex min-w-0 flex-1 flex-col">
+										<Box className="flex min-w-0 items-center gap-2">
+											{currentProduct.id === product.id && (
+												<span
+													className="size-2 shrink-0 rounded-full bg-success"
+													aria-hidden
+												/>
+											)}
+											<Box
+												as="span"
+												className="min-w-0 wrap-anywhere font-medium"
+											>
+												{product.name}
+											</Box>
+										</Box>
+										{product.description && (
 											<span
-												className="size-2 shrink-0 rounded-full bg-success"
-												aria-hidden
-											/>
+												className="mt-1 truncate text-xs text-muted-foreground"
+												title={product.description}
+											>
+												{product.description}
+											</span>
 										)}
-										<span className="font-medium">{product.name}</span>
-									</div>
-									{product.description && (
-										<span className="mt-1 truncate text-xs text-muted-foreground">
-											{product.description}
-										</span>
-									)}
-								</div>
-							</DropdownMenuItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+									</Box>
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</Box>
 			)}
 
 			{error ? (
@@ -100,7 +120,7 @@ export function ProductTopBar() {
 					onCreated={handleProductCreated}
 				/>
 			) : (
-				<div className="flex items-center gap-2">
+				<Box className="flex shrink-0 items-center gap-2">
 					{isLoading && (
 						<span className="text-sm text-muted-foreground">
 							Loading products...
@@ -114,8 +134,8 @@ export function ProductTopBar() {
 						onClick={handleRefresh}
 						loading={isLoading}
 					/>
-				</div>
+				</Box>
 			)}
-		</div>
+		</Box>
 	);
 }

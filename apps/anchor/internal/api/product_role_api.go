@@ -17,14 +17,14 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description: &productRole.Description,
 		CreatedAt:   productRole.CreatedAt,
 		UpdatedAt:   productRole.UpdatedAt,
-		Permissions: functional.Slice(productRole.Permissions).Map(
+		Permissions: append([]ProductRolePermissionResponse{}, functional.Slice(productRole.Permissions).Map(
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
 					PermissionName: perm.PermissionName,
 					ProductId:      perm.ProductID,
 					ProductRoleId:  perm.ProductRoleID,
 				}
-			}),
+			})...),
 	}
 }
 
@@ -65,9 +65,10 @@ func (s *AnchorAPI) SearchProductRoles(
 	}
 
 	response := ProductRoleListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductRoleToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductRoleToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductRoles200JSONResponse(response), nil
@@ -116,12 +117,12 @@ func (s *AnchorAPI) UpdateProductRole(
 }
 
 func (s *AnchorAPI) mapToProductRolePermissionSlice(
-	productID, roleID string, permissionsStrings []string,
+	productID, roleID string, permissionsStrings *[]string,
 ) []role.ProductRolePermission {
-	if len(permissionsStrings) == 0 {
+	if permissionsStrings == nil {
 		return nil
 	}
-	return functional.Slice(permissionsStrings).Map(func(perm string) role.ProductRolePermission {
+	return functional.Slice(*permissionsStrings).Map(func(perm string) role.ProductRolePermission {
 		return role.ProductRolePermission{
 			ProductRoleID:  roleID,
 			ProductID:      productID,
@@ -195,7 +196,5 @@ func mapToSearchProductRoleInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }

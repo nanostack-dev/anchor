@@ -2,6 +2,28 @@
 
 Anchor supports organization-scoped workspaces as the third level of the Product -> Organization -> Workspace hierarchy. Workspaces are managed through product and organization scoped API paths so every operation carries the owning product and organization context.
 
+An organization has zero or more workspaces. They are ordinary peers: none has a
+default designation, and users can rename or delete every workspace.
+
+## Organization creation and related reads
+
+Organization creation accepts an optional `workspace` payload using the ordinary
+workspace fields. For example, `{"name":"Acme","workspace":{"name":"Engineering"}}`
+creates both in one transaction, including their events and any requested license
+and founding membership. Omitting `workspace` creates no workspaces.
+
+The Go SDK exposes `Organizations().Create("Acme").Workspace("Engineering")`.
+A founding-member retry returns the existing organization without creating or
+recreating workspaces, even if its initial workspace was renamed or deleted.
+
+Organization Get and Search accept `include=workspace,license`. The workspace
+include returns all linked workspaces for the caller's product, including an empty
+`workspaces: []` when none exist. Without the include the field is omitted. Each
+included resource is read once per organization page.
+
+Consumers decide their own onboarding and migration policy. Anchor does not sweep
+organizations at startup and does not assign resources to a preferred workspace.
+
 ## API Behavior
 
 - Create: `POST /v1/products/{product_id}/organizations/{organization_id}/workspaces`
@@ -74,6 +96,8 @@ Successful search response:
   "total": 1
 }
 ```
+
+The response carries a `next_cursor` while more workspaces follow. Send it back as `pagination.cursor`, with the same filter and sort, to read the next page, and stop when it is absent. `offset` serves page-number tables only and cannot be combined with a cursor. Without a `sort_by`, workspaces come oldest first, then by `id`. See [cursor-paginated searches](technical/cursor-pagination.md).
 
 ## Authorization
 

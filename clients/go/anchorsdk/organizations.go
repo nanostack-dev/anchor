@@ -2,6 +2,7 @@ package anchorsdk
 
 import (
 	"context"
+	"iter"
 	"maps"
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
@@ -33,7 +34,8 @@ func (o Organizations) Create(name string) *OrgCreateBuilder {
 // Get returns one organization by ID. Name a related resource to read it
 // alongside the organization:
 //
-//	org, err := c.Organizations().Get(ctx, orgID, nanoclient.OrganizationIncludeLicense)
+//	org, err := c.Organizations().Get(ctx, orgID,
+//	    nanoclient.OrganizationIncludeWorkspace, nanoclient.OrganizationIncludeLicense)
 func (o Organizations) Get(
 	ctx context.Context,
 	organizationID string,
@@ -121,8 +123,13 @@ func (b *OrgCreateBuilder) Metadata(m map[string]any) *OrgCreateBuilder {
 	return b
 }
 
-// FoundingMember assigns a first member with the given role. Anchor creates the
-// organization and the membership atomically in one transaction.
+// Workspace creates an ordinary named workspace atomically with a new organization.
+func (b *OrgCreateBuilder) Workspace(name string) *OrgCreateBuilder {
+	b.req.Workspace = &nanoclient.ProductWorkspaceRequest{Name: name}
+	return b
+}
+
+// FoundingMember assigns the first member atomically with the organization.
 func (b *OrgCreateBuilder) FoundingMember(productUserID, roleID string) *OrgCreateBuilder {
 	b.req.FoundingMember = &nanoclient.FoundingMemberRequest{ProductUserId: productUserID, RoleId: roleID}
 	return b
@@ -239,10 +246,44 @@ func (s *OrgSearch) Limit(limit int32) *OrgSearch {
 	return s
 }
 
-// Offset skips the given number of organizations.
+// Offset skips the given number of organizations, for page-number navigation. To read every
+// page, iterate with Cursor or All instead.
 func (s *OrgSearch) Offset(offset int32) *OrgSearch {
 	s.page().Offset = new(offset)
 	return s
+}
+
+// Cursor continues the search after the last item of a previous page. Pass the
+// previous page's NextCursor; Anchor refuses a cursor combined with an offset,
+// and answers a cursor from another filter or sort with an error. To read every
+// page, use [OrgSearch.All].
+func (s *OrgSearch) Cursor(cursor string) *OrgSearch {
+	s.page().Cursor = new(cursor)
+	return s
+}
+
+// All reads every matching item, following NextCursor from page to page until
+// Anchor sends none. It starts where the builder starts: at the first item, or
+// after the cursor set with [OrgSearch.Cursor]. The builder is not changed, so it can
+// run again. A failed page ends the sequence with its error.
+//
+//	for item, err := range search.Limit(100).All(ctx) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // use item
+//	}
+func (s *OrgSearch) All(ctx context.Context) iter.Seq2[nanoclient.ProductOrganizationResponse, error] {
+	return allPages(ctx, "Organizations.Search", startCursor(s.req.Pagination),
+		func(ctx context.Context, cursor string) ([]nanoclient.ProductOrganizationResponse, string, error) {
+			next := *s
+			next.req.Pagination = pageAfter(s.req.Pagination, cursor)
+			page, err := next.Do(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			return page.Items, derefCursor(page.NextCursor), nil
+		})
 }
 
 // Do runs the search.

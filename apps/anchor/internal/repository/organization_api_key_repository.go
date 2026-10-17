@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -14,6 +15,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -109,6 +111,14 @@ func NewOrganizationAPIKeyRepository(
 	}
 }
 
+const organizationAPIKeyNameUniqueConstraint = "organization_api_keys_organization_id_name_key"
+
+// ErrOrganizationAPIKeyNameExists is returned by Create and Update when the
+// organization already has a key with that name. The service pre-check is not
+// race-free: a concurrent writer's row stays invisible until it commits, so the
+// unique constraint is the only race-free arbiter.
+var ErrOrganizationAPIKeyNameExists = errors.New("organization API key name already exists in organization")
+
 //nolint:dupl // mirrors product API key persistence flow with organization-scoped tables
 func (r *organizationAPIKeyRepository) Create(
 	ctx context.Context,
@@ -122,7 +132,12 @@ func (r *organizationAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.OrganizationAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrOrganizationAPIKeyNameExists, organizationAPIKeyNameUniqueConstraint).
+		Value()
+	if errors.Is(err, ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{}, err
+	}
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -241,7 +256,9 @@ func (r *organizationAPIKeyRepository) Update(
 		table.OrganizationAPIKeys.AllColumns,
 	)
 
-	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).Value()
+	updated, err := transactor.Query[model.OrganizationAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrOrganizationAPIKeyNameExists, organizationAPIKeyNameUniqueConstraint).
+		Value()
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
 	}
@@ -254,6 +271,7 @@ func (r *organizationAPIKeyRepository) Update(
 	return r.mapper.ToDomainWithPermissions(updated, permissions), nil
 }
 
+//nolint:dupl // mirrors product API key search with organization-scoped tables
 func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	ctx context.Context,
 	input orgapikey.SearchOrganizationAPIKeysInput,
@@ -262,26 +280,50 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
+	idKey := transactor.StringKey(
+		table.OrganizationAPIKeys.ID, func(row model.OrganizationAPIKeys) string { return row.ID },
+	)
+	order, err := transactor.StrictKeys(
+		input.Request.Sort,
+		map[orgapikey.SortFieldOrganizationAPIKey]transactor.Key[model.OrganizationAPIKeys]{
+			orgapikey.SortFieldOrganizationAPIKeyID: idKey,
+			orgapikey.SortFieldOrganizationAPIKeyCreatedAt: transactor.TimeKey(
+				table.OrganizationAPIKeys.CreatedAt,
+				func(row model.OrganizationAPIKeys) time.Time { return row.CreatedAt },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: transactor.TimeKey(
+				table.OrganizationAPIKeys.UpdatedAt,
+				func(row model.OrganizationAPIKeys) time.Time { return row.UpdatedAt },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyName: transactor.StringKey(
+				table.OrganizationAPIKeys.Name, func(row model.OrganizationAPIKeys) string { return row.Name },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyStatus: transactor.StringKey(
+				table.OrganizationAPIKeys.Status, func(row model.OrganizationAPIKeys) string { return row.Status },
+			),
+			orgapikey.SortFieldOrganizationAPIKeyLastUsed: transactor.NullableTimeKey(
+				table.OrganizationAPIKeys.LastUsedAt,
+				func(row model.OrganizationAPIKeys) *time.Time { return row.LastUsedAt },
+			),
+		},
+		idKey,
+	)
+	if err != nil {
+		return search.Result[orgapikey.OrganizationAPIKey]{}, err
+	}
+
 	result, err := transactor.Page(r.db, r.mapper.ToDomain, table.OrganizationAPIKeys.AllColumns).
 		From(table.OrganizationAPIKeys).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Request.Sort,
-			map[orgapikey.SortFieldOrganizationAPIKey]postgres.Column{
-				orgapikey.SortFieldOrganizationAPIKeyID:        table.OrganizationAPIKeys.ID,
-				orgapikey.SortFieldOrganizationAPIKeyCreatedAt: table.OrganizationAPIKeys.CreatedAt,
-				orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: table.OrganizationAPIKeys.UpdatedAt,
-				orgapikey.SortFieldOrganizationAPIKeyName:      table.OrganizationAPIKeys.Name,
-				orgapikey.SortFieldOrganizationAPIKeyStatus:    table.OrganizationAPIKeys.Status,
-				orgapikey.SortFieldOrganizationAPIKeyLastUsed:  table.OrganizationAPIKeys.LastUsedAt,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"organization_id", input.OrganizationID,
-		).Msg("failed to search organization API keys")
+		if !searchx.IsClientError(err) {
+			r.logger.Error().Err(err).Str(
+				"organization_id", input.OrganizationID,
+			).Msg("failed to search organization API keys")
+		}
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
 

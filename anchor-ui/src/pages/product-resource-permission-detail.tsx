@@ -2,6 +2,7 @@ import { getProductResourcePermissionOptions } from "@/client/@tanstack/react-qu
 import { Page } from "@/components/common/Page";
 import { ProductResourcePermissionDetailView } from "@/components/product/permissions/ProductResourcePermissionDetailView";
 import { useProduct } from "@/hooks/useProduct";
+import { apiErrorHasCode } from "@/lib/api-error";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import { Button } from "@nanostackorg/design-system/components/button";
@@ -21,6 +22,9 @@ export default function ProductResourcePermissionDetailPage({
 	const productId = currentProduct?.id ?? "";
 	const navigate = useNavigate();
 	const permissionQuery = useQuery({
+		retry: (failureCount, error) =>
+			failureCount < 3 &&
+			!apiErrorHasCode(error, "RESOURCE_PERMISSION_NOT_FOUND"),
 		...getProductResourcePermissionOptions({
 			path: { product_id: productId, permission_name: permissionName },
 		}),

@@ -3,10 +3,14 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/product/role"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -109,6 +113,18 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	))
 }
 
+// A role name trips the byte-identical constraint from 000001_init or the
+// case-insensitive index from 000019_case_insensitive_names.
+const (
+	productRoleNameUniqueConstraint = "product_roles_product_id_name_key"
+	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
+)
+
+// ErrProductRoleNameExists is returned by Create and Update when the product
+// already has a role with that name: the unique guards settle the race the
+// service pre-check cannot.
+var ErrProductRoleNameExists = errors.New("product role name already exists in product")
+
 func (r *productRoleRepositoryImpl) Create(
 	ctx context.Context, productRole role.ProductRole,
 ) (role.ProductRole, error) {
@@ -116,7 +132,9 @@ func (r *productRoleRepositoryImpl) Create(
 	stmt := table.ProductRoles.INSERT(
 		productRolesUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
-	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		Value()
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -151,7 +169,9 @@ func (r *productRoleRepositoryImpl) Update(
 		table.ProductRoles.ID.EQ(postgres.String(domainRole.ID)).
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(domainRole.ProductID))),
 	)
-	if err := transactor.Exec(ctx, r.db, updateStmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		Err(); err != nil {
 		return role.ProductRole{}, err
 	}
 	updated, err := r.FindByProductIDAndRoleID(ctx, domainRole.ProductID, domainRole.ID)
@@ -336,6 +356,13 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 ) (search.Result[role.ProductRole], error) {
 	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID))
+	if input.FullTextSearch != nil {
+		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
+		whereStmt = whereStmt.AND(
+			postgres.LOWER(table.ProductRoles.Name).LIKE(pattern).
+				OR(postgres.LOWER(table.ProductRoles.Description).LIKE(pattern)),
+		)
+	}
 
 	if input.Filter != nil {
 		if len(input.Filter.ProductRoleIDs) > 0 {
@@ -369,6 +396,27 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	// page is taken on roles alone and permissions are fetched separately for the
 	// paged roles with no limit/offset. See product_api_key_repository.go's
 	// SearchByProductID for the same pattern.
+	idKey := transactor.StringKey(table.ProductRoles.ID, func(row model.ProductRoles) string { return row.ID })
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[role.SortFieldProductRole]transactor.Key[model.ProductRoles]{
+			role.SortFieldProductRoleCreatedAt: transactor.TimeKey(
+				table.ProductRoles.CreatedAt, func(row model.ProductRoles) time.Time { return row.CreatedAt },
+			),
+			role.SortFieldProductRoleUpdatedAt: transactor.TimeKey(
+				table.ProductRoles.UpdatedAt, func(row model.ProductRoles) time.Time { return row.UpdatedAt },
+			),
+			role.SortFieldProductRoleName: transactor.StringKey(
+				table.ProductRoles.Name, func(row model.ProductRoles) string { return row.Name },
+			),
+			role.SortFieldProductRoleID: idKey,
+		},
+		idKey,
+	)
+	if err != nil {
+		return search.Result[role.ProductRole]{}, err
+	}
+
 	pageResult, err := transactor.Page(
 		r.db,
 		func(entity model.ProductRoles) model.ProductRoles { return entity },
@@ -376,20 +424,15 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	).
 		From(table.ProductRoles).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[role.SortFieldProductRole]postgres.Column{
-				role.SortFieldProductRoleCreatedAt: table.ProductRoles.CreatedAt,
-				role.SortFieldProductRoleUpdatedAt: table.ProductRoles.UpdatedAt,
-				role.SortFieldProductRoleName:      table.ProductRoles.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to search product roles")
+		if !searchx.IsClientError(err) {
+			r.logger.Error().Err(err).Str(
+				"productID", productID,
+			).Msg("failed to search product roles")
+		}
 		return search.Result[role.ProductRole]{}, err
 	}
 
@@ -429,9 +472,10 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	)
 
 	return search.Result[role.ProductRole]{
-		Items: items,
-		Total: pageResult.Total,
-		Count: len(items),
+		Items:      items,
+		Total:      pageResult.Total,
+		Count:      len(items),
+		NextCursor: pageResult.NextCursor,
 	}, nil
 }
 

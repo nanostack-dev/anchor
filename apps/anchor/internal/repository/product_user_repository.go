@@ -14,6 +14,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
@@ -146,6 +147,13 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 	)
 }
 
+const productUserEmailUniqueConstraint = "product_users_product_id_email_key"
+
+// ErrProductUserEmailExists is returned by Create when the product already has
+// a user with that email: the unique constraint settles the race the service
+// pre-check cannot.
+var ErrProductUserEmailExists = errors.New("product user email already exists in product")
+
 func (r *productUserRepositoryImpl) Create(
 	ctx context.Context,
 	newUser user.ProductUser,
@@ -161,7 +169,7 @@ func (r *productUserRepositoryImpl) Create(
 		r.db,
 		stmt,
 		r.productUserMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrProductUserEmailExists, productUserEmailUniqueConstraint).Value()
 }
 
 func (r *productUserRepositoryImpl) Update(
@@ -319,19 +327,35 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		)
 	}
 
+	order, err := transactor.StrictKeys(
+		request.Sort,
+		map[user.SortFieldProductUser]transactor.Key[model.ProductUsers]{
+			user.SortFieldProductUserCreatedAt: transactor.TimeKey(
+				table.ProductUsers.CreatedAt, func(row model.ProductUsers) time.Time { return row.CreatedAt },
+			),
+			user.SortFieldProductUserUpdatedAt: transactor.TimeKey(
+				table.ProductUsers.UpdatedAt, func(row model.ProductUsers) time.Time { return row.UpdatedAt },
+			),
+			user.SortFieldProductUserEmail: transactor.StringKey(
+				table.ProductUsers.Email, func(row model.ProductUsers) string { return row.Email },
+			),
+			user.SortFieldProductUserName: transactor.NullableStringKey(
+				table.ProductUsers.Name, func(row model.ProductUsers) *string { return row.Name },
+			),
+			user.SortFieldProductUserStatus: transactor.StringKey(
+				table.ProductUsers.Status, func(row model.ProductUsers) string { return row.Status },
+			),
+		},
+		transactor.StringKey(table.ProductUsers.ID, func(row model.ProductUsers) string { return row.ID }),
+	)
+	if err != nil {
+		return search.Result[user.ProductUser]{}, err
+	}
+
 	return transactor.Page(r.db, r.productUserMapper.ToDomain, table.ProductUsers.AllColumns).
 		From(table.ProductUsers).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			request.Sort,
-			map[user.SortFieldProductUser]postgres.Column{
-				user.SortFieldProductUserCreatedAt: table.ProductUsers.CreatedAt,
-				user.SortFieldProductUserUpdatedAt: table.ProductUsers.UpdatedAt,
-				user.SortFieldProductUserEmail:     table.ProductUsers.Email,
-				user.SortFieldProductUserName:      table.ProductUsers.Name,
-				user.SortFieldProductUserStatus:    table.ProductUsers.Status,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, request.Pagination).
 		Value()
 }

@@ -158,7 +158,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		w := newLicenseWorld(t)
 
 		resp := w.License().For(missingOrganizationID()).HistoryRaw(
-			ct.GetOrganizationLicenseHistoryParams{},
+			ct.SearchOrganizationLicenseHistoryJSONRequestBody{},
 		)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
@@ -168,7 +168,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 		second := newLicenseWorld(t)
 
 		resp := second.License().For(first.OrganizationID()).HistoryRaw(
-			ct.GetOrganizationLicenseHistoryParams{},
+			ct.SearchOrganizationLicenseHistoryJSONRequestBody{},
 		)
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
@@ -179,7 +179,7 @@ func TestOrganizationLicenseHistoryRead(t *testing.T) {
 			[]string{"organization_license:create", "organization_license:update"},
 		)
 
-		resp := w.License().As(writeOnly).HistoryRaw(ct.GetOrganizationLicenseHistoryParams{})
+		resp := w.License().As(writeOnly).HistoryRaw(ct.SearchOrganizationLicenseHistoryJSONRequestBody{})
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
 	})
 }
@@ -221,8 +221,10 @@ func historyRowCount(t *testing.T, organizationID string) int {
 	return count
 }
 
-func historyPage(limit, offset int32) ct.GetOrganizationLicenseHistoryParams {
-	return ct.GetOrganizationLicenseHistoryParams{Limit: &limit, Offset: &offset}
+func historyPage(limit, offset int32) ct.SearchOrganizationLicenseHistoryJSONRequestBody {
+	return ct.SearchOrganizationLicenseHistoryJSONRequestBody{
+		Pagination: &ct.PaginationRequest{Limit: &limit, Offset: &offset},
+	}
 }
 
 func entryIDs(entries []ct.OrganizationLicenseChangeResponse) []string {

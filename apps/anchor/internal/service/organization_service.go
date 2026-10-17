@@ -17,9 +17,11 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -106,6 +108,7 @@ type organizationService struct {
 	productRoleRepo   repository.ProductRoleRepository
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
+	workspaces        WorkspaceService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
 	events            events.Emitter
@@ -119,6 +122,7 @@ func NewOrganizationService(
 	productRoleRepo repository.ProductRoleRepository,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
+	workspaces WorkspaceService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
 	eventEmitter events.Emitter,
@@ -131,6 +135,7 @@ func NewOrganizationService(
 		productRoleRepo:   productRoleRepo,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
+		workspaces:        workspaces,
 		transactor:        tx,
 		lock:              lock,
 		events:            eventEmitter,
@@ -155,7 +160,7 @@ func (s *organizationService) resolveLicenseTemplate(
 		return nil, nil //nolint:nilnil // no license asked for is not an error
 	}
 
-	template, err := s.licenseTemplates.GetTemplate(ctx, license.GetTemplateInput{
+	template, err := s.licenseTemplates.GetTemplate(transactor.ForShare(ctx), license.GetTemplateInput{
 		TenantID:   tenantID,
 		ProductID:  productID,
 		TemplateID: *templateID,
@@ -234,30 +239,34 @@ func (s *organizationService) attachIncludes(
 	organizations []organization.Organization,
 	includes []organization.Include,
 ) ([]organization.Organization, error) {
-	if len(organizations) == 0 || !slices.Contains(includes, organization.IncludeLicense) {
+	if len(organizations) == 0 {
 		return organizations, nil
 	}
-
 	organizationIDs := functional.Slice(organizations).Map(func(org organization.Organization) string {
 		return org.ID
 	}).ToSlice()
-
-	licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
-		TenantID:        tenantID,
-		ProductID:       productID,
-		OrganizationIDs: organizationIDs,
-	})
-	if err != nil {
-		s.logger.Error().
-			Str("product_id", productID).
-			Err(err).
-			Msg("failed to read the licenses of the organizations read")
-		return nil, err
+	if slices.Contains(includes, organization.IncludeLicense) {
+		licenses, err := s.licenses.ListByOrganizations(ctx, license.ListLicensesByOrganizationsInput{
+			TenantID: tenantID, ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			if held, ok := licenses[org.ID]; ok {
+				organizations[i].License = &held
+			}
+		}
 	}
-
-	for i, org := range organizations {
-		if held, ok := licenses[org.ID]; ok {
-			organizations[i].License = &held
+	if slices.Contains(includes, organization.IncludeWorkspace) {
+		linked, err := s.workspaces.ListByOrganizations(ctx, workspace.ListByOrganizationsInput{
+			ProductID: productID, OrganizationIDs: organizationIDs,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for i, org := range organizations {
+			organizations[i].Workspaces = linked[org.ID]
 		}
 	}
 	return organizations, nil
@@ -318,6 +327,16 @@ func (s *organizationService) Create(
 			return licenseErr
 		}
 		created.License = instantiated
+		if input.Workspace != nil {
+			if _, workspaceErr := s.workspaces.Create(
+				txCtx,
+				workspace.CreateWorkspaceInput{Name: input.Workspace.Name, Description: input.Workspace.Description,
+					ProductID: input.ProductID, OrganizationID: created.ID,
+				},
+			); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		return s.emitOrganization(txCtx, events.OrganizationCreated, created.ProductID, created.ID)
 	}); txErr != nil {
@@ -348,61 +367,12 @@ func (s *organizationService) CreateWithMember(
 		return organization.OrganizationWithMemberResult{}, err
 	}
 
-	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, false,
-	)
+	existing, err := s.findExistingOrganizationWithMember(ctx, input, logger)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("failed to check existing memberships for idempotency")
 		return organization.OrganizationWithMemberResult{}, err
 	}
-	if len(existingMemberships) > 0 {
-		existing := existingMemberships[0]
-
-		// Below, the organization and membership are re-read by an id this call
-		// never named; both came off existingMemberships a moment ago. Neither
-		// caller input caused an absence here, so a miss is a server invariant,
-		// not a 404: see PublishTemplate's second guard in
-		// docs/engineering-best-practices.md.
-		foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
-		if errGetOrg != nil {
-			return organization.OrganizationWithMemberResult{}, errGetOrg
-		}
-		if foundOrg.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
-				"create-with-member: organization %s missing after membership lookup",
-				existing.OrganizationID,
-			)
-		}
-		org := foundOrg.ToPtr()
-
-		foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
-			ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, false,
-		)
-		if errGetMembership != nil {
-			return organization.OrganizationWithMemberResult{}, errGetMembership
-		}
-		if foundMembership.IsAbsent() {
-			return organization.OrganizationWithMemberResult{}, fmt.Errorf(
-				"create-with-member: membership for product user %s in organization %s missing after lookup",
-				input.ProductUserID, existing.OrganizationID,
-			)
-		}
-		membership := foundMembership.ToPtr()
-
-		logger.Info().
-			Str("product_id", input.ProductID).
-			Str("organization_id", org.ID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("CreateWithMember: returning existing org+membership (idempotent)")
-
-		return organization.OrganizationWithMemberResult{
-			Organization: *org,
-			Membership:   *membership,
-			WasExisting:  true,
-		}, nil
+	if existing.IsPresent() {
+		return existing.Value(), nil
 	}
 
 	// No existing membership — acquire the lock and create the org + founding membership atomically.
@@ -493,6 +463,19 @@ func (s *organizationService) CreateWithMember(
 			return licenseErr
 		}
 		createdOrg.License = createdLicense
+		if input.Workspace != nil {
+			if _, workspaceErr := s.workspaces.Create(
+				lockCtx,
+				workspace.CreateWorkspaceInput{
+					Name:           input.Workspace.Name,
+					Description:    input.Workspace.Description,
+					ProductID:      input.ProductID,
+					OrganizationID: createdOrg.ID,
+				},
+			); workspaceErr != nil {
+				return workspaceErr
+			}
+		}
 
 		if emitErr := s.emitOrganization(
 			lockCtx,
@@ -540,6 +523,69 @@ func (s *organizationService) CreateWithMember(
 		Membership:   createdMembership,
 		WasExisting:  false,
 	}, nil
+}
+
+func (s *organizationService) findExistingOrganizationWithMember(
+	ctx context.Context, input organization.CreateOrganizationWithMemberInput, logger zerolog.Logger,
+) (functional.Option[organization.OrganizationWithMemberResult], error) {
+	existingMemberships, err := s.orgMembershipRepo.FindByProductUserID(
+		ctx, input.ProductID, input.ProductUserID, organization.WithoutRolePermissions,
+	)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", input.ProductID).
+			Str("product_user_id", input.ProductUserID).
+			Msg("failed to check existing memberships for idempotency")
+		return functional.None[organization.OrganizationWithMemberResult](), err
+	}
+	if len(existingMemberships) == 0 {
+		return functional.None[organization.OrganizationWithMemberResult](), nil
+	}
+
+	existing := existingMemberships[0]
+
+	// Below, the organization and membership are re-read by an id this call
+	// never named; both came off existingMemberships a moment ago. Neither
+	// caller input caused an absence here, so a miss is a server invariant,
+	// not a 404: see PublishTemplate's second guard in
+	// docs/engineering-best-practices.md.
+	foundOrg, errGetOrg := s.organizationRepo.FindByID(ctx, input.ProductID, existing.OrganizationID)
+	if errGetOrg != nil {
+		return functional.None[organization.OrganizationWithMemberResult](), errGetOrg
+	}
+	if foundOrg.IsAbsent() {
+		return functional.None[organization.OrganizationWithMemberResult](), fmt.Errorf(
+			"create-with-member: organization %s missing after membership lookup",
+			existing.OrganizationID,
+		)
+	}
+	org := foundOrg.ToPtr()
+
+	foundMembership, errGetMembership := s.orgMembershipRepo.FindByOrgIDAndUserID(
+		ctx, input.ProductID, existing.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
+	)
+	if errGetMembership != nil {
+		return functional.None[organization.OrganizationWithMemberResult](), errGetMembership
+	}
+	if foundMembership.IsAbsent() {
+		return functional.None[organization.OrganizationWithMemberResult](), fmt.Errorf(
+			"create-with-member: membership for product user %s in organization %s missing after lookup",
+			input.ProductUserID, existing.OrganizationID,
+		)
+	}
+	membership := foundMembership.ToPtr()
+
+	logger.Info().
+		Str("product_id", input.ProductID).
+		Str("organization_id", org.ID).
+		Str("product_user_id", input.ProductUserID).
+		Msg("CreateWithMember: returning existing org+membership (idempotent)")
+
+	return functional.Some(organization.OrganizationWithMemberResult{
+		Organization: *org,
+		Membership:   *membership,
+		WasExisting:  true,
+	}), nil
 }
 
 func (s *organizationService) Update(
@@ -662,16 +708,18 @@ func (s *organizationService) Search(
 ) (search.Result[organization.Organization], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[organization.Organization]{}, err
 	}
 
 	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search organizations")
+		if !searchx.IsClientError(err) {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Err(err).
+				Msg("failed to search organizations")
+		}
 		return search.Result[organization.Organization]{}, err
 	}
 

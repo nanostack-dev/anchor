@@ -8,7 +8,7 @@ The database enforces structural integrity only. Every business rule — input s
 
 ### 1. Every service input goes through the validator
 
-- Define a dedicated `*Input` struct per operation in the domain layer (`internal/domain/<aggregate>/`), with `validate:"..."` struct tags. Inputs, DB structs, and domain objects are distinct types.
+- Define a dedicated `*Input` struct per operation in the domain layer (`internal/domain/<aggregate>/`), with `validate:"..."` struct tags. Inputs, DB structs, and domain objects are distinct types. Exception: if the arguments are only identifiers (ids, plus an optional credential such as a token), pass them as parameters. Do not wrap them in an `*Input` struct. Check emptiness inline. Use `*Input` when the operation carries a body: several fields, optionals, or semantic rules.
 - Validation uses `go-playground/validator/v10` through the shared wrapper `github.com/nanostack-dev/nanostack-framework/pkg/validate` (`ValidateStruct`). Custom tags available: `notblank`, `strongpassword`, `permission_name`, `request_url`.
 - **Every exported service method validates its input as its first action** — before any repository call, transaction, or external call. Two sanctioned styles:
   - Inline: `if err := validateStruct(input); err != nil { return ..., err }` at the top of the method.
@@ -32,6 +32,27 @@ The database enforces structural integrity only. Every business rule — input s
 - Wiring via Uber FX modules; DB access via go-jet generated models; schema changes via migrations only, never hot DB edits.
 - Spec-first API work: update `openapi.yaml`, regenerate through the repo command, never hand-edit generated files. Enums are shared component schemas referenced by `$ref`, with `x-go-type`/`x-go-type-import` when mapped to domain types.
 
+## Database migrations and rollout
+
+A rolling deploy runs the old and the new application against the new schema at the same time, and a production table is never empty. Each rule below prevents a change that passes on a fresh database and fails on a loaded one or mid-rollout. The `migration-lint` job of `go.yml` enforces the index and backfill rules on every migration a pull request adds ([how it works](https://github.com/nanostack-dev/ci-workflows/blob/main/docs/technical/migration-lint.md)); `-- lint: allow-backfill <reason>`, `-- lint: allow-hypertable-index <reason>` and `-- squawk-ignore <rule>` record a reviewed exception in the diff.
+
+**Migrations are append-only once on `main`.** Dev and prod may already have run them, so a change is always a new migration. Both repos follow this; Echopoint's `AGENTS.md` links its `migrations-verify` CI job and the postmortem of the deleted migration.
+
+**Build an index on an existing table with `CREATE INDEX CONCURRENTLY IF NOT EXISTS`, alone in its migration file.** A plain `CREATE INDEX` blocks writes for the whole build. golang-migrate sends a single-statement file without a transaction. A second statement turns the file into an implicit transaction, and PostgreSQL refuses `CONCURRENTLY` inside one. The down file is `DROP INDEX CONCURRENTLY IF EXISTS`.
+
+- A TimescaleDB hypertable cannot build concurrently. Use `CREATE INDEX IF NOT EXISTS ... WITH (timescaledb.transaction_per_chunk)` and a plain `DROP INDEX IF EXISTS` down file, as Echopoint migration `000066` does.
+- A failed concurrent build leaves an INVALID index and a dirty migration. Drop the index by name, force the migration version back, then rerun. `IF NOT EXISTS` would skip the invalid index by name and record the migration as applied with an index no query can use.
+
+**Never backfill a large table with one `UPDATE` in a migration.** The row locks last until commit and block every writer on the table (echopoint#644 review). Prefer a derived value as a PostgreSQL 18 `GENERATED ALWAYS AS (...) VIRTUAL` column with a concurrent expression index: adding it is metadata-only and it is always consistent, as in Echopoint migration `000084`. When a stored value is unavoidable, backfill in batches from an application job.
+
+**Expand, then contract.** Every migration must work with the previous application version still running.
+
+- Add nullable or defaulted columns.
+- Never rename or drop a column the running version uses in the same release. Do it in a later release, once no running version reads it.
+- Never require application code to maintain a derived column. Old pods do not know about it and keep writing stale values. Compute it in the database (the `VIRTUAL` column above).
+
+**A new config field is optional with a default.** The framework loader treats an untagged field as required, so tag it `optional:"true"` and apply the default in code. A deployment whose config predates the field must still start. echopoint#645 crashed at startup in e2e because of a required `anchor.page_size`. Test the service with the deployed config shape, not only with the file in the repo.
+
 ## API conventions
 
 ### The `?include=` query parameter
@@ -44,7 +65,7 @@ Give each aggregate its own enum. A value that is valid for one aggregate is not
 
 **An enum, never a free string.** Map the enum schema to the domain type with `x-go-type` and `x-go-type-import`. The generated binding then refuses an unknown value with a 400, before the request gets to the service. A free string moves that work into the service. The service must then invent an error, or discard the value with no message to the caller.
 
-**Absent is not empty.** Carry the related resource as an optional pointer on the domain object, and as an optional property in the response. Nil means "the caller did not ask for it". Nil never means "the parent does not have it". Write that sentence on the domain field and in the OpenAPI description of the property. A consumer that reads absence as "none" gets a wrong answer from every call that omits the include.
+**Absent is not empty.** Carry a single related resource as an optional pointer on the domain object. For collections, use a plain slice in the domain and pass the include choice explicitly to the API mapper, as role permissions and organization workspaces do. Keep the response property optional: omit an unrequested collection, and return `[]` for a requested collection with no records. A pointer to the response slice preserves this distinction with JSON `omitempty`; it does not belong on the domain collection. An absent response property means "the caller did not ask for it", never "the parent does not have it". Document that distinction in the OpenAPI property description. A consumer that reads absence as "none" gets a wrong answer from every call that omits the include.
 
 **One statement per included resource.** Read the page first. Then fill in each named resource for the whole page in one statement. Use a batch repository method that takes the parent IDs and returns a map keyed by parent ID — see `FindByOrganizations` in anchor. Never call the single-parent read in a loop. A loop turns a page of 100 rows into 101 statements. With the batch method, an include costs one more statement for the whole page, at any page size. Put that cost in the parameter description, so the caller knows the price.
 
@@ -55,6 +76,40 @@ Give each aggregate its own enum. A value that is valid for one aggregate is not
 **An include never carries derived data.** An include returns the stored record only. Data that a dedicated endpoint computes stays on that endpoint. In anchor the license include returns `license.OrganizationLicense`. The license route returns `license.OrganizationLicenseRead`, which adds usage and a derived status. Two types put the rule under the compiler. There are two reasons for the rule. Derived data has its own cost, cache, and freshness rules, and a page-wide include multiplies that cost where no caller can see it. Two sources for one computed value also drift apart.
 
 **Add the parameter without a break.** Keep the parameter `required: false`. In the Go SDK, add it as a variadic argument on a single-resource read — `Get(ctx, id, include ...Include)` — and as an `Include(...)` builder method on a search. Existing callers then compile with no change. Never add the include as a new positional argument. Never change a response type to carry it. A new enum value is an additive change. Removal of an enum value is a breaking change.
+
+### Collections are cursor-paginated searches
+
+Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.StrictKeys` (which refuses a sort field the search does not map) with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
+
+**Shape.** `POST /<collection>/search`, with `filter`, `sort`, optional full-text and `pagination` in the body. Nest the route under the parent when the parent scopes the collection (`/organizations/{organization_id}/workspaces/search`). The response carries `items`, `total`, `count` and `next_cursor`.
+
+**Cursor contract.**
+
+- `pagination.cursor` is optional. Absent starts at the first row. Send back the previous response's `next_cursor` to continue, with the same filter and sort.
+- `next_cursor` is absent or null on the last page. Iterate until it is absent; never infer the end from `count < limit` or from `total`.
+- `total` counts every match of the filter, not the rows left after the cursor.
+- A cursor is opaque. Clients never build, parse or store one beyond the walk that produced it. A cursor issued for another sort, a malformed one, or a cursor sent with a non-zero `offset` answers 400 (`INVALID_CURSOR`).
+- `offset` stays for page-number navigation in a UI table. Machine iteration (syncs, exports, SDK `All` helpers, MCP tools, the CLI, Terraform data sources) always uses the cursor.
+
+**Validate before shortcuts.** A search validates its whole input before any early return, such as an empty scope: the sort field, the filter enum values, and the cursor (`search.Pagination.Validate` and `Order.Seek`). An unknown `sort_by` or filter value answers 400, never a silent fallback to the default. Otherwise the same request answers 400 or 200 depending on how much data the caller has (echopoint#644 and #645 reviews).
+
+**Ordering is total.** Every sortable field maps to a typed key (`StringKey`, `EnumKey`, `TimeKey`, `IntKey`, `Nullable*` for a nullable column), and the ordering ends with the primary key as the tiebreak. A search without a requested sort orders by its documented default, still ending with the id. Never order a page by a non-unique column alone.
+
+**Indexes.** A search on a table that grows without bound has a composite index matching its default ordering behind its scope, for example `(organization_id, created_at, id)`. The seek is then one range scan, at any depth.
+
+**Static catalogs and aggregates are not resources.** A fixed list compiled into the binary (node definitions, permissions), a live in-memory view (connected runners) and an aggregate computed per request (analytics buckets, usage series) return their array directly. Pagination there would be a fiction. State the reason in the operation description.
+
+**GET lists.** A new collection gets a search, never a `GET` list. An existing `GET` list of a persisted resource is deprecated in the spec, with `deprecated: true` and the search named in its description, once the search exists. First-party clients move to the search in the same change.
+
+**Replacing a list or a consumer.** Before moving an endpoint or a consumer to a search, write the parity matrix of the old behavior and pin each row with a test: the limit cap and whether it read everything, the matching semantics (case sensitivity, `LIKE` wildcards), the default order, the fields present in items, and the totals. A difference is deliberate and named in the PR. The cursor-search rollout (anchor#234, echopoint#644, echopoint#645) caught deprecated email lists clamped at 1000, a template search that lost `description` and case-insensitivity, and folder trees truncated at 100.
+
+**Reading every row.** A caller that needs every row walks `next_cursor` to the end. A single page of N rows is a defect, unless the collection is bounded by design and the bound is stated where the call is made.
+
+**SDK.** A search builder exposes `Cursor(string)` and the result exposes `NextCursor`. Offer an iterator (`All(ctx)` / `Pages(ctx)`) that follows `next_cursor`, so callers never write the loop themselves.
+
+**Tests.** Every search has an integration test that walks more than one page by cursor across rows with tied sort values, and asserts that each row comes back exactly once, in order. An invalid cursor answers 400.
+
+**Conformance.** Every search has a `searchtest` suite in the component tests: walks for its default order and every sort field, refusals in every scope including short-circuit ones, and forged cursors where the service issues them.
 
 ### HTTP error statuses
 
@@ -79,7 +134,7 @@ Five statuses stay out. 402 is reserved for future use by RFC 9110 §15.5.3, so 
 
 **A path with two identifiers answers 404 on whichever one is absent.** `/organizations/{organization_id}/resource/{resource_id}` addresses one target through two segments. Either segment failing to resolve means the target does not exist, so both answer 404. Depth does not change the rule, and neither does which segment failed.
 
-Read the parent before the child, or scope the child read by the parent. One of the two, never neither. A child read by its own identifier alone returns a row that belongs to a different parent, and answering 200 with it is a cross-tenant leak wearing a valid URL. Echopoint's `GetExecution` in `internal/feature/executions/handler.go` takes the first route and then guards the second: it reads the flow, answers 404 when the flow is absent, and rejects the execution again with `exec.FlowID != request.FlowId`, because `GetExecutionByID` is scoped by organization and not by flow. Anchor's `GetLicense` takes the second route: `FindByOrganization(tenantID, productID, organizationID)` cannot return another organization's license, so no second guard is needed.
+Read the parent before the child, or scope the child read by the parent. One of the two, never neither. A child read by its own identifier alone returns a row that belongs to a different parent, and answering 200 with it is a cross-tenant leak wearing a valid URL. Echopoint's `GetExecutionOfFlow` in `internal/feature/executions/executions_read.go` takes the first route and then guards the second: it reads the flow, answers `FLOW_NOT_FOUND` when the flow is absent, and answers `EXECUTION_NOT_FOUND` for an execution of another flow, because `FindExecutionByID` is scoped by organization and not by flow. Anchor's `GetLicense` takes the second route: `FindByOrganization(tenantID, productID, organizationID)` cannot return another organization's license, so no second guard is needed.
 
 Give the parent its own error code only when the caller acts differently on it. The extra code costs a read of the parent that a parent-scoped child read would have skipped. Anchor pays that cost on the instantiate route, where `ORGANIZATION_NOT_FOUND` and `ORGANIZATION_LICENSE_NOT_FOUND` are distinct, and it pays it without an extra round trip: the parent 404 comes off a foreign-key violation on the insert, not off a lookup. Echopoint's `GetExecution` declines the cost and answers one undistinguished 404. Both are correct.
 
@@ -89,35 +144,31 @@ There is a defensible house convention that says the opposite: an action call is
 
 **A body-named or query-named entity answers 400.** The target resource exists; a value the caller supplied does not resolve. Anchor already states the rule in code, at `resolveLicenseTemplate` in `internal/service/organization_service.go` — creating an organization with an unknown `template_id` returns `ORGANIZATION_LICENSE_TEMPLATE_NOT_FOUND` as a 400, with this comment: "A bad request, not the 404 the license route answers: this call addressed the organization collection, which exists." The license route itself returns `LICENSE_TEMPLATE_NOT_FOUND` as a 404, because there the template is the path. One template, two statuses, one rule.
 
-Echopoint applies the same rule to the launch body. `ResolveForFlowExecution` in `internal/feature/environments/service.go` returns `ENVIRONMENT_KEY_NOT_FOUND` as a 400 for an unknown `environment_key`.
+Echopoint applies the same rule to the launch body. `ResolveForFlowExecution` in `internal/feature/variables/service.go` returns `ENVIRONMENT_KEY_NOT_FOUND` as a 400 for an unknown `environment_key`.
 
 Put the unresolved value in `Metadata`, so a form can point at the offending field without parsing prose.
 
+**Tenant HTTP context is established once.** This rule is Echopoint's: Anchor does not carry the organization in the request context. Echopoint's `AuthMiddleware` validates and normalizes the organization after tenant Bearer/API-key authentication. Protected tenant handlers read `contextkeys.OrganizationID(ctx)` before writing a response; they do not repeat the fallible presence check. Missing context is a typed wiring invariant contained by that middleware, logged once and rendered as the existing generic 500. Other panics are rethrown. `RequireOrganizationID` remains for optional/background contexts and middleware validation. Public operations, `/me`, `/me/invitations`, `/init`, invitation acceptance, the global `/administrations/cloud-fleet` operations, and JobToken callbacks retain their distinct context contracts. Job-token runner callbacks use the accessor only inside the API-key branch. Actor, permission and resource-ownership checks remain separate; `AuthContext.ActorID()` selects the principal's ID without guaranteeing it is present.
+
 **A broken server invariant answers 500.** RFC 9110 §15.5.1 makes 400 conditional on "something that is perceived to be a client error". When the server cannot read back a row it wrote itself, there is no client error to perceive. The caller named nothing, so there is nothing for the caller to correct, and a 400 tells them to correct it. A 404 is equally wrong: it reports the resource as absent when the transaction that created it committed.
 
-`PublishTemplate` in `internal/email/service/service.go` holds both cases in one method. The first guard is a 404, because the caller named `in.TemplateID` in the path:
+`PublishTemplate` in `internal/email/service/service.go` holds both cases in one method. The first guard, in `lockTemplate`, is a 404, because the caller named `in.TemplateID` in the path:
 
 ```go
-tpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
-if err != nil {
-    return email.TemplateVersion{}, err
-}
-if tpl == nil {
-    return email.TemplateVersion{}, ErrEmailTemplateNotFound
+if found.IsAbsent() {
+    return nil, ErrEmailTemplateNotFound
 }
 ```
 
-The second guard re-reads the version the transaction just published. The caller never named it:
+The second guard re-reads the version the transaction just marked published. The caller never named it:
 
 ```go
-published, err := s.versionRepo.FindByID(ctx, publishedID)
+foundPublished, err := s.versionRepo.FindByID(txCtx, draft.ID)
 if err != nil {
-    return email.TemplateVersion{}, err
+    return err
 }
-if published == nil {
-    return email.TemplateVersion{}, fmt.Errorf(
-        "publish: version %s missing after commit", publishedID,
-    )
+if foundPublished.IsAbsent() {
+    return fmt.Errorf("publish: version %s missing after its status update", draft.ID)
 }
 ```
 

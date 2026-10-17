@@ -10,8 +10,11 @@ import {
 } from "@/client";
 import {
 	getEmailTemplateDraftOptions,
+	getEmailTemplateDraftQueryKey,
 	getEmailTemplateExamplesOptions,
+	getEmailTemplateExamplesQueryKey,
 	getEmailTemplateOptions,
+	getEmailTemplateQueryKey,
 	listIntegrationInstancesOptions,
 	previewEmailTemplateMutation,
 	publishEmailTemplateMutation,
@@ -23,7 +26,6 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTE_PATHS } from "@/routes/routePaths";
-import Editor from "@monaco-editor/react";
 import { CopyButton } from "@nanostackorg/design-system/blocks/copy-button";
 import {
 	Button,
@@ -75,6 +77,7 @@ import {
 	TrashIcon as Trash2,
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Editor from "./LocalEditor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -149,12 +152,10 @@ function stringifyExampleValues(
 // Extracts all .ident references from a template fragment.
 function extractRefs(src: string): string[] {
 	const seen = new Set<string>();
-	const re = /\{\{-?\s*[^}]*?\.(\w+)/g;
-	let match = re.exec(src);
-
-	while (match !== null) {
-		seen.add(match[1]);
-		match = re.exec(src);
+	for (const action of src.matchAll(/\{\{([\s\S]*?)\}\}/g)) {
+		const expression = action[1].replace(/"(?:\\.|[^"\\])*"|`[^`]*`/g, "");
+		for (const reference of expression.matchAll(/(?<![\w.])\.([a-zA-Z_]\w*)/g))
+			seen.add(reference[1]);
 	}
 
 	return Array.from(seen);
@@ -815,7 +816,7 @@ function ExampleVarInput({
 				{typeLabel() && (
 					<Box
 						as="span"
-						className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 rounded"
+						className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded"
 					>
 						{typeLabel()}
 					</Box>
@@ -878,7 +879,9 @@ function ExampleManager({
 		path: { product_id: productId, email_template_id: templateId },
 	};
 
-	const { data } = useQuery(getEmailTemplateExamplesOptions(queryOptions));
+	const { data, isError, refetch } = useQuery(
+		getEmailTemplateExamplesOptions(queryOptions),
+	);
 
 	const [examples, setExamples] = useState<TemplateExample[]>([]);
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -888,27 +891,31 @@ function ExampleManager({
 	const [rawMode, setRawMode] = useState(false);
 	const [rawText, setRawText] = useState("");
 	const [rawError, setRawError] = useState<string | null>(null);
-	const initialized = useRef(false);
+	const [hydrated, setHydrated] = useState(false);
 	const schemaNames = useMemo(() => variables.map((v) => v.name), [variables]);
 
 	useEffect(() => {
-		if (data && !initialized.current) {
+		if (data && !hydrated) {
 			setExamples(data.examples ?? []);
 			if ((data.examples ?? []).length > 0) {
 				const first = data.examples[0];
 				setActiveId(first.id);
 				onActiveChange(stringifyExampleValues(first.variables ?? {}));
 			}
-			initialized.current = true;
+			setHydrated(true);
 		}
-	}, [data, onActiveChange]);
+	}, [data, hydrated, onActiveChange]);
 
 	const { mutate: saveExamples } = useMutation({
 		...saveEmailTemplateExamplesMutation(),
 		onMutate: () => setSaveStatus("saving"),
 		onSuccess: () => {
 			setSaveStatus("saved");
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplateExamples"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateExamplesQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
 			setTimeout(() => setSaveStatus("idle"), 2000);
 		},
 		onError: () => setSaveStatus("error"),
@@ -1008,7 +1015,7 @@ function ExampleManager({
 	}
 
 	useEffect(() => {
-		if (!initialized.current) return;
+		if (!hydrated) return;
 		let activePatched: Record<string, unknown> | null = null;
 		setExamples((prev) => {
 			let didPatch = false;
@@ -1025,7 +1032,7 @@ function ExampleManager({
 			return didPatch ? nextExamples : prev;
 		});
 		if (activePatched) onActiveChange(stringifyExampleValues(activePatched));
-	}, [activeId, onActiveChange, schemaNames]);
+	}, [activeId, hydrated, onActiveChange, schemaNames]);
 
 	return (
 		<Stack space="lg">
@@ -1042,20 +1049,40 @@ function ExampleManager({
 					variant="outline"
 					size="sm"
 					onClick={handleNewExample}
+					disabled={!hydrated}
 				>
 					New Example
 				</Button>
 			</Spread>
 
-			{examples.length === 0 ? (
+			{!hydrated || examples.length === 0 ? (
 				<Box className="border rounded-lg p-8 text-center">
 					<FileText className="size-8 text-muted-foreground mx-auto mb-3" />
 					<Box as="p" className="text-sm text-muted-foreground mb-1">
-						No examples yet
+						{hydrated
+							? "No examples yet"
+							: isError
+								? "Could not load examples."
+								: "Loading examples…"}
 					</Box>
 					<Text size="xs" tone="muted">
-						Create an example to pre-fill variables for preview and test sends
+						{hydrated
+							? "Create an example to pre-fill variables for preview and test sends"
+							: isError
+								? "Retry to load your saved examples before editing"
+								: "Saved examples will be available once loading completes"}
 					</Text>
+					{!hydrated && isError && (
+						<Box className="mt-3">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => void refetch()}
+							>
+								Retry
+							</Button>
+						</Box>
+					)}
 				</Box>
 			) : (
 				<Box className="flex flex-col gap-3 sm:flex-row">
@@ -1171,7 +1198,7 @@ function ExampleManager({
 					icon={Save}
 					size="sm"
 					onClick={handleSave}
-					disabled={saveStatus === "saving"}
+					disabled={!hydrated || saveStatus === "saving"}
 				>
 					{saveStatus === "saving" ? "Saving…" : "Save Examples"}
 				</Button>
@@ -1377,12 +1404,14 @@ function buildVarsPayload(
 	for (const [k, v] of Object.entries(values)) {
 		if (v === "") continue;
 		const schema = schemas.find((s) => s.name === k);
-		const isComplex =
+		const isTyped =
 			schema?.type === EmailVariableType.LIST ||
-			schema?.type === EmailVariableType.OBJECT;
+			schema?.type === EmailVariableType.OBJECT ||
+			schema?.type === EmailVariableType.NUMBER ||
+			schema?.type === EmailVariableType.BOOL;
 		const trimmed = v.trimStart();
 		const looksLikeJson = trimmed.startsWith("[") || trimmed.startsWith("{");
-		if (isComplex || looksLikeJson) {
+		if (isTyped || looksLikeJson) {
 			try {
 				vars[k] = JSON.parse(v);
 			} catch {
@@ -1631,8 +1660,16 @@ export function EmailTemplateBuilder({
 	const { mutate: saveMeta } = useMutation({
 		...updateEmailTemplateMutation(),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplate"] });
-			queryClient.invalidateQueries({ queryKey: ["listEmailTemplates"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
+			queryClient.invalidateQueries({
+				queryKey: [
+					{ _id: "searchEmailTemplates", path: { product_id: productId } },
+				],
+			});
 		},
 	});
 
@@ -1652,7 +1689,11 @@ export function EmailTemplateBuilder({
 		onMutate: () => setSaveState("saving"),
 		onSuccess: () => {
 			setSaveState("saved");
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplateDraft"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateDraftQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
 			setTimeout(() => setSaveState("idle"), 2000);
 		},
 		onError: () => setSaveState("error"),
@@ -1688,8 +1729,16 @@ export function EmailTemplateBuilder({
 		...publishEmailTemplateMutation(),
 		onSuccess: () => {
 			setPublishError(null);
-			queryClient.invalidateQueries({ queryKey: ["getEmailTemplate"] });
-			queryClient.invalidateQueries({ queryKey: ["listEmailTemplates"] });
+			queryClient.invalidateQueries({
+				queryKey: getEmailTemplateQueryKey({
+					path: { product_id: productId, email_template_id: templateId },
+				}),
+			});
+			queryClient.invalidateQueries({
+				queryKey: [
+					{ _id: "searchEmailTemplates", path: { product_id: productId } },
+				],
+			});
 		},
 		onError: (err) => {
 			setPublishError(getApiErrorMessage(err, "Publish failed"));

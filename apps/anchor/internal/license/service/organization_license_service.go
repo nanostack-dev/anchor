@@ -134,10 +134,9 @@ func (s *organizationLicenseService) Instantiate(
 
 	var created license.OrganizationLicense
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
-			return err
-		}
-		template, templateErr := s.templates.GetTemplate(txCtx, license.GetTemplateInput{
+		// Locked so a template write waits for this copy to commit, and the sync it
+		// starts then finds this license.
+		template, templateErr := s.templates.GetTemplate(transactor.ForShare(txCtx), license.GetTemplateInput{
 			TenantID:   in.TenantID,
 			ProductID:  in.ProductID,
 			TemplateID: in.TemplateID,
@@ -294,8 +293,8 @@ func (s *organizationLicenseService) AdjustValues(
 		if err := acquireLicenseWriteLock(txCtx, in.TenantID, in.ProductID); err != nil {
 			return err
 		}
-		foundExisting, findErr := s.licenseRepo.FindByOrganizationForUpdate(
-			txCtx, in.TenantID, in.ProductID, in.OrganizationID,
+		foundExisting, findErr := s.licenseRepo.FindByOrganization(
+			transactor.ForUpdate(txCtx), in.TenantID, in.ProductID, in.OrganizationID,
 		)
 		if findErr != nil {
 			return findErr
@@ -352,7 +351,7 @@ func (s *organizationLicenseService) AdjustValues(
 func (s *organizationLicenseService) Search(
 	ctx context.Context, in license.SearchOrganizationLicensesInput,
 ) (search.Result[license.OrganizationLicenseSummary], error) {
-	if err := validate.ValidateStruct(in); err != nil {
+	if err := in.Validate(); err != nil {
 		return search.Result[license.OrganizationLicenseSummary]{}, err
 	}
 	return s.licenseRepo.Search(ctx, in)

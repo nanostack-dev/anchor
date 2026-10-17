@@ -252,7 +252,9 @@ func (r *productRepositoryImpl) Update(
 		),
 	).RETURNING(table.Products.AllColumns)
 
-	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt).Value()
+	updated, err := transactor.Query[model.Products](ctx, r.db, updateStmt).
+		OnUnique(ErrProductExists, productNameUniqueConstraint, productNameLowerUniqueIndex).
+		Value()
 	if err != nil {
 		return product.Product{}, err
 	}
@@ -303,6 +305,31 @@ func (r *productRepositoryImpl) SearchByTenantID(
 		)
 	}
 
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[product.SortFieldProduct]transactor.Key[productWithOrganizationAPIKeyConfig]{
+			product.SortFieldProductCreatedAt: transactor.TimeKey(
+				table.Products.CreatedAt,
+				func(row productWithOrganizationAPIKeyConfig) time.Time { return row.Products.CreatedAt },
+			),
+			product.SortFieldProductUpdatedAt: transactor.TimeKey(
+				table.Products.UpdatedAt,
+				func(row productWithOrganizationAPIKeyConfig) time.Time { return row.Products.UpdatedAt },
+			),
+			product.SortFieldProductName: transactor.StringKey(
+				table.Products.Name,
+				func(row productWithOrganizationAPIKeyConfig) string { return row.Products.Name },
+			),
+		},
+		transactor.StringKey(
+			table.Products.ID,
+			func(row productWithOrganizationAPIKeyConfig) string { return row.Products.ID },
+		),
+	)
+	if err != nil {
+		return search.Result[product.Product]{}, err
+	}
+
 	return transactor.Page(
 		r.db,
 		func(entity productWithOrganizationAPIKeyConfig) product.Product {
@@ -317,14 +344,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 			),
 		).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[product.SortFieldProduct]postgres.Column{
-				product.SortFieldProductCreatedAt: table.Products.CreatedAt,
-				product.SortFieldProductUpdatedAt: table.Products.UpdatedAt,
-				product.SortFieldProductName:      table.Products.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

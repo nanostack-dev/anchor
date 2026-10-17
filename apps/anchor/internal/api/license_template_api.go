@@ -4,9 +4,11 @@ import (
 	"context"
 
 	"anchor/internal/domain/license"
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 // ---------------------------------------------------------------------------
@@ -93,6 +95,56 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		Items: items,
 		Count: len(items),
 	}), nil
+}
+
+func (s *AnchorAPI) SearchLicenseTemplates(
+	ctx context.Context, request SearchLicenseTemplatesRequestObject,
+) (SearchLicenseTemplatesResponseObject, error) {
+	tenantID, err := security.GetTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.Body
+	if body == nil {
+		body = &SearchLicenseTemplatesJSONRequestBody{}
+	}
+
+	result, err := s.LicenseTemplateService.SearchTemplates(ctx, license.SearchTemplatesInput{
+		TenantID:  tenantID,
+		ProductID: request.ProductId,
+		Request:   mapToSearchLicenseTemplatesRequest(body),
+	})
+	if err != nil {
+		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search license templates")
+		return nil, err
+	}
+
+	return SearchLicenseTemplates200JSONResponse{
+		Items:      functional.Slice(result.Items).Map(mapLicenseTemplateToResponse),
+		Total:      result.Total,
+		Count:      result.Count,
+		NextCursor: nextCursor(result.NextCursor),
+	}, nil
+}
+
+func mapToSearchLicenseTemplatesRequest(
+	body *SearchLicenseTemplatesJSONRequestBody,
+) search.Request[license.SearchTemplatesFilter, license.SortFieldTemplate] {
+	filter := functional.FromPtr(body.Filter).
+		Map(func(f LicenseTemplateFilter) license.SearchTemplatesFilter {
+			return license.SearchTemplatesFilter{Statuses: f.Statuses}
+		}).
+		ToPtr()
+	sortBy, sortDirection := searchx.Sort(
+		body.SortBy, body.SortDirection, license.SortFieldTemplateName, search.SortAscending,
+	)
+
+	return search.NewRequest[license.SearchTemplatesFilter, license.SortFieldTemplate]().
+		WithFilter(filter).
+		WithSort(sortBy, sortDirection).
+		WithFullTextSearch(body.FullTextSearch).
+		WithPagination(body.Pagination)
 }
 
 func (s *AnchorAPI) UpdateLicenseTemplate(

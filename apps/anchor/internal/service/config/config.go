@@ -31,6 +31,8 @@ func (c *CoreConfig) IsDevelopment() bool {
 	return c.Environment == "development"
 }
 
+// IsProduction accepts "prod" because the infra renderer writes the deploy
+// environment name, not the process name, into core.environment.
 func (c *CoreConfig) IsProduction() bool {
-	return c.Environment == "production"
+	return c.Environment == "production" || c.Environment == "prod"
 }

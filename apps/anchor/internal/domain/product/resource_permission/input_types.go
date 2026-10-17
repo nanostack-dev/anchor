@@ -1,6 +1,10 @@
 package resourcepermission
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 type CreateProductResourcePermissionInput struct {
 	ProductID     string  `validate:"required,notblank"`
@@ -41,6 +45,14 @@ const (
 type SearchProductResourcePermissionInput struct {
 	ProductID string                                                                                    `validate:"required,notblank"`
 	Request   search.Request[SearchProductResourcePermissionFilter, SortFieldProductResourcePermission] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductResourcePermissionInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductResourcePermissionCreatedAt,
+		SortFieldProductResourcePermissionUpdatedAt,
+		SortFieldProductResourcePermissionName)
 }
 
 type GetProductRoleResourcePermissionsInput struct {

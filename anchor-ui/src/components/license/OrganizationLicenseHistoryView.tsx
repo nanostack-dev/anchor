@@ -39,6 +39,7 @@ export interface OrganizationLicenseHistoryViewProps {
 	onRetry?: () => void;
 	onLoadMore?: () => void;
 	isLoadingMore?: boolean;
+	loadMoreErrorMessage?: string | null;
 	/**
 	 * Resolves a template identifier to the name an operator knows it by. An
 	 * entry naming `ltpl_3I11xG...` says nothing on a page whose job is to
@@ -55,6 +56,7 @@ export function OrganizationLicenseHistoryView({
 	onRetry,
 	onLoadMore,
 	isLoadingMore = false,
+	loadMoreErrorMessage = null,
 	templateName = (templateId) => templateId,
 }: OrganizationLicenseHistoryViewProps) {
 	if (isLoading) {
@@ -100,7 +102,7 @@ export function OrganizationLicenseHistoryView({
 	}
 
 	const moments = groupHistoryByMoment(items);
-	const hasMore = Boolean(onLoadMore) && items.length < total;
+	const hasMore = Boolean(onLoadMore);
 
 	return (
 		<Stack space="md">
@@ -118,9 +120,15 @@ export function OrganizationLicenseHistoryView({
 			</Box>
 			{hasMore && (
 				<Spread space="md">
-					<Text size="xs" tone="muted">
-						Showing {items.length} of {total}
-					</Text>
+					{loadMoreErrorMessage ? (
+						<Text size="xs" tone="critical" role="alert">
+							{loadMoreErrorMessage}
+						</Text>
+					) : (
+						<Text size="xs" tone="muted">
+							Showing {items.length} of {total}
+						</Text>
+					)}
 					<Button
 						variant="outline"
 						size="sm"

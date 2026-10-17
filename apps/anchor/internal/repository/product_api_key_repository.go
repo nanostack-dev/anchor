@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -108,6 +110,13 @@ func NewProductAPIKeyRepository(
 	}
 }
 
+const productAPIKeyNameUniqueConstraint = "product_api_keys_product_id_name_key"
+
+// ErrProductAPIKeyNameExists is returned by Create and Update when the product
+// already has a key with that name: the unique constraint settles the race the
+// service pre-check cannot.
+var ErrProductAPIKeyNameExists = errors.New("product API key name already exists in product")
+
 //nolint:dupl // mirrored by organization API key repository with equivalent flow
 func (r *productAPIKeyRepository) Create(
 	ctx context.Context, apiKey apikey.ProductAPIKey,
@@ -120,7 +129,12 @@ func (r *productAPIKeyRepository) Create(
 		),
 	).MODEL(entity).RETURNING(table.ProductAPIKeys.AllColumns)
 
-	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).Value()
+	created, err := transactor.Query[model.ProductAPIKeys](ctx, r.db, stmt).
+		OnUnique(ErrProductAPIKeyNameExists, productAPIKeyNameUniqueConstraint).
+		Value()
+	if errors.Is(err, ErrProductAPIKeyNameExists) {
+		return apikey.ProductAPIKey{}, err
+	}
 	if err != nil {
 		r.logger.Error().Err(err).
 			Str("api_key_id", apiKey.ID).
@@ -180,7 +194,7 @@ func (r *productAPIKeyRepository) Update(
 	)
 	updated, err := transactor.Query[model.ProductAPIKeys](
 		ctx, r.db, stmt,
-	).Value()
+	).OnUnique(ErrProductAPIKeyNameExists, productAPIKeyNameUniqueConstraint).Value()
 	if err != nil {
 		return apikey.ProductAPIKey{}, err
 	}
@@ -247,6 +261,7 @@ func (r *productAPIKeyRepository) Delete(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
+//nolint:dupl // mirrored by organization API key repository with equivalent keyset
 func (r *productAPIKeyRepository) SearchByProductID(
 	ctx context.Context, input apikey.SearchProductAPIKeysInput,
 ) (search.Result[apikey.ProductAPIKey], error) {
@@ -254,6 +269,33 @@ func (r *productAPIKeyRepository) SearchByProductID(
 
 	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
+
+	idKey := transactor.StringKey(table.ProductAPIKeys.ID, func(row model.ProductAPIKeys) string { return row.ID })
+	order, err := transactor.StrictKeys(
+		input.Request.Sort,
+		map[apikey.SortFieldProductAPIKey]transactor.Key[model.ProductAPIKeys]{
+			apikey.SortFieldProductAPIKeyID: idKey,
+			apikey.SortFieldProductAPIKeyCreatedAt: transactor.TimeKey(
+				table.ProductAPIKeys.CreatedAt, func(row model.ProductAPIKeys) time.Time { return row.CreatedAt },
+			),
+			apikey.SortFieldProductAPIKeyUpdatedAt: transactor.TimeKey(
+				table.ProductAPIKeys.UpdatedAt, func(row model.ProductAPIKeys) time.Time { return row.UpdatedAt },
+			),
+			apikey.SortFieldProductAPIKeyName: transactor.StringKey(
+				table.ProductAPIKeys.Name, func(row model.ProductAPIKeys) string { return row.Name },
+			),
+			apikey.SortFieldProductAPIKeyStatus: transactor.StringKey(
+				table.ProductAPIKeys.Status, func(row model.ProductAPIKeys) string { return row.Status },
+			),
+			apikey.SortFieldProductAPIKeyLastUsed: transactor.NullableTimeKey(
+				table.ProductAPIKeys.LastUsedAt, func(row model.ProductAPIKeys) *time.Time { return row.LastUsedAt },
+			),
+		},
+		idKey,
+	)
+	if err != nil {
+		return search.Result[apikey.ProductAPIKey]{}, err
+	}
 
 	pageResult, err := transactor.Page(
 		r.db,
@@ -264,22 +306,15 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	).
 		From(table.ProductAPIKeys).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Request.Sort,
-			map[apikey.SortFieldProductAPIKey]postgres.Column{
-				apikey.SortFieldProductAPIKeyCreatedAt: table.ProductAPIKeys.CreatedAt,
-				apikey.SortFieldProductAPIKeyUpdatedAt: table.ProductAPIKeys.UpdatedAt,
-				apikey.SortFieldProductAPIKeyName:      table.ProductAPIKeys.Name,
-				apikey.SortFieldProductAPIKeyStatus:    table.ProductAPIKeys.Status,
-				apikey.SortFieldProductAPIKeyLastUsed:  table.ProductAPIKeys.LastUsedAt,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", input.ProductID,
-		).Msg("failed to search product API keys")
+		if !searchx.IsClientError(err) {
+			r.logger.Error().Err(err).Str(
+				"productID", input.ProductID,
+			).Msg("failed to search product API keys")
+		}
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
 
@@ -288,9 +323,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 
 	if len(itemEntities) == 0 {
 		return search.Result[apikey.ProductAPIKey]{
-			Items: []apikey.ProductAPIKey{},
-			Count: 0,
-			Total: resultCount,
+			Items:      []apikey.ProductAPIKey{},
+			Count:      0,
+			Total:      resultCount,
+			NextCursor: pageResult.NextCursor,
 		}, nil
 	}
 
@@ -317,9 +353,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	})
 
 	return search.Result[apikey.ProductAPIKey]{
-		Items: items,
-		Count: len(items),
-		Total: resultCount,
+		Items:      items,
+		Count:      len(items),
+		Total:      resultCount,
+		NextCursor: pageResult.NextCursor,
 	}, nil
 }
 

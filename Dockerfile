@@ -1,10 +1,12 @@
 # Multi-stage build for anchor Go application
-FROM --platform=linux/amd64 golang:1.27.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.0-alpine AS builder
 
 # Build arguments for metadata
 ARG VERSION=dev
 ARG COMMIT_SHA=unknown
 ARG BUILD_DATE
+ARG TARGETOS
+ARG TARGETARCH
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -25,7 +27,7 @@ RUN go mod download
 COPY apps/anchor/ ./
 
 # Build the Go application with build info
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -a -installsuffix cgo \
     -ldflags="-w -s -X anchor/internal/buildinfo.Version=${VERSION} -X anchor/internal/buildinfo.CommitSHA=${COMMIT_SHA} -X anchor/internal/buildinfo.BuildDate=${BUILD_DATE}" \
     -o anchor ./cmd/main.go

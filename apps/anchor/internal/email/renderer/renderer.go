@@ -66,8 +66,9 @@ type Result struct {
 }
 
 // Renderer renders email.TemplateVersion values against a runtime variable
-// bag. Rendering is best-effort: unknown or missing variables produce a
-// visible [varName] placeholder and a warning rather than an error.
+// bag. Rendering is best-effort: a missing required variable produces a
+// visible [varName] placeholder and a warning rather than an error, and a
+// missing optional variable renders empty.
 type Renderer struct{}
 
 func New() *Renderer { return &Renderer{} }
@@ -107,7 +108,9 @@ func (r *Renderer) Render(version *email.TemplateVersion, vars map[string]any) (
 // softValidate collects non-fatal warnings and returns a padded vars map:
 //   - vars not declared in schema → warned, still passed through
 //   - required schema vars missing from vars → warned
-//   - top-level template references with no value → padded with "[varName]"
+//   - required scalar references with no value → padded with "[varName]"
+//   - optional scalar references with no value → padded with "", so
+//     {{ if .var }} stays false
 //   - LIST/OBJECT schema vars with no value → padded with empty slice/map
 func softValidate(schema []email.VariableSchema, vars map[string]any, templates ...string) ([]string, map[string]any) {
 	var warnings []string
@@ -154,15 +157,19 @@ func softValidate(schema []email.VariableSchema, vars map[string]any, templates 
 		if !inSchema {
 			continue
 		}
-		padded[name] = fmt.Sprintf("[%s]", name)
 		switch s.Type {
-		case email.VariableTypeString, email.VariableTypeNumber, email.VariableTypeBool:
 		case email.VariableTypeList:
 			padded[name] = []any{}
 		case email.VariableTypeObject:
 			padded[name] = map[string]any{}
+		case email.VariableTypeString, email.VariableTypeNumber, email.VariableTypeBool:
+			if !s.Required {
+				padded[name] = ""
+				continue
+			}
+			padded[name] = fmt.Sprintf("[%s]", name)
+			warnings = append(warnings, fmt.Sprintf("variable %q has no value; rendered as placeholder", name))
 		}
-		warnings = append(warnings, fmt.Sprintf("variable %q has no value; rendered as placeholder", name))
 	}
 
 	return warnings, padded

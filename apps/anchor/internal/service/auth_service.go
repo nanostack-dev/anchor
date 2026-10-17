@@ -149,6 +149,9 @@ func (s *authService) Register(
 		newUser.GenerateID()
 
 		newUser, err = s.userRepo.Create(txCtx, newUser)
+		if errors.Is(err, repository.ErrUserEmailExists) {
+			return ErrUserAlreadyExists
+		}
 		if err != nil {
 			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
 			return fmt.Errorf("failed to create user: %w", err)

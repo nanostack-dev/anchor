@@ -36,9 +36,10 @@ func (s *AnchorAPI) SearchProductPermissions(
 	}
 
 	response := ProductPermissionListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductPermissionToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductPermissionToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductPermissions200JSONResponse(response), nil
@@ -75,9 +76,7 @@ func mapToSearchProductPermissionInput(
 		WithSort(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(
-		searchReqBody.Pagination,
-	)
+		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
 }
 
 func lowerPermissionNames(names []string) []string {

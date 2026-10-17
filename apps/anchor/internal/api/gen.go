@@ -370,6 +370,15 @@ type CreatedProductAPIKeyResponse struct {
 	Value string `json:"value"`
 }
 
+// EmailSendFilter Narrows a search over a product's email send records.
+type EmailSendFilter struct {
+	// Statuses Keep only sends in one of these statuses.
+	Statuses []EmailSendStatus `json:"statuses,omitempty"`
+
+	// TemplateIds Keep only sends rendered from one of these templates.
+	TemplateIds []Ksuid `json:"template_ids,omitempty"`
+}
+
 // EmailSendRecordListResponse defines model for EmailSendRecordListResponse.
 type EmailSendRecordListResponse struct {
 	Count int                       `json:"count"`
@@ -415,6 +424,35 @@ type EmailSendRequest struct {
 	Variables    *map[string]interface{} `json:"variables,omitempty"`
 }
 
+// EmailSendSearchRequest defines model for EmailSendSearchRequest.
+type EmailSendSearchRequest struct {
+	// Filter Narrows a search over a product's email send records.
+	Filter *EmailSendFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *email.SortFieldSend `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// EmailSendSearchResponse defines model for EmailSendSearchResponse.
+type EmailSendSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []EmailSendRecordResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
 // EmailSendStatus defines model for EmailSendStatus.
 type EmailSendStatus = email.SendStatus
 
@@ -435,6 +473,17 @@ type EmailTemplateDraftUpdateRequest struct {
 	BodyText  *string                `json:"body_text,omitempty"`
 	Subject   *string                `json:"subject,omitempty"`
 	Variables *[]EmailVariableSchema `json:"variables,omitempty"`
+}
+
+// EmailTemplateFilter Narrows a search over a product's email templates.
+type EmailTemplateFilter struct {
+	Ids []Ksuid `json:"ids,omitempty"`
+
+	// IsActive `true` keeps only active templates, `false` only inactive ones. Omit for both.
+	IsActive *bool `json:"is_active,omitempty"`
+
+	// Slugs Keep only templates with one of these slugs.
+	Slugs []string `json:"slugs,omitempty"`
 }
 
 // EmailTemplateListResponse defines model for EmailTemplateListResponse.
@@ -479,6 +528,35 @@ type EmailTemplateResponse struct {
 	PublishedVersionId *string   `json:"published_version_id,omitempty"`
 	Slug               string    `json:"slug"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// EmailTemplateSearchRequest defines model for EmailTemplateSearchRequest.
+type EmailTemplateSearchRequest struct {
+	// Filter Narrows a search over a product's email templates.
+	Filter *EmailTemplateFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *email.SortFieldTemplate `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// EmailTemplateSearchResponse defines model for EmailTemplateSearchResponse.
+type EmailTemplateSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                     `json:"count"`
+	Items []EmailTemplateResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // EmailTemplateUpdateRequest defines model for EmailTemplateUpdateRequest.
@@ -584,11 +662,55 @@ type IntegrationAuditLogEntryResponse struct {
 	Severity IntegrationAuditLogSeverity `json:"severity"`
 }
 
+// IntegrationAuditLogFilter Narrows the audit log entries of one integration instance.
+type IntegrationAuditLogFilter struct {
+	// Actions Keep only entries with one of these action codes.
+	Actions []string `json:"actions,omitempty"`
+
+	// CreatedAfter Keep only entries recorded at or after this instant.
+	CreatedAfter *time.Time `json:"created_after,omitempty"`
+
+	// CreatedBefore Keep only entries recorded before this instant.
+	CreatedBefore *time.Time `json:"created_before,omitempty"`
+
+	// Severities Keep only entries with one of these severities.
+	Severities []IntegrationAuditLogSeverity `json:"severities,omitempty"`
+}
+
 // IntegrationAuditLogListResponse defines model for IntegrationAuditLogListResponse.
 type IntegrationAuditLogListResponse struct {
 	// Count The number of audit log items returned.
 	Count int                                `json:"count"`
 	Items []IntegrationAuditLogEntryResponse `json:"items"`
+}
+
+// IntegrationAuditLogSearchRequest defines model for IntegrationAuditLogSearchRequest.
+type IntegrationAuditLogSearchRequest struct {
+	// Filter Narrows the audit log entries of one integration instance.
+	Filter *IntegrationAuditLogFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *integration.SortFieldAuditLog `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// IntegrationAuditLogSearchResponse defines model for IntegrationAuditLogSearchResponse.
+type IntegrationAuditLogSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                                `json:"count"`
+	Items []IntegrationAuditLogEntryResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // IntegrationAuditLogSeverity Severity level for integration audit events.
@@ -811,6 +933,12 @@ type LicenseTemplateCreateRequest struct {
 	Values LicenseTemplateValues `json:"values"`
 }
 
+// LicenseTemplateFilter Narrows a search over a product's license templates.
+type LicenseTemplateFilter struct {
+	// Statuses Keep only templates with one of these statuses. Omit for every template the product has ever offered.
+	Statuses []LicenseTemplateStatus `json:"statuses,omitempty"`
+}
+
 // LicenseTemplateListResponse defines model for LicenseTemplateListResponse.
 type LicenseTemplateListResponse struct {
 	Count int                       `json:"count"`
@@ -839,6 +967,35 @@ type LicenseTemplateResponse struct {
 	Status    LicenseTemplateStatus `json:"status"`
 	UpdatedAt time.Time             `json:"updated_at"`
 	Values    LicenseTemplateValues `json:"values"`
+}
+
+// LicenseTemplateSearchRequest defines model for LicenseTemplateSearchRequest.
+type LicenseTemplateSearchRequest struct {
+	// Filter Narrows a search over a product's license templates.
+	Filter *LicenseTemplateFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *license.SortFieldTemplate `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// LicenseTemplateSearchResponse defines model for LicenseTemplateSearchResponse.
+type LicenseTemplateSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []LicenseTemplateResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // LicenseTemplateStatus Whether a template is still on sale. Not a workflow — there is no draft to publish, and no route back from `ARCHIVED`. A tier is offered or it is withdrawn, and withdrawing it is what deleting a template means here.
@@ -920,7 +1077,10 @@ type OrganizationAPIKeyListResponse struct {
 	Count int                          `json:"count"`
 	Items []OrganizationAPIKeyResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1000,7 +1160,7 @@ type OrganizationAPIKeySearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *orgapikey.SortFieldOrganizationAPIKey `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1103,7 +1263,10 @@ type OrganizationInvitationListResponse struct {
 	Count int                              `json:"count"`
 	Items []OrganizationInvitationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1153,7 +1316,7 @@ type OrganizationInvitationSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *organizationinvitation.SortField `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1247,6 +1410,18 @@ type OrganizationLicenseFilter struct {
 	OrganizationIds []Ksuid `json:"organization_ids,omitempty"`
 }
 
+// OrganizationLicenseHistoryFilter Narrows the history of one organization's license.
+type OrganizationLicenseHistoryFilter struct {
+	// ChangedAfter Keep only entries made at or after this instant.
+	ChangedAfter *time.Time `json:"changed_after,omitempty"`
+
+	// ChangedBefore Keep only entries made before this instant.
+	ChangedBefore *time.Time `json:"changed_before,omitempty"`
+
+	// Types Keep only entries of one of these types.
+	Types []LicenseChangeType `json:"types,omitempty"`
+}
+
 // OrganizationLicenseHistoryResponse defines model for OrganizationLicenseHistoryResponse.
 type OrganizationLicenseHistoryResponse struct {
 	// Count The number of items returned in this response.
@@ -1255,8 +1430,27 @@ type OrganizationLicenseHistoryResponse struct {
 	// Items Newest first.
 	Items []OrganizationLicenseChangeResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
+}
+
+// OrganizationLicenseHistorySearchRequest defines model for OrganizationLicenseHistorySearchRequest.
+type OrganizationLicenseHistorySearchRequest struct {
+	// Filter Narrows the history of one organization's license.
+	Filter *OrganizationLicenseHistoryFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *license.SortFieldChange `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
 // OrganizationLicenseInstantiateRequest defines model for OrganizationLicenseInstantiateRequest.
@@ -1364,10 +1558,10 @@ type OrganizationLicenseSearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+	// SortBy Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 	SortBy *OrganizationLicenseSortField `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1377,11 +1571,14 @@ type OrganizationLicenseSearchResponse struct {
 	Count int                                  `json:"count"`
 	Items []OrganizationLicenseSummaryResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
-// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+// OrganizationLicenseSortField Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
 type OrganizationLicenseSortField = license.SortFieldOrganizationLicense
 
 // OrganizationLicenseSummaryResponse One of the product's organizations and the license it holds, if any. The organization is the subject: one that has never been licensed is listed with `license` absent rather than omitted from the results, because an unlicensed customer is exactly what an operator is looking for half the time.
@@ -1420,7 +1617,10 @@ type OrganizationMemberListResponse struct {
 	Count int                          `json:"count"`
 	Items []OrganizationMemberResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1501,7 +1701,7 @@ type OrganizationMemberSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *organization.SortFieldMember `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1510,7 +1710,10 @@ type PagedListResponse struct {
 	// Count The number of items returned in this response.
 	Count int `json:"count"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1532,7 +1735,10 @@ type PlatformInvitationListResponse struct {
 	Count int                          `json:"count"`
 	Items []PlatformInvitationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1585,7 +1791,7 @@ type PlatformInvitationSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *invitation.SortFieldPlatformInvitation `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1607,7 +1813,10 @@ type PlatformUserListResponse struct {
 	Count int                    `json:"count"`
 	Items []PlatformUserResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1660,7 +1869,7 @@ type PlatformUserSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *platform.SortFieldPlatformUser `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1709,7 +1918,10 @@ type ProductAPIKeyListResponse struct {
 	Count int                     `json:"count"`
 	Items []ProductAPIKeyResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1789,7 +2001,7 @@ type ProductAPIKeySearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *apikey.SortFieldProductAPIKey `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -1927,7 +2139,10 @@ type ProductListResponse struct {
 	Count int               `json:"count"`
 	Items []ProductResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1953,7 +2168,10 @@ type ProductOrganizationListResponse struct {
 	Count int                           `json:"count"`
 	Items []ProductOrganizationResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -1979,6 +2197,9 @@ type ProductOrganizationRequest struct {
 	//
 	// Examples: Acme Corporation
 	Name string `json:"name"`
+
+	// Workspace Optionally create this ordinary workspace atomically with a new organization. Omitted leaves the organization without workspaces. Ignored on update and on a founding-member retry that returns an existing organization; such a retry never recreates deleted workspaces.
+	Workspace *ProductWorkspaceRequest `json:"workspace,omitempty"`
 }
 
 // ProductOrganizationResponse defines model for ProductOrganizationResponse.
@@ -2016,6 +2237,9 @@ type ProductOrganizationResponse struct {
 
 	// UpdatedAt Timestamp when the organization was last updated.
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// Workspaces The organization's ordinary workspaces. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
+	Workspaces *[]ProductWorkspaceResponse `json:"workspaces,omitempty"`
 }
 
 // ProductOrganizationSearchRequest defines model for ProductOrganizationSearchRequest.
@@ -2030,7 +2254,7 @@ type ProductOrganizationSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *organization.SortFieldProductOrganization `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2046,7 +2270,10 @@ type ProductPermissionListResponse struct {
 	Count int                         `json:"count"`
 	Items []ProductPermissionResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2080,10 +2307,10 @@ type ProductPermissionSearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortBy Field to sort by
+	// SortBy Field to sort by. `id` and `resource` order by the permission name, whose `resource:action` form groups permissions by resource.
 	SortBy *permission.SortFieldProductPermission `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2115,7 +2342,10 @@ type ProductResourcePermissionListResponse struct {
 	Count int                                 `json:"count"`
 	Items []ProductResourcePermissionResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2159,7 +2389,7 @@ type ProductResourcePermissionSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *resourcepermission.SortFieldProductResourcePermission `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2232,7 +2462,10 @@ type ProductRoleListResponse struct {
 	Count int                   `json:"count"`
 	Items []ProductRoleResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2295,7 +2528,7 @@ type ProductRoleSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *role.SortFieldProductRole `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2311,8 +2544,8 @@ type ProductRoleUpdateRequest struct {
 	// Examples: Editor
 	Name string `json:"name"`
 
-	// Permissions Optional list of permission names (strings) to assign initially.
-	Permissions []string `json:"permissions,omitempty"`
+	// Permissions Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
+	Permissions *[]string `json:"permissions,omitempty"`
 }
 
 // ProductSearchRequest defines model for ProductSearchRequest.
@@ -2327,7 +2560,7 @@ type ProductSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *product.SortFieldProduct `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2355,7 +2588,10 @@ type ProductUserListResponse struct {
 	Count int                   `json:"count"`
 	Items []ProductUserResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2410,7 +2646,7 @@ type ProductUserSearchRequest struct {
 	// SortBy Field to sort by
 	SortBy *user.SortFieldProductUser `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2425,7 +2661,10 @@ type ProductWorkspaceListResponse struct {
 	Count int                        `json:"count"`
 	Items []ProductWorkspaceResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
@@ -2483,7 +2722,7 @@ type ProductWorkspaceSearchRequest struct {
 	// SortBy Field to sort by.
 	SortBy *workspace.SortFieldProductWorkspace `json:"sort_by,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2509,7 +2748,7 @@ type SearchRequest struct {
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
-	// SortDirection Sorting direction
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
 }
 
@@ -2586,7 +2825,7 @@ type SmtpIntegrationPublicConfigAuthMethod string
 // SmtpIntegrationPublicConfigEncryption defines model for SmtpIntegrationPublicConfig.Encryption.
 type SmtpIntegrationPublicConfigEncryption string
 
-// SortDirection defines model for SortDirection.
+// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 type SortDirection = search.SortDirection
 
 // TemplateExample defines model for TemplateExample.
@@ -2688,12 +2927,24 @@ type UsageSeriesResponse struct {
 	Count int                        `json:"count"`
 	Items []UsageSeriesPointResponse `json:"items"`
 
-	// Total Total number of matching items.
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
 	Total int64 `json:"total"`
 }
 
 // UsageShape defines model for UsageShape.
 type UsageShape = license.UsageShape
+
+// UserOrganizationFilter Narrows the organizations a product user belongs to.
+type UserOrganizationFilter struct {
+	// OrganizationIds Keep only memberships in one of these organizations.
+	OrganizationIds []Ksuid `json:"organization_ids,omitempty"`
+
+	// RoleIds Keep only memberships holding one of these roles.
+	RoleIds []Ksuid `json:"role_ids,omitempty"`
+}
 
 // UserOrganizationInclude Optional include parameter for user organization endpoints.
 type UserOrganizationInclude string
@@ -2749,6 +3000,35 @@ type UserOrganizationRoleResponse struct {
 	//
 	// Examples: ["document:read","document:create"]
 	Permissions *[]string `json:"permissions,omitempty"`
+}
+
+// UserOrganizationSearchRequest defines model for UserOrganizationSearchRequest.
+type UserOrganizationSearchRequest struct {
+	// Filter Narrows the organizations a product user belongs to.
+	Filter *UserOrganizationFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. `name` is the organization name.
+	SortBy *user.SortFieldUserOrganization `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// UserOrganizationSearchResponse defines model for UserOrganizationSearchResponse.
+type UserOrganizationSearchResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []UserOrganizationResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
 }
 
 // UserResponse defines model for UserResponse.
@@ -2907,13 +3187,13 @@ type ListLicenseTemplatesParams struct {
 
 // SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
 type SearchProductOrganizationsParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProductOrganizationParams defines parameters for GetProductOrganization.
 type GetProductOrganizationParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
@@ -2968,6 +3248,12 @@ type ListUserOrganizationsParams struct {
 	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
 }
 
+// SearchUserOrganizationsParams defines parameters for SearchUserOrganizations.
+type SearchUserOrganizationsParams struct {
+	// Include Comma-separated list of additional fields to include.
+	Include *[]UserOrganizationInclude `form:"include,omitempty" json:"include,omitempty"`
+}
+
 // GetUserOrganizationParams defines parameters for GetUserOrganization.
 type GetUserOrganizationParams struct {
 	// Include Comma-separated list of additional fields to include.
@@ -3013,8 +3299,14 @@ type IntrospectOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyIntrospectR
 // SendEmailJSONRequestBody defines body for SendEmail for application/json ContentType.
 type SendEmailJSONRequestBody = EmailSendRequest
 
+// SearchEmailSendsJSONRequestBody defines body for SearchEmailSends for application/json ContentType.
+type SearchEmailSendsJSONRequestBody = EmailSendSearchRequest
+
 // CreateEmailTemplateJSONRequestBody defines body for CreateEmailTemplate for application/json ContentType.
 type CreateEmailTemplateJSONRequestBody = EmailTemplateCreateRequest
+
+// SearchEmailTemplatesJSONRequestBody defines body for SearchEmailTemplates for application/json ContentType.
+type SearchEmailTemplatesJSONRequestBody = EmailTemplateSearchRequest
 
 // UpdateEmailTemplateJSONRequestBody defines body for UpdateEmailTemplate for application/json ContentType.
 type UpdateEmailTemplateJSONRequestBody = EmailTemplateUpdateRequest
@@ -3037,6 +3329,9 @@ type IngestWebhookJSONRequestBody IngestWebhookJSONBody
 // UpdateIntegrationInstanceJSONRequestBody defines body for UpdateIntegrationInstance for application/json ContentType.
 type UpdateIntegrationInstanceJSONRequestBody = IntegrationInstanceUpdateRequest
 
+// SearchIntegrationAuditLogsJSONRequestBody defines body for SearchIntegrationAuditLogs for application/json ContentType.
+type SearchIntegrationAuditLogsJSONRequestBody = IntegrationAuditLogSearchRequest
+
 // SearchProductOrganizationInvitationsJSONRequestBody defines body for SearchProductOrganizationInvitations for application/json ContentType.
 type SearchProductOrganizationInvitationsJSONRequestBody = OrganizationInvitationSearchRequest
 
@@ -3054,6 +3349,9 @@ type UpdateLicenseSchemaJSONRequestBody = LicenseSchemaUpdateRequest
 
 // CreateLicenseTemplateJSONRequestBody defines body for CreateLicenseTemplate for application/json ContentType.
 type CreateLicenseTemplateJSONRequestBody = LicenseTemplateCreateRequest
+
+// SearchLicenseTemplatesJSONRequestBody defines body for SearchLicenseTemplates for application/json ContentType.
+type SearchLicenseTemplatesJSONRequestBody = LicenseTemplateSearchRequest
 
 // UpdateLicenseTemplateJSONRequestBody defines body for UpdateLicenseTemplate for application/json ContentType.
 type UpdateLicenseTemplateJSONRequestBody = LicenseTemplateUpdateRequest
@@ -3097,6 +3395,9 @@ type AdjustOrganizationLicenseJSONRequestBody = OrganizationLicenseAdjustRequest
 // InstantiateOrganizationLicenseJSONRequestBody defines body for InstantiateOrganizationLicense for application/json ContentType.
 type InstantiateOrganizationLicenseJSONRequestBody = OrganizationLicenseInstantiateRequest
 
+// SearchOrganizationLicenseHistoryJSONRequestBody defines body for SearchOrganizationLicenseHistory for application/json ContentType.
+type SearchOrganizationLicenseHistoryJSONRequestBody = OrganizationLicenseHistorySearchRequest
+
 // ReportOrganizationUsageJSONRequestBody defines body for ReportOrganizationUsage for application/json ContentType.
 type ReportOrganizationUsageJSONRequestBody = UsageReportRequest
 
@@ -3126,6 +3427,9 @@ type CreateProductUserJSONRequestBody CreateProductUserJSONBody
 
 // SearchProductUsersJSONRequestBody defines body for SearchProductUsers for application/json ContentType.
 type SearchProductUsersJSONRequestBody = ProductUserSearchRequest
+
+// SearchUserOrganizationsJSONRequestBody defines body for SearchUserOrganizations for application/json ContentType.
+type SearchUserOrganizationsJSONRequestBody = UserOrganizationSearchRequest
 
 // CreateProductResourcePermissionJSONRequestBody defines body for CreateProductResourcePermission for application/json ContentType.
 type CreateProductResourcePermissionJSONRequestBody = CreateProductResourcePermissionRequest
@@ -3420,16 +3724,26 @@ type ServerInterface interface {
 	IntrospectOrganizationAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// ListEmailSends List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailSendsParams)
 	// SendEmail Send Email
 	// (POST /v1/products/{product_id}/email/sends)
 	SendEmail(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SearchEmailSends Search Send Records
+	// (POST /v1/products/{product_id}/email/sends/search)
+	SearchEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// ListEmailTemplates List Email Templates
 	// (GET /v1/products/{product_id}/email/templates)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailTemplatesParams)
 	// CreateEmailTemplate Create Email Template
 	// (POST /v1/products/{product_id}/email/templates)
 	CreateEmailTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SearchEmailTemplates Search Email Templates
+	// (POST /v1/products/{product_id}/email/templates/search)
+	SearchEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// DeleteEmailTemplate Delete Email Template
 	// (DELETE /v1/products/{product_id}/email/templates/{email_template_id})
 	DeleteEmailTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, emailTemplateId EmailTemplateIdParameter)
@@ -3480,7 +3794,12 @@ type ServerInterface interface {
 	UpdateIntegrationInstance(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
+	// SearchIntegrationAuditLogs Search Integration Audit Logs
+	// (POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search)
+	SearchIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter)
 	// SearchProductOrganizationInvitations Search Product Organization Invitations
 	// (POST /v1/products/{product_id}/invitations/search)
 	SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -3504,10 +3823,15 @@ type ServerInterface interface {
 	UpdateLicenseSchema(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// ListLicenseTemplates List License Templates
 	// (GET /v1/products/{product_id}/licensing/templates)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListLicenseTemplatesParams)
 	// CreateLicenseTemplate Create License Template
 	// (POST /v1/products/{product_id}/licensing/templates)
 	CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SearchLicenseTemplates Search License Templates
+	// (POST /v1/products/{product_id}/licensing/templates/search)
+	SearchLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// DeleteLicenseTemplate Delete License Template
 	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
 	DeleteLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, licenseTemplateId LicenseTemplateIdParameter)
@@ -3585,7 +3909,12 @@ type ServerInterface interface {
 	GetOrganizationLicenseDiff(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// GetOrganizationLicenseHistory Get Organization License History
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationLicenseHistoryParams)
+	// SearchOrganizationLicenseHistory Search Organization License History
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search)
+	SearchOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -3642,7 +3971,12 @@ type ServerInterface interface {
 	GetProductUser(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter)
 	// ListUserOrganizations List User Organizations
 	// (GET /v1/products/{product_id}/product-users/{product_user_id}/organizations)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListUserOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, params ListUserOrganizationsParams)
+	// SearchUserOrganizations Search User Organizations
+	// (POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search)
+	SearchUserOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, params SearchUserOrganizationsParams)
 	// GetUserOrganization Get User Organization
 	// (GET /v1/products/{product_id}/product-users/{product_user_id}/organizations/{organization_id})
 	GetUserOrganization(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, organizationId OrganizationIdParameter, params GetUserOrganizationParams)
@@ -3828,6 +4162,8 @@ func (_ Unimplemented) IntrospectOrganizationAPIKey(w http.ResponseWriter, r *ht
 
 // ListEmailSends List Send Records
 // (GET /v1/products/{product_id}/email/sends)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) ListEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailSendsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -3838,8 +4174,16 @@ func (_ Unimplemented) SendEmail(w http.ResponseWriter, r *http.Request, product
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// SearchEmailSends Search Send Records
+// (POST /v1/products/{product_id}/email/sends/search)
+func (_ Unimplemented) SearchEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListEmailTemplates List Email Templates
 // (GET /v1/products/{product_id}/email/templates)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) ListEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailTemplatesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -3847,6 +4191,12 @@ func (_ Unimplemented) ListEmailTemplates(w http.ResponseWriter, r *http.Request
 // CreateEmailTemplate Create Email Template
 // (POST /v1/products/{product_id}/email/templates)
 func (_ Unimplemented) CreateEmailTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchEmailTemplates Search Email Templates
+// (POST /v1/products/{product_id}/email/templates/search)
+func (_ Unimplemented) SearchEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3948,7 +4298,15 @@ func (_ Unimplemented) UpdateIntegrationInstance(w http.ResponseWriter, r *http.
 
 // ListIntegrationAuditLogs List Integration Audit Logs
 // (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) ListIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchIntegrationAuditLogs Search Integration Audit Logs
+// (POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search)
+func (_ Unimplemented) SearchIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3996,6 +4354,8 @@ func (_ Unimplemented) UpdateLicenseSchema(w http.ResponseWriter, r *http.Reques
 
 // ListLicenseTemplates List License Templates
 // (GET /v1/products/{product_id}/licensing/templates)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) ListLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListLicenseTemplatesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -4003,6 +4363,12 @@ func (_ Unimplemented) ListLicenseTemplates(w http.ResponseWriter, r *http.Reque
 // CreateLicenseTemplate Create License Template
 // (POST /v1/products/{product_id}/licensing/templates)
 func (_ Unimplemented) CreateLicenseTemplate(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchLicenseTemplates Search License Templates
+// (POST /v1/products/{product_id}/licensing/templates/search)
+func (_ Unimplemented) SearchLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4158,7 +4524,15 @@ func (_ Unimplemented) GetOrganizationLicenseDiff(w http.ResponseWriter, r *http
 
 // GetOrganizationLicenseHistory Get Organization License History
 // (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) GetOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, params GetOrganizationLicenseHistoryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchOrganizationLicenseHistory Search Organization License History
+// (POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search)
+func (_ Unimplemented) SearchOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4272,7 +4646,15 @@ func (_ Unimplemented) GetProductUser(w http.ResponseWriter, r *http.Request, pr
 
 // ListUserOrganizations List User Organizations
 // (GET /v1/products/{product_id}/product-users/{product_user_id}/organizations)
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (_ Unimplemented) ListUserOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, params ListUserOrganizationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchUserOrganizations Search User Organizations
+// (POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search)
+func (_ Unimplemented) SearchUserOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, params SearchUserOrganizationsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4996,6 +5378,32 @@ func (siw *ServerInterfaceWrapper) SendEmail(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// SearchEmailSends operation middleware
+func (siw *ServerInterfaceWrapper) SearchEmailSends(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchEmailSends(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListEmailTemplates operation middleware
 func (siw *ServerInterfaceWrapper) ListEmailTemplates(w http.ResponseWriter, r *http.Request) {
 
@@ -5068,6 +5476,32 @@ func (siw *ServerInterfaceWrapper) CreateEmailTemplate(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateEmailTemplate(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchEmailTemplates operation middleware
+func (siw *ServerInterfaceWrapper) SearchEmailTemplates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchEmailTemplates(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5645,6 +6079,41 @@ func (siw *ServerInterfaceWrapper) ListIntegrationAuditLogs(w http.ResponseWrite
 	handler.ServeHTTP(w, r)
 }
 
+// SearchIntegrationAuditLogs operation middleware
+func (siw *ServerInterfaceWrapper) SearchIntegrationAuditLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "integration_instance_id" -------------
+	var integrationInstanceId IntegrationInstanceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "integration_instance_id", chi.URLParam(r, "integration_instance_id"), &integrationInstanceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "integration_instance_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchIntegrationAuditLogs(w, r, productId, integrationInstanceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SearchProductOrganizationInvitations operation middleware
 func (siw *ServerInterfaceWrapper) SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request) {
 
@@ -5886,6 +6355,32 @@ func (siw *ServerInterfaceWrapper) CreateLicenseTemplate(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateLicenseTemplate(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchLicenseTemplates operation middleware
+func (siw *ServerInterfaceWrapper) SearchLicenseTemplates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchLicenseTemplates(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6911,6 +7406,41 @@ func (siw *ServerInterfaceWrapper) GetOrganizationLicenseHistory(w http.Response
 	handler.ServeHTTP(w, r)
 }
 
+// SearchOrganizationLicenseHistory operation middleware
+func (siw *ServerInterfaceWrapper) SearchOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchOrganizationLicenseHistory(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ReportOrganizationUsage operation middleware
 func (siw *ServerInterfaceWrapper) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request) {
 
@@ -7716,6 +8246,57 @@ func (siw *ServerInterfaceWrapper) ListUserOrganizations(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// SearchUserOrganizations operation middleware
+func (siw *ServerInterfaceWrapper) SearchUserOrganizations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId ProductUserIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchUserOrganizationsParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "include", r.URL.Query(), &params.Include, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchUserOrganizations(w, r, productId, productUserId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetUserOrganization operation middleware
 func (siw *ServerInterfaceWrapper) GetUserOrganization(w http.ResponseWriter, r *http.Request) {
 
@@ -8334,6 +8915,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs", wrapper.ListIntegrationAuditLogs)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search", wrapper.SearchIntegrationAuditLogs)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/integrations/webhooks/{provider_type}", wrapper.IngestWebhook)
 	})
 	r.Group(func(r chi.Router) {
@@ -8428,6 +9012,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/product-users/{product_user_id}/organizations", wrapper.ListUserOrganizations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/product-users/{product_user_id}/organizations/search", wrapper.SearchUserOrganizations)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/product-users/{product_user_id}/organizations/{organization_id}", wrapper.GetUserOrganization)
@@ -8526,6 +9113,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/products/{product_id}/email/templates", wrapper.CreateEmailTemplate)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/email/templates/search", wrapper.SearchEmailTemplates)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/v1/products/{product_id}/email/templates/{email_template_id}", wrapper.DeleteEmailTemplate)
 	})
 	r.Group(func(r chi.Router) {
@@ -8559,6 +9149,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/products/{product_id}/email/sends", wrapper.SendEmail)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/email/sends/search", wrapper.SearchEmailSends)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/v1/products/{product_id}/licensing/schema", wrapper.DeleteLicenseSchema)
 	})
 	r.Group(func(r chi.Router) {
@@ -8575,6 +9168,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/templates", wrapper.CreateLicenseTemplate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/licensing/templates/search", wrapper.SearchLicenseTemplates)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/v1/products/{product_id}/licensing/templates/{license_template_id}", wrapper.DeleteLicenseTemplate)
@@ -8608,6 +9204,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/history", wrapper.GetOrganizationLicenseHistory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/history/search", wrapper.SearchOrganizationLicenseHistory)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/license/usage", wrapper.ReportOrganizationUsage)
@@ -10509,6 +11108,99 @@ func (response SendEmail500JSONResponse) VisitSendEmailResponse(w http.ResponseW
 	return err
 }
 
+type SearchEmailSendsRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *SearchEmailSendsJSONRequestBody
+}
+
+type SearchEmailSendsResponseObject interface {
+	VisitSearchEmailSendsResponse(w http.ResponseWriter) error
+}
+
+type SearchEmailSends200JSONResponse EmailSendSearchResponse
+
+func (response SearchEmailSends200JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailSends400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchEmailSends400JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailSends401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchEmailSends401JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailSends403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchEmailSends403JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailSends404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchEmailSends404JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailSends409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SearchEmailSends409JSONResponse) VisitSearchEmailSendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListEmailTemplatesRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Params    ListEmailTemplatesParams
@@ -10670,6 +11362,99 @@ func (response CreateEmailTemplate404JSONResponse) VisitCreateEmailTemplateRespo
 type CreateEmailTemplate409JSONResponse struct{ ConflictJSONResponse }
 
 func (response CreateEmailTemplate409JSONResponse) VisitCreateEmailTemplateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplatesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *SearchEmailTemplatesJSONRequestBody
+}
+
+type SearchEmailTemplatesResponseObject interface {
+	VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error
+}
+
+type SearchEmailTemplates200JSONResponse EmailTemplateSearchResponse
+
+func (response SearchEmailTemplates200JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplates400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchEmailTemplates400JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplates401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchEmailTemplates401JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplates403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchEmailTemplates403JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplates404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchEmailTemplates404JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchEmailTemplates409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SearchEmailTemplates409JSONResponse) VisitSearchEmailTemplatesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -12076,6 +12861,86 @@ func (response ListIntegrationAuditLogs404JSONResponse) VisitListIntegrationAudi
 	return err
 }
 
+type SearchIntegrationAuditLogsRequestObject struct {
+	ProductId             ProductIdParameter             `json:"product_id"`
+	IntegrationInstanceId IntegrationInstanceIdParameter `json:"integration_instance_id"`
+	Body                  *SearchIntegrationAuditLogsJSONRequestBody
+}
+
+type SearchIntegrationAuditLogsResponseObject interface {
+	VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error
+}
+
+type SearchIntegrationAuditLogs200JSONResponse IntegrationAuditLogSearchResponse
+
+func (response SearchIntegrationAuditLogs200JSONResponse) VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchIntegrationAuditLogs400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchIntegrationAuditLogs400JSONResponse) VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchIntegrationAuditLogs401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchIntegrationAuditLogs401JSONResponse) VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchIntegrationAuditLogs403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchIntegrationAuditLogs403JSONResponse) VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchIntegrationAuditLogs404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchIntegrationAuditLogs404JSONResponse) VisitSearchIntegrationAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SearchProductOrganizationInvitationsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *SearchProductOrganizationInvitationsJSONRequestBody
@@ -12855,6 +13720,85 @@ func (response CreateLicenseTemplate409JSONResponse) VisitCreateLicenseTemplateR
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchLicenseTemplatesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *SearchLicenseTemplatesJSONRequestBody
+}
+
+type SearchLicenseTemplatesResponseObject interface {
+	VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error
+}
+
+type SearchLicenseTemplates200JSONResponse LicenseTemplateSearchResponse
+
+func (response SearchLicenseTemplates200JSONResponse) VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchLicenseTemplates400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchLicenseTemplates400JSONResponse) VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchLicenseTemplates401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchLicenseTemplates401JSONResponse) VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchLicenseTemplates403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchLicenseTemplates403JSONResponse) VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchLicenseTemplates404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchLicenseTemplates404JSONResponse) VisitSearchLicenseTemplatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -15119,6 +16063,100 @@ func (response GetOrganizationLicenseHistory409JSONResponse) VisitGetOrganizatio
 	return err
 }
 
+type SearchOrganizationLicenseHistoryRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *SearchOrganizationLicenseHistoryJSONRequestBody
+}
+
+type SearchOrganizationLicenseHistoryResponseObject interface {
+	VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error
+}
+
+type SearchOrganizationLicenseHistory200JSONResponse OrganizationLicenseHistoryResponse
+
+func (response SearchOrganizationLicenseHistory200JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationLicenseHistory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchOrganizationLicenseHistory400JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationLicenseHistory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchOrganizationLicenseHistory401JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationLicenseHistory403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchOrganizationLicenseHistory403JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationLicenseHistory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchOrganizationLicenseHistory404JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationLicenseHistory409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SearchOrganizationLicenseHistory409JSONResponse) VisitSearchOrganizationLicenseHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ReportOrganizationUsageRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -16674,6 +17712,87 @@ func (response ListUserOrganizations404JSONResponse) VisitListUserOrganizationsR
 	return err
 }
 
+type SearchUserOrganizationsRequestObject struct {
+	ProductId     ProductIdParameter     `json:"product_id"`
+	ProductUserId ProductUserIdParameter `json:"product_user_id"`
+	Params        SearchUserOrganizationsParams
+	Body          *SearchUserOrganizationsJSONRequestBody
+}
+
+type SearchUserOrganizationsResponseObject interface {
+	VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error
+}
+
+type SearchUserOrganizations200JSONResponse UserOrganizationSearchResponse
+
+func (response SearchUserOrganizations200JSONResponse) VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchUserOrganizations400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchUserOrganizations400JSONResponse) VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchUserOrganizations401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchUserOrganizations401JSONResponse) VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchUserOrganizations403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchUserOrganizations403JSONResponse) VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchUserOrganizations404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchUserOrganizations404JSONResponse) VisitSearchUserOrganizationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetUserOrganizationRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	ProductUserId  ProductUserIdParameter  `json:"product_user_id"`
@@ -17798,16 +18917,26 @@ type StrictServerInterface interface {
 	IntrospectOrganizationAPIKey(ctx context.Context, request IntrospectOrganizationAPIKeyRequestObject) (IntrospectOrganizationAPIKeyResponseObject, error)
 	// ListEmailSends List Send Records
 	// (GET /v1/products/{product_id}/email/sends)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailSends(ctx context.Context, request ListEmailSendsRequestObject) (ListEmailSendsResponseObject, error)
 	// SendEmail Send Email
 	// (POST /v1/products/{product_id}/email/sends)
 	SendEmail(ctx context.Context, request SendEmailRequestObject) (SendEmailResponseObject, error)
+	// SearchEmailSends Search Send Records
+	// (POST /v1/products/{product_id}/email/sends/search)
+	SearchEmailSends(ctx context.Context, request SearchEmailSendsRequestObject) (SearchEmailSendsResponseObject, error)
 	// ListEmailTemplates List Email Templates
 	// (GET /v1/products/{product_id}/email/templates)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListEmailTemplates(ctx context.Context, request ListEmailTemplatesRequestObject) (ListEmailTemplatesResponseObject, error)
 	// CreateEmailTemplate Create Email Template
 	// (POST /v1/products/{product_id}/email/templates)
 	CreateEmailTemplate(ctx context.Context, request CreateEmailTemplateRequestObject) (CreateEmailTemplateResponseObject, error)
+	// SearchEmailTemplates Search Email Templates
+	// (POST /v1/products/{product_id}/email/templates/search)
+	SearchEmailTemplates(ctx context.Context, request SearchEmailTemplatesRequestObject) (SearchEmailTemplatesResponseObject, error)
 	// DeleteEmailTemplate Delete Email Template
 	// (DELETE /v1/products/{product_id}/email/templates/{email_template_id})
 	DeleteEmailTemplate(ctx context.Context, request DeleteEmailTemplateRequestObject) (DeleteEmailTemplateResponseObject, error)
@@ -17858,7 +18987,12 @@ type StrictServerInterface interface {
 	UpdateIntegrationInstance(ctx context.Context, request UpdateIntegrationInstanceRequestObject) (UpdateIntegrationInstanceResponseObject, error)
 	// ListIntegrationAuditLogs List Integration Audit Logs
 	// (GET /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListIntegrationAuditLogs(ctx context.Context, request ListIntegrationAuditLogsRequestObject) (ListIntegrationAuditLogsResponseObject, error)
+	// SearchIntegrationAuditLogs Search Integration Audit Logs
+	// (POST /v1/products/{product_id}/integrations/{integration_instance_id}/audit-logs/search)
+	SearchIntegrationAuditLogs(ctx context.Context, request SearchIntegrationAuditLogsRequestObject) (SearchIntegrationAuditLogsResponseObject, error)
 	// SearchProductOrganizationInvitations Search Product Organization Invitations
 	// (POST /v1/products/{product_id}/invitations/search)
 	SearchProductOrganizationInvitations(ctx context.Context, request SearchProductOrganizationInvitationsRequestObject) (SearchProductOrganizationInvitationsResponseObject, error)
@@ -17882,10 +19016,15 @@ type StrictServerInterface interface {
 	UpdateLicenseSchema(ctx context.Context, request UpdateLicenseSchemaRequestObject) (UpdateLicenseSchemaResponseObject, error)
 	// ListLicenseTemplates List License Templates
 	// (GET /v1/products/{product_id}/licensing/templates)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListLicenseTemplates(ctx context.Context, request ListLicenseTemplatesRequestObject) (ListLicenseTemplatesResponseObject, error)
 	// CreateLicenseTemplate Create License Template
 	// (POST /v1/products/{product_id}/licensing/templates)
 	CreateLicenseTemplate(ctx context.Context, request CreateLicenseTemplateRequestObject) (CreateLicenseTemplateResponseObject, error)
+	// SearchLicenseTemplates Search License Templates
+	// (POST /v1/products/{product_id}/licensing/templates/search)
+	SearchLicenseTemplates(ctx context.Context, request SearchLicenseTemplatesRequestObject) (SearchLicenseTemplatesResponseObject, error)
 	// DeleteLicenseTemplate Delete License Template
 	// (DELETE /v1/products/{product_id}/licensing/templates/{license_template_id})
 	DeleteLicenseTemplate(ctx context.Context, request DeleteLicenseTemplateRequestObject) (DeleteLicenseTemplateResponseObject, error)
@@ -17963,7 +19102,12 @@ type StrictServerInterface interface {
 	GetOrganizationLicenseDiff(ctx context.Context, request GetOrganizationLicenseDiffRequestObject) (GetOrganizationLicenseDiffResponseObject, error)
 	// GetOrganizationLicenseHistory Get Organization License History
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/license/history)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	GetOrganizationLicenseHistory(ctx context.Context, request GetOrganizationLicenseHistoryRequestObject) (GetOrganizationLicenseHistoryResponseObject, error)
+	// SearchOrganizationLicenseHistory Search Organization License History
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/history/search)
+	SearchOrganizationLicenseHistory(ctx context.Context, request SearchOrganizationLicenseHistoryRequestObject) (SearchOrganizationLicenseHistoryResponseObject, error)
 	// ReportOrganizationUsage Report Organization Usage
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/license/usage)
 	ReportOrganizationUsage(ctx context.Context, request ReportOrganizationUsageRequestObject) (ReportOrganizationUsageResponseObject, error)
@@ -18020,7 +19164,12 @@ type StrictServerInterface interface {
 	GetProductUser(ctx context.Context, request GetProductUserRequestObject) (GetProductUserResponseObject, error)
 	// ListUserOrganizations List User Organizations
 	// (GET /v1/products/{product_id}/product-users/{product_user_id}/organizations)
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ListUserOrganizations(ctx context.Context, request ListUserOrganizationsRequestObject) (ListUserOrganizationsResponseObject, error)
+	// SearchUserOrganizations Search User Organizations
+	// (POST /v1/products/{product_id}/product-users/{product_user_id}/organizations/search)
+	SearchUserOrganizations(ctx context.Context, request SearchUserOrganizationsRequestObject) (SearchUserOrganizationsResponseObject, error)
 	// GetUserOrganization Get User Organization
 	// (GET /v1/products/{product_id}/product-users/{product_user_id}/organizations/{organization_id})
 	GetUserOrganization(ctx context.Context, request GetUserOrganizationRequestObject) (GetUserOrganizationResponseObject, error)
@@ -18828,6 +19977,39 @@ func (sh *strictHandler) SendEmail(w http.ResponseWriter, r *http.Request, produ
 	}
 }
 
+// SearchEmailSends operation middleware
+func (sh *strictHandler) SearchEmailSends(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchEmailSendsRequestObject
+
+	request.ProductId = productId
+
+	var body SearchEmailSendsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchEmailSends(ctx, request.(SearchEmailSendsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchEmailSends")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchEmailSendsResponseObject); ok {
+		if err := validResponse.VisitSearchEmailSendsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListEmailTemplates operation middleware
 func (sh *strictHandler) ListEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, params ListEmailTemplatesParams) {
 	var request ListEmailTemplatesRequestObject
@@ -18881,6 +20063,39 @@ func (sh *strictHandler) CreateEmailTemplate(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateEmailTemplateResponseObject); ok {
 		if err := validResponse.VisitCreateEmailTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchEmailTemplates operation middleware
+func (sh *strictHandler) SearchEmailTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchEmailTemplatesRequestObject
+
+	request.ProductId = productId
+
+	var body SearchEmailTemplatesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchEmailTemplates(ctx, request.(SearchEmailTemplatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchEmailTemplates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchEmailTemplatesResponseObject); ok {
+		if err := validResponse.VisitSearchEmailTemplatesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -19393,6 +20608,40 @@ func (sh *strictHandler) ListIntegrationAuditLogs(w http.ResponseWriter, r *http
 	}
 }
 
+// SearchIntegrationAuditLogs operation middleware
+func (sh *strictHandler) SearchIntegrationAuditLogs(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, integrationInstanceId IntegrationInstanceIdParameter) {
+	var request SearchIntegrationAuditLogsRequestObject
+
+	request.ProductId = productId
+	request.IntegrationInstanceId = integrationInstanceId
+
+	var body SearchIntegrationAuditLogsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchIntegrationAuditLogs(ctx, request.(SearchIntegrationAuditLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchIntegrationAuditLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchIntegrationAuditLogsResponseObject); ok {
+		if err := validResponse.VisitSearchIntegrationAuditLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SearchProductOrganizationInvitations operation middleware
 func (sh *strictHandler) SearchProductOrganizationInvitations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	var request SearchProductOrganizationInvitationsRequestObject
@@ -19663,6 +20912,39 @@ func (sh *strictHandler) CreateLicenseTemplate(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateLicenseTemplateResponseObject); ok {
 		if err := validResponse.VisitCreateLicenseTemplateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchLicenseTemplates operation middleware
+func (sh *strictHandler) SearchLicenseTemplates(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchLicenseTemplatesRequestObject
+
+	request.ProductId = productId
+
+	var body SearchLicenseTemplatesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchLicenseTemplates(ctx, request.(SearchLicenseTemplatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchLicenseTemplates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchLicenseTemplatesResponseObject); ok {
+		if err := validResponse.VisitSearchLicenseTemplatesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -20478,6 +21760,40 @@ func (sh *strictHandler) GetOrganizationLicenseHistory(w http.ResponseWriter, r 
 	}
 }
 
+// SearchOrganizationLicenseHistory operation middleware
+func (sh *strictHandler) SearchOrganizationLicenseHistory(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SearchOrganizationLicenseHistoryRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body SearchOrganizationLicenseHistoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchOrganizationLicenseHistory(ctx, request.(SearchOrganizationLicenseHistoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchOrganizationLicenseHistory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchOrganizationLicenseHistoryResponseObject); ok {
+		if err := validResponse.VisitSearchOrganizationLicenseHistoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ReportOrganizationUsage operation middleware
 func (sh *strictHandler) ReportOrganizationUsage(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	var request ReportOrganizationUsageRequestObject
@@ -21060,6 +22376,41 @@ func (sh *strictHandler) ListUserOrganizations(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListUserOrganizationsResponseObject); ok {
 		if err := validResponse.VisitListUserOrganizationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchUserOrganizations operation middleware
+func (sh *strictHandler) SearchUserOrganizations(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, productUserId ProductUserIdParameter, params SearchUserOrganizationsParams) {
+	var request SearchUserOrganizationsRequestObject
+
+	request.ProductId = productId
+	request.ProductUserId = productUserId
+	request.Params = params
+
+	var body SearchUserOrganizationsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchUserOrganizations(ctx, request.(SearchUserOrganizationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchUserOrganizations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchUserOrganizationsResponseObject); ok {
+		if err := validResponse.VisitSearchUserOrganizationsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

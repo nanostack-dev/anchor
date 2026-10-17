@@ -12,10 +12,11 @@ import { TextLink } from "@nanostackorg/design-system/components/text-link";
 import { toast } from "@nanostackorg/design-system/components/toast";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 import { useId } from "react";
+import { flushSync } from "react-dom";
 import { z } from "zod";
 
 const signupFormSchema = z
@@ -63,6 +64,7 @@ export function SignupForm({
 	...props
 }: SignupFormProps) {
 	const formId = useId();
+	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const { login, handleSuccessfulAuth } = useAuth();
 	const redirect = useRouterState({
@@ -97,6 +99,15 @@ export function SignupForm({
 	const { mutate: registerUser, isPending: isRegistering } = useMutation({
 		...registerMutation({ credentials: "include" }),
 		onSuccess: (data) => {
+			if (isInit) {
+				queryClient.setQueryData(
+					["health"],
+					(previous: Record<string, unknown> | undefined) => ({
+						...previous,
+						tenant_initialized: true,
+					}),
+				);
+			}
 			const successMessage = isInit
 				? "Anchor is ready! Welcome aboard."
 				: "Registration successful!";
@@ -114,7 +125,7 @@ export function SignupForm({
 
 			try {
 				const claims = jwtDecode(data.accessToken);
-				login(data.accessToken, claims as AuthClaims);
+				flushSync(() => login(data.accessToken, claims as AuthClaims));
 
 				if (isInit) {
 					navigate({ to: "/" });

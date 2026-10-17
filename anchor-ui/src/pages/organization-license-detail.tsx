@@ -1,13 +1,11 @@
-import {
-	listLicenseTemplatesOptions,
-	searchOrganizationLicensesOptions,
-} from "@/client/@tanstack/react-query.gen";
+import { searchOrganizationLicensesOptions } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { OrganizationLicenseIdentity } from "@/components/license/OrganizationLicenseIdentity";
 import { OrganizationLicenseTabs } from "@/components/license/OrganizationLicenseTabs";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
 import { useProduct } from "@/context/product/ProductContext";
+import { allLicenseTemplatesOptions } from "@/hooks/useAllLicenseTemplates";
 import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError } from "@/lib/http-query-error";
 import { organizationLicenseDetailRoute } from "@/routes/organizations/organization-license.$organizationId";
@@ -61,9 +59,7 @@ export default function OrganizationLicenseDetailPage() {
 	const summary = summaryQuery.data?.items?.[0];
 
 	const templatesQuery = useQuery({
-		...listLicenseTemplatesOptions({
-			path: { product_id: productId as string },
-		}),
+		...allLicenseTemplatesOptions(productId as string),
 		enabled: !!productId,
 	});
 	const template = summary?.license

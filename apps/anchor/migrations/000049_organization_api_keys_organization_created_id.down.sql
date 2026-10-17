@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_organization_api_keys_organization_created_id;

@@ -271,11 +271,11 @@ func (h licenseHandle) Diff() ct.OrganizationLicenseDiffResponse {
 }
 
 func (h licenseHandle) HistoryRaw(
-	params ct.GetOrganizationLicenseHistoryParams,
-) *ct.GetOrganizationLicenseHistoryResponse {
+	body ct.SearchOrganizationLicenseHistoryJSONRequestBody,
+) *ct.SearchOrganizationLicenseHistoryResponse {
 	h.t.Helper()
-	resp, err := h.client.GetOrganizationLicenseHistoryWithResponse(
-		context.Background(), h.productID, h.organizationID, &params,
+	resp, err := h.client.SearchOrganizationLicenseHistoryWithResponse(
+		context.Background(), h.productID, h.organizationID, body,
 	)
 	require.NoError(h.t, err)
 	return resp
@@ -283,14 +283,14 @@ func (h licenseHandle) HistoryRaw(
 
 func (h licenseHandle) History() ct.OrganizationLicenseHistoryResponse {
 	h.t.Helper()
-	return h.HistoryPage(ct.GetOrganizationLicenseHistoryParams{})
+	return h.HistoryPage(ct.SearchOrganizationLicenseHistoryJSONRequestBody{})
 }
 
 func (h licenseHandle) HistoryPage(
-	params ct.GetOrganizationLicenseHistoryParams,
+	body ct.SearchOrganizationLicenseHistoryJSONRequestBody,
 ) ct.OrganizationLicenseHistoryResponse {
 	h.t.Helper()
-	resp := h.HistoryRaw(params)
+	resp := h.HistoryRaw(body)
 	require.Equal(h.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
 	require.NotNil(h.t, resp.JSON200)
 	return *resp.JSON200

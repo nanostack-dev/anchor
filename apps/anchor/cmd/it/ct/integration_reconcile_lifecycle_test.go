@@ -7,6 +7,7 @@ import (
 	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -141,4 +142,28 @@ func TestSchedulerLifecycle_DeleteLastInstance_CancelsScheduler(t *testing.T) {
 		return countPendingSchedulerJobs(t) == 0
 	}, schedulerEventualTimeout, schedulerPollInterval,
 		"scheduler job should be cancelled after the instance with the last API key is deleted")
+}
+
+// Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
+func TestSchedulerLifecycle_DuplicateSchedulerJobs_CollapseToOne(t *testing.T) {
+	productContext := createTestProductContext(t)
+	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
+	t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })
+
+	require.Eventually(t, func() bool {
+		return countPendingSchedulerJobs(t) >= 1
+	}, schedulerEventualTimeout, schedulerPollInterval, "scheduler job should appear after key added")
+
+	for range 2 {
+		_, err := reconcileQueue.Enqueue(context.Background(), queue.EnqueueParams{
+			QueueName: integrationReconcileQueueName,
+			Payload:   []byte(`{"is_scheduler":true}`),
+		})
+		require.NoError(t, err)
+	}
+
+	require.Eventually(t, func() bool {
+		return countPendingSchedulerJobs(t) == 1
+	}, 15*time.Second, schedulerPollInterval,
+		"duplicate scheduler jobs should collapse to a single pending chain")
 }

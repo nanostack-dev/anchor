@@ -7,6 +7,8 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/rs/zerolog"
@@ -163,28 +165,46 @@ func (r *sendRecordRepositoryImpl) FindByID(
 	)
 }
 
-func (r *sendRecordRepositoryImpl) List(
-	ctx context.Context, input email.ListSendsInput,
-) ([]email.SendRecord, error) {
-	limit := input.Limit
-	if limit <= 0 {
-		limit = 50
-	}
+func (r *sendRecordRepositoryImpl) Search(
+	ctx context.Context, input email.SearchSendsInput,
+) (search.Result[email.SendRecord], error) {
 	where := table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(input.TenantID)).
 		AND(table.EmailSendRecords.ProductID.EQ(postgres.String(input.ProductID)))
-	if input.TemplateID != nil {
-		where = where.AND(table.EmailSendRecords.TemplateID.EQ(postgres.String(*input.TemplateID)))
-	}
-	if input.Status != nil {
-		where = where.AND(table.EmailSendRecords.Status.EQ(postgres.String(string(*input.Status))))
+
+	if filter := input.Request.Filter; filter != nil {
+		if templates := jetx.BuildIDFilter(table.EmailSendRecords.TemplateID, filter.TemplateIDs); templates != nil {
+			where = where.AND(templates)
+		}
+		if len(filter.Statuses) > 0 {
+			statuses := functional.Slice(filter.Statuses).Map(func(status email.SendStatus) string {
+				return string(status)
+			})
+			where = where.AND(table.EmailSendRecords.Status.IN(jetx.ToStringExpressions(statuses)...))
+		}
 	}
 
-	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
-		FROM(table.EmailSendRecords).
-		WHERE(where).
-		ORDER_BY(table.EmailSendRecords.CreatedAt.DESC()).
-		LIMIT(limit).OFFSET(input.Offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
+	order, err := transactor.StrictKeys(
+		input.Request.Sort,
+		map[email.SortFieldSend]transactor.Key[model.EmailSendRecords]{
+			email.SortFieldSendCreatedAt: transactor.TimeKey(
+				table.EmailSendRecords.CreatedAt, func(row model.EmailSendRecords) time.Time { return row.CreatedAt },
+			),
+			email.SortFieldSendStatus: transactor.StringKey(
+				table.EmailSendRecords.Status, func(row model.EmailSendRecords) string { return row.Status },
+			),
+		},
+		transactor.StringKey(table.EmailSendRecords.ID, func(row model.EmailSendRecords) string { return row.ID }),
+	)
+	if err != nil {
+		return search.Result[email.SendRecord]{}, err
+	}
+
+	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailSendRecords.AllColumns).
+		From(table.EmailSendRecords).
+		Where(where).
+		Keyset(order).
+		Run(ctx, input.Request.Pagination).
+		Value()
 }
 
 func (r *sendRecordRepositoryImpl) CountSince(

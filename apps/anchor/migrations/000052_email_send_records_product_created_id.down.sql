@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_email_send_records_product_created_id;

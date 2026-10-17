@@ -47,9 +47,11 @@ export function OrganizationMembershipDatatable({
 
 	const requestBody: OrganizationMemberSearchRequest = useMemo(() => {
 		return {
-			limit: pagination.pageSize,
-			offset: pagination.pageIndex * pagination.pageSize,
-			query: debouncedGlobalFilter || undefined,
+			pagination: {
+				limit: pagination.pageSize,
+				offset: pagination.pageIndex * pagination.pageSize,
+			},
+			full_text_search: debouncedGlobalFilter || undefined,
 			sort_by: mapSortingToApiField<OrganizationMemberSearchRequest["sort_by"]>(
 				sorting[0]?.id,
 				"joined_at",

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { chromium } from "playwright";
@@ -19,6 +20,8 @@ Options
   --height <px>          Viewport height (default: 800)
   --out <path>           Output file (default: .ui-craft/<name>-<theme>-<width>.png)
   --base <url>           Server origin (default: http://localhost:6007; the Vite dev server is http://localhost:3000)
+  --storage-state <path> Local Playwright auth state for authenticated app screenshots (keep ignored)
+  --actions <path>       Local module exporting async default(page) to prepare the visible state
   --full-page            Capture the whole scrollable page instead of the viewport
   --timeout <ms>         Render wait budget (default: 60000)
   -h, --help             Show this help
@@ -63,6 +66,8 @@ function parseCli() {
 				height: { type: "string", default: "800" },
 				out: { type: "string" },
 				base: { type: "string", default: "http://localhost:6007" },
+				"storage-state": { type: "string" },
+				actions: { type: "string" },
 				"full-page": { type: "boolean", default: false },
 				timeout: { type: "string", default: "60000" },
 				help: { type: "boolean", short: "h", default: false },
@@ -100,6 +105,8 @@ function parseCli() {
 		height: parsePositiveInt("height", values.height),
 		timeout: parsePositiveInt("timeout", values.timeout),
 		fullPage: values["full-page"],
+		storageState: values["storage-state"],
+		actions: values.actions,
 		outPath,
 		url: isPath
 			? `${base}${target}`
@@ -113,7 +120,7 @@ function parseCli() {
 }
 
 async function waitForRender(page, { isStorybook, timeout }) {
-	const rootSelector = isStorybook ? "#storybook-root" : "#root";
+	const rootSelector = isStorybook ? "#storybook-root" : "#app";
 
 	await page.waitForFunction(
 		({ selector, storybook }) => {
@@ -187,6 +194,7 @@ async function main() {
 		const context = await browser.newContext({
 			viewport: { width: options.width, height: options.height },
 			colorScheme: options.theme,
+			storageState: options.storageState,
 		});
 		// The app's ThemeProvider reads its storage key; Storybook gets the theme through the `globals` URL param.
 		await context.addInitScript(
@@ -210,6 +218,13 @@ async function main() {
 		}
 
 		await waitForRender(page, options);
+		if (options.actions) {
+			const actions = await import(
+				pathToFileURL(path.resolve(options.actions)).href
+			);
+			await actions.default(page);
+			await waitForRender(page, options);
+		}
 		await assertTheme(page, options.theme);
 
 		const png = await page.screenshot({

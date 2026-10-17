@@ -251,6 +251,31 @@ func (r *repositoryImpl) Search(
 		where = where.AND(postgres.LOWER(table.OrganizationInvitations.Email).IN(emails...))
 	}
 
+	order, err := transactor.StrictKeys(
+		req.Sort,
+		map[organizationinvitation.SortField]transactor.Key[model.OrganizationInvitations]{
+			organizationinvitation.SortFieldCreatedAt: transactor.TimeKey(
+				table.OrganizationInvitations.CreatedAt,
+				func(row model.OrganizationInvitations) time.Time { return row.CreatedAt },
+			),
+			organizationinvitation.SortFieldEmail: transactor.StringKey(
+				table.OrganizationInvitations.Email,
+				func(row model.OrganizationInvitations) string { return row.Email },
+			),
+			organizationinvitation.SortFieldExpiresAt: transactor.TimeKey(
+				table.OrganizationInvitations.ExpiresAt,
+				func(row model.OrganizationInvitations) time.Time { return row.ExpiresAt },
+			),
+		},
+		transactor.StringKey(
+			table.OrganizationInvitations.ID,
+			func(row model.OrganizationInvitations) string { return row.ID },
+		),
+	)
+	if err != nil {
+		return search.Result[organizationinvitation.Invitation]{}, err
+	}
+
 	return transactor.Page(
 		r.db,
 		toDomain(now),
@@ -258,14 +283,7 @@ func (r *repositoryImpl) Search(
 	).
 		From(table.OrganizationInvitations).
 		Where(where).
-		OrderBy(transactor.SortColumns(
-			req.Sort,
-			map[organizationinvitation.SortField]postgres.Column{
-				organizationinvitation.SortFieldCreatedAt: table.OrganizationInvitations.CreatedAt,
-				organizationinvitation.SortFieldEmail:     table.OrganizationInvitations.Email,
-				organizationinvitation.SortFieldExpiresAt: table.OrganizationInvitations.ExpiresAt,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, req.Pagination).
 		Value()
 }

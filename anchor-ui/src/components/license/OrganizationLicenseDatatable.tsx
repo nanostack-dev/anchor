@@ -8,11 +8,11 @@ import {
 } from "@/client";
 import {
 	getLicenseSchemaOptions,
-	listLicenseTemplatesOptions,
 	searchOrganizationLicensesOptions,
 } from "@/client/@tanstack/react-query.gen";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { AnchorDataTable } from "@/components/common/datatable/AnchorDataTable";
+import { allLicenseTemplatesOptions } from "@/hooks/useAllLicenseTemplates";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
@@ -96,9 +96,7 @@ export function OrganizationLicenseDatatable({
 	});
 	const schema = schemaQuery.data;
 
-	const templatesQuery = useQuery(
-		listLicenseTemplatesOptions({ path: { product_id: productId } }),
-	);
+	const templatesQuery = useQuery(allLicenseTemplatesOptions(productId));
 	const templates = useMemo(
 		() => templatesQuery.data?.items ?? [],
 		[templatesQuery.data],

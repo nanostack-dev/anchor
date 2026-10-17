@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 )
 
@@ -44,22 +45,7 @@ type Instance struct {
 // CanIngest reports whether webhook ingestion and downstream resource updates are
 // allowed for this integration instance under the current lifecycle state.
 func (i *Instance) CanIngest() bool {
-	if !i.IsEnabled {
-		return false
-	}
-
-	if i.WebhookSecret == nil || strings.TrimSpace(*i.WebhookSecret) == "" {
-		return false
-	}
-
-	switch i.Status {
-	case StatusConfiguring, StatusInactive, StatusError:
-		return false
-	case StatusActive:
-		return true
-	default:
-		return false
-	}
+	return i.ingestionBlockReason().IsAbsent()
 }
 
 // GenerateID sets the instance's ID to a new prefixed KSUID.
@@ -70,27 +56,29 @@ func (i *Instance) GenerateID() {
 // IngestionBlockReason provides a stable reason string when webhook processing
 // is blocked by lifecycle state.
 func (i *Instance) IngestionBlockReason() string {
+	return i.ingestionBlockReason().OrElse("active")
+}
+
+func (i *Instance) ingestionBlockReason() functional.Option[string] {
 	if !i.IsEnabled {
-		return "disabled"
+		return functional.Some("disabled")
 	}
-
 	if i.WebhookSecret == nil || strings.TrimSpace(*i.WebhookSecret) == "" {
-		return "missing_webhook_secret"
+		return functional.Some("missing_webhook_secret")
 	}
-
 	switch i.Status {
 	case StatusActive:
-		return "active"
+		return functional.None[string]()
 	case StatusConfiguring:
-		return "configuring"
+		return functional.Some("configuring")
 	case StatusInactive:
-		return "inactive"
+		return functional.Some("inactive")
 	case StatusError:
 		if i.LastError != nil && *i.LastError != "" {
-			return *i.LastError
+			return functional.Some(*i.LastError)
 		}
-		return "error"
+		return functional.Some("error")
 	default:
-		return "unknown_state"
+		return functional.Some("unknown_state")
 	}
 }

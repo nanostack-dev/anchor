@@ -17,6 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 import { useId } from "react";
+import { flushSync } from "react-dom";
 import { z } from "zod";
 
 const loginFormSchema = z.object({
@@ -57,7 +58,7 @@ export function LoginForm() {
 			toast.add({ type: "success", title: "Login successful!" });
 			try {
 				const claims = jwtDecode(data.accessToken);
-				login(data.accessToken, claims as AuthClaims);
+				flushSync(() => login(data.accessToken, claims as AuthClaims));
 				handleSuccessfulAuth(searchParams.redirect);
 			} catch (e) {
 				toast.add({ type: "error", title: "Failed to decode login token." });

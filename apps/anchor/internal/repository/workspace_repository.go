@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -14,6 +15,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/rs/zerolog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/mapper"
@@ -29,6 +31,11 @@ func workspacesUpdatableColumns() postgres.ColumnList {
 }
 
 type WorkspaceRepository interface {
+	ListByOrganizations(
+		ctx context.Context,
+		productID string,
+		organizationIDs []string,
+	) (map[string][]workspace.Workspace, error)
 	FindByID(
 		ctx context.Context,
 		productID string,
@@ -63,6 +70,28 @@ type WorkspaceRepository interface {
 		organizationID string,
 		input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
 	) (search.Result[workspace.Workspace], error)
+}
+
+// ListByOrganizations reads linked workspaces for a whole organization page in one statement.
+func (r *workspaceRepositoryImpl) ListByOrganizations(
+	ctx context.Context, productID string, organizationIDs []string,
+) (map[string][]workspace.Workspace, error) {
+	ids := functional.Slice(organizationIDs).Map(func(id string) postgres.Expression {
+		return postgres.String(id)
+	}).ToSlice()
+	stmt := table.Workspaces.SELECT(table.Workspaces.AllColumns).FROM(r.joinOrganizations()).
+		WHERE(table.Organizations.ProductID.EQ(postgres.String(productID)).
+			AND(table.Workspaces.OrganizationID.IN(ids...))).
+		ORDER_BY(table.Workspaces.CreatedAt.ASC(), table.Workspaces.ID.ASC())
+	items, err := transactor.QueryMapSlice(ctx, r.db, stmt, r.workspaceMapper.ToDomain).Value()
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]workspace.Workspace)
+	for _, item := range items {
+		result[item.OrganizationID] = append(result[item.OrganizationID], item)
+	}
+	return result, nil
 }
 
 type workspaceRepositoryImpl struct {
@@ -133,6 +162,13 @@ func (r *workspaceRepositoryImpl) FindByOrganizationIDAndName(
 	)
 }
 
+const workspaceNameUniqueConstraint = "workspaces_organization_id_name_key"
+
+// ErrWorkspaceNameExists is returned by Create and Update when the organization
+// already has a workspace with that name. Create serializes on the organization
+// row, but a rename does not, so the constraint is the final arbiter.
+var ErrWorkspaceNameExists = errors.New("workspace name already exists in organization")
+
 func (r *workspaceRepositoryImpl) Create(
 	ctx context.Context,
 	newWorkspace workspace.Workspace,
@@ -148,7 +184,7 @@ func (r *workspaceRepositoryImpl) Create(
 		r.db,
 		stmt,
 		r.workspaceMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrWorkspaceNameExists, workspaceNameUniqueConstraint).Value()
 	if err != nil {
 		return workspace.Workspace{}, err
 	}
@@ -181,7 +217,9 @@ func (r *workspaceRepositoryImpl) Update(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, updateStmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, updateStmt).
+		OnUnique(ErrWorkspaceNameExists, workspaceNameUniqueConstraint).
+		Err(); err != nil {
 		return workspace.Workspace{}, err
 	}
 
@@ -250,17 +288,29 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		}
 	}
 
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[workspace.SortFieldProductWorkspace]transactor.Key[model.Workspaces]{
+			workspace.SortFieldProductWorkspaceCreatedAt: transactor.TimeKey(
+				table.Workspaces.CreatedAt, func(row model.Workspaces) time.Time { return row.CreatedAt },
+			),
+			workspace.SortFieldProductWorkspaceUpdatedAt: transactor.TimeKey(
+				table.Workspaces.UpdatedAt, func(row model.Workspaces) time.Time { return row.UpdatedAt },
+			),
+			workspace.SortFieldProductWorkspaceName: transactor.StringKey(
+				table.Workspaces.Name, func(row model.Workspaces) string { return row.Name },
+			),
+		},
+		transactor.StringKey(table.Workspaces.ID, func(row model.Workspaces) string { return row.ID }),
+	)
+	if err != nil {
+		return search.Result[workspace.Workspace]{}, err
+	}
+
 	return transactor.Page(r.db, r.workspaceMapper.ToDomain, table.Workspaces.AllColumns).
 		From(r.joinOrganizations()).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[workspace.SortFieldProductWorkspace]postgres.Column{
-				workspace.SortFieldProductWorkspaceCreatedAt: table.Workspaces.CreatedAt,
-				workspace.SortFieldProductWorkspaceUpdatedAt: table.Workspaces.UpdatedAt,
-				workspace.SortFieldProductWorkspaceName:      table.Workspaces.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

@@ -21,8 +21,9 @@ on:
   # No `paths:` filter on pull_request, on purpose: a filter that matches nothing
   # starts no run and so creates no ci-ok check, which would block a docs-only PR
   # forever once ci-ok is required. detect_changes is the only gate here.
+  # Parent branches of stacked PRs need the same required ci-ok checks.
+  # Preview dispatch remains restricted to PRs whose base is main.
   pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 # One run per PR. Superseded runs are cancelled rather than left to finish: 4 of
@@ -109,8 +110,8 @@ jobs:
       typecheck_command: pnpm typecheck
       test_command: pnpm test
       build_command: pnpm build
-      # Story tests run on every PR — they are the component-level gate for
-      # anchor-ui, which has no e2e suite.
+      # Story tests run on every PR; real dev login smoke is a separate manual
+      # workflow so normal PR verification does not require dev credentials.
       storybook_test_command: pnpm test-storybook
       # The production Storybook build is push-only. Story tests already exercise
       # the stories through Vite in dev mode, so this only adds coverage of
@@ -170,9 +171,28 @@ jobs:
       image_description: Multi-tenant service platform
       docker_context: .
       dockerfile_path: ./Dockerfile
-      build_platforms: linux/amd64
+      build_platforms: linux/amd64,linux/arm64
       sha_tag_format: short
       publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  # Fails a pull request that adds or modifies an unsafe Postgres migration: a
+  # plain CREATE INDEX that blocks writes, CONCURRENTLY sharing a file with
+  # another statement, a one-statement backfill, a hypertable index built
+  # without transaction_per_chunk. Only the files the PR touches are linted;
+  # migrations are append-only. Rules, exclusions and opt-out comments:
+  # nanostack-dev/ci-workflows docs/technical/migration-lint.md.
+  #
+  # Gated on backend_changed, whose patterns include apps/anchor/migrations/**,
+  # and on pull_request: a push to main has nothing left to review.
+  migration-lint:
+    needs: detect_changes
+    if: github.event_name == 'pull_request' && needs.detect_changes.outputs.backend_changed == 'true'
+    uses: nanostack-dev/ci-workflows/.github/workflows/migration-lint.yml@main
+    permissions:
+      contents: read
+    with:
+      migrations_dir: apps/anchor/migrations
+      pg_version: '18'
 
   # One status summarizing the run. A context that lives under a skipped job
   # never materializes, so reading "frontend-verify / ..." directly would say
@@ -181,12 +201,12 @@ jobs:
   # cancelled.
   #
   # Safe as a *required* check. pull_request has no `paths:` filter, so every PR
-  # into main starts a run and creates this check, and detect_changes decides
+  # starts a run and creates this check, and detect_changes decides
   # which verification jobs a PR needs. A docs-only PR runs detect_changes and
   # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
-    needs: [detect_changes, frontend-verify, go-build-test]
+    needs: [detect_changes, frontend-verify, go-build-test, migration-lint]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -225,10 +245,11 @@ jobs:
           DETECT_RESULT: ${{ needs.detect_changes.result }}
           FRONTEND_RESULT: ${{ needs.frontend-verify.result }}
           GO_RESULT: ${{ needs.go-build-test.result }}
+          MIGRATION_LINT_RESULT: ${{ needs.migration-lint.result }}
         run: |
           set -euo pipefail
-          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT"
-          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT"; do
+          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT" "$MIGRATION_LINT_RESULT"; do
             [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
           done
 
@@ -259,7 +280,7 @@ jobs:
   # the description as it is now, which is also what lets preview-toggle.yml
   # raise a preview with a plain re-run.
   preview-flag:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -296,6 +317,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main' &&
       needs.preview-flag.outputs.enabled == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.go-build-test.result == 'success' &&

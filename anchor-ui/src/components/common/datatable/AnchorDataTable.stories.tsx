@@ -712,11 +712,15 @@ export const BulkRunsSequentiallyAndLocksControls: Story = {
 		await userEvent.click(canvas.getAllByLabelText("Select row")[1]);
 		const nextPage = canvas.getByRole("button", { name: "Next" });
 		const dialog = await openBulkDelete(canvasElement);
+		const alertDialog = screen.getByRole("alertdialog");
 		await userEvent.dblClick(
 			dialog.getByRole("button", { name: "Delete selected" }),
 		);
 		await expect(blockingRun).toHaveBeenCalledTimes(1);
 		await expect(dialog.getByText("Processed 0 of 2")).toBeVisible();
+		await expect(
+			dialog.getByRole("button", { name: "Working…" }),
+		).toBeDisabled();
 		await expect(dialog.getByRole("button", { name: "Cancel" })).toBeDisabled();
 		await expect(nextPage).toBeDisabled();
 		finishFirstRequest?.();
@@ -724,6 +728,7 @@ export const BulkRunsSequentiallyAndLocksControls: Story = {
 			await canvas.findByText("2 succeeded. 0 failed."),
 		).toBeVisible();
 		await expect(blockingRun).toHaveBeenCalledTimes(2);
+		await waitFor(() => expect(alertDialog).not.toBeInTheDocument());
 	},
 };
 
@@ -780,10 +785,12 @@ export const BulkDeleteReturnsFromEmptyLastPage: Story = {
 		const canvas = within(canvasElement);
 		await userEvent.click(canvas.getByLabelText("Select all"));
 		const dialog = await openBulkDelete(canvasElement);
+		const alertDialog = screen.getByRole("alertdialog");
 		await userEvent.click(
 			dialog.getByRole("button", { name: "Delete selected" }),
 		);
 		await expect(await canvas.findByText("checkout-staging")).toBeVisible();
 		await expect(canvas.getByText("0 selected on this page")).toBeVisible();
+		await waitFor(() => expect(alertDialog).not.toBeInTheDocument());
 	},
 };

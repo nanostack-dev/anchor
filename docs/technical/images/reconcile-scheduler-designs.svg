@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="370" viewBox="0 0 680 370" role="img">
+<title>What the rerun of job 100 does under three designs</title>
+<desc>Job 101 is already pending when the reaper reruns job 100. Before the fix the rerun inserts job 102 and two chains remain. With the collapse, the rerun inserts job 102, keeps the lowest pending id and deletes 102, leaving one chain. With a lock at enqueue, the rerun takes an advisory lock, finds 101 pending and inserts nothing, leaving one chain.</desc>
+<style>
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .bg { fill: #FAF9F5; stroke: #E5E3DA; }
+  .t { fill: #2C2C2A; font-size: 14px; font-weight: 600; }
+  .s { fill: #5F5E5A; font-size: 12px; }
+  .ln { stroke: #73726C; stroke-width: 1.2; fill: none; }
+  .head { fill: none; stroke: #73726C; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .hdr rect { fill: #F1EFE8; stroke: #888780; }
+  .box rect { fill: #FFFFFF; stroke: #B4B2A9; }
+  .teal rect { fill: #E1F5EE; stroke: #0F6E56; }
+  .teal .t { fill: #085041; }
+  .teal .s { fill: #0F6E56; }
+  .coral rect { fill: #FAECE7; stroke: #993C1D; }
+  .coral .t { fill: #712B13; }
+  .coral .s { fill: #993C1D; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1F1E1D; stroke: #3A3936; }
+    .t { fill: #F1EFE8; }
+    .s { fill: #B4B2A9; }
+    .ln, .head { stroke: #9C9A92; }
+    .hdr rect { fill: #444441; stroke: #B4B2A9; }
+    .box rect { fill: #2C2C2A; stroke: #5F5E5A; }
+    .teal rect { fill: #085041; stroke: #5DCAA5; }
+    .teal .t { fill: #E1F5EE; }
+    .teal .s { fill: #9FE1CB; }
+    .coral rect { fill: #712B13; stroke: #F0997B; }
+    .coral .t { fill: #FAECE7; }
+    .coral .s { fill: #F5C4B3; }
+  }
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="bg" x="0.5" y="0.5" width="679" height="369" rx="12"/>
+<g class="hdr"><rect x="40" y="24" width="180" height="56" rx="8"/><text class="t" x="130" y="42" text-anchor="middle" dominant-baseline="central">Before the fix</text><text class="s" x="130" y="62" text-anchor="middle" dominant-baseline="central">main before #211</text></g>
+<g class="hdr"><rect x="250" y="24" width="180" height="56" rx="8"/><text class="t" x="340" y="42" text-anchor="middle" dominant-baseline="central">Collapse</text><text class="s" x="340" y="62" text-anchor="middle" dominant-baseline="central">chosen, ADR-0020</text></g>
+<g class="hdr"><rect x="460" y="24" width="180" height="56" rx="8"/><text class="t" x="550" y="42" text-anchor="middle" dominant-baseline="central">Lock at enqueue</text><text class="s" x="550" y="62" text-anchor="middle" dominant-baseline="central">considered</text></g>
+<line class="ln" x1="130" y1="82" x2="130" y2="116" marker-end="url(#a)"/>
+<line class="ln" x1="340" y1="82" x2="340" y2="116" marker-end="url(#a)"/>
+<line class="ln" x1="550" y1="82" x2="550" y2="116" marker-end="url(#a)"/>
+<g class="box"><rect x="40" y="120" width="180" height="56" rx="8"/><text class="t" x="130" y="138" text-anchor="middle" dominant-baseline="central">Insert #102</text><text class="s" x="130" y="158" text-anchor="middle" dominant-baseline="central">No check first</text></g>
+<g class="box"><rect x="250" y="120" width="180" height="56" rx="8"/><text class="t" x="340" y="138" text-anchor="middle" dominant-baseline="central">Insert #102</text><text class="s" x="340" y="158" text-anchor="middle" dominant-baseline="central">No check first</text></g>
+<g class="box"><rect x="460" y="120" width="180" height="56" rx="8"/><text class="t" x="550" y="138" text-anchor="middle" dominant-baseline="central">Take advisory lock</text><text class="s" x="550" y="158" text-anchor="middle" dominant-baseline="central">Waits, never skips</text></g>
+<line class="ln" x1="130" y1="178" x2="130" y2="276" marker-end="url(#a)"/>
+<line class="ln" x1="340" y1="178" x2="340" y2="196" marker-end="url(#a)"/>
+<line class="ln" x1="550" y1="178" x2="550" y2="196" marker-end="url(#a)"/>
+<g class="box"><rect x="250" y="200" width="180" height="56" rx="8"/><text class="t" x="340" y="218" text-anchor="middle" dominant-baseline="central">Keep lowest id</text><text class="s" x="340" y="238" text-anchor="middle" dominant-baseline="central">#102 deleted</text></g>
+<g class="box"><rect x="460" y="200" width="180" height="56" rx="8"/><text class="t" x="550" y="218" text-anchor="middle" dominant-baseline="central">Successor pending?</text><text class="s" x="550" y="238" text-anchor="middle" dominant-baseline="central">#101 found, skip</text></g>
+<line class="ln" x1="340" y1="258" x2="340" y2="276" marker-end="url(#a)"/>
+<line class="ln" x1="550" y1="258" x2="550" y2="276" marker-end="url(#a)"/>
+<g class="coral"><rect x="40" y="280" width="180" height="56" rx="8"/><text class="t" x="130" y="298" text-anchor="middle" dominant-baseline="central">2 chains</text><text class="s" x="130" y="318" text-anchor="middle" dominant-baseline="central">#101 and #102 pending</text></g>
+<g class="teal"><rect x="250" y="280" width="180" height="56" rx="8"/><text class="t" x="340" y="298" text-anchor="middle" dominant-baseline="central">1 chain</text><text class="s" x="340" y="318" text-anchor="middle" dominant-baseline="central">#101</text></g>
+<g class="teal"><rect x="460" y="280" width="180" height="56" rx="8"/><text class="t" x="550" y="298" text-anchor="middle" dominant-baseline="central">1 chain</text><text class="s" x="550" y="318" text-anchor="middle" dominant-baseline="central">#101</text></g>
+</svg>

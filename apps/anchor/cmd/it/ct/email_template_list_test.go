@@ -14,10 +14,10 @@ func TestEmailTemplateList(t *testing.T) {
 	t.Parallel()
 	t.Run("returns empty list for new product", func(t *testing.T) {
 		tc := newEmailTestCtx(t)
-		resp, err := tc.product.OwnerAuthenticatedClient().ListEmailTemplatesWithResponse(
+		resp, err := tc.product.OwnerAuthenticatedClient().SearchEmailTemplatesWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			&ct.ListEmailTemplatesParams{},
+			ct.SearchEmailTemplatesJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -44,10 +44,10 @@ func TestEmailTemplateList(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		resp, err := client.ListEmailTemplatesWithResponse(
+		resp, err := client.SearchEmailTemplatesWithResponse(
 			context.Background(),
 			tc.product.ProductID,
-			&ct.ListEmailTemplatesParams{},
+			ct.SearchEmailTemplatesJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -71,10 +71,10 @@ func TestEmailTemplateList(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		resp, err := tc2.product.OwnerAuthenticatedClient().ListEmailTemplatesWithResponse(
+		resp, err := tc2.product.OwnerAuthenticatedClient().SearchEmailTemplatesWithResponse(
 			context.Background(),
 			tc2.product.ProductID,
-			&ct.ListEmailTemplatesParams{},
+			ct.SearchEmailTemplatesJSONRequestBody{},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, 0, resp.JSON200.Count)

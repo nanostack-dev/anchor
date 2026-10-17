@@ -1,12 +1,21 @@
 package workspace
 
-import "github.com/nanostack-dev/nanostack-framework/pkg/search"
+import (
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/searchx"
+)
 
 type CreateWorkspaceInput struct {
 	ProductID      string  `validate:"required,notblank"`
 	OrganizationID string  `validate:"required,notblank"`
 	Name           string  `validate:"required,notblank,min=2,max=100"`
 	Description    *string `validate:"omitempty,max=500"`
+}
+
+type ListByOrganizationsInput struct {
+	ProductID       string   `validate:"required,notblank"`
+	OrganizationIDs []string `validate:"required,min=1,dive,notblank"`
 }
 
 type FindWorkspaceInput struct {
@@ -46,4 +55,12 @@ type SearchWorkspacesInput struct {
 	ProductID      string                                                           `validate:"required,notblank"`
 	OrganizationID string                                                           `validate:"required,notblank"`
 	Request        search.Request[SearchWorkspaceFilter, SortFieldProductWorkspace] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchWorkspacesInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request,
+		SortFieldProductWorkspaceCreatedAt,
+		SortFieldProductWorkspaceUpdatedAt,
+		SortFieldProductWorkspaceName)
 }

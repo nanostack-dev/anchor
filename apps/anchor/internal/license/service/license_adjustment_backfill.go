@@ -58,8 +58,8 @@ func (b *LicenseAdjustmentBackfill) Run(ctx context.Context) error {
 
 func (b *LicenseAdjustmentBackfill) initialize(ctx context.Context, row license.OrganizationLicense) error {
 	return b.tx.InTx(ctx, func(txCtx context.Context) error {
-		found, err := b.licenses.FindByOrganizationForUpdate(
-			txCtx,
+		found, err := b.licenses.FindByOrganization(
+			transactor.ForUpdate(txCtx),
 			row.PlatformTenantID,
 			row.ProductID,
 			row.OrganizationID,
@@ -94,10 +94,14 @@ func (b *LicenseAdjustmentBackfill) initialize(ctx context.Context, row license.
 }
 
 func (b *LicenseAdjustmentBackfill) restoreHistory(ctx context.Context, current *license.OrganizationLicense) error {
-	for offset := int32(0); ; offset += adjustmentBackfillBatchSize {
-		page, err := b.changes.ListByOrganization(ctx, license.ListLicenseChangesInput{
+	request := search.NewRequest[license.SearchLicenseChangesFilter, license.SortFieldChange]().
+		WithSort(new(license.SortFieldChangeChangedAt), new(search.SortDescending))
+	request.Pagination.Limit = adjustmentBackfillBatchSize
+
+	for {
+		page, err := b.changes.Search(ctx, license.SearchLicenseChangesInput{
 			TenantID: current.PlatformTenantID, ProductID: current.ProductID, OrganizationID: current.OrganizationID,
-			Pagination: search.Pagination{Limit: adjustmentBackfillBatchSize, Offset: offset},
+			Request: request,
 		})
 		if err != nil {
 			return err
@@ -112,8 +116,9 @@ func (b *LicenseAdjustmentBackfill) restoreHistory(ctx context.Context, current 
 				current.RecordAdjustedFields([]string{*change.Field})
 			}
 		}
-		if len(page.Items) < adjustmentBackfillBatchSize {
+		if page.NextCursor == "" {
 			return nil
 		}
+		request = request.WithCursor(page.NextCursor)
 	}
 }

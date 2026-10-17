@@ -1,0 +1,50 @@
+name: Browser smoke (dev)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anchor-browser-smoke-dev
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: anchor-ui
+    env:
+      E2E_API_URL: https://apidev.tryanchor.dev
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Check dev account configuration
+        shell: bash
+        env:
+          E2E_EMAIL: ${{ secrets.ANCHOR_E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.ANCHOR_E2E_PASSWORD }}
+        run: |
+          if [[ -z "$E2E_EMAIL" || -z "$E2E_PASSWORD" ]]; then
+            echo 'Configure ANCHOR_E2E_EMAIL and ANCHOR_E2E_PASSWORD repository secrets for a dev admin account.'
+            exit 1
+          fi
+      - uses: pnpm/action-setup@v6.0.6
+        with:
+          version: 11.1.0
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Login and Products smoke
+        env:
+          E2E_EMAIL: ${{ secrets.ANCHOR_E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.ANCHOR_E2E_PASSWORD }}
+        run: pnpm test:e2e:smoke

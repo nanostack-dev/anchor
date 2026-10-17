@@ -36,6 +36,8 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 
 **Errors.** Every method returns `*Error` on failure, carrying `Op`, `StatusCode`, and Anchor's structured `Details`. Classify with `errors.Is` against `ErrNotFound`, `ErrForbidden`, `ErrUnauthorized`, `ErrConflict`, `ErrInvalid`, `ErrPermanent`. `ErrPermanent` matches every 4xx except 429.
 
+**Pagination.** Every search pages with an opaque keyset cursor. A search builder has `Cursor(string)`, and its result is the generated list response, which carries `NextCursor`. `All(ctx)` returns an `iter.Seq2[Item, error]` that follows `NextCursor` until it is absent: it never counts items, because only the cursor is exact. The iterator clones the builder's request for each page, so a builder can run `All` twice and a caller's `Offset` applies to the first page only (Anchor refuses a cursor combined with an offset). `Users.Organizations` reads every page of `SearchOrganizations`, so it stays complete for a user in many organizations. The SDK never builds or parses a cursor.
+
 **Retry.** Transport errors, 5xx, and 429 are retried with exponential backoff and jitter (3 attempts, 200ms base, 2s cap). Every other 4xx returns on the first attempt. Jitter prevents concurrent callers recovering from one outage from re-converging on Anchor in lockstep.
 
 `Error.forcePermanent` covers the case where a 2xx still means "retrying cannot help" — the email send returns 201 for a deduped replay of a previously FAILED record, so the record's own status is trusted over the HTTP code. That behaviour is ported from echopoint's existing wrapper and must be preserved.
@@ -53,7 +55,8 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `members.go` | done — list, search, get (plus role permissions), add, remove, set role |
 | `workspaces.go` | done — create, get, update, delete, search, list |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
-| `users.go` | done — create, get, delete, search, list, a user's organizations |
+| `users.go` | done — create, get, delete, search, list, a user's organizations (`SearchOrganizations`, `Organizations` reads every page) |
+| `paginate.go` | done — the cursor iterator behind every `All` |
 | `events.go` | done — Standard Webhooks ingest, typed handlers, `Events(secret)` |
 | `license.go` | partial — read (cached, fail-open), instantiate, adjust, diff, report usage, `LimitUsage` decision value; usage series not wrapped |
 | `README.md` | done — consumer-facing quickstart |

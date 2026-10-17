@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -31,6 +32,15 @@ type userOrgMembershipRow struct {
 	Permissions  []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
 }
 
+// userOrgMembershipSearchRow scans one membership per row for the paginated
+// search of a user's organizations. Role permissions load for the page in a
+// second statement, so the row carries no permission slice.
+type userOrgMembershipSearchRow struct {
+	model.OrganizationMemberships
+	Organization model.Organizations `alias:"organizations"`
+	Role         model.ProductRoles  `alias:"product_roles"`
+}
+
 // orgMembershipRow is the composite struct for scanning the joined query result
 // from the organization's perspective (includes product user details).
 type orgMembershipRow struct {
@@ -38,6 +48,14 @@ type orgMembershipRow struct {
 	ProductUser model.ProductUsers                     `alias:"product_users"`
 	Role        model.ProductRoles                     `alias:"product_roles"`
 	Permissions []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
+}
+
+// orgMembershipSearchRow scans one membership per row for the paginated search.
+// It carries no permission slice: a keyset page needs one SQL row per item.
+type orgMembershipSearchRow struct {
+	model.OrganizationMemberships
+	ProductUser model.ProductUsers `alias:"product_users"`
+	Role        model.ProductRoles `alias:"product_roles"`
 }
 
 // OrganizationMembershipRepository provides access to organization memberships.
@@ -50,6 +68,17 @@ type OrganizationMembershipRepository interface {
 		productUserID string,
 		includePermissions bool,
 	) ([]user.OrganizationMembership, error)
+
+	// SearchByProductUserID pages the organizations a product user belongs to
+	// with a cursor. When includePermissions is true, role permissions are
+	// loaded for the page.
+	SearchByProductUserID(
+		ctx context.Context,
+		productID string,
+		productUserID string,
+		includePermissions bool,
+		req search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization],
+	) (search.Result[user.OrganizationMembership], error)
 
 	// FindByProductUserIDAndOrgID returns a specific organization membership for a product user.
 	// When includePermissions is true, role permissions are included.
@@ -139,14 +168,113 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 		table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
 			table.Organizations.ProductID.EQ(postgres.String(productID)),
 		),
-	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC())
+	).ORDER_BY(table.OrganizationMemberships.CreatedAt.ASC(), table.OrganizationMemberships.OrganizationID.ASC())
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		func(row userOrgMembershipRow) user.OrganizationMembership {
-			return r.toDomain(row)
-		},
+		r.toDomain,
 	).Value()
+}
+
+func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
+	ctx context.Context,
+	productID string,
+	productUserID string,
+	includePermissions bool,
+	req search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization],
+) (search.Result[user.OrganizationMembership], error) {
+	whereStmt := table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
+		table.Organizations.ProductID.EQ(postgres.String(productID)),
+	)
+
+	if req.Filter != nil {
+		if ids := jetx.BuildIDFilter(
+			table.OrganizationMemberships.OrganizationID, req.Filter.OrganizationIDs,
+		); ids != nil {
+			whereStmt = whereStmt.AND(ids)
+		}
+		if roleIDs := jetx.BuildIDFilter(
+			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
+		); roleIDs != nil {
+			whereStmt = whereStmt.AND(roleIDs)
+		}
+	}
+
+	order, err := transactor.StrictKeys(
+		req.Sort,
+		map[user.SortFieldUserOrganization]transactor.Key[userOrgMembershipSearchRow]{
+			user.SortFieldUserOrganizationJoinedAt: transactor.TimeKey(
+				table.OrganizationMemberships.CreatedAt,
+				func(row userOrgMembershipSearchRow) time.Time { return row.OrganizationMemberships.CreatedAt },
+			),
+			user.SortFieldUserOrganizationName: transactor.StringKey(
+				table.Organizations.Name,
+				func(row userOrgMembershipSearchRow) string { return row.Organization.Name },
+			),
+		},
+		transactor.StringKey(
+			table.OrganizationMemberships.OrganizationID,
+			func(row userOrgMembershipSearchRow) string { return row.OrganizationMemberships.OrganizationID },
+		),
+	)
+	if err != nil {
+		return search.Result[user.OrganizationMembership]{}, err
+	}
+
+	result, err := transactor.Page(
+		r.db,
+		func(row userOrgMembershipSearchRow) user.OrganizationMembership {
+			return r.toDomain(userOrgMembershipRow{
+				OrganizationMemberships: row.OrganizationMemberships,
+				Organization:            row.Organization,
+				Role:                    row.Role,
+			})
+		},
+		table.OrganizationMemberships.AllColumns,
+		table.Organizations.AllColumns,
+		table.ProductRoles.AllColumns,
+	).
+		From(
+			table.OrganizationMemberships.
+				INNER_JOIN(
+					table.Organizations,
+					table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
+				).
+				INNER_JOIN(
+					table.ProductRoles,
+					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+				),
+		).
+		Where(whereStmt).
+		Keyset(order).
+		Run(ctx, req.Pagination).
+		Value()
+	if err != nil || !includePermissions || len(result.Items) == 0 {
+		return result, err
+	}
+
+	roleIDs := functional.Slice(result.Items).Map(func(m user.OrganizationMembership) string { return m.RoleID })
+	permissions, err := transactor.Query[[]model.ProductRoleResourcePermissions](
+		ctx, r.db,
+		table.ProductRoleResourcePermissions.SELECT(table.ProductRoleResourcePermissions.AllColumns).WHERE(
+			table.ProductRoleResourcePermissions.ProductRoleID.IN(jetx.ToStringExpressions(roleIDs)...),
+		),
+	).Value()
+	if err != nil {
+		return search.Result[user.OrganizationMembership]{}, err
+	}
+
+	rolePermissions := map[string][]string{}
+	for _, permission := range permissions {
+		rolePermissions[permission.ProductRoleID] = append(
+			rolePermissions[permission.ProductRoleID], permission.PermissionName,
+		)
+	}
+	for i := range result.Items {
+		result.Items[i].RolePermissions = rolePermissions[result.Items[i].RoleID]
+	}
+
+	return result, nil
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
@@ -166,11 +294,16 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		func(row userOrgMembershipRow) user.OrganizationMembership {
-			return r.toDomain(row)
-		},
+		r.toDomain,
 	)
 }
+
+const organizationMembershipPrimaryKey = "organization_memberships_pkey"
+
+// ErrOrganizationMembershipExists is returned by Create when the product user
+// is already a member: the (organization, product user) primary key settles the
+// race the service pre-check cannot.
+var ErrOrganizationMembershipExists = errors.New("organization membership already exists")
 
 func (r *organizationMembershipRepositoryImpl) Create(
 	ctx context.Context,
@@ -191,11 +324,19 @@ func (r *organizationMembershipRepositoryImpl) Create(
 		table.OrganizationMemberships.AllColumns,
 	).MODEL(entity)
 
-	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt).
+		OnUnique(ErrOrganizationMembershipExists, organizationMembershipPrimaryKey).
+		Err(); err != nil {
 		return organization.Membership{}, err
 	}
 
-	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	found, err := r.FindByOrgIDAndUserID(
+		ctx,
+		productID,
+		organizationID,
+		productUserID,
+		organization.WithoutRolePermissions,
+	)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -235,7 +376,13 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		return organization.Membership{}, err
 	}
 
-	found, err := r.FindByOrgIDAndUserID(ctx, productID, organizationID, productUserID, false)
+	found, err := r.FindByOrgIDAndUserID(
+		ctx,
+		productID,
+		organizationID,
+		productUserID,
+		organization.WithoutRolePermissions,
+	)
 	if err != nil {
 		return organization.Membership{}, err
 	}
@@ -379,9 +526,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		func(row orgMembershipRow) organization.Membership {
-			return r.toDomainMembership(row)
-		},
+		r.toDomainMembership,
 	)
 }
 
@@ -399,9 +544,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		func(row orgMembershipRow) organization.Membership {
-			return r.toDomainMembership(row)
-		},
+		r.toDomainMembership,
 	).Value()
 }
 
@@ -449,9 +592,36 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		}
 	}
 
+	order, err := transactor.StrictKeys(
+		req.Sort,
+		map[organization.SortFieldMember]transactor.Key[orgMembershipSearchRow]{
+			organization.SortFieldMemberJoinedAt: transactor.TimeKey(
+				table.OrganizationMemberships.CreatedAt,
+				func(row orgMembershipSearchRow) time.Time { return row.OrganizationMemberships.CreatedAt },
+			),
+			organization.SortFieldMemberEmail: transactor.StringKey(
+				table.ProductUsers.Email,
+				func(row orgMembershipSearchRow) string { return row.ProductUser.Email },
+			),
+		},
+		transactor.StringKey(
+			table.OrganizationMemberships.ProductUserID,
+			func(row orgMembershipSearchRow) string { return row.OrganizationMemberships.ProductUserID },
+		),
+	)
+	if err != nil {
+		return search.Result[organization.Membership]{}, err
+	}
+
 	return transactor.Page(
 		r.db,
-		r.toDomainMembership,
+		func(row orgMembershipSearchRow) organization.Membership {
+			return r.toDomainMembership(orgMembershipRow{
+				OrganizationMemberships: row.OrganizationMemberships,
+				ProductUser:             row.ProductUser,
+				Role:                    row.Role,
+			})
+		},
 		table.OrganizationMemberships.AllColumns,
 		table.ProductUsers.AllColumns,
 		table.ProductRoles.AllColumns,
@@ -468,13 +638,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 				),
 		).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			req.Sort,
-			map[organization.SortFieldMember]postgres.Column{
-				organization.SortFieldMemberJoinedAt: table.OrganizationMemberships.CreatedAt,
-				organization.SortFieldMemberEmail:    table.ProductUsers.Email,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, req.Pagination).
 		Value()
 }

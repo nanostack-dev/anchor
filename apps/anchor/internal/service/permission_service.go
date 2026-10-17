@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -10,6 +11,7 @@ import (
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
 )
@@ -89,6 +91,11 @@ func (s *permissionService) Create(
 	}
 
 	createdPerm, err := s.permissionRepo.Create(ctx, perm)
+	if errors.Is(err, repository.ErrProductPermissionExists) {
+		return permission.ProductPermission{}, permission.NewPermissionNameDuplicateError(
+			input.Name, input.ProductID,
+		)
+	}
 	if err != nil {
 		logger.Error().
 			Str("product_id", input.ProductID).
@@ -242,12 +249,15 @@ func (s *permissionService) SearchByProductID(
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
 	}
 
 	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
 	if err != nil {
+		if searchx.IsClientError(err) {
+			return search.Result[permission.ProductPermission]{}, err
+		}
 		logger.Error().
 			Str("product_id", input.ProductID).
 			Err(err).

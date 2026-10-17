@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
+	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -208,6 +210,10 @@ func (s *organizationAPIKeyService) Create(
 			txCtx, events.OrganizationAPIKeyCreated, org.ProductID, input.OrganizationID, created.ID,
 		)
 	})
+	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{}, "",
+			NewOrganizationAPIKeyNameExistsError(input.Name, input.OrganizationID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("organization_api_key_id", organizationAPIKey.ID).
@@ -308,6 +314,10 @@ func (s *organizationAPIKeyService) Update(
 			txCtx, events.OrganizationAPIKeyUpdated, input.ProductID, input.OrganizationID, updated.ID,
 		)
 	})
+	if errors.Is(err, repository.ErrOrganizationAPIKeyNameExists) {
+		return orgapikey.OrganizationAPIKey{},
+			NewOrganizationAPIKeyNameExistsError(updatedAPIKey.Name, input.OrganizationID)
+	}
 	if err != nil {
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
@@ -326,7 +336,7 @@ func (s *organizationAPIKeyService) Search(
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return nil, err
 	}
 	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
@@ -335,6 +345,9 @@ func (s *organizationAPIKeyService) Search(
 
 	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
 	if err != nil {
+		if searchx.IsClientError(err) {
+			return nil, err
+		}
 		logger.Error().
 			Str("organization_id", input.OrganizationID).
 			Err(err).

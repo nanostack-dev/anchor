@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -12,9 +13,14 @@ import (
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 )
 
 type WorkspaceService interface {
+	ListByOrganizations(
+		ctx context.Context,
+		input workspace.ListByOrganizationsInput,
+	) (map[string][]workspace.Workspace, error)
 	Find(ctx context.Context, input workspace.FindWorkspaceInput) (workspace.Workspace, error)
 	Create(ctx context.Context, input workspace.CreateWorkspaceInput) (workspace.Workspace, error)
 	Update(ctx context.Context, input workspace.UpdateWorkspaceInput) (workspace.Workspace, error)
@@ -23,6 +29,15 @@ type WorkspaceService interface {
 		ctx context.Context,
 		input workspace.SearchWorkspacesInput,
 	) (search.Result[workspace.Workspace], error)
+}
+
+func (s *workspaceService) ListByOrganizations(
+	ctx context.Context, input workspace.ListByOrganizationsInput,
+) (map[string][]workspace.Workspace, error) {
+	if err := validate.ValidateStruct(input); err != nil {
+		return nil, err
+	}
+	return s.workspaceRepo.ListByOrganizations(ctx, input.ProductID, input.OrganizationIDs)
 }
 
 type workspaceService struct {
@@ -111,6 +126,14 @@ func (s *workspaceService) Create(
 
 	var created workspace.Workspace
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if err := s.ensureOrganizationExists(
+			transactor.ForUpdate(txCtx),
+			input.ProductID,
+			input.OrganizationID,
+		); err != nil {
+			return err
+		}
+
 		existing, findErr := s.workspaceRepo.FindByOrganizationIDAndName(
 			txCtx,
 			input.ProductID,
@@ -126,6 +149,9 @@ func (s *workspaceService) Create(
 
 		var createErr error
 		created, createErr = s.workspaceRepo.Create(txCtx, newWorkspace)
+		if errors.Is(createErr, repository.ErrWorkspaceNameExists) {
+			return workspace.NewNameExistsError(input.Name, input.OrganizationID)
+		}
 		if createErr != nil {
 			return createErr
 		}
@@ -201,6 +227,9 @@ func (s *workspaceService) Update(
 			input.OrganizationID,
 			updatedWorkspace,
 		)
+		if errors.Is(updateErr, repository.ErrWorkspaceNameExists) {
+			return workspace.NewNameExistsError(updatedWorkspace.Name, input.OrganizationID)
+		}
 		if updateErr != nil {
 			return updateErr
 		}
@@ -269,7 +298,7 @@ func (s *workspaceService) Search(
 ) (search.Result[workspace.Workspace], error) {
 	logger := s.logger.With().Str("operation", "Search").Logger()
 
-	if err := validate.ValidateStruct(input); err != nil {
+	if err := input.Validate(); err != nil {
 		return search.Result[workspace.Workspace]{}, err
 	}
 
@@ -284,10 +313,12 @@ func (s *workspaceService) Search(
 		input.Request,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Msg("failed to search workspaces")
+		if !searchx.IsClientError(err) {
+			logger.Error().Err(err).
+				Str("product_id", input.ProductID).
+				Str("organization_id", input.OrganizationID).
+				Msg("failed to search workspaces")
+		}
 		return search.Result[workspace.Workspace]{}, err
 	}
 

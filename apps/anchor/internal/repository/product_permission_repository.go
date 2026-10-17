@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/permission"
 	"anchor/internal/mapper"
@@ -102,6 +104,18 @@ func (r *productPermissionRepositoryImpl) FindByProductIDAndPermissionName(
 	)
 }
 
+// The name is the second half of the primary key, so the primary key guards a
+// byte-identical name and the 000019 index a name differing only in case.
+const (
+	productPermissionPrimaryKey           = "product_permissions_pkey"
+	productPermissionNameLowerUniqueIndex = "idx_product_permissions_product_lower_name_unique"
+)
+
+// ErrProductPermissionExists is returned by Create when the product already has
+// a permission with that name: the unique guards settle the race the service
+// pre-check cannot.
+var ErrProductPermissionExists = errors.New("product permission already exists in product")
+
 func (r *productPermissionRepositoryImpl) Create(
 	ctx context.Context, perm permission.ProductPermission,
 ) (permission.ProductPermission, error) {
@@ -113,7 +127,7 @@ func (r *productPermissionRepositoryImpl) Create(
 
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
-	).Value()
+	).OnUnique(ErrProductPermissionExists, productPermissionPrimaryKey, productPermissionNameLowerUniqueIndex).Value()
 }
 
 func (r *productPermissionRepositoryImpl) Update(
@@ -172,17 +186,35 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 		)
 	}
 
+	nameKey := transactor.StringKey(
+		table.ProductPermissions.Name,
+		func(row model.ProductPermissions) string { return row.Name },
+	)
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[permission.SortFieldProductPermission]transactor.Key[model.ProductPermissions]{
+			permission.SortFieldProductPermissionCreatedAt: transactor.TimeKey(
+				table.ProductPermissions.CreatedAt,
+				func(row model.ProductPermissions) time.Time { return row.CreatedAt },
+			),
+			permission.SortFieldProductPermissionUpdatedAt: transactor.TimeKey(
+				table.ProductPermissions.UpdatedAt,
+				func(row model.ProductPermissions) time.Time { return row.UpdatedAt },
+			),
+			permission.SortFieldProductPermissionName:     nameKey,
+			permission.SortFieldProductPermissionID:       nameKey,
+			permission.SortFieldProductPermissionResource: nameKey,
+		},
+		nameKey,
+	)
+	if err != nil {
+		return search.Result[permission.ProductPermission]{}, err
+	}
+
 	return transactor.Page(r.db, r.productPermissionMapper.ToDomain, table.ProductPermissions.AllColumns).
 		From(table.ProductPermissions).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[permission.SortFieldProductPermission]postgres.Column{
-				permission.SortFieldProductPermissionCreatedAt: table.ProductPermissions.CreatedAt,
-				permission.SortFieldProductPermissionUpdatedAt: table.ProductPermissions.UpdatedAt,
-				permission.SortFieldProductPermissionName:      table.ProductPermissions.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

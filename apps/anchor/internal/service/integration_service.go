@@ -14,9 +14,11 @@ import (
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
 	"anchor/internal/repository"
+	"anchor/internal/searchx"
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -50,8 +52,6 @@ type integrationReconcileQueuePayload struct {
 	IsScheduler           bool   `json:"is_scheduler,omitempty"`
 }
 
-const defaultAuditLogLimit int64 = 100
-
 const (
 	integrationReconcileCommandBatchSize  = 200
 	integrationVerificationTimeout        = 30 * time.Second
@@ -84,10 +84,10 @@ type IntegrationService interface {
 		ctx context.Context,
 		input integration.ListInstancesInput,
 	) ([]integration.Instance, error)
-	ListAuditLogs(
+	SearchAuditLogs(
 		ctx context.Context,
-		input integration.ListAuditLogsInput,
-	) ([]integration.AuditLog, error)
+		input integration.SearchAuditLogsInput,
+	) (search.Result[integration.AuditLog], error)
 
 	// IngestWebhook validates the webhook, persists the event as PENDING,
 	// and returns immediately. Processing happens asynchronously.
@@ -288,6 +288,9 @@ func (s *integrationService) createInstanceTx(
 	instance.GenerateID()
 
 	created, createErr := s.instanceRepo.Create(ctx, instance)
+	if errors.Is(createErr, repository.ErrIntegrationInstanceExists) {
+		return integration.Instance{}, ErrIntegrationInstanceAlreadyExists
+	}
 	if createErr != nil {
 		logger.Error().Err(createErr).
 			Msg("failed to create integration instance")
@@ -670,19 +673,14 @@ func (s *integrationService) ListInstances(
 	return instances, nil
 }
 
-func (s *integrationService) ListAuditLogs(
+func (s *integrationService) SearchAuditLogs(
 	ctx context.Context,
-	input integration.ListAuditLogsInput,
-) ([]integration.AuditLog, error) {
-	logger := s.logger.With().Str("operation", "ListAuditLogs").Logger()
+	input integration.SearchAuditLogsInput,
+) (search.Result[integration.AuditLog], error) {
+	logger := s.logger.With().Str("operation", "SearchAuditLogs").Logger()
 
-	if valErr := validate.ValidateStruct(input); valErr != nil {
-		return nil, valErr
-	}
-
-	limit := input.Limit
-	if limit <= 0 {
-		limit = defaultAuditLogLimit
+	if valErr := input.Validate(); valErr != nil {
+		return search.Result[integration.AuditLog]{}, valErr
 	}
 
 	found, findErr := s.instanceRepo.FindByID(
@@ -692,26 +690,21 @@ func (s *integrationService) ListAuditLogs(
 		logger.Error().Err(findErr).
 			Str("integration_instance_id", input.IntegrationInstanceID).
 			Msg("failed to find integration instance for audit logs")
-		return nil, findErr
+		return search.Result[integration.AuditLog]{}, findErr
 	}
 
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
-		return nil, ErrIntegrationInstanceNotFound
+		return search.Result[integration.AuditLog]{}, ErrIntegrationInstanceNotFound
 	}
 
-	logs, listErr := s.auditLogRepo.ListByInstanceScoped(
-		ctx,
-		input.TenantID,
-		input.ProductID,
-		input.IntegrationInstanceID,
-		limit,
-		input.Offset,
-	)
-	if listErr != nil {
-		logger.Error().Err(listErr).
-			Str("integration_instance_id", input.IntegrationInstanceID).
-			Msg("failed to list integration audit logs")
-		return nil, listErr
+	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, input)
+	if searchErr != nil {
+		if !searchx.IsClientError(searchErr) {
+			logger.Error().Err(searchErr).
+				Str("integration_instance_id", input.IntegrationInstanceID).
+				Msg("failed to search integration audit logs")
+		}
+		return search.Result[integration.AuditLog]{}, searchErr
 	}
 
 	return logs, nil
@@ -768,6 +761,9 @@ func (s *integrationService) persistPendingEvent(
 
 		var createErr error
 		created, createErr = s.eventRepo.CreateInternal(txCtx, event)
+		if errors.Is(createErr, repository.ErrIntegrationEventExists) {
+			return createErr
+		}
 		if createErr != nil {
 			logger.Error().Err(createErr).Msg("failed to store integration event")
 			return createErr
@@ -814,7 +810,33 @@ func (s *integrationService) persistPendingEvent(
 
 		return nil
 	})
+	if errors.Is(err, repository.ErrIntegrationEventExists) {
+		return s.concurrentDuplicateEvent(ctx, logger, instance, event)
+	}
 	return created, err
+}
+
+// concurrentDuplicateEvent answers a delivery that lost the insert race to a
+// concurrent delivery of the same external event. The aborted transaction
+// cannot read, so the winner's committed row is read afresh and returned as
+// the same idempotent success a sequential duplicate gets.
+func (s *integrationService) concurrentDuplicateEvent(
+	ctx context.Context,
+	logger zerolog.Logger,
+	instance *integration.Instance,
+	event integration.Event,
+) (integration.Event, error) {
+	existing, err := s.findDuplicateEvent(ctx, logger, instance, event)
+	if err != nil {
+		return integration.Event{}, err
+	}
+	if existing == nil {
+		return integration.Event{}, fmt.Errorf(
+			"ingest webhook: event %s for instance %s violated its unique key but is not stored",
+			event.ExternalEventID, instance.ID,
+		)
+	}
+	return *existing, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -915,6 +937,8 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 		return reEnqueueErr
 	}
 
+	s.collapseDuplicateSchedulerJobs(ctx, logger)
+
 	if firstErr != nil {
 		logger.Warn().Err(firstErr).Msg("scheduler completed with some enqueue errors (swallowed to avoid fork bomb)")
 	}
@@ -922,8 +946,72 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 	return nil
 }
 
-// runInstanceReconcile reconciles a single integration instance.
+// collapseDuplicateSchedulerJobs keeps only the oldest pending scheduler job. Every
+// replica that runs it keeps the same lowest id, so concurrent runs converge on one
+// chain and the oldest job always survives.
+func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context, logger zerolog.Logger) {
+	const maxSchedulerJobsToInspect = 1000
+	jobs, err := s.queue.ListJobs(ctx, queue.ListJobsParams{
+		QueueName: integrationReconcileQueueName,
+		Status:    queue.StatusPending,
+		Search:    "is_scheduler",
+		Limit:     maxSchedulerJobsToInspect,
+	})
+	if err != nil {
+		logger.Warn().Err(err).Msg("failed to list pending scheduler jobs for deduplication")
+		return
+	}
+
+	duplicates := functional.Slice(jobs).
+		Filter(isSchedulerJob).
+		SortedBy(func(job queue.Job) int64 { return job.ID }).
+		Drop(1)
+
+	duplicates.ForEach(func(job queue.Job) {
+		if delErr := s.queue.DeleteJob(ctx, job.ID); delErr != nil {
+			logger.Debug().Err(delErr).Int64("job_id", job.ID).Msg("duplicate scheduler job already gone")
+		}
+	})
+
+	if !duplicates.IsEmpty() {
+		logger.Warn().
+			Int("scheduler_jobs_removed", duplicates.Count()).
+			Msg("removed duplicate reconcile scheduler jobs")
+	}
+}
+
+func isSchedulerJob(job queue.Job) bool {
+	var payload integrationReconcileQueuePayload
+	return json.Unmarshal(job.Payload, &payload) == nil && payload.IsScheduler
+}
+
+// runInstanceReconcile reconciles a single integration instance. A per-instance
+// advisory lock skips the job when another replica is already reconciling the same
+// instance: two concurrent runs would insert the same new users and one would fail.
 func (s *integrationService) runInstanceReconcile(
+	ctx context.Context,
+	logger zerolog.Logger,
+	instanceID string,
+) error {
+	acquired, err := s.lock.TryWithLock(
+		ctx,
+		lockKeyInstanceReconcilePrefix+instanceID,
+		func(lockCtx context.Context, _ *sql.Tx) error {
+			return s.reconcileInstance(lockCtx, logger, instanceID)
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if !acquired {
+		logger.Info().
+			Str("integration_instance_id", instanceID).
+			Msg("instance reconcile already running on another worker, skipping")
+	}
+	return nil
+}
+
+func (s *integrationService) reconcileInstance(
 	ctx context.Context,
 	logger zerolog.Logger,
 	instanceID string,

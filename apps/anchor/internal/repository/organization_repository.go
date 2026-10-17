@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/mapper"
@@ -164,17 +165,29 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		}
 	}
 
+	order, err := transactor.StrictKeys(
+		input.Sort,
+		map[organization.SortFieldProductOrganization]transactor.Key[model.Organizations]{
+			organization.SortFieldProductOrganizationCreatedAt: transactor.TimeKey(
+				table.Organizations.CreatedAt, func(row model.Organizations) time.Time { return row.CreatedAt },
+			),
+			organization.SortFieldProductOrganizationUpdatedAt: transactor.TimeKey(
+				table.Organizations.UpdatedAt, func(row model.Organizations) time.Time { return row.UpdatedAt },
+			),
+			organization.SortFieldProductOrganizationName: transactor.StringKey(
+				table.Organizations.Name, func(row model.Organizations) string { return row.Name },
+			),
+		},
+		transactor.StringKey(table.Organizations.ID, func(row model.Organizations) string { return row.ID }),
+	)
+	if err != nil {
+		return search.Result[organization.Organization]{}, err
+	}
+
 	return transactor.Page(r.db, r.organizationMapper.ToDomain, table.Organizations.AllColumns).
 		From(table.Organizations).
 		Where(whereStmt).
-		OrderBy(transactor.SortColumns(
-			input.Sort,
-			map[organization.SortFieldProductOrganization]postgres.Column{
-				organization.SortFieldProductOrganizationCreatedAt: table.Organizations.CreatedAt,
-				organization.SortFieldProductOrganizationUpdatedAt: table.Organizations.UpdatedAt,
-				organization.SortFieldProductOrganizationName:      table.Organizations.Name,
-			},
-		)...).
+		Keyset(order).
 		Run(ctx, input.Pagination).
 		Value()
 }

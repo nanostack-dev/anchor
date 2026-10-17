@@ -7,14 +7,18 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["src/routeTree.gen.ts", "src/client/**"],
+		"ignore": [
+			"src/routeTree.gen.ts",
+			"src/client/**",
+			"e2e/runtime/.local/**"
+		],
 		"include": [
 			"src/*",
 			".vscode/*",
 			"index.html",
 			"vite.config.js",
-			"playwright.config.ts",
-			"e2e/*",
+			"playwright*.config.ts",
+			"e2e/**",
 			".storybook/**",
 			"vitest.workspace.ts",
 			"scripts/*.mjs"

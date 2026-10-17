@@ -10,6 +10,16 @@
 
 <!-- Give the commands to run, or the steps to follow. -->
 
+## Feature review
+
+<!-- For browser-visible changes, follow .claude/skills/anchor-feature-review/SKILL.md
+to load the repo-owned review procedure and Anchor project bindings.
+Give the tested commit, scenario commands/results for mobile/tablet/desktop and
+independent agent verdict. Attach reviewed screenshots (before/after for rendered
+UI changes) and readable videos using gh pr create/edit --attach.
+For changes with no browser-visible behavior, explain that boundary and give the
+appropriate service/contract/tooling evidence instead. -->
+
 ## Preview environment
 
 - [ ] Deploy a preview environment for this pull request <!-- preview-deploy -->

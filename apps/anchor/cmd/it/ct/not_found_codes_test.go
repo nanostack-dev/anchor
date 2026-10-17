@@ -344,8 +344,10 @@ func TestNotFoundCodes_ProductUser(t *testing.T) {
 			require.NoError(t, err)
 			return resp.StatusCode(), resp.Body
 		}},
-		{"ListOrganizations", func(t *testing.T) (int, []byte) {
-			resp, err := client.ListUserOrganizationsWithResponse(ctx, productCtx.ProductID, missingUser, nil)
+		{"SearchOrganizations", func(t *testing.T) (int, []byte) {
+			resp, err := client.SearchUserOrganizationsWithResponse(
+				ctx, productCtx.ProductID, missingUser, nil, ct.SearchUserOrganizationsJSONRequestBody{},
+			)
 			require.NoError(t, err)
 			return resp.StatusCode(), resp.Body
 		}},

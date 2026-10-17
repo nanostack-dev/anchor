@@ -53,6 +53,17 @@ products are unaffected. This prevents stale snapshots from overwriting a
 completed sync or escaping its scan. The lock is deliberately product-wide
 because schema removal touches every template.
 
+License instantiation is the exception. It is the one licensing write a
+consumer makes on its hot path, once per organization it creates, and under the
+product-wide lock two sign-ups at once refused each other. Instantiation only
+copies one template, so it reads that template `FOR SHARE` instead
+(`transactor.ForShare`) and takes no product lock. Any number of instantiations
+of one template run at once. A template write, or a schema removal rewriting
+the template, needs the row exclusively, so it waits for every instantiation
+in flight to commit; the sync it then enqueues finds their licenses. An
+instantiation that starts after the template write commits copies the new
+values.
+
 ### The schema cascade
 
 A schema update that **removes** a field prunes that key from every template of the product, in the schema update's own transaction, and enqueues a sync for each template actually changed. That is the schema → template leg; the template → license leg is the same job as above. A schema update that adds a field or changes rules changes no template value and cascades nothing — ADR-0009's two-step widening (declare the field, then set it on each template) is unchanged, and the template edit that sets the new value is what propagates it.

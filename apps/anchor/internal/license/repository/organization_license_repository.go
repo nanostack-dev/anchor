@@ -65,7 +65,13 @@ func (r *organizationLicenseRepositoryImpl) ListUninitializedAdjustmentsInternal
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
 ) (functional.Option[license.OrganizationLicense], error) {
-	return r.findByOrganization(ctx, tenantID, productID, organizationID, false)
+	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
+		FROM(table.OrganizationLicenses).
+		WHERE(
+			organizationLicenseScope(tenantID, productID).
+				AND(table.OrganizationLicenses.OrganizationID.EQ(postgres.String(organizationID))),
+		).LIMIT(1)
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
@@ -92,27 +98,6 @@ func (r *organizationLicenseRepositoryImpl) FindByOrganizations(
 	return functional.Slice(rows).ToMap(func(row license.OrganizationLicense) string {
 		return row.OrganizationID
 	}), nil
-}
-
-func (r *organizationLicenseRepositoryImpl) FindByOrganizationForUpdate(
-	ctx context.Context, tenantID string, productID string, organizationID string,
-) (functional.Option[license.OrganizationLicense], error) {
-	return r.findByOrganization(ctx, tenantID, productID, organizationID, true)
-}
-
-func (r *organizationLicenseRepositoryImpl) findByOrganization(
-	ctx context.Context, tenantID string, productID string, organizationID string, forUpdate bool,
-) (functional.Option[license.OrganizationLicense], error) {
-	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
-		FROM(table.OrganizationLicenses).
-		WHERE(
-			organizationLicenseScope(tenantID, productID).
-				AND(table.OrganizationLicenses.OrganizationID.EQ(postgres.String(organizationID))),
-		).LIMIT(1)
-	if forUpdate {
-		stmt = stmt.FOR(postgres.UPDATE())
-	}
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *organizationLicenseRepositoryImpl) Create(
@@ -305,6 +290,11 @@ func (r *organizationLicenseRepositoryImpl) Search(
 		where = where.AND(postgres.LOWER(table.Organizations.Name).LIKE(lowered))
 	}
 
+	order, err := organizationLicenseOrder(in.Request.Sort)
+	if err != nil {
+		return search.Result[license.OrganizationLicenseSummary]{}, err
+	}
+
 	return transactor.Page(
 		r.db,
 		r.mapper.SummaryToDomain,
@@ -313,50 +303,44 @@ func (r *organizationLicenseRepositoryImpl) Search(
 	).
 		From(organizationLicenseJoin(in.TenantID)).
 		Where(where).
-		OrderBy(organizationLicenseOrder(in.Request.Sort)...).
+		Keyset(order).
 		Run(ctx, in.Request.Pagination).
 		Value()
 }
 
-// organizationLicenseOrder resolves the sort into an order this query can
-// actually page by.
+// organizationLicenseOrder is the keyset ordering of the customer-book search.
 //
-// Two things the shared helper cannot do for this query. A field it does not
-// recognise is dropped, and search.Request defaults the field to created_at,
-// which this route does not offer — so an unsorted request would page over an
-// unordered result and an operator building a cohort could miss a customer
-// entirely. And instantiated_at comes from the outer side of a join, so it is
-// NULL for an Organization holding no license; Postgres sorts NULLs first
-// under DESC, which would put exactly the Organizations a migration skips at
-// the top of the page.
+// instantiated_at comes from the outer side of the join, so it is NULL for an
+// Organization holding no license: a nullable key, although the column is NOT
+// NULL in its own table. NullsLast keeps the organizations holding no license
+// after every licensed one in both directions, and the cursor follows that
+// placement. Organizations hold one row each, so the organization id is the
+// tiebreak.
 func organizationLicenseOrder(
 	sorts []search.Sort[license.SortFieldOrganizationLicense],
-) []postgres.OrderByClause {
-	clauses := make([]postgres.OrderByClause, 0, len(sorts)+1)
-	for _, sort := range sorts {
-		switch sort.Field {
-		case license.SortFieldOrganizationLicenseOrganizationName:
-			clauses = append(
-				clauses, jetx.OrderBy(table.Organizations.Name, sort.Direction),
-			)
-		case license.SortFieldOrganizationLicenseInstantiatedAt:
-			clauses = append(clauses, postgres.CASE().
-				WHEN(table.OrganizationLicenses.InstantiatedAt.IS_NULL()).
-				THEN(postgres.Int(1)).
-				ELSE(postgres.Int(0)).
-				ASC(),
-			)
-			clauses = append(clauses, jetx.OrderBy(
-				table.OrganizationLicenses.InstantiatedAt, sort.Direction,
-			))
-		}
-	}
-
-	if len(clauses) == 0 {
-		clauses = append(clauses, table.Organizations.Name.ASC())
-	}
-	// Names repeat, so the page needs one column that cannot.
-	return append(clauses, table.Organizations.ID.ASC())
+) (transactor.Order[mapper.OrganizationLicenseSummaryRow], error) {
+	return transactor.StrictKeys(
+		sorts,
+		map[license.SortFieldOrganizationLicense]transactor.Key[mapper.OrganizationLicenseSummaryRow]{
+			license.SortFieldOrganizationLicenseOrganizationName: transactor.StringKey(
+				table.Organizations.Name,
+				func(row mapper.OrganizationLicenseSummaryRow) string { return row.Organizations.Name },
+			),
+			license.SortFieldOrganizationLicenseInstantiatedAt: transactor.NullableTimeKey(
+				table.OrganizationLicenses.InstantiatedAt,
+				func(row mapper.OrganizationLicenseSummaryRow) *time.Time {
+					if row.License == nil {
+						return nil
+					}
+					return &row.License.InstantiatedAt
+				},
+			).NullsLast(),
+		},
+		transactor.StringKey(
+			table.Organizations.ID,
+			func(row mapper.OrganizationLicenseSummaryRow) string { return row.Organizations.ID },
+		),
+	)
 }
 
 // CountLicensesForTemplate reports how many Organization licenses still name

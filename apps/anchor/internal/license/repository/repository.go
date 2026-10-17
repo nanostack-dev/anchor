@@ -77,6 +77,11 @@ type TemplateRepository interface {
 	ListByProduct(
 		ctx context.Context, tenantID string, productID string, status *license.TemplateStatus,
 	) ([]license.Template, error)
+	// Search pages the Product's templates with a cursor, every status unless
+	// the filter names some.
+	Search(
+		ctx context.Context, in license.SearchTemplatesInput,
+	) (search.Result[license.Template], error)
 	Create(
 		ctx context.Context, template license.Template,
 	) (license.Template, error)
@@ -114,6 +119,7 @@ type OrganizationLicenseRepository interface {
 	// FindByOrganization returns the Organization's license, or an absent Option
 	// when it has never been instantiated. Scoping by product as well is what
 	// stops a caller reading another Product's license by guessing a KSUID.
+	// Use an inline transactor.ForUpdate context inside a transaction for a locked read.
 	FindByOrganization(
 		ctx context.Context, tenantID string, productID string, organizationID string,
 	) (functional.Option[license.OrganizationLicense], error)
@@ -123,11 +129,6 @@ type OrganizationLicenseRepository interface {
 	FindByOrganizations(
 		ctx context.Context, tenantID string, productID string, organizationIDs []string,
 	) (map[string]license.OrganizationLicense, error)
-	// FindByOrganizationForUpdate is FindByOrganization plus FOR UPDATE.
-	// Call it inside a transaction so two adjustments cannot share one previous set.
-	FindByOrganizationForUpdate(
-		ctx context.Context, tenantID string, productID string, organizationID string,
-	) (functional.Option[license.OrganizationLicense], error)
 	Create(
 		ctx context.Context, organizationLicense license.OrganizationLicense,
 	) (license.OrganizationLicense, error)
@@ -186,10 +187,11 @@ type OrganizationLicenseChangeRepository interface {
 	Append(
 		ctx context.Context, changes []license.OrganizationLicenseChange,
 	) error
-	// ListByOrganization returns the Organization's history newest first, one
-	// page at a time. An Organization with no history reads as an empty page.
-	ListByOrganization(
-		ctx context.Context, in license.ListLicenseChangesInput,
+	// Search returns the Organization's history one page at a time, newest
+	// first unless the request sorts otherwise. An Organization with no
+	// history reads as an empty page.
+	Search(
+		ctx context.Context, in license.SearchLicenseChangesInput,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 

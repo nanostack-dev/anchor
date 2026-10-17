@@ -20,14 +20,19 @@ export const zApiErrorResponse = z.object({
 
 export const zPagedListResponse = z.object({
     total: z.coerce.bigint(),
-    count: z.int()
+    count: z.int(),
+    next_cursor: z.optional(z.string())
 });
 
 export const zPaginationRequest = z.object({
-    limit: z.optional(z.int().gte(1).lte(100)).default(20),
-    offset: z.optional(z.int().gte(0)).default(0)
+    limit: z.optional(z.int().gte(1).lte(100)).default(10),
+    offset: z.optional(z.int().gte(0)).default(0),
+    cursor: z.optional(z.string().max(8192))
 });
 
+/**
+ * Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+ */
 export const zSortDirection = z.enum([
     'ASC',
     'DESC'
@@ -640,6 +645,26 @@ export const zUserOrganizationListResponse = z.object({
     items: z.array(zUserOrganizationResponse)
 });
 
+/**
+ * Narrows the organizations a product user belongs to.
+ */
+export const zUserOrganizationFilter = z.object({
+    organization_ids: z.optional(z.array(zKsuid)),
+    role_ids: z.optional(z.array(zKsuid))
+});
+
+export const zUserOrganizationSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zUserOrganizationFilter),
+    sort_by: z.optional(z.enum([
+        'joined_at',
+        'name'
+    ]))
+}));
+
+export const zUserOrganizationSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zUserOrganizationResponse)
+}));
+
 export const zProductPermissionSearchRequest = zSearchRequest.and(z.object({
     filter: z.optional(zProductPermissionFilter),
     sort_by: z.optional(z.enum([
@@ -727,6 +752,14 @@ export const zUserResponse = z.object({
     role: z.string()
 });
 
+export const zProductWorkspaceRequest = z.object({
+    name: z.string().min(2).max(100),
+    description: z.optional(z.union([
+        z.string().max(500),
+        z.null()
+    ]))
+});
+
 export const zFoundingMemberRequest = z.object({
     product_user_id: zKsuid,
     role_id: zKsuid
@@ -737,6 +770,7 @@ export const zOrganizationLicenseInstantiateRequest = z.object({
 });
 
 export const zProductOrganizationRequest = z.object({
+    workspace: z.optional(zProductWorkspaceRequest),
     name: z.string().min(2).max(100),
     description: z.optional(z.union([
         z.string().max(500),
@@ -751,8 +785,21 @@ export const zProductOrganizationRequest = z.object({
  * A related resource an organization read can ask for.
  */
 export const zOrganizationInclude = z.enum([
-    'license'
+    'license',
+    'workspace'
 ]);
+
+export const zProductWorkspaceResponse = z.object({
+    id: zKsuid,
+    organization_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
 
 export const zLicenseTemplateValues = z.record(z.string(), z.unknown());
 
@@ -801,6 +848,7 @@ export const zProductOrganizationResponse = z.object({
         z.null()
     ])),
     metadata: z.optional(zMetadata),
+    workspaces: z.optional(z.array(zProductWorkspaceResponse).readonly()),
     license: z.optional(zOrganizationLicenseResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -818,26 +866,6 @@ export const zProductOrganizationSearchRequest = zSearchRequest.and(z.object({
 export const zProductOrganizationListResponse = zPagedListResponse.and(z.object({
     items: z.array(zProductOrganizationResponse)
 }));
-
-export const zProductWorkspaceRequest = z.object({
-    name: z.string().min(2).max(100),
-    description: z.optional(z.union([
-        z.string().max(500),
-        z.null()
-    ]))
-});
-
-export const zProductWorkspaceResponse = z.object({
-    id: zKsuid,
-    organization_id: zKsuid,
-    name: z.string(),
-    description: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
-});
 
 export const zProductWorkspaceSearchRequest = zSearchRequest.and(z.object({
     filter: z.optional(zWorkspaceFilter),
@@ -1178,6 +1206,29 @@ export const zIntegrationAuditLogListResponse = z.object({
     count: z.int()
 });
 
+/**
+ * Narrows the audit log entries of one integration instance.
+ */
+export const zIntegrationAuditLogFilter = z.object({
+    actions: z.optional(z.array(z.string())),
+    severities: z.optional(z.array(zIntegrationAuditLogSeverity)),
+    created_after: z.optional(z.iso.datetime()),
+    created_before: z.optional(z.iso.datetime())
+});
+
+export const zIntegrationAuditLogSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zIntegrationAuditLogFilter),
+    sort_by: z.optional(z.enum([
+        'created_at',
+        'action',
+        'severity'
+    ]))
+}));
+
+export const zIntegrationAuditLogSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zIntegrationAuditLogEntryResponse)
+}));
+
 export const zEmailVariableType = z.enum([
     'STRING',
     'NUMBER',
@@ -1282,6 +1333,29 @@ export const zEmailTemplateListResponse = z.object({
     count: z.int()
 });
 
+/**
+ * Narrows a search over a product's email templates.
+ */
+export const zEmailTemplateFilter = z.object({
+    ids: z.optional(z.array(zKsuid)),
+    slugs: z.optional(z.array(z.string())),
+    is_active: z.optional(z.boolean())
+});
+
+export const zEmailTemplateSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zEmailTemplateFilter),
+    sort_by: z.optional(z.enum([
+        'created_at',
+        'updated_at',
+        'name',
+        'slug'
+    ]))
+}));
+
+export const zEmailTemplateSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zEmailTemplateResponse)
+}));
+
 export const zTemplateExample = z.object({
     id: z.string(),
     name: z.string(),
@@ -1365,6 +1439,26 @@ export const zEmailSendRecordListResponse = z.object({
     items: z.array(zEmailSendRecordResponse),
     count: z.int()
 });
+
+/**
+ * Narrows a search over a product's email send records.
+ */
+export const zEmailSendFilter = z.object({
+    template_ids: z.optional(z.array(zKsuid)),
+    statuses: z.optional(z.array(zEmailSendStatus))
+});
+
+export const zEmailSendSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zEmailSendFilter),
+    sort_by: z.optional(z.enum([
+        'created_at',
+        'status'
+    ]))
+}));
+
+export const zEmailSendSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zEmailSendRecordResponse)
+}));
 
 export const zLicenseFieldType = z.enum([
     'LIMIT',
@@ -1461,6 +1555,27 @@ export const zLicenseTemplateListResponse = z.object({
     items: z.array(zLicenseTemplateResponse),
     count: z.int()
 });
+
+/**
+ * Narrows a search over a product's license templates.
+ */
+export const zLicenseTemplateFilter = z.object({
+    statuses: z.optional(z.array(zLicenseTemplateStatus))
+});
+
+export const zLicenseTemplateSearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zLicenseTemplateFilter),
+    sort_by: z.optional(z.enum([
+        'name',
+        'status',
+        'created_at',
+        'updated_at'
+    ]))
+}));
+
+export const zLicenseTemplateSearchResponse = zPagedListResponse.and(z.object({
+    items: z.array(zLicenseTemplateResponse)
+}));
 
 /**
  * An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
@@ -1587,7 +1702,7 @@ export const zOrganizationLicenseFilter = z.object({
 });
 
 /**
- * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped.
+ * Field to sort by. `instantiated_at` puts organizations holding no license last, because they were never stamped, in both directions.
  */
 export const zOrganizationLicenseSortField = z.enum([
     'organization_name',
@@ -1614,6 +1729,22 @@ export const zOrganizationLicenseSearchResponse = zPagedListResponse.and(z.objec
 
 export const zOrganizationLicenseHistoryResponse = zPagedListResponse.and(z.object({
     items: z.array(zOrganizationLicenseChangeResponse)
+}));
+
+/**
+ * Narrows the history of one organization's license.
+ */
+export const zOrganizationLicenseHistoryFilter = z.object({
+    types: z.optional(z.array(zLicenseChangeType)),
+    changed_after: z.optional(z.iso.datetime()),
+    changed_before: z.optional(z.iso.datetime())
+});
+
+export const zOrganizationLicenseHistorySearchRequest = zSearchRequest.and(z.object({
+    filter: z.optional(zOrganizationLicenseHistoryFilter),
+    sort_by: z.optional(z.enum([
+        'changed_at'
+    ]))
 }));
 
 /**
@@ -1663,6 +1794,20 @@ export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
     items: z.array(zUsageSeriesPointResponse)
 }));
 
+export const zProductOrganizationResponseWritable = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    name: z.string(),
+    description: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
+    metadata: z.optional(zMetadata),
+    license: z.optional(zOrganizationLicenseResponse),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
 /**
  * The KSUID of the platform invitation.
  */
@@ -1679,7 +1824,7 @@ export const zPlatformUserIdParameter = zKsuid;
 export const zProductIdParameter = zKsuid;
 
 /**
- * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 
@@ -1965,6 +2110,20 @@ export const zListIntegrationAuditLogsData = z.object({
  * List of audit log entries for the integration instance.
  */
 export const zListIntegrationAuditLogsResponse = zIntegrationAuditLogListResponse;
+
+export const zSearchIntegrationAuditLogsData = z.object({
+    body: zIntegrationAuditLogSearchRequest,
+    path: z.object({
+        product_id: zKsuid,
+        integration_instance_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * A page of audit log entries for the integration instance.
+ */
+export const zSearchIntegrationAuditLogsResponse = zIntegrationAuditLogSearchResponse;
 
 export const zIngestWebhookData = z.object({
     body: z.record(z.string(), z.unknown()),
@@ -2401,6 +2560,22 @@ export const zListUserOrganizationsData = z.object({
  * List of organizations the user belongs to.
  */
 export const zListUserOrganizationsResponse = zUserOrganizationListResponse;
+
+export const zSearchUserOrganizationsData = z.object({
+    body: zUserOrganizationSearchRequest,
+    path: z.object({
+        product_id: zKsuid,
+        product_user_id: zKsuid
+    }),
+    query: z.optional(z.object({
+        include: z.optional(z.array(zUserOrganizationInclude))
+    }))
+});
+
+/**
+ * A page of the organizations the user belongs to.
+ */
+export const zSearchUserOrganizationsResponse = zUserOrganizationSearchResponse;
 
 export const zGetUserOrganizationData = z.object({
     body: z.optional(z.never()),
@@ -2869,6 +3044,19 @@ export const zCreateEmailTemplateData = z.object({
  */
 export const zCreateEmailTemplateResponse = zEmailTemplateResponse;
 
+export const zSearchEmailTemplatesData = z.object({
+    body: zEmailTemplateSearchRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchEmailTemplatesResponse = zEmailTemplateSearchResponse;
+
 export const zDeleteEmailTemplateData = z.object({
     body: z.optional(z.never()),
     path: z.object({
@@ -3026,6 +3214,19 @@ export const zSendEmailData = z.object({
  */
 export const zSendEmailResponse = zEmailSendRecordResponse;
 
+export const zSearchEmailSendsData = z.object({
+    body: zEmailSendSearchRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchEmailSendsResponse = zEmailSendSearchResponse;
+
 export const zDeleteLicenseSchemaData = z.object({
     body: z.optional(z.never()),
     path: z.object({
@@ -3105,6 +3306,19 @@ export const zCreateLicenseTemplateData = z.object({
  * Created
  */
 export const zCreateLicenseTemplateResponse = zLicenseTemplateResponse;
+
+export const zSearchLicenseTemplatesData = z.object({
+    body: zLicenseTemplateSearchRequest,
+    path: z.object({
+        product_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchLicenseTemplatesResponse = zLicenseTemplateSearchResponse;
 
 export const zDeleteLicenseTemplateData = z.object({
     body: z.optional(z.never()),
@@ -3260,6 +3474,20 @@ export const zGetOrganizationLicenseHistoryData = z.object({
  * Success
  */
 export const zGetOrganizationLicenseHistoryResponse = zOrganizationLicenseHistoryResponse;
+
+export const zSearchOrganizationLicenseHistoryData = z.object({
+    body: zOrganizationLicenseHistorySearchRequest,
+    path: z.object({
+        product_id: zKsuid,
+        organization_id: zKsuid
+    }),
+    query: z.optional(z.never())
+});
+
+/**
+ * Success
+ */
+export const zSearchOrganizationLicenseHistoryResponse = zOrganizationLicenseHistoryResponse;
 
 export const zReportOrganizationUsageData = z.object({
     body: zUsageReportRequest,

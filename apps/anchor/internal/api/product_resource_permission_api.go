@@ -54,6 +54,7 @@ func mapToSearchProductResourcePermissionInput(
 		}).
 		ToPtr()
 	return search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
+		WithFullTextSearch(req.FullTextSearch).
 		WithFilter(filter).
 		WithSort(req.SortBy, req.SortDirection).
 		WithPagination(req.Pagination)
@@ -89,9 +90,10 @@ func (s *AnchorAPI) SearchProductResourcePermissions(
 	}
 
 	response := ProductResourcePermissionListResponse{
-		Count: result.Count,
-		Items: functional.Slice(result.Items).Map(mapProductResourcePermissionToResponse),
-		Total: result.Total,
+		Count:      result.Count,
+		Items:      functional.Slice(result.Items).Map(mapProductResourcePermissionToResponse),
+		Total:      result.Total,
+		NextCursor: nextCursor(result.NextCursor),
 	}
 
 	return SearchProductResourcePermissions200JSONResponse(response), nil

@@ -1,5 +1,5 @@
 {
-  "include": ["vitest.workspace.ts", ".storybook/**/*.ts", "playwright.config.ts", "e2e/**/*.ts"],
+  "include": ["vitest.workspace.ts", ".storybook/**/*.ts", "playwright*.config.ts", "e2e/**/*.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
