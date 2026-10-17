@@ -4,7 +4,7 @@ import { Textarea } from "@nanostackorg/design-system/components/textarea";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { CodeIcon as Code2, RowsIcon as Rows3 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { LicenseSchemaFieldsEditor } from "./LicenseSchemaFieldsEditor";
 import { LicenseSchemaTextEditor } from "./LicenseSchemaTextEditor";
@@ -51,6 +51,17 @@ export function LicenseSchemaEditor({
 }: LicenseSchemaEditorProps) {
 	const [mode, setMode] = useState<SchemaEditorMode>(defaultMode);
 	const [source, setSource] = useState(() => serializeSchemaDsl(fields));
+	const activeModeButtonRef = useRef<HTMLButtonElement>(null);
+	const renderedMode = useRef(mode);
+
+	// Each mode renders its own copy of the switch, so the button that was
+	// pressed unmounts. Handing focus to its replacement keeps a keyboard
+	// operator on the switch instead of dropping them onto the dialog.
+	useLayoutEffect(() => {
+		if (renderedMode.current === mode) return;
+		renderedMode.current = mode;
+		activeModeButtonRef.current?.focus();
+	}, [mode]);
 
 	// The draft is the source of truth. Entering text mode renders it; leaving
 	// keeps whatever the last successful parse produced, which the text editor
@@ -71,6 +82,7 @@ export function LicenseSchemaEditor({
 				<Button
 					icon={Icon}
 					key={id}
+					ref={mode === id ? activeModeButtonRef : undefined}
 					type="button"
 					variant={mode === id ? "soft" : "ghost"}
 					size="xs"
