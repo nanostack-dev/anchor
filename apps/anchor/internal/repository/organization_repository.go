@@ -165,7 +165,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[organization.SortFieldProductOrganization]transactor.Key[model.Organizations]{
 			organization.SortFieldProductOrganizationCreatedAt: transactor.TimeKey(
@@ -180,6 +180,9 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 		},
 		transactor.StringKey(table.Organizations.ID, func(row model.Organizations) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[organization.Organization]{}, err
+	}
 
 	return transactor.Page(r.db, r.organizationMapper.ToDomain, table.Organizations.AllColumns).
 		From(table.Organizations).

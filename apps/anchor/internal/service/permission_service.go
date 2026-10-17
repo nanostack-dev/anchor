@@ -255,7 +255,7 @@ func (s *permissionService) SearchByProductID(
 
 	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
 	if err != nil {
-		if searchx.IsCursorError(err) {
+		if searchx.IsClientError(err) {
 			return search.Result[permission.ProductPermission]{}, err
 		}
 		logger.Error().

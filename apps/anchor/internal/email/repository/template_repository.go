@@ -114,7 +114,7 @@ func (r *templateRepositoryImpl) Search(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		in.Request.Sort,
 		map[email.SortFieldTemplate]transactor.Key[model.EmailTemplates]{
 			email.SortFieldTemplateCreatedAt: transactor.TimeKey(
@@ -132,6 +132,9 @@ func (r *templateRepositoryImpl) Search(
 		},
 		transactor.StringKey(table.EmailTemplates.ID, func(row model.EmailTemplates) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[email.Template]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailTemplates.AllColumns).
 		From(table.EmailTemplates).

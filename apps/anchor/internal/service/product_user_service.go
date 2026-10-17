@@ -220,7 +220,7 @@ func (s *productUserService) Search(
 
 	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().
 				Str("product_id", input.ProductID).
 				Err(err).
@@ -329,7 +329,7 @@ func (s *productUserService) SearchUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions, input.Request,
 	)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().
 				Str("product_id", input.ProductID).
 				Str("product_user_id", input.ProductUserID).

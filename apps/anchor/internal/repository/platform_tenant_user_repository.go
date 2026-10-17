@@ -183,7 +183,7 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 				OR(table.PlatformUsers.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
 		)
 	}
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[platform.SortFieldPlatformUser]transactor.Key[model.PlatformUsers]{
 			platform.SortFieldPlatformUserCreatedAt: transactor.TimeKey(
@@ -201,6 +201,9 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 		},
 		transactor.StringKey(table.PlatformUsers.ID, func(row model.PlatformUsers) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[platform.User]{}, err
+	}
 
 	return transactor.Page(r.db, r.platformUserMapper.ToDomain, table.PlatformUsers.AllColumns).
 		From(table.PlatformUsers).

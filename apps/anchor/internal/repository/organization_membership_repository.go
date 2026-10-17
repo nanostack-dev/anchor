@@ -200,7 +200,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		req.Sort,
 		map[user.SortFieldUserOrganization]transactor.Key[userOrgMembershipSearchRow]{
 			user.SortFieldUserOrganizationJoinedAt: transactor.TimeKey(
@@ -217,6 +217,9 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 			func(row userOrgMembershipSearchRow) string { return row.OrganizationMemberships.OrganizationID },
 		),
 	)
+	if err != nil {
+		return search.Result[user.OrganizationMembership]{}, err
+	}
 
 	result, err := transactor.Page(
 		r.db,
@@ -589,7 +592,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		req.Sort,
 		map[organization.SortFieldMember]transactor.Key[orgMembershipSearchRow]{
 			organization.SortFieldMemberJoinedAt: transactor.TimeKey(
@@ -606,6 +609,9 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 			func(row orgMembershipSearchRow) string { return row.OrganizationMemberships.ProductUserID },
 		),
 	)
+	if err != nil {
+		return search.Result[organization.Membership]{}, err
+	}
 
 	return transactor.Page(
 		r.db,

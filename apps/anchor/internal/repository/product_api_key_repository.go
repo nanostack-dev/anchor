@@ -271,7 +271,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
 
 	idKey := transactor.StringKey(table.ProductAPIKeys.ID, func(row model.ProductAPIKeys) string { return row.ID })
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Request.Sort,
 		map[apikey.SortFieldProductAPIKey]transactor.Key[model.ProductAPIKeys]{
 			apikey.SortFieldProductAPIKeyID: idKey,
@@ -293,6 +293,9 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		},
 		idKey,
 	)
+	if err != nil {
+		return search.Result[apikey.ProductAPIKey]{}, err
+	}
 
 	pageResult, err := transactor.Page(
 		r.db,
@@ -307,7 +310,7 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		Run(ctx, input.Request.Pagination).
 		Value()
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			r.logger.Error().Err(err).Str(
 				"productID", input.ProductID,
 			).Msg("failed to search product API keys")

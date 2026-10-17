@@ -467,7 +467,7 @@ func (s *productService) Search(
 
 	result, err := s.productRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
 		}
 		return search.Result[product.Product]{}, err

@@ -251,7 +251,7 @@ func (r *repositoryImpl) Search(
 		where = where.AND(postgres.LOWER(table.OrganizationInvitations.Email).IN(emails...))
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		req.Sort,
 		map[organizationinvitation.SortField]transactor.Key[model.OrganizationInvitations]{
 			organizationinvitation.SortFieldCreatedAt: transactor.TimeKey(
@@ -272,6 +272,9 @@ func (r *repositoryImpl) Search(
 			func(row model.OrganizationInvitations) string { return row.ID },
 		),
 	)
+	if err != nil {
+		return search.Result[organizationinvitation.Invitation]{}, err
+	}
 
 	return transactor.Page(
 		r.db,

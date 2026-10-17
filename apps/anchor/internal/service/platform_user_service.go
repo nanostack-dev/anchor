@@ -55,7 +55,7 @@ func (s *platformUserService) SearchPlatformUsers(
 	}
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().
 				Str("tenant_id", input.TenantID).
 				Err(err).

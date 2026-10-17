@@ -79,7 +79,7 @@ Give each aggregate its own enum. A value that is valid for one aggregate is not
 
 ### Collections are cursor-paginated searches
 
-Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.Keys` with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
+Every persisted resource that the API returns as a collection has a search operation, and every search pages with a cursor. The framework primitive is `transactor.StrictKeys` (which refuses a sort field the search does not map) with `PageBuilder.Keyset`; its contract is [ADR 0001 in nanostack-framework](https://github.com/nanostack-dev/nanostack-framework/blob/main/docs/adr/0001-keyset-cursor-pagination.md).
 
 **Shape.** `POST /<collection>/search`, with `filter`, `sort`, optional full-text and `pagination` in the body. Nest the route under the parent when the parent scopes the collection (`/organizations/{organization_id}/workspaces/search`). The response carries `items`, `total`, `count` and `next_cursor`.
 
@@ -108,6 +108,8 @@ Every persisted resource that the API returns as a collection has a search opera
 **SDK.** A search builder exposes `Cursor(string)` and the result exposes `NextCursor`. Offer an iterator (`All(ctx)` / `Pages(ctx)`) that follows `next_cursor`, so callers never write the loop themselves.
 
 **Tests.** Every search has an integration test that walks more than one page by cursor across rows with tied sort values, and asserts that each row comes back exactly once, in order. An invalid cursor answers 400.
+
+**Conformance.** Every search has a `searchtest` suite in the component tests: walks for its default order and every sort field, refusals in every scope including short-circuit ones, and forged cursors where the service issues them.
 
 ### HTTP error statuses
 

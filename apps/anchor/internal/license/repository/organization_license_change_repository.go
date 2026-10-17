@@ -86,7 +86,7 @@ func (r *organizationLicenseChangeRepositoryImpl) Search(
 	// The identifier breaks the tie because the entries of one adjustment share
 	// a single changed_at, and a page boundary landing inside one of them must
 	// not reorder or repeat a row.
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		in.Request.Sort,
 		map[license.SortFieldChange]transactor.Key[model.OrganizationLicenseChanges]{
 			license.SortFieldChangeChangedAt: transactor.TimeKey(
@@ -95,6 +95,9 @@ func (r *organizationLicenseChangeRepositoryImpl) Search(
 		},
 		transactor.StringKey(changes.ID, func(row model.OrganizationLicenseChanges) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[license.OrganizationLicenseChange]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, changes.AllColumns).
 		From(changes).

@@ -321,7 +321,7 @@ func (s *resourcePermissionService) SearchByProduct(
 		ctx, input.ProductID, input.Request,
 	)
 	if err != nil {
-		if searchx.IsCursorError(err) {
+		if searchx.IsClientError(err) {
 			return search.Result[resourcepermission.ProductResourcePermission]{}, err
 		}
 		logger.Error().

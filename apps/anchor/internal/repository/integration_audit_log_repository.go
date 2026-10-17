@@ -116,7 +116,7 @@ func (r *integrationAuditLogRepositoryImpl) SearchByInstanceScoped(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Request.Sort,
 		map[integration.SortFieldAuditLog]transactor.Key[model.IntegrationAuditLogs]{
 			integration.SortFieldAuditLogCreatedAt: transactor.TimeKey(
@@ -131,6 +131,9 @@ func (r *integrationAuditLogRepositoryImpl) SearchByInstanceScoped(
 		},
 		transactor.StringKey(auditLogsTable.ID, func(row model.IntegrationAuditLogs) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[integration.AuditLog]{}, err
+	}
 
 	return transactor.Page(r.db, r.mapper.ToDomain, auditLogsTable.AllColumns).
 		From(auditLogsTable.INNER_JOIN(instancesTable, auditLogsTable.IntegrationInstanceID.EQ(instancesTable.ID))).

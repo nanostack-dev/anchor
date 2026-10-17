@@ -13,12 +13,15 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
-// IsCursorError reports a client mistake in the pagination cursor: a cursor
-// that does not continue this search, or one combined with an offset. The
-// transport layer answers it with 400 INVALID_CURSOR, so a service must pass
-// it through instead of collapsing it into an unexpected error.
-func IsCursorError(err error) bool {
-	return errors.Is(err, search.ErrInvalidCursor) || errors.Is(err, search.ErrCursorWithOffset)
+// IsClientError reports a mistake in the request that a search repository
+// found: a cursor that does not continue this search, one combined with an
+// offset, or a sort field the search cannot order by. The transport layer
+// answers each with a 400 (INVALID_CURSOR, INVALID_SORT), so a service must
+// pass it through unchanged instead of collapsing it into an unexpected error.
+func IsClientError(err error) bool {
+	return errors.Is(err, search.ErrInvalidCursor) ||
+		errors.Is(err, search.ErrCursorWithOffset) ||
+		errors.Is(err, search.ErrUnknownSort)
 }
 
 // Sort picks the requested sort, or the resource's documented default order
@@ -37,11 +40,20 @@ func Sort[S ~string](
 	return &defaultField, direction
 }
 
-// ValidateRequest validates a search input and then its sort. The request body
-// of a search is not checked against the OpenAPI enums, so a sort_by outside
-// the resource's sortable fields would otherwise be ignored and the default
-// order served in its place. Allowed lists every sort field the resource maps.
+// ValidateRequest validates a search input: the pagination cursor, the struct
+// tags, then the sort. The cursor goes first because the struct tag on the
+// cursor length would otherwise answer a generic validation error where the
+// contract promises INVALID_CURSOR, and because a cursor combined with an offset
+// is refused here, before any scope check can answer an empty page instead.
+//
+// The request body of a search is not checked against the OpenAPI enums, so a
+// sort_by outside the resource's sortable fields would otherwise be ignored and
+// the default order served in its place. Allowed lists every sort field the
+// resource maps.
 func ValidateRequest[F any, S ~string](input any, request search.Request[F, S], allowed ...S) error {
+	if err := request.Pagination.Validate(); err != nil {
+		return err
+	}
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}

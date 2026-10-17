@@ -181,7 +181,7 @@ func (s *invitationService) SearchInvitation(
 	}
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().
 				Str("tenant_id", input.TenantID).
 				Err(err).

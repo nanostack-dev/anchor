@@ -373,7 +373,7 @@ func (s *organizationMembershipService) SearchMembers(
 		ctx, input.ProductID, input.OrganizationID, input.Request,
 	)
 	if err != nil {
-		if !searchx.IsCursorError(err) {
+		if !searchx.IsClientError(err) {
 			logger.Error().Err(err).
 				Str("product_id", input.ProductID).
 				Str("organization_id", input.OrganizationID).

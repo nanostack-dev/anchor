@@ -288,7 +288,7 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		}
 	}
 
-	order := transactor.Keys(
+	order, err := transactor.StrictKeys(
 		input.Sort,
 		map[workspace.SortFieldProductWorkspace]transactor.Key[model.Workspaces]{
 			workspace.SortFieldProductWorkspaceCreatedAt: transactor.TimeKey(
@@ -303,6 +303,9 @@ func (r *workspaceRepositoryImpl) SearchByOrganizationID(
 		},
 		transactor.StringKey(table.Workspaces.ID, func(row model.Workspaces) string { return row.ID }),
 	)
+	if err != nil {
+		return search.Result[workspace.Workspace]{}, err
+	}
 
 	return transactor.Page(r.db, r.workspaceMapper.ToDomain, table.Workspaces.AllColumns).
 		From(r.joinOrganizations()).
