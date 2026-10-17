@@ -23,8 +23,9 @@ const DefaultConfiguringReason = "Not configured yet. Complete provider setup be
 type ProviderType string
 
 const (
-	ProviderTypeClerk ProviderType = "CLERK"
-	ProviderTypeSMTP  ProviderType = "SMTP"
+	ProviderTypeClerk  ProviderType = "CLERK"
+	ProviderTypeSMTP   ProviderType = "SMTP"
+	ProviderTypeStripe ProviderType = "STRIPE"
 )
 
 type Instance struct {
