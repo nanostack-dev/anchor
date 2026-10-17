@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
+	// Deleting a product resource permission succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -58,6 +59,7 @@ func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
+	// Product resource permission delete emits webhook.
 	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
@@ -85,6 +87,7 @@ func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
+	// Product resource permission deletion rejects an unknown identifier.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -100,6 +103,7 @@ func TestProductResourcePermissionDeleteNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteWithNonExistentProduct(t *testing.T) {
+	// Deleting a product resource permission with nonexistent product returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -116,6 +120,7 @@ func TestProductResourcePermissionDeleteWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
+	// Deleting a resource permission removes its role assignments.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -175,6 +180,7 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
+	// Deleting a product resource permission after unassigning from role succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -236,6 +242,7 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 }
 
 func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) {
+	// Checks product resource permission deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -246,11 +253,13 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 		permissionName string
 		expectedStatus int
 	}{
+		// The permission operation rejects empty permission name.
 		{
 			name:           "empty permission name",
 			permissionName: "",
 			expectedStatus: http.StatusBadRequest,
 		},
+		// The permission operation rejects permission name with special characters.
 		{
 			name:           "permission name with special characters",
 			permissionName: "file@read#test",
@@ -261,6 +270,7 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 	for _, tc := range testCases {
 		t.Run(
 			tc.name, func(t *testing.T) {
+				// Permission deletion refuses this malformed permission name.
 				resp, err := testOwnerClient(t).DeleteProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -278,6 +288,7 @@ func TestProductResourcePermissionDeleteWithInvalidPermissionName(t *testing.T) 
 
 // Not parallel: it holds an uncommitted assignment and waits for the delete to queue behind it.
 func TestProductResourcePermissionDeleteTellsRoleAssignedConcurrently(t *testing.T) {
+	// Deleting a permission emits a role update even when the assignment was created concurrently.
 	ctx := context.Background()
 	testProduct := createTestProductContext(t)
 	sink := testProduct.CaptureEvents()

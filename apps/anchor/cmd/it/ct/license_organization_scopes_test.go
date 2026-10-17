@@ -14,8 +14,10 @@ import (
 // already proves the contract declares security; this proves the scopes are
 // genuinely distinct, so a read-only key cannot raise a customer's limits.
 func TestOrganizationLicenseScopes(t *testing.T) {
+	// Organization-license routes require their own read or write scopes.
 	t.Parallel()
 	t.Run("read scope cannot write", func(t *testing.T) {
+		// Read scope cannot write.
 		w := newLicensedWorld(t)
 		readOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"organization_license:read"})
 		license := w.License().As(readOnly)
@@ -28,6 +30,7 @@ func TestOrganizationLicenseScopes(t *testing.T) {
 	})
 
 	t.Run("write scopes cannot read", func(t *testing.T) {
+		// Write scopes cannot read.
 		w := newLicenseWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes(
 			[]string{"organization_license:create", "organization_license:update"},
@@ -42,6 +45,7 @@ func TestOrganizationLicenseScopes(t *testing.T) {
 	})
 
 	t.Run("a license template scope does not reach organization licenses", func(t *testing.T) {
+		// A license template scope does not reach organization licenses.
 		w := newLicensedWorld(t)
 		// The two resources are separate entries in the permission catalog, so a
 		// key trusted to decide what a tier grants is not thereby trusted to

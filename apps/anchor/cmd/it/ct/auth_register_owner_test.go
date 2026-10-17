@@ -9,9 +9,11 @@ import (
 )
 
 func TestOwnerContext(t *testing.T) {
+	// Owner credentials create an authenticated context for the tenant owner.
 	t.Parallel()
 	t.Run(
 		"ContextGeneration", func(t *testing.T) {
+			// A new owner context contains the tenant, owner, and authenticated client.
 			assert.NotNil(
 				t, testOwnerUser(t),
 				"owner user should be initialized",
@@ -25,6 +27,7 @@ func TestOwnerContext(t *testing.T) {
 
 	t.Run(
 		"OwnerCredentials", func(t *testing.T) {
+			// The generated owner's credentials authenticate successfully.
 			assert.NotEmpty(
 				t, testOwnerUser(t).AccessToken, "owner should have access token",
 			)

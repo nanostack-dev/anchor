@@ -237,18 +237,21 @@ func (c cursorCase) run(t *testing.T, name string) {
 	expected := suite.Cases[0].Want
 
 	t.Run(name+"/a page that fills the limit exactly has no next_cursor", func(t *testing.T) {
+		// A page filled exactly to its limit omits the cursor when no more rows remain.
 		page := fetch(t, paginated(map[string]any{"limit": len(expected)}))
 		assert.Equal(t, expected, page.IDs)
 		assert.Empty(t, page.NextCursor)
 	})
 
 	t.Run(name+"/offset pages keep the order and hand over a cursor", func(t *testing.T) {
+		// Offset pagination preserves the sort order and returns a continuation cursor.
 		page := fetch(t, paginated(map[string]any{"limit": cursorPageSize, "offset": cursorPageSize}))
 		assert.Equal(t, expected[cursorPageSize:2*cursorPageSize], page.IDs)
 		assert.NotEmpty(t, page.NextCursor)
 	})
 
 	t.Run(name+"/a cursor sent without a limit gets the default page size", func(t *testing.T) {
+		// A cursor request without a limit uses the default page size.
 		first := fetch(t, paginated(map[string]any{"limit": cursorPageSize}))
 		require.NotEmpty(t, first.NextCursor)
 		rest := fetch(t, paginated(map[string]any{"cursor": first.NextCursor}))

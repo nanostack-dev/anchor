@@ -18,6 +18,7 @@ import (
 
 // Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendCreate(t *testing.T) {
+	// Checks email send creation across the scenarios below.
 	mp := mailpit.Shared(t)
 
 	tc := newEmailTestCtx(t)
@@ -43,6 +44,7 @@ func TestEmailSendCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("delivers email and returns SENT record", func(t *testing.T) {
+		// Delivers email and returns sent record.
 		vars := map[string]any{"name": "Bob"}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),
@@ -69,6 +71,7 @@ func TestEmailSendCreate(t *testing.T) {
 	})
 
 	t.Run("same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
+		// Same dedupe key returns identical record and single SMTP message.
 		dedupeKey := ids.MustNew("dkey")
 		vars := map[string]any{}
 		body := ct.SendEmailJSONRequestBody{
@@ -97,6 +100,7 @@ func TestEmailSendCreate(t *testing.T) {
 	})
 
 	t.Run("concurrent same dedupe key returns identical record and single SMTP message", func(t *testing.T) {
+		// Concurrent same dedupe key returns identical record and single SMTP message.
 		mp.Reset(t)
 
 		dedupeKey := ids.MustNew("dkey")
@@ -157,6 +161,7 @@ func TestEmailSendCreate(t *testing.T) {
 	})
 
 	t.Run("rejects send to unpublished template", func(t *testing.T) {
+		// The API rejects send to unpublished template.
 		draft, createErr := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,

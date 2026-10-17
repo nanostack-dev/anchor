@@ -13,8 +13,10 @@ import (
 )
 
 func TestLicenseSchemaDelete(t *testing.T) {
+	// Checks license schema deletion across the scenarios below.
 	t.Parallel()
 	t.Run("removes the schema and its fields", func(t *testing.T) {
+		// Removes the schema and its fields.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 
@@ -28,6 +30,7 @@ func TestLicenseSchemaDelete(t *testing.T) {
 	})
 
 	t.Run("the product can declare a fresh schema afterwards", func(t *testing.T) {
+		// The product can declare a fresh schema afterwards.
 		tc := newLicenseTestCtx(t)
 		client := seedSchema(t, tc)
 
@@ -52,6 +55,7 @@ func TestLicenseSchemaDelete(t *testing.T) {
 	})
 
 	t.Run("404 when the product has declared no schema", func(t *testing.T) {
+		// The API returns 404 when the product has declared no schema.
 		tc := newLicenseTestCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().DeleteLicenseSchemaWithResponse(

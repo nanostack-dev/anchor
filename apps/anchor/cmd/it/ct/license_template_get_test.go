@@ -10,8 +10,10 @@ import (
 )
 
 func TestLicenseTemplateGet(t *testing.T) {
+	// Checks license template lookup across the scenarios below.
 	t.Parallel()
 	t.Run("reads a template back", func(t *testing.T) {
+		// The API reads a template back.
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -28,6 +30,7 @@ func TestLicenseTemplateGet(t *testing.T) {
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
+		// The API returns 404 when the product has no template with that identifier.
 		tc := newTemplateCtx(t)
 
 		resp, err := tc.product.OwnerAuthenticatedClient().GetLicenseTemplateWithResponse(

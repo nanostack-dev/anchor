@@ -26,6 +26,7 @@ const fakeAPIKey = "sk_test_scheduler_lifecycle_fake_key_for_testing"
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_NoKeyOnCreate_NoSchedulerJob(t *testing.T) {
+	// The Clerk scheduler handles no key on create no scheduler job.
 	before := countPendingSchedulerJobs(t)
 
 	productContext := createTestProductContext(t)
@@ -57,6 +58,7 @@ func TestSchedulerLifecycle_NoKeyOnCreate_NoSchedulerJob(t *testing.T) {
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_FirstKeyAdded_SeedsScheduler(t *testing.T) {
+	// The Clerk scheduler handles first key added seeds scheduler.
 	// Each sub-test that mutates the queue must run serially to avoid
 	// interference with the RemoveLastKey / DeleteLastInstance tests that
 	// assert queue drains to zero.  These additive tests are safe to run in
@@ -75,6 +77,7 @@ func TestSchedulerLifecycle_FirstKeyAdded_SeedsScheduler(t *testing.T) {
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_SecondKeyAdded_DoesNotDuplicate(t *testing.T) {
+	// The Clerk scheduler handles second key added does not duplicate.
 	// Seed the queue with the first instance.
 	productContextA := createTestProductContext(t)
 	instanceA := createInstanceWithAPIKey(t, productContextA, fakeAPIKey)
@@ -101,6 +104,7 @@ func TestSchedulerLifecycle_SecondKeyAdded_DoesNotDuplicate(t *testing.T) {
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_RemoveLastKey_CancelsScheduler(t *testing.T) {
+	// The Clerk scheduler handles remove last key cancels scheduler.
 	// This test must run after all additive tests have already seeded at
 	// least one scheduler job (or with a clean queue) and must be the sole
 	// consumer of that state. Because test isolation within a shared server
@@ -129,6 +133,7 @@ func TestSchedulerLifecycle_RemoveLastKey_CancelsScheduler(t *testing.T) {
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_DeleteLastInstance_CancelsScheduler(t *testing.T) {
+	// The Clerk scheduler handles delete last instance cancels scheduler.
 	productContext := createTestProductContext(t)
 	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
 
@@ -146,6 +151,7 @@ func TestSchedulerLifecycle_DeleteLastInstance_CancelsScheduler(t *testing.T) {
 
 // Not parallel: it counts scheduler jobs across the process-wide reconcile queue.
 func TestSchedulerLifecycle_DuplicateSchedulerJobs_CollapseToOne(t *testing.T) {
+	// The Clerk scheduler handles duplicate scheduler jobs collapse to one.
 	productContext := createTestProductContext(t)
 	instance := createInstanceWithAPIKey(t, productContext, fakeAPIKey)
 	t.Cleanup(func() { deleteInstance(t, productContext, instance.Id) })

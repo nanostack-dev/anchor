@@ -33,8 +33,10 @@ func (w *licenseWorld) Organizations() itdsl.OrganizationClient {
 }
 
 func TestOrganizationReadIncludesLicense(t *testing.T) {
+	// Organization read includes license.
 	t.Parallel()
 	t.Run("get without include leaves the license out", func(t *testing.T) {
+		// Get without include leaves the license out.
 		w := newLicenseWorld(t)
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
 
@@ -46,6 +48,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("get with include=license carries it", func(t *testing.T) {
+		// Get with include=license carries it.
 		w := newLicenseWorld(t)
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
 
@@ -58,6 +61,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("the include carries no usage; the license route computes that", func(t *testing.T) {
+		// The include carries no usage; the license route computes that.
 		w := newLicenseWorld(t)
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
 
@@ -69,6 +73,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("an unlicensed organization reads back without a license", func(t *testing.T) {
+		// An unlicensed organization reads back without a license.
 		w := newLicenseWorld(t)
 		created := w.Organizations().Create(
 			organizationBody(itdsl.UniqueOrganizationName(), nil),
@@ -80,6 +85,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("search with include=license carries one per organization", func(t *testing.T) {
+		// Search with include=license carries one per organization.
 		w := newLicenseWorld(t)
 		name := itdsl.UniqueOrganizationName()
 		first := w.Organizations().Create(organizationBody(name, new(w.TemplateID())))
@@ -100,6 +106,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("search without include leaves every license out", func(t *testing.T) {
+		// Search without include leaves every license out.
 		w := newLicenseWorld(t)
 		name := itdsl.UniqueOrganizationName()
 		w.Organizations().Create(organizationBody(name, new(w.TemplateID())))
@@ -111,6 +118,7 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 	})
 
 	t.Run("another product's organization is not reachable through the include", func(t *testing.T) {
+		// Another product's organization is not reachable through the include.
 		first := newLicenseWorld(t)
 		second := newLicenseWorld(t)
 		licensed := second.Organizations().Create(
@@ -124,8 +132,10 @@ func TestOrganizationReadIncludesLicense(t *testing.T) {
 }
 
 func TestCreateOrganizationWithLicense(t *testing.T) {
+	// Organization with creation license.
 	t.Parallel()
 	t.Run("stamps the template onto the organization it creates", func(t *testing.T) {
+		// Stamps the template onto the organization it creates.
 		w := newLicenseWorld(t)
 
 		before := time.Now().Add(-time.Second)
@@ -139,6 +149,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("the license it answers is the one the license route reads", func(t *testing.T) {
+		// The license it answers is the one the license route reads.
 		w := newLicenseWorld(t)
 
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
@@ -150,6 +161,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("the license is recorded in the organization's history", func(t *testing.T) {
+		// The license is recorded in the organization's history.
 		w := newLicenseWorld(t)
 
 		created := w.Organizations().Create(organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID())))
@@ -159,6 +171,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("asking for no license leaves the organization unlicensed", func(t *testing.T) {
+		// Asking for no license leaves the organization unlicensed.
 		w := newLicenseWorld(t)
 
 		created := w.Organizations().Create(
@@ -170,6 +183,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("a template that does not exist is a bad request", func(t *testing.T) {
+		// A template that does not exist is a bad request.
 		w := newLicenseWorld(t)
 		name := itdsl.UniqueOrganizationName()
 
@@ -184,6 +198,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("an archived template leaves no organization behind", func(t *testing.T) {
+		// An archived template leaves no organization behind.
 		w := newLicenseWorld(t)
 		w.Template().Archive()
 		name := itdsl.UniqueOrganizationName()
@@ -197,6 +212,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("another product's template is refused the same way", func(t *testing.T) {
+		// Another product's template is refused the same way.
 		first := newLicenseWorld(t)
 		second := newLicenseWorld(t)
 		name := itdsl.UniqueOrganizationName()
@@ -212,6 +228,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("licenses the organization it creates with a founding member", func(t *testing.T) {
+		// Licenses the organization it creates with a founding member.
 		w := newLicenseWorld(t)
 		founder := w.FoundingMember()
 		name := itdsl.UniqueOrganizationName()
@@ -228,6 +245,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 	})
 
 	t.Run("a refused template writes no founding membership", func(t *testing.T) {
+		// A refused template writes no founding membership.
 		w := newLicenseWorld(t)
 		founder := w.FoundingMember()
 		name := itdsl.UniqueOrganizationName()

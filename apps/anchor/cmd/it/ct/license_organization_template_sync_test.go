@@ -41,8 +41,10 @@ func countTemplateSyncChanges(t *testing.T, handle licenseHandle) int {
 }
 
 func TestLicenseFollowsItsTemplate(t *testing.T) {
+	// License follows its template.
 	t.Parallel()
 	t.Run("a sync emits one event and a repeated job emits none", func(t *testing.T) {
+		// A sync emits one event and a repeated job emits none.
 		t.Parallel()
 		w := newLicenseWorld(t)
 		sink := w.product.CaptureEvents()
@@ -62,6 +64,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("a template value update reaches an unadjusted license", func(t *testing.T) {
+		// A template value update reaches an unadjusted license.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		require.Empty(t, w.License().Get().AdjustedFields)
@@ -77,6 +80,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("an adjusted field survives a template update", func(t *testing.T) {
+		// An adjusted field survives a template update.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		adjusted := w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -93,6 +97,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("a license already holding the resolved values is left untouched", func(t *testing.T) {
+		// A license already holding the resolved values is left untouched.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{
@@ -111,6 +116,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("an organization on another template is left alone", func(t *testing.T) {
+		// An organization on another template is left alone.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		other := w.NewTemplate(validTemplateValues())
@@ -128,6 +134,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("restating the stored values repairs a drifted license", func(t *testing.T) {
+		// Restating the stored values repairs a drifted license.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		_, err := testDB.Exec(
@@ -145,6 +152,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 	})
 
 	t.Run("a rename alone propagates nothing", func(t *testing.T) {
+		// A rename alone propagates nothing.
 		t.Parallel()
 		w := newLicensedWorld(t)
 
@@ -163,6 +171,7 @@ func TestLicenseFollowsItsTemplate(t *testing.T) {
 }
 
 func TestTemplateSyncContinuesPastOnePage(t *testing.T) {
+	// Template synchronization updates every dependent license across multiple pages.
 	t.Parallel()
 	w := newLicensedWorld(t)
 	licenses := []licenseHandle{w.License()}
@@ -191,8 +200,10 @@ func TestTemplateSyncContinuesPastOnePage(t *testing.T) {
 }
 
 func TestSchemaChangeCascadesToLicenses(t *testing.T) {
+	// Schema change cascades to licenses.
 	t.Parallel()
 	t.Run("a removed field cascades through the template onto the license", func(t *testing.T) {
+		// A removed field cascades through the template onto the license.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"region": "us-east"})
@@ -225,6 +236,7 @@ func TestSchemaChangeCascadesToLicenses(t *testing.T) {
 	})
 
 	t.Run("a redeclaration that removes nothing cascades nothing", func(t *testing.T) {
+		// A redeclaration that removes nothing cascades nothing.
 		t.Parallel()
 		w := newLicensedWorld(t)
 
@@ -237,6 +249,7 @@ func TestSchemaChangeCascadesToLicenses(t *testing.T) {
 }
 
 func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
+	// Template sync refuses an invalid merge.
 	t.Parallel()
 	w := newLicensedWorld(t)
 	bystander := w.License().For(w.NewOrganization())
@@ -268,8 +281,10 @@ func TestTemplateSyncRefusesAnInvalidMerge(t *testing.T) {
 }
 
 func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
+	// Migration resets what follows a template.
 	t.Parallel()
 	t.Run("discard clears the adjusted record, so the license follows again", func(t *testing.T) {
+		// Discard clears the adjusted record, so the license follows again.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})
@@ -299,6 +314,7 @@ func TestMigrationResetsWhatFollowsATemplate(t *testing.T) {
 	})
 
 	t.Run("carry forward keeps the pin on the new template", func(t *testing.T) {
+		// Carry forward keeps the pin on the new template.
 		t.Parallel()
 		w := newLicensedWorld(t)
 		w.License().Adjust(ct.LicenseTemplateValues{"flows": 800})

@@ -14,6 +14,7 @@ import (
 )
 
 func TestOrganizationAPIKeyDelete(t *testing.T) {
+	// Checks organization API key deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -39,6 +40,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 	require.NotNil(t, createResp.JSON201)
 
 	t.Run("Delete existing organization API key successfully", func(t *testing.T) {
+		// Delete existing organization API key successfully.
 		deleteResp, deleteErr := apiKeyClient.DeleteOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -59,6 +61,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 	})
 
 	t.Run("Delete non-existent organization API key returns not found", func(t *testing.T) {
+		// Delete non-existent organization API key returns not found.
 		deleteResp, deleteErr := apiKeyClient.DeleteOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -70,6 +73,7 @@ func TestOrganizationAPIKeyDelete(t *testing.T) {
 	})
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		webhookProduct := createTestProductContext(t)
 		sink := webhookProduct.CaptureEvents()
 		webhookClient, _ := webhookProduct.CreateAPIKeyClientWithAllScopes()

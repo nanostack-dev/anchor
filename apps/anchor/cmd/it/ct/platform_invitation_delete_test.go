@@ -14,11 +14,13 @@ import (
 )
 
 func TestDeletePlatformInvitation(t *testing.T) {
+	// Checks platform invitation deletion across the scenarios below.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
 		"ValidDeletion", func(t *testing.T) {
+			// Deleting an existing platform invitation removes it from subsequent searches.
 			// Create invitation first
 			inviteReq := ct.CreatePlatformInvitationJSONRequestBody{
 				Email: "invitee_delete@example.com",
@@ -46,6 +48,7 @@ func TestDeletePlatformInvitation(t *testing.T) {
 
 	t.Run(
 		"NonexistentInvitation", func(t *testing.T) {
+			// An unknown platform invitation returns the expected not-found response.
 			delResp, err := testOwnerClient(t).DeletePlatformInvitationWithResponse(
 				context.Background(), ids.MustNew("pinv"),
 			)
@@ -56,6 +59,7 @@ func TestDeletePlatformInvitation(t *testing.T) {
 
 	t.Run(
 		"InvalidInvitationID", func(t *testing.T) {
+			// A malformed platform invitation identifier is refused.
 			delResp, err := testOwnerClient(t).DeletePlatformInvitationWithResponse(
 				context.Background(), ct.Ksuid("invalid-id-format"),
 			)

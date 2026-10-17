@@ -19,7 +19,7 @@ Before replacing hand-rolled code with a library or framework equivalent, trace 
 
 ## Comments carry the why, sized to what actually needs explaining
 
-A comment earns its place by telling a reader something the code can't say on its own — not by restating what's already visible. A four-line function doesn't need a five-line doc comment; a genuinely non-obvious invariant does (the nil-guard above is a real example). When in doubt: write it, then reread asking "would someone who can already read Go learn something new here?" If not, cut it.
+Component tests follow the mandatory [single-line behavior summary](../engineering-best-practices.md#component-test-summaries) rule, including named subtests and table-driven cases. For other code, a comment earns its place by telling a reader something the code can't say on its own — not by restating what's already visible. A four-line function doesn't need a five-line doc comment; a genuinely non-obvious invariant does (the nil-guard above is a real example). When in doubt: write it, then reread asking "would someone who can already read Go learn something new here?" If not, cut it.
 
 ## Component-test coverage, and assert what actually distinguishes the states
 

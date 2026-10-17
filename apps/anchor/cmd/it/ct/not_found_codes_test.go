@@ -18,6 +18,7 @@ func requireNotFoundCode(t *testing.T, status int, body []byte, code string) {
 }
 
 func TestNotFoundCodes_Organization(t *testing.T) {
+	// An absent organization returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -27,11 +28,13 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 	missingOrg := ids.MustNew("org")
 
 	t.Run("Get", func(t *testing.T) {
+		// The get operation returns the resource-specific error when the organization is absent.
 		resp, err := client.GetProductOrganizationWithResponse(ctx, productCtx.ProductID, missingOrg, nil)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 	})
 	t.Run("Update", func(t *testing.T) {
+		// The update operation returns the resource-specific error when the organization is absent.
 		resp, err := client.UpdateProductOrganizationWithResponse(
 			ctx, productCtx.ProductID, missingOrg, ct.UpdateProductOrganizationJSONRequestBody{Name: "Missing"},
 		)
@@ -39,11 +42,13 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 	})
 	t.Run("Delete", func(t *testing.T) {
+		// The delete operation returns the resource-specific error when the organization is absent.
 		resp, err := client.DeleteProductOrganizationWithResponse(ctx, productCtx.ProductID, missingOrg)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 	})
 	t.Run("AddMember", func(t *testing.T) {
+		// The add member operation returns the resource-specific error when the organization is absent.
 		resp, err := client.AddOrganizationMemberWithResponse(
 			ctx, productCtx.ProductID, missingOrg,
 			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: role.ID},
@@ -52,6 +57,7 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 	})
 	t.Run("CreateWorkspace", func(t *testing.T) {
+		// The create workspace operation returns the resource-specific error when the organization is absent.
 		resp, err := client.CreateOrganizationWorkspaceWithResponse(
 			ctx, productCtx.ProductID, missingOrg, ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Missing Org"},
 		)
@@ -59,6 +65,7 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 	})
 	t.Run("SearchWorkspaces", func(t *testing.T) {
+		// The search workspaces operation returns the resource-specific error when the organization is absent.
 		resp, err := client.SearchOrganizationWorkspacesWithResponse(
 			ctx, productCtx.ProductID, missingOrg, ct.SearchOrganizationWorkspacesJSONRequestBody{},
 		)
@@ -68,6 +75,7 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 }
 
 func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
+	// An absent organization membership returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -77,11 +85,13 @@ func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
 	nonMember := createDSLProductUser(t, productCtx)
 
 	t.Run("Get", func(t *testing.T) {
+		// The get operation returns the resource-specific error when the organization membership is absent.
 		resp, err := client.GetOrganizationMemberWithResponse(ctx, productCtx.ProductID, org.Id, nonMember.ID, nil)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")
 	})
 	t.Run("UpdateRole", func(t *testing.T) {
+		// The update role operation returns the resource-specific error when the organization membership is absent.
 		resp, err := client.UpdateOrganizationMemberRoleWithResponse(
 			ctx, productCtx.ProductID, org.Id, nonMember.ID,
 			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: role.ID},
@@ -90,6 +100,7 @@ func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")
 	})
 	t.Run("Remove", func(t *testing.T) {
+		// The remove operation returns the resource-specific error when the organization membership is absent.
 		resp, err := client.RemoveOrganizationMemberWithResponse(ctx, productCtx.ProductID, org.Id, nonMember.ID)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")
@@ -97,6 +108,7 @@ func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
 }
 
 func TestNotFoundCodes_Workspace(t *testing.T) {
+	// An absent workspace returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -105,11 +117,13 @@ func TestNotFoundCodes_Workspace(t *testing.T) {
 	missingWorkspace := ids.MustNew("wsp")
 
 	t.Run("Get", func(t *testing.T) {
+		// The get operation returns the resource-specific error when the workspace is absent.
 		resp, err := client.GetOrganizationWorkspaceWithResponse(ctx, productCtx.ProductID, org.Id, missingWorkspace)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
 	})
 	t.Run("Update", func(t *testing.T) {
+		// The update operation returns the resource-specific error when the workspace is absent.
 		resp, err := client.UpdateOrganizationWorkspaceWithResponse(
 			ctx, productCtx.ProductID, org.Id, missingWorkspace,
 			ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Missing"},
@@ -118,6 +132,7 @@ func TestNotFoundCodes_Workspace(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
 	})
 	t.Run("Delete", func(t *testing.T) {
+		// The delete operation returns the resource-specific error when the workspace is absent.
 		resp, err := client.DeleteOrganizationWorkspaceWithResponse(ctx, productCtx.ProductID, org.Id, missingWorkspace)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
@@ -125,6 +140,7 @@ func TestNotFoundCodes_Workspace(t *testing.T) {
 }
 
 func TestNotFoundCodes_ProductResourcePermission(t *testing.T) {
+	// An absent product resource permission returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -132,11 +148,13 @@ func TestNotFoundCodes_ProductResourcePermission(t *testing.T) {
 	const missingName = "missing:permission"
 
 	t.Run("Get", func(t *testing.T) {
+		// The get operation returns the resource-specific error when the product resource permission is absent.
 		resp, err := client.GetProductResourcePermissionWithResponse(ctx, productCtx.ProductID, missingName)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "RESOURCE_PERMISSION_NOT_FOUND")
 	})
 	t.Run("Update", func(t *testing.T) {
+		// The update operation returns the resource-specific error when the product resource permission is absent.
 		resp, err := client.UpdateProductResourcePermissionWithResponse(
 			ctx, productCtx.ProductID, missingName,
 			ct.UpdateProductResourcePermissionRequest{Description: new("Missing")},
@@ -145,6 +163,7 @@ func TestNotFoundCodes_ProductResourcePermission(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "RESOURCE_PERMISSION_NOT_FOUND")
 	})
 	t.Run("Delete", func(t *testing.T) {
+		// The delete operation returns the resource-specific error when the product resource permission is absent.
 		resp, err := client.DeleteProductResourcePermissionWithResponse(ctx, productCtx.ProductID, missingName)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "RESOURCE_PERMISSION_NOT_FOUND")
@@ -152,6 +171,7 @@ func TestNotFoundCodes_ProductResourcePermission(t *testing.T) {
 }
 
 func TestNotFoundCodes_ProductPermission(t *testing.T) {
+	// An absent product permission returns its resource-specific not-found error.
 	t.Parallel()
 	productCtx := createTestProductContext(t)
 
@@ -164,6 +184,7 @@ func TestNotFoundCodes_ProductPermission(t *testing.T) {
 }
 
 func TestNotFoundCodes_ProductAPIKey(t *testing.T) {
+	// An absent product API key returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -171,11 +192,13 @@ func TestNotFoundCodes_ProductAPIKey(t *testing.T) {
 	missingKey := ids.MustNew("product_apikey")
 
 	t.Run("Get", func(t *testing.T) {
+		// The get operation returns the resource-specific error when the product API key is absent.
 		resp, err := client.GetProductAPIKeyWithResponse(ctx, productCtx.ProductID, missingKey)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "PRODUCT_API_KEY_NOT_FOUND")
 	})
 	t.Run("Update", func(t *testing.T) {
+		// The update operation returns the resource-specific error when the product API key is absent.
 		resp, err := client.UpdateProductAPIKeyWithResponse(
 			ctx, productCtx.ProductID, missingKey, ct.UpdateProductAPIKeyJSONRequestBody{Name: "Missing"},
 		)
@@ -183,6 +206,7 @@ func TestNotFoundCodes_ProductAPIKey(t *testing.T) {
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "PRODUCT_API_KEY_NOT_FOUND")
 	})
 	t.Run("Delete", func(t *testing.T) {
+		// The delete operation returns the resource-specific error when the product API key is absent.
 		resp, err := client.DeleteProductAPIKeyWithResponse(ctx, productCtx.ProductID, missingKey)
 		require.NoError(t, err)
 		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "PRODUCT_API_KEY_NOT_FOUND")
@@ -198,6 +222,7 @@ func runNotFoundCases(t *testing.T, code string, cases []notFoundCase) {
 	t.Helper()
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			// The route returns the resource-specific not-found error for an absent identifier.
 			status, body := tc.call(t)
 			requireNotFoundCode(t, status, body, code)
 		})
@@ -205,6 +230,7 @@ func runNotFoundCases(t *testing.T, code string, cases []notFoundCase) {
 }
 
 func TestNotFoundCodes_ProductRole(t *testing.T) {
+	// An absent product role returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -248,6 +274,7 @@ func TestNotFoundCodes_ProductRole(t *testing.T) {
 }
 
 func TestNotFoundCodes_OrganizationAPIKey(t *testing.T) {
+	// An absent organization API key returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -257,6 +284,7 @@ func TestNotFoundCodes_OrganizationAPIKey(t *testing.T) {
 	missingOrg := ids.MustNew("org")
 
 	t.Run("MissingKey", func(t *testing.T) {
+		// API-key validation refuses an unknown key.
 		runNotFoundCases(t, "ORGANIZATION_API_KEY_NOT_FOUND", []notFoundCase{
 			{"Get", func(t *testing.T) (int, []byte) {
 				resp, err := client.GetOrganizationAPIKeyWithResponse(ctx, productCtx.ProductID, org.Id, missingKey)
@@ -279,6 +307,7 @@ func TestNotFoundCodes_OrganizationAPIKey(t *testing.T) {
 		})
 	})
 	t.Run("MissingOrganization", func(t *testing.T) {
+		// API-key validation refuses an unknown organization.
 		runNotFoundCases(t, "ORGANIZATION_NOT_FOUND", []notFoundCase{
 			{"Create", func(t *testing.T) (int, []byte) {
 				resp, err := client.CreateOrganizationAPIKeyWithResponse(
@@ -331,6 +360,7 @@ func TestNotFoundCodes_OrganizationAPIKey(t *testing.T) {
 }
 
 func TestNotFoundCodes_ProductUser(t *testing.T) {
+	// An absent product user returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -360,6 +390,7 @@ func TestNotFoundCodes_ProductUser(t *testing.T) {
 }
 
 func TestNotFoundCodes_UserOrganization(t *testing.T) {
+	// An absent user organization returns its resource-specific not-found error.
 	t.Parallel()
 	productCtx := createTestProductContext(t)
 	client, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -375,6 +406,7 @@ func TestNotFoundCodes_UserOrganization(t *testing.T) {
 }
 
 func TestNotFoundCodes_Product(t *testing.T) {
+	// An absent product returns its resource-specific not-found error.
 	t.Parallel()
 	ctx := context.Background()
 	client := testOwnerClient(t)

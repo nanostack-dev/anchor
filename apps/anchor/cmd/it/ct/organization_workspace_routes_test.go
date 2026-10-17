@@ -14,6 +14,7 @@ import (
 )
 
 func TestOrganizationWorkspaceRoutes(t *testing.T) {
+	// Organization workspaces support creation, reading, updates, searches, and deletion through the API.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -25,6 +26,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 	)
 
 	t.Run("CreateGetSearchUpdateAndDeleteWorkspace", func(t *testing.T) {
+		// Creating get search update and delete workspace succeeds.
 		workspaceName := "workspace-" + itshared.Faker.UUID().V4()
 		created := createWorkspace(t, apiKeyClient, productCtx.ProductID, organization.Id, workspaceName)
 
@@ -109,6 +111,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 	})
 
 	t.Run("DuplicateNameRejectedWithinOrganizationButAllowedAcrossOrganizations", func(t *testing.T) {
+		// Workspace names must be unique within an organization and may be reused in another organization.
 		workspaceName := "duplicate-workspace-" + itshared.Faker.UUID().V4()
 		created := createWorkspace(t, apiKeyClient, productCtx.ProductID, organization.Id, workspaceName)
 
@@ -144,6 +147,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 	})
 
 	t.Run("UpdateDuplicateNameRejected", func(t *testing.T) {
+		// Updating duplicate name rejected returns a conflict.
 		first := createWorkspace(
 			t,
 			apiKeyClient,
@@ -177,6 +181,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 	})
 
 	t.Run("WorkspaceIsolationByOrganizationAndProduct", func(t *testing.T) {
+		// Workspace reads and writes cannot reach another organization's or product's workspace.
 		workspace := createWorkspace(
 			t,
 			apiKeyClient,
@@ -256,6 +261,7 @@ func TestOrganizationWorkspaceRoutes(t *testing.T) {
 }
 
 func TestOrganizationWorkspaceAuthorization(t *testing.T) {
+	// Workspace routes refuse credentials without the required operation scope.
 	t.Parallel()
 	ctx := context.Background()
 	productCtx := createTestProductContext(t)
@@ -274,6 +280,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 	)
 
 	t.Run("PlatformAdminCanReadButCannotMutate", func(t *testing.T) {
+		// Platform admin can read but cannot mutate.
 		ownerClient := productCtx.OwnerAuthenticatedClient()
 
 		getResp, err := ownerClient.GetOrganizationWorkspaceWithResponse(
@@ -331,6 +338,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 	})
 
 	t.Run("ProductAPIKeyRequiresWorkspaceScopes", func(t *testing.T) {
+		// A product API key needs the matching workspace-operation scope.
 		readOnlyClient, readOnlyKeyID := productCtx.CreateAPIKeyClientWithScopes([]string{"workspace:read"})
 		createResp, err := readOnlyClient.CreateOrganizationWorkspaceWithResponse(
 			ctx,
@@ -396,6 +404,7 @@ func TestOrganizationWorkspaceAuthorization(t *testing.T) {
 	})
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

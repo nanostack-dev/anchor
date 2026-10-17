@@ -46,6 +46,7 @@ func endRotationGrace(t *testing.T, refreshToken string) {
 }
 
 func TestRefreshAfterLogoutIsRefused(t *testing.T) {
+	// After logout refresh is refused.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -57,6 +58,7 @@ func TestRefreshAfterLogoutIsRefused(t *testing.T) {
 }
 
 func TestRefreshOfATokenRotatedBeforeLogoutIsRefused(t *testing.T) {
+	// Of a token rotated before logout refresh is refused.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 	rotated := itdsl.Auth(t).Refresh(user.RefreshToken)
@@ -68,6 +70,7 @@ func TestRefreshOfATokenRotatedBeforeLogoutIsRefused(t *testing.T) {
 }
 
 func TestLogoutLeavesTheUsersOtherSessionsSignedIn(t *testing.T) {
+	// Logout leaves the users other sessions signed in.
 	t.Parallel()
 	state, user := givenSignedInAdmin(t)
 	otherDevice := state.NewSession(sessionUserAlias)
@@ -78,6 +81,7 @@ func TestLogoutLeavesTheUsersOtherSessionsSignedIn(t *testing.T) {
 }
 
 func TestLogoutWithoutABearerTokenRevokesNothing(t *testing.T) {
+	// Logout without a bearer token revokes nothing.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -89,6 +93,7 @@ func TestLogoutWithoutABearerTokenRevokesNothing(t *testing.T) {
 }
 
 func TestLogoutWithAnUnverifiableBearerTokenRevokesNothing(t *testing.T) {
+	// Logout with an unverifiable bearer token revokes nothing.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -98,6 +103,7 @@ func TestLogoutWithAnUnverifiableBearerTokenRevokesNothing(t *testing.T) {
 }
 
 func TestAccessTokenStaysValidUntilItExpiresAfterLogout(t *testing.T) {
+	// Logging out leaves the existing access token valid until its expiry.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -109,6 +115,7 @@ func TestAccessTokenStaysValidUntilItExpiresAfterLogout(t *testing.T) {
 }
 
 func TestRefreshRotatesTheRefreshToken(t *testing.T) {
+	// Refresh rotates the refresh token.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -125,6 +132,7 @@ func TestRefreshRotatesTheRefreshToken(t *testing.T) {
 }
 
 func TestRotatedRefreshTokenIsAcceptedWithinTheGrace(t *testing.T) {
+	// Rotated refresh token is accepted within the grace.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -136,6 +144,7 @@ func TestRotatedRefreshTokenIsAcceptedWithinTheGrace(t *testing.T) {
 }
 
 func TestRotatedRefreshTokenIsRefusedAfterTheGrace(t *testing.T) {
+	// Rotated refresh token is refused after the grace.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 	itdsl.Auth(t).Refresh(user.RefreshToken)
@@ -146,6 +155,7 @@ func TestRotatedRefreshTokenIsRefusedAfterTheGrace(t *testing.T) {
 }
 
 func TestReplayedRotatedRefreshTokenRevokesTheWholeSession(t *testing.T) {
+	// Replayed rotated refresh token revokes the whole session.
 	t.Parallel()
 	state, user := givenSignedInAdmin(t)
 	otherDevice := state.NewSession(sessionUserAlias)
@@ -161,6 +171,7 @@ func TestReplayedRotatedRefreshTokenRevokesTheWholeSession(t *testing.T) {
 }
 
 func TestRefreshOfADeletedPlatformUserIsRefused(t *testing.T) {
+	// Of a deleted platform user refresh is refused.
 	t.Parallel()
 	state, user := givenSignedInAdmin(t)
 	deleteResp, err := state.Tenant(user.TenantAlias).OwnerClient.

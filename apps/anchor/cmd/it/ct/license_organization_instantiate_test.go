@@ -10,8 +10,10 @@ import (
 )
 
 func TestInstantiateOrganizationLicense(t *testing.T) {
+	// Organization instantiation license.
 	t.Parallel()
 	t.Run("copies the template's values onto the organization", func(t *testing.T) {
+		// The API copies the template's values onto the organization.
 		w := newLicenseWorld(t)
 
 		before := time.Now().Add(-time.Second)
@@ -28,6 +30,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("carries a value for every declared field", func(t *testing.T) {
+		// The API carries a value for every declared field.
 		w := newLicenseWorld(t)
 
 		organizationLicense := w.License().Instantiate(w.TemplateID())
@@ -42,6 +45,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("refuses a second license for the same organization", func(t *testing.T) {
+		// The API refuses a second license for the same organization.
 		w := newLicensedWorld(t)
 
 		resp := w.License().InstantiateRaw(w.TemplateID())
@@ -51,6 +55,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("400 when the product has no template with that identifier", func(t *testing.T) {
+		// The API returns 400 when the product has no template with that identifier.
 		w := newLicenseWorld(t)
 
 		resp := w.License().InstantiateRaw(missingTemplateID())
@@ -60,6 +65,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("404 when the product has no organization with that identifier", func(t *testing.T) {
+		// The API returns 404 when the product has no organization with that identifier.
 		w := newLicenseWorld(t)
 
 		resp := w.License().For(missingOrganizationID()).InstantiateRaw(w.TemplateID())
@@ -67,6 +73,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("404 for another product's organization", func(t *testing.T) {
+		// The API returns 404 for another product's organization.
 		first := newLicenseWorld(t)
 		second := newLicenseWorld(t)
 
@@ -78,6 +85,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("two organizations on one template hold separate licenses", func(t *testing.T) {
+		// Two organizations on one template hold separate licenses.
 		w := newLicensedWorld(t)
 		first := w.License().Get()
 
@@ -91,6 +99,7 @@ func TestInstantiateOrganizationLicense(t *testing.T) {
 	})
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		w := newLicenseWorld(t)
 		sink := w.product.CaptureEvents()
 		w.License().Instantiate(w.TemplateID())

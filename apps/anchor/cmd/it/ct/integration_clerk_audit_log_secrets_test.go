@@ -13,6 +13,7 @@ import (
 
 // Not parallel: its keyed Clerk instance seeds the process-wide reconcile scheduler.
 func TestIntegrationAuditLogs_DoNotLeakSecrets(t *testing.T) {
+	// Integration audit logs omit secret configuration values from every recorded change.
 	productContext := createTestProductContext(t)
 	instance := createClerkIntegrationInstance(t, productContext)
 	t.Cleanup(func() {

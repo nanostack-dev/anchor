@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductOrganizationMetadata(t *testing.T) {
+	// Organization metadata is persisted, returned, and updated through the API.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -21,6 +22,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"MetadataSurvivesCreateAndGet", func(t *testing.T) {
+			// Metadata survives create and get.
 			metadata := ct.Metadata{
 				"billing_ref": "cust_abc123",
 				"region":      "us-east-1",
@@ -64,6 +66,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"MetadataIsAbsentWhenNotProvided", func(t *testing.T) {
+			// Metadata is absent when not provided.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -78,6 +81,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"UpdateReplacesMetadataInFull", func(t *testing.T) {
+			// Updating replaces metadata in full succeeds.
 			initial := ct.Metadata{"billing_ref": "cust_abc123", "region": "us-east-1"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -114,6 +118,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"UpdateWithoutMetadataClearsIt", func(t *testing.T) {
+			// Updating without metadata clears it succeeds.
 			initial := ct.Metadata{"billing_ref": "cust_abc123"}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -145,6 +150,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"RejectsNonScalarMetadataValue", func(t *testing.T) {
+			// The API rejects non scalar metadata value.
 			metadata := ct.Metadata{"billing": map[string]any{"ref": "cust_abc123"}}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -163,6 +169,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"RejectsOverlongMetadataValue", func(t *testing.T) {
+			// The API rejects overlong metadata value.
 			metadata := ct.Metadata{"note": strings.Repeat("v", 513)}
 
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -181,6 +188,7 @@ func TestProductOrganizationMetadata(t *testing.T) {
 
 	t.Run(
 		"MetadataIsExposedOnUserOrganization", func(t *testing.T) {
+			// Metadata is exposed on user organization.
 			productCtx := createTestProductContext(t)
 			productUser := createDSLProductUser(t, productCtx)
 			orgClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()

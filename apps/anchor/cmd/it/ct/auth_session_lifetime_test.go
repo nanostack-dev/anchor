@@ -57,6 +57,7 @@ func signedInAt(t *testing.T, state *itdsl.State, user *itdsl.PlatformUser, auth
 }
 
 func TestRefreshExtendsTheSessionByTheIdleLifetime(t *testing.T) {
+	// Refresh extends the session by the idle lifetime.
 	t.Parallel()
 	_, user := givenSignedInAdmin(t)
 
@@ -70,6 +71,7 @@ func TestRefreshExtendsTheSessionByTheIdleLifetime(t *testing.T) {
 }
 
 func TestRefreshNeverExtendsPastTheSessionMaxLifetime(t *testing.T) {
+	// Never refresh extends past the session maximum lifetime.
 	t.Parallel()
 	state, user := givenSignedInAdmin(t)
 	sessionEnd := time.Now().Add(time.Hour)
@@ -84,6 +86,7 @@ func TestRefreshNeverExtendsPastTheSessionMaxLifetime(t *testing.T) {
 }
 
 func TestRefreshAfterTheSessionMaxLifetimeIsRefused(t *testing.T) {
+	// After the session maximum lifetime refresh is refused.
 	t.Parallel()
 	state, user := givenSignedInAdmin(t)
 	refreshToken := signedInAt(t, state, user, time.Now().Add(-seconds(authCfg.SessionMaxLifetime)-time.Minute))

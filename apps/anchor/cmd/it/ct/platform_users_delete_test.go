@@ -12,11 +12,13 @@ import (
 )
 
 func TestDeletePlatformUser(t *testing.T) {
+	// Checks platform user deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"DeleteNonExistentUser", func(t *testing.T) {
+			// Deleting nonexistent user succeeds.
 			nonExistentUserID := ids.MustNew("puser")
 
 			resp, err := testOwnerClient(t).DeletePlatformUserWithResponse(
@@ -31,6 +33,7 @@ func TestDeletePlatformUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulDeleteOfCreatedUser", func(t *testing.T) {
+			// Deleting of created user succeeds.
 			// Create a test admin productuserservice first
 			testUser := createPlatformAdmin(t)
 			assert.NotEmpty(
@@ -80,6 +83,7 @@ func TestDeletePlatformUser(t *testing.T) {
 
 	t.Run(
 		"DeleteSelfShouldFail", func(t *testing.T) {
+			// Self should deletion fail.
 			// Search for the owner productuserservice to get their platform productuserservice ID
 			email := testOwnerUser(t).Email
 			filter := ct.PlatformUserFilter{

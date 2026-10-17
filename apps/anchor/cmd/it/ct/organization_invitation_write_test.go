@@ -12,6 +12,7 @@ import (
 )
 
 func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
+	// Update invitation with changes role and expiry succeeds.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -30,6 +31,7 @@ func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
 }
 
 func TestUpdateInvitation_IgnoresAnEmailInTheBody(t *testing.T) {
+	// Ignores an email in the body during update invitation.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -45,6 +47,7 @@ func TestUpdateInvitation_IgnoresAnEmailInTheBody(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
+	// Update invitation refuses expiry in the past.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -59,6 +62,7 @@ func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
+	// Update invitation refuses unknown role.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -73,6 +77,7 @@ func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
+	// Update invitation refuses unknown invitation.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -89,6 +94,7 @@ func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
+	// Update invitation refuses an expired invitation.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -105,6 +111,7 @@ func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 }
 
 func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
+	// Update invitation refuses an accepted invitation.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -121,6 +128,7 @@ func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {
+	// Removes the invitation during delete invitation.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -133,6 +141,7 @@ func TestDeleteInvitation_RemovesTheInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_CannotBeAcceptedAfterwards(t *testing.T) {
+	// Cannot be accepted afterwards during delete invitation.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -147,6 +156,7 @@ func TestDeleteInvitation_CannotBeAcceptedAfterwards(t *testing.T) {
 }
 
 func TestDeleteInvitation_FreesTheEmailForANewInvitation(t *testing.T) {
+	// Frees the email for a new invitation during delete invitation.
 	t.Parallel()
 	w := newWorld(t)
 	email := uniqueEmail()
@@ -158,6 +168,7 @@ func TestDeleteInvitation_FreesTheEmailForANewInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
+	// Delete invitation refuses unknown invitation.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -167,6 +178,7 @@ func TestDeleteInvitation_RefusesUnknownInvitation(t *testing.T) {
 }
 
 func TestDeleteInvitation_RefusesUnknownOrganization(t *testing.T) {
+	// Delete invitation refuses unknown organization.
 	t.Parallel()
 	w := newWorld(t)
 
@@ -177,6 +189,7 @@ func TestDeleteInvitation_RefusesUnknownOrganization(t *testing.T) {
 }
 
 func TestDeleteInvitation_RefusesInvitationOfAnotherOrganization(t *testing.T) {
+	// Delete invitation refuses invitation of another organization.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())

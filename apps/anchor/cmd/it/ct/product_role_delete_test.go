@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductRole_Delete(t *testing.T) {
+	// Checks product role deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -21,6 +22,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteExistingProductRole", func(t *testing.T) {
+			// Deleting existing product role succeeds.
 			roleName := "RoleToDelete_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -51,6 +53,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteProductRoleWithPermissions", func(t *testing.T) {
+			// Deleting a product role with permissions succeeds.
 			permissions := []string{
 				testCtx.DefaultResourcePermissions[0].Name,
 				testCtx.DefaultResourcePermissions[1].Name,
@@ -85,6 +88,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteNonexistentProductRole", func(t *testing.T) {
+			// Deleting nonexistent product role returns not found.
 			nonExistentRoleID := ids.MustNew("productroleservice")
 			deleteResp, err := testCtx.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(
 				ctx, productID, nonExistentRoleID,
@@ -96,6 +100,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteProductRoleWithInvalidID", func(t *testing.T) {
+			// Deleting a product role with invalid ID returns a bad request.
 			invalidRoleID := "invalid-role-id"
 			deleteResp, err := testCtx.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(
 				ctx, productID, invalidRoleID,
@@ -107,6 +112,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteProductRoleForNonexistentProduct", func(t *testing.T) {
+			// Deleting a product role for nonexistent product returns a bad request.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -129,6 +135,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteProductRoleFromDifferentProduct", func(t *testing.T) {
+			// Deleting a role through another product returns not found and preserves the original role.
 			anotherTestCtx := createTestProductContext(t)
 			anotherProductID := anotherTestCtx.ProductID
 
@@ -161,6 +168,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"DeleteProductRoleMultipleTimes", func(t *testing.T) {
+			// Product role multiple deletion times.
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "RoleToDeleteTwice_" + ids.MustNew("test"),
@@ -190,6 +198,7 @@ func TestProductRole_Delete(t *testing.T) {
 
 	t.Run(
 		"EmitsWebhook", func(t *testing.T) {
+			// A successful change emits the corresponding signed product event.
 			productContext := createTestProductContext(t)
 			sink := productContext.CaptureEvents()
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(

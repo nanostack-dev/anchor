@@ -15,10 +15,12 @@ import (
 )
 
 func TestUserOrganizationsOfAProductUser(t *testing.T) {
+	// A product user's organizations include membership and role details while enforcing access scopes.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("EmptyListWhenUserHasNoMemberships", func(t *testing.T) {
+		// Empty list when user has no memberships.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
@@ -39,6 +41,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	})
 
 	t.Run("ReturnsOrganizationsWithRoleDetails", func(t *testing.T) {
+		// The API returns organizations with role details.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -89,6 +92,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	})
 
 	t.Run("ReturnsMultipleOrganizations", func(t *testing.T) {
+		// The API returns multiple organizations.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithAllScopes()
@@ -139,6 +143,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	})
 
 	t.Run("IncludeRolePermissions", func(t *testing.T) {
+		// Requesting role permissions includes the member's assigned role permissions in the response.
 		productCtx := createTestProductContext(t)
 		productCtx.CreateDefaultProductResourcePermissions(t)
 		productUser := createDSLProductUser(t, productCtx)
@@ -197,6 +202,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	})
 
 	t.Run("NonExistentUserReturns404", func(t *testing.T) {
+		// Nonexistent user returns 404.
 		productCtx := createTestProductContext(t)
 		apiKeyClient, _ := productCtx.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
 
@@ -214,6 +220,7 @@ func TestUserOrganizationsOfAProductUser(t *testing.T) {
 	})
 
 	t.Run("InsufficientPermissionsReturns403", func(t *testing.T) {
+		// Insufficient permissions returns 403.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 

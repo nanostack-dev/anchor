@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductOrganizationUpdate(t *testing.T) {
+	// Checks product organization update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -23,6 +24,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"SuccessfulUpdateOrganization", func(t *testing.T) {
+			// Updating an organization succeeds.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -81,6 +83,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateOrganizationNameOnly", func(t *testing.T) {
+			// Updating an organization name only succeeds.
 			// Create an organization to update
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
@@ -123,6 +126,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateOrganizationDescriptionOnly", func(t *testing.T) {
+			// Updating an organization description only succeeds.
 			// Create an organization to update
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
@@ -166,6 +170,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateOrganizationWithEmptyName", func(t *testing.T) {
+			// Updating an organization with empty name returns a bad request.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -206,6 +211,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateOrganizationWithInvalidNameLength", func(t *testing.T) {
+			// Updating an organization with invalid name length returns a bad request.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -247,6 +253,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateOrganizationWithInvalidDescriptionLength", func(t *testing.T) {
+			// Updating an organization with invalid description length returns a bad request.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -288,6 +295,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"UpdateNonExistentOrganization", func(t *testing.T) {
+			// Updating nonexistent organization returns not found.
 			nonExistentOrgID := ids.MustNew("org")
 
 			updateResponse, err := apiKeyClient.UpdateProductOrganizationWithResponse(
@@ -311,6 +319,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 
 	t.Run(
 		"SecurityUpdateOrganizationWithInvalidPermissions", func(t *testing.T) {
+			// Organization updates refuse an API key without the required scope.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -351,6 +360,7 @@ func TestProductOrganizationUpdate(t *testing.T) {
 	)
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

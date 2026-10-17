@@ -14,6 +14,7 @@ import (
 )
 
 func TestProductAPIKeyGet(t *testing.T) {
+	// Checks product API key lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -42,6 +43,7 @@ func TestProductAPIKeyGet(t *testing.T) {
 
 	t.Run(
 		"Get existing API key", func(t *testing.T) {
+			// Reading existing API key succeeds.
 			getResp, getErr := product.OwnerAuthenticatedClient().GetProductAPIKeyWithResponse(
 				ctx, product.ProductID, apiKeyID,
 			)
@@ -73,30 +75,35 @@ func TestProductAPIKeyGet(t *testing.T) {
 
 	t.Run(
 		"Get API key validation scenarios", func(t *testing.T) {
+			// Get API key validation scenarios.
 			testCases := []struct {
 				name           string
 				productID      string
 				apiKeyID       string
 				expectedStatus int
 			}{
+				// The product-key operation accepts valid product and API key IDs.
 				{
 					name:           "Valid product and API key IDs",
 					productID:      product.ProductID,
 					apiKeyID:       apiKeyID,
 					expectedStatus: 200,
 				},
+				// The product-key operation refuses invalid product ID.
 				{
 					name:           "Invalid product ID",
 					productID:      ids.MustNew("prd"),
 					apiKeyID:       apiKeyID,
 					expectedStatus: 404,
 				},
+				// The product-key operation refuses invalid API key ID.
 				{
 					name:           "Invalid API key ID",
 					productID:      product.ProductID,
 					apiKeyID:       ids.MustNew("product_apikey"),
 					expectedStatus: 404,
 				},
+				// The product-key operation refuses both IDs invalid.
 				{
 					name:           "Both IDs invalid",
 					productID:      ids.MustNew("prd"),
@@ -108,6 +115,7 @@ func TestProductAPIKeyGet(t *testing.T) {
 			for _, tc := range testCases {
 				t.Run(
 					tc.name, func(t *testing.T) {
+						// Product-key lookup returns the expected result for this product and key identifier pair.
 						getResp, testErr := product.OwnerAuthenticatedClient().GetProductAPIKeyWithResponse(
 							ctx, tc.productID, tc.apiKeyID,
 						)

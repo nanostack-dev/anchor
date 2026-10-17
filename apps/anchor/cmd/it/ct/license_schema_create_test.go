@@ -11,8 +11,10 @@ import (
 )
 
 func TestLicenseSchemaCreate(t *testing.T) {
+	// Checks license schema creation across the scenarios below.
 	t.Parallel()
 	t.Run("declares every field type", func(t *testing.T) {
+		// The API declares every field type.
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 
@@ -89,6 +91,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 	})
 
 	t.Run("accepts a schema with no fields", func(t *testing.T) {
+		// The API accepts a schema with no fields.
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 
@@ -104,6 +107,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 	})
 
 	t.Run("rejects a second schema for the same product", func(t *testing.T) {
+		// The API rejects a second schema for the same product.
 		tc := newLicenseTestCtx(t)
 		client := tc.product.OwnerAuthenticatedClient()
 		body := ct.CreateLicenseSchemaJSONRequestBody{
@@ -124,6 +128,7 @@ func TestLicenseSchemaCreate(t *testing.T) {
 	})
 
 	t.Run("schemas are scoped to their own product", func(t *testing.T) {
+		// Schemas are scoped to their own product.
 		first := newLicenseTestCtx(t)
 		second := newLicenseTestCtx(t)
 

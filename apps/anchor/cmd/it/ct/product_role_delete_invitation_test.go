@@ -36,6 +36,7 @@ func (w world) assertInvitationGone(invitationID string) {
 }
 
 func TestDeleteProductRole_IsRefusedWhileAPendingInvitationNamesTheRole(t *testing.T) {
+	// Is refused while a pending invitation names the role during delete product role.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -49,6 +50,7 @@ func TestDeleteProductRole_IsRefusedWhileAPendingInvitationNamesTheRole(t *testi
 }
 
 func TestDeleteProductRole_IsAllowedOnceThePendingInvitationChangesRole(t *testing.T) {
+	// Is allowed once the pending invitation changes role during delete product role.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -65,6 +67,7 @@ func TestDeleteProductRole_IsAllowedOnceThePendingInvitationChangesRole(t *testi
 }
 
 func TestDeleteProductRole_IsAllowedOnceThePendingInvitationIsDeleted(t *testing.T) {
+	// Is allowed once the pending invitation is deleted during delete product role.
 	t.Parallel()
 	w := newWorld(t)
 	created := w.invite(uniqueEmail())
@@ -76,6 +79,7 @@ func TestDeleteProductRole_IsAllowedOnceThePendingInvitationIsDeleted(t *testing
 }
 
 func TestDeleteProductRole_DeletesAnExpiredInvitationAndEmitsItsDeletedEvent(t *testing.T) {
+	// Deletes an expired invitation and emits its deleted event during delete product role.
 	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())
@@ -89,6 +93,7 @@ func TestDeleteProductRole_DeletesAnExpiredInvitationAndEmitsItsDeletedEvent(t *
 }
 
 func TestDeleteProductRole_DeletesAnAcceptedInvitationAndEmitsItsDeletedEvent(t *testing.T) {
+	// Deletes an accepted invitation and emits its deleted event during delete product role.
 	t.Parallel()
 	w, sink := newWorldCapturingEvents(t)
 	created := w.invite(uniqueEmail())

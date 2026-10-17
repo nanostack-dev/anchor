@@ -20,6 +20,7 @@ import (
 //
 // Not parallel: it resets the shared mailpit inbox.
 func TestEmailSendRequiredVariables(t *testing.T) {
+	// Sending a template email requires every variable declared by the template.
 	mp := mailpit.Shared(t)
 
 	tc := newEmailTestCtx(t)
@@ -46,6 +47,7 @@ func TestEmailSendRequiredVariables(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("rejects send missing a required variable", func(t *testing.T) {
+		// The API rejects send missing a required variable.
 		countBefore := len(mp.Messages(t))
 
 		resp, sendErr := client.SendEmailWithResponse(
@@ -68,6 +70,7 @@ func TestEmailSendRequiredVariables(t *testing.T) {
 	})
 
 	t.Run("delivers once the required variable is supplied", func(t *testing.T) {
+		// Delivers once the required variable is supplied.
 		vars := map[string]any{"name": "Ada"}
 		resp, sendErr := client.SendEmailWithResponse(
 			context.Background(),

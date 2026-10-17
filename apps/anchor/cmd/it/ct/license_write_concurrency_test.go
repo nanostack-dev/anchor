@@ -53,6 +53,7 @@ func assertLicensingWriteConflict(t *testing.T, call func(context.Context) (*htt
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestLicensingWritesRejectConcurrentOperation(t *testing.T) {
+	// Overlapping licensing writes return a conflict while another operation holds the product lock.
 	w := newLicensedWorld(t)
 	other := newLicensedWorld(t)
 	unlicensedID := w.NewOrganization()
@@ -98,7 +99,10 @@ func TestLicensingWritesRejectConcurrentOperation(t *testing.T) {
 			})
 		}},
 	} {
-		t.Run(test.name, func(t *testing.T) { assertLicensingWriteConflict(t, test.call) })
+		t.Run(test.name, func(t *testing.T) {
+			// The operation refuses a conflicting concurrent write without partially changing its resource.
+			assertLicensingWriteConflict(t, test.call)
+		})
 	}
 
 	assertValues(t, w.License().Get().Values, values)
@@ -129,6 +133,7 @@ func (w *licenseWorld) waitForWriteLock() {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateRenameRejectsConcurrentValuesWrite(t *testing.T) {
+	// Template rename rejects concurrent values write.
 	w := newLicensedWorld(t)
 	rowLock, err := testDB.BeginTx(t.Context(), nil)
 	require.NoError(t, err)
@@ -162,6 +167,7 @@ func TestTemplateRenameRejectsConcurrentValuesWrite(t *testing.T) {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestMigrationHoldsWriteLockAcrossOrganizationTransactions(t *testing.T) {
+	// License migration holds its product lock until every selected organization's transaction has finished.
 	w := newLicensedWorld(t)
 	secondID := w.NewOrganization()
 	rowLock, err := testDB.BeginTx(t.Context(), nil)
@@ -200,6 +206,7 @@ func TestMigrationHoldsWriteLockAcrossOrganizationTransactions(t *testing.T) {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateSyncRetriesLicensingWriteConflict(t *testing.T) {
+	// Template sync retries licensing write conflict.
 	w := newLicensedWorld(t)
 	payload, err := json.Marshal(
 		map[string]string{"tenant_id": w.tenantID, "product_id": w.productID(), "template_id": w.TemplateID()},
@@ -260,6 +267,7 @@ func requireTemplateUpdated(t *testing.T, updated <-chan functional.Result[*ct.U
 }
 
 func TestConcurrentLicenseInstantiationsDoNotRefuseEachOther(t *testing.T) {
+	// Concurrent instantiations for different organizations all succeed.
 	t.Parallel()
 	const organizations = 8
 	w := newLicensedWorld(t)
@@ -306,6 +314,7 @@ func TestConcurrentLicenseInstantiationsDoNotRefuseEachOther(t *testing.T) {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestLicenseInstantiationIgnoresTheProductLicensingLock(t *testing.T) {
+	// Instantiating an organization license succeeds even while the product licensing lock is held.
 	w := newLicensedWorld(t)
 	unlicensedID := w.NewOrganization()
 	name := itdsl.UniqueOrganizationName()
@@ -321,6 +330,7 @@ func TestLicenseInstantiationIgnoresTheProductLicensingLock(t *testing.T) {
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateUpdateDuringOrganizationCreationReachesTheNewLicense(t *testing.T) {
+	// Template update during organization creation reaches the new license.
 	w := newLicenseWorld(t)
 	founder := w.FoundingMember()
 	body := organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID()))
@@ -349,6 +359,7 @@ func TestTemplateUpdateDuringOrganizationCreationReachesTheNewLicense(t *testing
 
 // Not parallel: it asserts lock contention within tight timeouts.
 func TestTemplateUpdateDuringInstantiationReachesTheNewLicense(t *testing.T) {
+	// Template update during instantiation reaches the new license.
 	w := newLicenseWorld(t)
 	updatedValues := templateValuesWith("flows", 900)
 	client := w.client()

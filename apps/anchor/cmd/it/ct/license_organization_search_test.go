@@ -33,8 +33,10 @@ func summaryOrganizationIDs(page ct.OrganizationLicenseSearchResponse) []string 
 }
 
 func TestSearchOrganizationLicenses(t *testing.T) {
+	// Organization search licenses.
 	t.Parallel()
 	t.Run("lists an organization with the license it holds", func(t *testing.T) {
+		// The API lists an organization with the license it holds.
 		w := newLicensedWorld(t)
 
 		page := w.Search().Run(ct.OrganizationLicenseSearchRequest{})
@@ -47,6 +49,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("lists an organization holding no license", func(t *testing.T) {
+		// The API lists an organization holding no license.
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
 
@@ -59,6 +62,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("does not derive usage", func(t *testing.T) {
+		// The API does not derive usage.
 		w := newLicensedWorld(t)
 		w.Usage().Report(gauge(worldLimitKey, 42))
 
@@ -71,6 +75,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("keeps only the organizations on the named tiers", func(t *testing.T) {
+		// Keeps only the organizations on the named tiers.
 		w := newLicensedWorld(t)
 		onPro := w.NewOrganization()
 		unlicensed := w.NewOrganization()
@@ -86,6 +91,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("finds the customers still on a withdrawn tier", func(t *testing.T) {
+		// Finds the customers still on a withdrawn tier.
 		w := newLicensedWorld(t)
 		w.Template().Archive()
 
@@ -99,6 +105,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("narrows to organizations that hold a license, or that hold none", func(t *testing.T) {
+		// Narrows to organizations that hold a license, or that hold none.
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
 
@@ -114,6 +121,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("matches the organization name", func(t *testing.T) {
+		// The API matches the organization name.
 		w := newLicensedWorld(t)
 		named := w.NewNamedOrganization("Northwind Trading")
 		w.NewNamedOrganization("Globex")
@@ -126,6 +134,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("pages, and reports the total beyond the page", func(t *testing.T) {
+		// Pages, and reports the total beyond the page.
 		w := newLicensedWorld(t)
 		w.NewOrganization()
 		w.NewOrganization()
@@ -140,6 +149,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("sorts by organization name", func(t *testing.T) {
+		// License search orders its results by organization name.
 		w := newLicenseWorld(t)
 		w.NewNamedOrganization("Zeta Industries")
 		w.NewNamedOrganization("Alpha Holdings")
@@ -155,6 +165,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("orders by name when the request names no sort", func(t *testing.T) {
+		// Orders by name when the request names no sort.
 		w := newLicenseWorld(t)
 		w.NewNamedOrganization("Zeta Industries")
 		w.NewNamedOrganization("Alpha Holdings")
@@ -173,6 +184,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("sorting by the date the copy was taken puts the unlicensed last", func(t *testing.T) {
+		// Sorting by the date the copy was taken puts the unlicensed last.
 		w := newLicensedWorld(t)
 		unlicensed := w.NewNamedOrganization("Never Licensed")
 
@@ -193,6 +205,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("narrows to the organizations named", func(t *testing.T) {
+		// Narrows to the organizations named.
 		w := newLicensedWorld(t)
 		other := w.NewNamedOrganization("Other Customer")
 
@@ -210,6 +223,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("a name carrying a wildcard is matched literally", func(t *testing.T) {
+		// A name carrying a wildcard is matched literally.
 		w := newLicenseWorld(t)
 		literal := w.NewNamedOrganization("100% Renewable")
 		w.NewNamedOrganization("100 Percent Renewable")
@@ -223,6 +237,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("another product's organizations are not reachable", func(t *testing.T) {
+		// Another product's organizations are not reachable.
 		first := newLicensedWorld(t)
 		second := newLicensedWorld(t)
 
@@ -232,6 +247,7 @@ func TestSearchOrganizationLicenses(t *testing.T) {
 	})
 
 	t.Run("the read scope is what reaches it", func(t *testing.T) {
+		// The read scope is what reaches it.
 		w := newLicensedWorld(t)
 		writeOnly, _ := w.product.CreateAPIKeyClientWithScopes(
 			[]string{"organization_license:update"},

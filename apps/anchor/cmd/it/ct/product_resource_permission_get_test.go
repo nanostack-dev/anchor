@@ -12,6 +12,7 @@ import (
 )
 
 func TestProductResourcePermissionGetSuccess(t *testing.T) {
+	// Reading a product resource permission returns its saved fields.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -51,6 +52,7 @@ func TestProductResourcePermissionGetSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetNotFound(t *testing.T) {
+	// Reading an unknown resource permission returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -66,6 +68,7 @@ func TestProductResourcePermissionGetNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetWithNonExistentProduct(t *testing.T) {
+	// Reading a permission under an unknown product returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -82,6 +85,7 @@ func TestProductResourcePermissionGetWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
+	// Reading a permission refuses a malformed permission name.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -92,11 +96,13 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 		permissionName string
 		expectedStatus int
 	}{
+		// The permission operation rejects empty permission name.
 		{
 			name:           "empty permission name",
 			permissionName: "",
 			expectedStatus: http.StatusBadRequest,
 		},
+		// The permission operation rejects permission name with special characters.
 		{
 			name:           "permission name with special characters",
 			permissionName: "file@read#test",
@@ -107,6 +113,7 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(
 			tc.name, func(t *testing.T) {
+				// Permission lookup refuses this malformed permission name.
 				resp, err := testOwnerClient(t).GetProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -123,6 +130,7 @@ func TestProductResourcePermissionGetWithInvalidPermissionName(t *testing.T) {
 }
 
 func TestProductResourcePermissionGetMultiplePermissions(t *testing.T) {
+	// Each permission can be read independently by its name.
 	t.Parallel()
 	ctx := context.Background()
 

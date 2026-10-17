@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductRole_Search(t *testing.T) {
+	// Checks product role search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -57,6 +58,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchAllProductRoles", func(t *testing.T) {
+			// Searching all product roles succeeds.
 			searchResp, searchErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{},
 			)
@@ -70,6 +72,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesByNames", func(t *testing.T) {
+			// Searching product roles by names succeeds.
 			searchResp, nameFilterErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{
 					Filter: &ct.ProductRoleFilter{
@@ -94,6 +97,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesByIds", func(t *testing.T) {
+			// Searching product roles by IDs succeeds.
 			roleIDs := []string{createResp1.JSON201.Id, createResp2.JSON201.Id}
 			searchResp, idFilterErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{
@@ -118,6 +122,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesWithPagination", func(t *testing.T) {
+			// Searching product roles with pagination succeeds.
 			limit := int32(2)
 			offset := int32(0)
 			pagination := ct.PaginationRequest{
@@ -138,6 +143,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesWithSorting", func(t *testing.T) {
+			// Searching product roles with sorting succeeds.
 			sortBy := ct.ProductRoleSearchRequestSortByName
 			sortDirection := ct.ASC
 			searchResp, sortErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
@@ -162,6 +168,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesWithFullTextSearch", func(t *testing.T) {
+			// Searching product roles with full text search succeeds.
 			fullTextSearch := "Edit"
 			searchResp, fullTextErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{
@@ -185,6 +192,7 @@ func TestProductRole_Search(t *testing.T) {
 
 	t.Run(
 		"SearchProductRolesNoResults", func(t *testing.T) {
+			// Searching product roles no results succeeds.
 			searchResp, noResultsErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
 				ctx, productID, ct.SearchProductRolesJSONRequestBody{
 					Filter: &ct.ProductRoleFilter{
@@ -217,6 +225,7 @@ func TestProductRole_Search(t *testing.T) {
 // limit smaller than a role's permission count must still return ALL of that
 // role's permissions (regression for permission-list truncation).
 func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
+	// Searching product role permissions not truncated by pagination succeeds.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -261,6 +270,7 @@ func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
 }
 
 func TestProductRole_Search_ByPermissions(t *testing.T) {
+	// Checks product role search across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -300,6 +310,7 @@ func TestProductRole_Search_ByPermissions(t *testing.T) {
 	}
 
 	t.Run("returns only the role holding the permission", func(t *testing.T) {
+		// The API returns only the role holding the permission.
 		result := searchByPermissions(t, "doc:share")
 		require.Len(t, result.Items, 1)
 		assert.Equal(t, sharer.JSON201.Id, result.Items[0].Id)
@@ -307,18 +318,21 @@ func TestProductRole_Search_ByPermissions(t *testing.T) {
 	})
 
 	t.Run("matches roles holding any of the permissions without duplicates", func(t *testing.T) {
+		// The API matches roles holding any of the permissions without duplicates.
 		result := searchByPermissions(t, "doc:share", "doc:read")
 		require.Len(t, result.Items, 2)
 		assert.Equal(t, int64(2), result.Total)
 	})
 
 	t.Run("matches permission names case-insensitively", func(t *testing.T) {
+		// The API matches permission names case-insensitively.
 		result := searchByPermissions(t, "DOC:Share")
 		require.Len(t, result.Items, 1)
 		assert.Equal(t, sharer.JSON201.Id, result.Items[0].Id)
 	})
 
 	t.Run("returns nothing when no role holds the permission", func(t *testing.T) {
+		// The API returns nothing when no role holds the permission.
 		result := searchByPermissions(t, "doc:nobody-holds-this")
 		assert.Empty(t, result.Items)
 		assert.Equal(t, int64(0), result.Total)

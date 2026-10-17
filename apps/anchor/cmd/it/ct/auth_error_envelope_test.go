@@ -12,6 +12,7 @@ import (
 )
 
 func TestAuthMissingCredentialReturnsJSONErrorEnvelope(t *testing.T) {
+	// Auth missing credential returns JSON error envelope.
 	t.Parallel()
 
 	resp, err := testTenant(t).NoAuthClient.GetCurrentUserWithResponse(t.Context())
@@ -25,6 +26,7 @@ func TestAuthMissingCredentialReturnsJSONErrorEnvelope(t *testing.T) {
 }
 
 func TestAuthUnknownProductReturnsJSONErrorEnvelope(t *testing.T) {
+	// Auth unknown product returns JSON error envelope.
 	t.Parallel()
 
 	resp, err := testOwnerClient(t).GetProductWithResponse(t.Context(), ids.MustNew("prd"))
@@ -38,6 +40,7 @@ func TestAuthUnknownProductReturnsJSONErrorEnvelope(t *testing.T) {
 }
 
 func TestDeletedPlatformUserTokenReturnsJSONErrorEnvelope(t *testing.T) {
+	// Deleted platform user token returns JSON error envelope.
 	t.Parallel()
 	ctx := t.Context()
 	state := itdsl.Given(t).

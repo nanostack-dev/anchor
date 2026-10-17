@@ -90,10 +90,12 @@ func scopesExcept(excluded string) []string {
 }
 
 func TestInvitationRoutes_RefuseAKeyWithoutTheScopeOfTheOperation(t *testing.T) {
+	// Each invitation route refuses an API key missing that operation's scope.
 	t.Parallel()
 	w := newWorld(t)
 	for _, operation := range invitationOperations() {
 		t.Run(operation.name, func(t *testing.T) {
+			// The invitation operation refuses a key missing its required scope.
 			w.t = t
 			invitation := w.invite(uniqueEmail())
 			client := w.product.Invitations(scopesExcept(operation.scope)...)
@@ -104,10 +106,12 @@ func TestInvitationRoutes_RefuseAKeyWithoutTheScopeOfTheOperation(t *testing.T) 
 }
 
 func TestInvitationRoutes_AcceptAKeyHoldingOnlyTheScopeOfTheOperation(t *testing.T) {
+	// Each invitation route accepts an API key holding only that operation's scope.
 	t.Parallel()
 	w := newWorld(t)
 	for _, operation := range invitationOperations() {
 		t.Run(operation.name, func(t *testing.T) {
+			// The invitation operation accepts a key holding only its required scope.
 			w.t = t
 			invitation := w.invite(uniqueEmail())
 			client := w.product.Invitations(operation.scope)

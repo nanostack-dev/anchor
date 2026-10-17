@@ -14,11 +14,13 @@ import (
 )
 
 func TestProductCreate(t *testing.T) {
+	// Checks product creation across the scenarios below.
 	t.Parallel()
 	ctx := t.Context()
 
 	t.Run(
 		"SuccessfulCreateProduct", func(t *testing.T) {
+			// Creating a product succeeds.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -39,6 +41,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithEventsConfigGeneratesSigningSecret", func(t *testing.T) {
+			// Creating a product with events config generates signing secret succeeds.
 			receiver := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				writer.WriteHeader(http.StatusOK)
 			}))
@@ -73,6 +76,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithOrganizationAPIKeyConfig", func(t *testing.T) {
+			// Creating a product with organization API key config succeeds.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -92,6 +96,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithInvalidOrganizationAPIKeyPrefix", func(t *testing.T) {
+			// Creating a product with invalid organization API key prefix returns a bad request.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -110,6 +115,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithEmptyName", func(t *testing.T) {
+			// Creating a product with empty name returns a bad request.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -131,6 +137,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithOneCharacterName", func(t *testing.T) {
+			// Creating a product with one character name returns a bad request.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -154,6 +161,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithTwoCharacterName", func(t *testing.T) {
+			// Creating a product with two character name succeeds.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -171,6 +179,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithNameOver100Characters", func(t *testing.T) {
+			// Creating a product with name over 100 characters returns a bad request.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -194,6 +203,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithInvalidDescription", func(t *testing.T) {
+			// Creating a product with invalid description returns a bad request.
 			response, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -217,6 +227,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithDuplicateName", func(t *testing.T) {
+			// Creating a product with an existing name returns a conflict.
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
 				ct.CreateProductJSONRequestBody{
@@ -254,6 +265,7 @@ func TestProductCreate(t *testing.T) {
 
 	t.Run(
 		"CreateProductWithDuplicateNameDifferentCase", func(t *testing.T) {
+			// Product names remain unique regardless of letter case.
 			productName := "Duplicate Case Product " + ids.MustNew("test")
 
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(

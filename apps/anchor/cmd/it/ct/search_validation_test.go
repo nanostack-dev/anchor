@@ -18,6 +18,7 @@ import (
 // service input has to refuse a filter value outside the set the contract
 // names. Without it the value reaches the query and silently matches nothing.
 func TestSearchesRejectFilterValuesOutsideTheirEnums(t *testing.T) {
+	// Resource searches refuse filter values outside their declared enums before returning results.
 	t.Parallel()
 
 	type attempt struct {
@@ -107,6 +108,7 @@ func TestSearchesRejectFilterValuesOutsideTheirEnums(t *testing.T) {
 
 	for _, tt := range attempts {
 		t.Run(tt.name, func(t *testing.T) {
+			// The search refuses this filter value outside the declared enum.
 			t.Parallel()
 			status, raw, err := tt.post(t.Context(), strings.NewReader(tt.body))
 			require.NoError(t, err)
@@ -117,6 +119,7 @@ func TestSearchesRejectFilterValuesOutsideTheirEnums(t *testing.T) {
 	}
 
 	t.Run("a known value still searches", func(t *testing.T) {
+		// A known value still searches.
 		t.Parallel()
 		status, raw, err := attempts[0].post(t.Context(), strings.NewReader(`{"filter":{"statuses":["SENT"]}}`))
 		require.NoError(t, err)

@@ -14,8 +14,10 @@ import (
 )
 
 func TestClerkIntegrationConfigAndStatus(t *testing.T) {
+	// Clerk configuration updates enforce the webhook-secret gate and persist integration status transitions.
 	t.Parallel()
 	t.Run("RejectsWebhookWhenSecretIsNotConfigured", func(t *testing.T) {
+		// The API rejects webhook when secret is not configured.
 		productContext := createTestProductContext(t)
 		createClerkIntegrationInstance(t, productContext)
 
@@ -30,6 +32,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("ConfiguredSecretAndActiveStatusProcessWebhook", func(t *testing.T) {
+		// An active Clerk integration with a configured secret processes a signed webhook.
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -56,6 +59,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("InactiveInstanceRejectsWebhook", func(t *testing.T) {
+		// Inactive instance rejects webhook.
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -78,6 +82,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("EnableFlagPromotesInactiveToActive", func(t *testing.T) {
+		// Enabling an inactive Clerk integration makes it active when its secret is configured.
 		productContext := createTestProductContext(t)
 		instance := createActiveClerkIntegrationInstance(t, productContext)
 
@@ -104,6 +109,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("EnableFlagDoesNotPromoteConfiguringToActive", func(t *testing.T) {
+		// Enable flag does not promote configuring to active.
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 
@@ -126,6 +132,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("NoopUpdateDoesNotPromoteConfiguringWithoutSecret", func(t *testing.T) {
+		// Noop update does not promote configuring without secret.
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 
@@ -142,6 +149,7 @@ func TestClerkIntegrationConfigAndStatus(t *testing.T) {
 	})
 
 	t.Run("LifecycleTransitionsArePersisted", func(t *testing.T) {
+		// Lifecycle transitions are persisted.
 		productContext := createTestProductContext(t)
 		instance := createClerkIntegrationInstance(t, productContext)
 

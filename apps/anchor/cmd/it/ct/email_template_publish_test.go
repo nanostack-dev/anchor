@@ -14,11 +14,13 @@ import (
 )
 
 func TestEmailTemplatePublish(t *testing.T) {
+	// Checks email template publication across the scenarios below.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
 
 	t.Run("publishes draft and updates template pointer", func(t *testing.T) {
+		// The API publishes draft and updates template pointer.
 		created, err := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -48,6 +50,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 	})
 
 	t.Run("second publish creates new published version and opens fresh draft", func(t *testing.T) {
+		// Second publish creates new published version and opens fresh draft.
 		created, err := client.CreateEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -89,6 +92,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 	})
 
 	t.Run("returns 404 for unknown template", func(t *testing.T) {
+		// The API returns 404 for unknown template.
 		resp, publishErr := client.PublishEmailTemplateWithResponse(
 			context.Background(),
 			tc.product.ProductID,
@@ -100,6 +104,7 @@ func TestEmailTemplatePublish(t *testing.T) {
 }
 
 func TestEmailTemplateConcurrentDraftWritesAndPublishesKeepOneReferencedDraft(t *testing.T) {
+	// Email template concurrent draft writes and publishes keep one referenced draft.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -185,6 +190,7 @@ func TestEmailTemplateConcurrentDraftWritesAndPublishesKeepOneReferencedDraft(t 
 }
 
 func TestEmailTemplateDraftRepointsADraftTheTemplateLostTrackOf(t *testing.T) {
+	// Email template draft repoints a draft the template lost track of.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()

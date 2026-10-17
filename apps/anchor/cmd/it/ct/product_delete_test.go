@@ -15,11 +15,13 @@ import (
 )
 
 func TestProductDelete(t *testing.T) {
+	// Checks product deletion across the scenarios below.
 	t.Parallel()
 	ctx := t.Context()
 
 	t.Run(
 		"BasicDeleteProduct", func(t *testing.T) {
+			// Deleting basic product succeeds.
 			// Create a test product first
 			createResp, err := testOwnerClient(t).CreateProductWithResponse(
 				ctx,
@@ -50,6 +52,7 @@ func TestProductDelete(t *testing.T) {
 
 	t.Run(
 		"DeleteNonExistentProduct", func(t *testing.T) {
+			// Deleting nonexistent product returns not found.
 			nonExistentProductID := ids.MustNew("prd")
 
 			resp, err := testOwnerClient(t).DeleteProductWithResponse(
@@ -65,6 +68,7 @@ func TestProductDelete(t *testing.T) {
 
 	t.Run(
 		"DeleteAProductAlsoDeletesItsAssociatedData", func(t *testing.T) {
+			// A product also deletion deletes its associated data.
 			testCtx := createTestProductContext(t)
 			productID := testCtx.ProductID
 			userAlias := "product.user." + itshared.Faker.UUID().V4()

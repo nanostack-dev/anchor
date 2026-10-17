@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductRole_AssignPermission(t *testing.T) {
+	// Assigning a resource permission adds it to the role and enforces product ownership.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -23,6 +24,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionToProductRole", func(t *testing.T) {
+			// Assigning permission to product role succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -59,6 +61,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignMultiplePermissionsToProductRole", func(t *testing.T) {
+			// Assigning multiple permissions to product role succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "MultiPermRole_" + ids.MustNew("test"),
@@ -117,6 +120,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignDuplicatePermissionToProductRole", func(t *testing.T) {
+			// Assigning duplicate permission to product role succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "DuplicatePermRole_" + ids.MustNew("test"),
@@ -152,6 +156,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignNonexistentPermissionToProductRole", func(t *testing.T) {
+			// Assigning a permission absent from the product is refused as a bad request.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -182,6 +187,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionToNonexistentProductRole", func(t *testing.T) {
+			// Assigning permission to nonexistent product role returns not found.
 			nonExistentRoleID := ids.MustNew("productroleservice")
 
 			permissionName := testCtx.DefaultResourcePermissions[0].Name
@@ -199,6 +205,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionToRoleWithInvalidRoleID", func(t *testing.T) {
+			// Assigning permission to role with invalid role ID returns a bad request.
 			invalidRoleID := "invalid-role-id"
 
 			permissionName := testCtx.DefaultResourcePermissions[0].Name
@@ -215,6 +222,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionWithEmptyPermissionName", func(t *testing.T) {
+			// Assigning permission with empty permission name succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -240,6 +248,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"AssignPermissionForNonexistentProduct", func(t *testing.T) {
+			// Assigning permission for nonexistent product returns a bad request.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -267,6 +276,7 @@ func TestProductRole_AssignPermission(t *testing.T) {
 
 	t.Run(
 		"EmitsWebhook", func(t *testing.T) {
+			// A successful change emits the corresponding signed product event.
 			productContext := createTestProductContext(t)
 			productContext.CreateDefaultProductResourcePermissions(t)
 			sink := productContext.CaptureEvents()

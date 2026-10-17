@@ -11,10 +11,12 @@ import (
 )
 
 func TestGetOrganizationMemberInclude(t *testing.T) {
+	// Checks organization member include lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("WithoutIncludeOmitsRolePermissions", func(t *testing.T) {
+		// Without include omits role permissions.
 		productCtx := createTestProductContext(t)
 		productCtx.CreateDefaultProductResourcePermissions(t)
 		productUser := createDSLProductUser(t, productCtx)
@@ -43,6 +45,7 @@ func TestGetOrganizationMemberInclude(t *testing.T) {
 	})
 
 	t.Run("IncludeRolePermissions", func(t *testing.T) {
+		// Requesting role permissions includes the member's assigned role permissions in the response.
 		productCtx := createTestProductContext(t)
 		productCtx.CreateDefaultProductResourcePermissions(t)
 		productUser := createDSLProductUser(t, productCtx)
@@ -82,6 +85,7 @@ func TestGetOrganizationMemberInclude(t *testing.T) {
 	})
 
 	t.Run("IncludeRolePermissionsOnRoleWithoutPermissions", func(t *testing.T) {
+		// A role with no permissions is included with an empty permissions array.
 		productCtx := createTestProductContext(t)
 		productUser := createDSLProductUser(t, productCtx)
 		org := productCtx.CreateOrganization(t, "Member Include Empty", nil)

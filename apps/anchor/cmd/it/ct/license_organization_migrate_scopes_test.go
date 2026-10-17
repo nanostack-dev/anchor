@@ -14,8 +14,10 @@ import (
 // changing what an organization's license says. See
 // docs/adr/0015-migrate-grants-a-first-license.md.
 func TestMigrateOrganizationLicensesScopes(t *testing.T) {
+	// Organization migration licenses scopes.
 	t.Parallel()
 	t.Run("read and create alone do not reach it", func(t *testing.T) {
+		// Read and create alone do not reach it.
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		readCreateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
@@ -27,6 +29,7 @@ func TestMigrateOrganizationLicensesScopes(t *testing.T) {
 	})
 
 	t.Run("the update scope is enough", func(t *testing.T) {
+		// The update scope is enough.
 		w := newLicensedWorld(t)
 		pro := w.NewTemplate(proValues())
 		updateOnly, _ := w.product.CreateAPIKeyClientWithScopes(
@@ -38,6 +41,7 @@ func TestMigrateOrganizationLicensesScopes(t *testing.T) {
 	})
 
 	t.Run("the same scope also grants a first license", func(t *testing.T) {
+		// The same scope also grants a first license.
 		w := newLicensedWorld(t)
 		unlicensed := w.NewOrganization()
 		pro := w.NewTemplate(proValues())

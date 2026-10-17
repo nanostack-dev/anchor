@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductOrganizationGet(t *testing.T) {
+	// Checks product organization lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -23,6 +24,7 @@ func TestProductOrganizationGet(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetOrganization", func(t *testing.T) {
+			// Reading an organization succeeds.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -62,6 +64,7 @@ func TestProductOrganizationGet(t *testing.T) {
 
 	t.Run(
 		"GetNonExistentOrganization", func(t *testing.T) {
+			// Reading nonexistent organization returns not found.
 			getResponse, err := apiKeyClient.GetProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -79,6 +82,7 @@ func TestProductOrganizationGet(t *testing.T) {
 
 	t.Run(
 		"SecurityGetOrganizationWithInsufficientPermissions", func(t *testing.T) {
+			// Reading security organization with insufficient permissions succeeds.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,

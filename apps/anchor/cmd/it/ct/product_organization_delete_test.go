@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductOrganizationDelete(t *testing.T) {
+	// Checks product organization deletion across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -23,6 +24,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 
 	t.Run(
 		"SuccessfulDeleteOrganization", func(t *testing.T) {
+			// Deleting an organization succeeds.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -63,6 +65,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 
 	t.Run(
 		"DeleteNonExistentOrganization", func(t *testing.T) {
+			// Deleting nonexistent organization returns not found.
 			deleteResponse, err := apiKeyClient.DeleteProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -78,6 +81,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 
 	t.Run(
 		"SecurityDeleteOrganizationWithInsufficientPermissions", func(t *testing.T) {
+			// Deleting security organization with insufficient permissions succeeds.
 			createResponse, err := apiKeyClient.CreateProductOrganizationWithResponse(
 				ctx,
 				testProduct.ProductID,
@@ -111,6 +115,7 @@ func TestProductOrganizationDelete(t *testing.T) {
 	)
 
 	t.Run("EmitsWebhook", func(t *testing.T) {
+		// A successful change emits the corresponding signed product event.
 		product := createTestProductContext(t)
 		sink := product.CaptureEvents()
 		client, _ := product.CreateAPIKeyClientWithAllScopes()

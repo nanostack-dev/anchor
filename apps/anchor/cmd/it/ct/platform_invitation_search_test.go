@@ -13,11 +13,13 @@ import (
 )
 
 func TestSearchPlatformInvitations(t *testing.T) {
+	// Checks platform invitations search across the scenarios below.
 	t.Parallel()
 	assert.NotEmpty(t, testOwnerUser(t).AccessToken)
 
 	t.Run(
 		"ValidSearch", func(t *testing.T) {
+			// Platform invitation search returns the matching invitations.
 			// Create test invitations
 			for i := range 2 {
 				email := fmt.Sprintf("invitee_search%c@example.com", 'A'+i)
@@ -48,6 +50,7 @@ func TestSearchPlatformInvitations(t *testing.T) {
 
 	t.Run(
 		"EmptySearch", func(t *testing.T) {
+			// Searching empty succeeds.
 			searchReq := ct.SearchPlatformInvitationsJSONRequestBody{
 				Filter: &ct.PlatformInvitationFilter{},
 			}
@@ -63,6 +66,7 @@ func TestSearchPlatformInvitations(t *testing.T) {
 
 	t.Run(
 		"NoResults", func(t *testing.T) {
+			// A search with no matches returns an empty result set.
 			searchReq := ct.SearchPlatformInvitationsJSONRequestBody{
 				Filter:         &ct.PlatformInvitationFilter{},
 				FullTextSearch: func() *string { s := "nonexistent-search-term-12345"; return &s }(),

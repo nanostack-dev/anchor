@@ -11,11 +11,13 @@ import (
 )
 
 func TestGetProductUser(t *testing.T) {
+	// Checks product user lookup across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
 	t.Run(
 		"GetNonExistentProductUser", func(t *testing.T) {
+			// Reading nonexistent product user returns not found.
 			productContext := createTestProductContext(t)
 
 			nonExistentUserID := ids.MustNew("puser")
@@ -38,6 +40,7 @@ func TestGetProductUser(t *testing.T) {
 
 	t.Run(
 		"GetWithInvalidUserID", func(t *testing.T) {
+			// Reading with invalid user ID returns a bad request.
 			// Create test product with API key
 			productContext := createTestProductContext(t)
 
@@ -58,6 +61,7 @@ func TestGetProductUser(t *testing.T) {
 
 	t.Run(
 		"SuccessfulGetOfExistingProductUser", func(t *testing.T) {
+			// Reading of existing product user succeeds.
 			// Create test product with API key
 			productContext := createTestProductContext(t)
 

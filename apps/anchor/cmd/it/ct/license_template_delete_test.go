@@ -23,8 +23,10 @@ func deleteTemplate(t *testing.T, tc licenseTestCtx, templateID string) *ct.Dele
 // removed: one no Organization license has ever named. See
 // docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
 func TestLicenseTemplateDelete(t *testing.T) {
+	// Checks license template deletion across the scenarios below.
 	t.Parallel()
 	t.Run("removes a template no organization license names", func(t *testing.T) {
+		// Removes a template no organization license names.
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, uniqueTemplateName(), validTemplateValues())
 
@@ -40,6 +42,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("frees the name for a replacement", func(t *testing.T) {
+		// The API frees the name for a replacement.
 		tc := newTemplateCtx(t)
 		created := createTemplate(t, tc, "Pro", validTemplateValues())
 
@@ -50,6 +53,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("removes an archived template that was never referenced", func(t *testing.T) {
+		// Removes an archived template that was never referenced.
 		// Status is not part of the guard: archiving a template by mistake is the
 		// case ADR-0010 named as unrecoverable, and the reference check alone is
 		// what keeps the provenance guarantee, not the status.
@@ -62,6 +66,7 @@ func TestLicenseTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("refuses to delete a template an organization license names", func(t *testing.T) {
+		// The API refuses to delete a template an organization license names.
 		w := newLicensedWorld(t)
 
 		resp, err := w.client().DeleteLicenseTemplateWithResponse(
@@ -81,12 +86,14 @@ func TestLicenseTemplateDelete(t *testing.T) {
 	})
 
 	t.Run("404 when the product has no template with that identifier", func(t *testing.T) {
+		// The API returns 404 when the product has no template with that identifier.
 		tc := newTemplateCtx(t)
 
 		assert.Equal(t, http.StatusNotFound, deleteTemplate(t, tc, missingTemplateID()).StatusCode())
 	})
 
 	t.Run("404 deleting an already-deleted template", func(t *testing.T) {
+		// The API returns 404 deleting an already-deleted template.
 		// Unlike archive, delete is not idempotent: a second delete finds nothing
 		// there, the ordinary answer for a second delete of anything.
 		tc := newTemplateCtx(t)

@@ -16,6 +16,7 @@ import (
 )
 
 func TestOrganizationAPIKeyValidate(t *testing.T) {
+	// Checks organization API key validation across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 	product := createTestProductContext(t)
@@ -46,6 +47,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 	clearKey := createResp.JSON201.Value
 
 	t.Run("returns 200 when required scopes are satisfied", func(t *testing.T) {
+		// The API returns 200 when required scopes are satisfied.
 		resp, validateErr := adminClient.ValidateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -66,6 +68,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 	})
 
 	t.Run("returns typed 403 when scopes are missing", func(t *testing.T) {
+		// The API returns typed 403 when scopes are missing.
 		resp, validateErr := adminClient.ValidateOrganizationAPIKeyWithResponse(
 			ctx,
 			product.ProductID,
@@ -86,6 +89,7 @@ func TestOrganizationAPIKeyValidate(t *testing.T) {
 	})
 
 	t.Run("returns typed 403 when api key is expired", func(t *testing.T) {
+		// The API returns typed 403 when API key is expired.
 		expiredAt := nearFutureExpiry()
 		expiredCreateResp, createErr := adminClient.CreateOrganizationAPIKeyWithResponse(
 			ctx,

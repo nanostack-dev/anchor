@@ -22,6 +22,7 @@ import (
 )
 
 func TestClerkWebhookIdempotencyDuplicateSvixIDIgnored(t *testing.T) {
+	// Repeated Clerk deliveries with the same Svix ID are acknowledged without processing the event twice.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)
@@ -65,6 +66,7 @@ func TestClerkWebhookIdempotencyDuplicateSvixIDIgnored(t *testing.T) {
 }
 
 func TestClerkWebhookConcurrentDuplicateSvixIDsGetTheSequentialDuplicateResponse(t *testing.T) {
+	// Reading clerk webhook concurrent duplicate svix IDs the sequential duplicate response succeeds.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	instance := createActiveClerkIntegrationInstance(t, productContext)
@@ -127,6 +129,7 @@ func TestClerkWebhookConcurrentDuplicateSvixIDsGetTheSequentialDuplicateResponse
 }
 
 func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {
+	// Clerk webhook signature validation bad signature returns 401.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)
@@ -150,6 +153,7 @@ func TestClerkWebhookSignatureValidationBadSignatureReturns401(t *testing.T) {
 // the event-id check. A signature that does not verify is a credential that
 // failed to authenticate, so this is a 401.
 func TestClerkWebhookSignatureValidationMissingSvixIDReturns401(t *testing.T) {
+	// Clerk webhook signature validation missing svix ID returns 401.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	createActiveClerkIntegrationInstance(t, productContext)

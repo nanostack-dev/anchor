@@ -17,6 +17,7 @@ import (
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListIntegrationAuditLogsStillListsNewestFirst(t *testing.T) {
+	// Deprecated list integration audit logs still lists newest first.
 	t.Parallel()
 	tc, instanceID, entries := seedAuditLogs(t)
 
@@ -37,6 +38,7 @@ func TestDeprecatedListIntegrationAuditLogsStillListsNewestFirst(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListEmailTemplatesKeepsCountEqualToTotal(t *testing.T) {
+	// Deprecated list email templates keeps count equal to total.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -67,6 +69,7 @@ func TestDeprecatedListEmailTemplatesKeepsCountEqualToTotal(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListEmailSendsFiltersThroughItsQuery(t *testing.T) {
+	// Deprecated list email sends filters through its query.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	client := tc.product.OwnerAuthenticatedClient()
@@ -102,6 +105,7 @@ func TestDeprecatedListEmailSendsFiltersThroughItsQuery(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListLicenseTemplatesFiltersByStatus(t *testing.T) {
+	// Deprecated list license templates filters by status.
 	t.Parallel()
 	tc := newTemplateCtx(t)
 	free := createTemplate(t, tc, "Free", validTemplateValues())
@@ -122,6 +126,7 @@ func TestDeprecatedListLicenseTemplatesFiltersByStatus(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedGetOrganizationLicenseHistoryPagesByOffset(t *testing.T) {
+	// Deprecated get organization license history pages by offset.
 	t.Parallel()
 	w := newLicensedWorld(t)
 	w.License().Adjust(ct.LicenseTemplateValues{"flows": 1, "sso": false})
@@ -141,6 +146,7 @@ func TestDeprecatedGetOrganizationLicenseHistoryPagesByOffset(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListUserOrganizationsReturnsEveryMembership(t *testing.T) {
+	// Deprecated list user organizations returns every membership.
 	t.Parallel()
 	product := createTestProductContext(t)
 	member := createDSLProductUser(t, product)
@@ -179,6 +185,7 @@ const legacyOversizedRows = 1005
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListEmailTemplatesReturnsMoreThanAThousand(t *testing.T) {
+	// Deprecated list email templates returns more than a thousand.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	execSQL(t, `INSERT INTO email_templates (id, platform_tenant_id, product_id, slug, name, created_at)
@@ -212,6 +219,7 @@ func TestDeprecatedListEmailTemplatesReturnsMoreThanAThousand(t *testing.T) {
 
 //nolint:staticcheck // the deprecated route stays covered until it is removed
 func TestDeprecatedListEmailSendsReturnsMoreThanAThousand(t *testing.T) {
+	// Deprecated list email sends returns more than a thousand.
 	t.Parallel()
 	tc := newEmailTestCtx(t)
 	execSQL(t, `INSERT INTO email_send_records

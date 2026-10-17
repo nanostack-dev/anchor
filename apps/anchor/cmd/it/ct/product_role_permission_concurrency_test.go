@@ -20,6 +20,7 @@ import (
 const concurrentPermissionWrites = 8
 
 func TestProductRole_ConcurrentAssignsKeepEveryPermission(t *testing.T) {
+	// Concurrent permission assignments preserve every newly assigned permission.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionNames := createRacePermissions(t, productContext)
@@ -43,6 +44,7 @@ func TestProductRole_ConcurrentAssignsKeepEveryPermission(t *testing.T) {
 }
 
 func TestProductRole_ConcurrentUnassignsRemoveEveryPermission(t *testing.T) {
+	// Concurrent permission removals remove every requested assignment.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionNames := createRacePermissions(t, productContext)
@@ -73,6 +75,7 @@ func TestProductRole_ConcurrentUnassignsRemoveEveryPermission(t *testing.T) {
 }
 
 func TestProductRole_ConcurrentDuplicateAssignsEmitOnce(t *testing.T) {
+	// Concurrent duplicate assignments create one assignment and emit one role-updated event.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionName := createRacePermissions(t, productContext)[0]
@@ -100,6 +103,7 @@ func TestProductRole_ConcurrentDuplicateAssignsEmitOnce(t *testing.T) {
 }
 
 func TestProductRole_ConcurrentRenamesKeepAssignedPermissions(t *testing.T) {
+	// Concurrent role renames preserve the role's assigned permissions.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionNames := createRacePermissions(t, productContext)
@@ -140,6 +144,7 @@ func TestProductRole_ConcurrentRenamesKeepAssignedPermissions(t *testing.T) {
 }
 
 func TestProductRole_UpdateWithPermissionsReplacesTheSet(t *testing.T) {
+	// Updating a product role with permissions replaces the set succeeds.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	permissionNames := createRacePermissions(t, productContext)

@@ -13,6 +13,7 @@ import (
 )
 
 func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
+	// Updating a product resource permission succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -60,6 +61,7 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
+	// Product resource permission update emits webhook.
 	t.Parallel()
 	ctx := context.Background()
 	productContext := createTestProductContext(t)
@@ -87,6 +89,7 @@ func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
+	// Updating a product resource permission different case name succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -122,6 +125,7 @@ func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
+	// Product resource permission update rejects an unknown identifier.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -140,6 +144,7 @@ func TestProductResourcePermissionUpdateNotFound(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
+	// Updating a product resource permission with nonexistent product returns not found.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -159,6 +164,7 @@ func TestProductResourcePermissionUpdateWithNonExistentProduct(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
+	// Checks product resource permission update across the scenarios below.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -185,6 +191,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 		input       ct.UpdateProductResourcePermissionRequest
 		expectedErr string
 	}{
+		// The permission operation rejects description too long.
 		{
 			name: "description too long",
 			input: ct.UpdateProductResourcePermissionRequest{
@@ -197,6 +204,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(
 			tc.name, func(t *testing.T) {
+				// Permission updates refuse this invalid field value.
 				resp, validationErr := testOwnerClient(t).UpdateProductResourcePermissionWithResponse(
 					ctx,
 					testProduct.ProductID,
@@ -211,6 +219,7 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
+	// Updating a product resource permission null description succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -252,6 +261,7 @@ func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
+	// Updating a product resource permission empty request succeeds.
 	t.Parallel()
 	ctx := context.Background()
 
@@ -297,6 +307,7 @@ func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
 }
 
 func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
+	// Updating a product resource permission multiple fields succeeds.
 	t.Parallel()
 	ctx := context.Background()
 

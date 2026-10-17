@@ -15,6 +15,7 @@ import (
 )
 
 func TestProductRole_UnassignPermission(t *testing.T) {
+	// Unassigning a resource permission removes only that assignment and enforces product ownership.
 	t.Parallel()
 	ctx := context.Background()
 	testCtx := createTestProductContext(t)
@@ -26,6 +27,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 	perm3 := testCtx.DefaultResourcePermissions[2].Name
 	t.Run(
 		"UnassignPermissionFromProductRole", func(t *testing.T) {
+			// Unassigning permission from product role succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -69,6 +71,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignOneOfMultiplePermissions", func(t *testing.T) {
+			// Unassigning one of multiple permissions succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "MultiPermRole_" + ids.MustNew("test"),
@@ -121,6 +124,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignNonexistentPermissionFromProductRole", func(t *testing.T) {
+			// Unassigning a permission that does not exist returns not found.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -148,6 +152,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignPermissionNotAssignedToRole", func(t *testing.T) {
+			// Unassigning permission not assigned to role succeeds.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -168,6 +173,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignPermissionFromNonexistentProductRole", func(t *testing.T) {
+			// Unassigning permission from nonexistent product role returns not found.
 			nonExistentRoleID := ids.MustNew("productroleservice")
 
 			unassignResp, err := testCtx.OwnerAuthenticatedClient().UnassignPermissionFromProductRoleWithResponse(
@@ -180,6 +186,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignPermissionWithInvalidRoleID", func(t *testing.T) {
+			// Unassigning permission with invalid role ID returns a bad request.
 			invalidRoleID := "invalid-role-id"
 
 			unassignResp, err := testCtx.OwnerAuthenticatedClient().UnassignPermissionFromProductRoleWithResponse(
@@ -192,6 +199,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignPermissionForNonexistentProduct", func(t *testing.T) {
+			// Unassigning permission for nonexistent product returns a bad request.
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
 					Name: "TestRole_" + ids.MustNew("test"),
@@ -212,6 +220,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"UnassignPermissionFromRoleInDifferentProduct", func(t *testing.T) {
+			// Unassigning through another product returns not found and preserves the role's permissions.
 			anotherTestCtx := createTestProductContext(t)
 			anotherProductID := anotherTestCtx.ProductID
 
@@ -254,6 +263,7 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 	t.Run(
 		"EmitsWebhook", func(t *testing.T) {
+			// A successful change emits the corresponding signed product event.
 			productContext := createTestProductContext(t)
 			productContext.CreateDefaultProductResourcePermissions(t)
 			sink := productContext.CaptureEvents()

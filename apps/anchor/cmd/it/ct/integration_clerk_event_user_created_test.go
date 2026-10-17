@@ -13,6 +13,7 @@ import (
 )
 
 func TestClerkWebhookUserCreatedEvent(t *testing.T) {
+	// A signed Clerk user-created event creates the product user and emits its product event.
 	t.Parallel()
 	productContext := createTestProductContext(t)
 	sink := productContext.CaptureEvents()
