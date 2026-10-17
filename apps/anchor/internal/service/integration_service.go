@@ -761,6 +761,9 @@ func (s *integrationService) persistPendingEvent(
 
 		var createErr error
 		created, createErr = s.eventRepo.CreateInternal(txCtx, event)
+		if errors.Is(createErr, repository.ErrIntegrationEventExists) {
+			return createErr
+		}
 		if createErr != nil {
 			logger.Error().Err(createErr).Msg("failed to store integration event")
 			return createErr
@@ -807,7 +810,33 @@ func (s *integrationService) persistPendingEvent(
 
 		return nil
 	})
+	if errors.Is(err, repository.ErrIntegrationEventExists) {
+		return s.concurrentDuplicateEvent(ctx, logger, instance, event)
+	}
 	return created, err
+}
+
+// concurrentDuplicateEvent answers a delivery that lost the insert race to a
+// concurrent delivery of the same external event. The aborted transaction
+// cannot read, so the winner's committed row is read afresh and returned as
+// the same idempotent success a sequential duplicate gets.
+func (s *integrationService) concurrentDuplicateEvent(
+	ctx context.Context,
+	logger zerolog.Logger,
+	instance *integration.Instance,
+	event integration.Event,
+) (integration.Event, error) {
+	existing, err := s.findDuplicateEvent(ctx, logger, instance, event)
+	if err != nil {
+		return integration.Event{}, err
+	}
+	if existing == nil {
+		return integration.Event{}, fmt.Errorf(
+			"ingest webhook: event %s for instance %s violated its unique key but is not stored",
+			event.ExternalEventID, instance.ID,
+		)
+	}
+	return *existing, nil
 }
 
 // ---------------------------------------------------------------------------

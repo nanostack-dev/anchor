@@ -46,3 +46,7 @@ Add a case to one of the two tests for every new uniqueness pre-check.
 ## API-key pagination boundaries
 
 The product API-key and organization API-key repository tests list their five page boundaries as named local cases: full, first, second, partial and beyond-end without sort. Every case checks total matches separately from the returned count, length and ordered IDs. Preserve the two repository scopes and the existing sequential fixture execution when extending these tables. Those tables page by offset, which a search still accepts.
+
+## Concurrent idempotent and versioned writes
+
+`TestClerkWebhookConcurrentDuplicateSvixIDsGetTheSequentialDuplicateResponse` (`apps/anchor/cmd/it/ct/integration_clerk_event_security_idempotency_test.go`) sends twelve deliveries with one `svix-id` at once and then one more after them. Every response must be the `200` with the sequential duplicate's event ID, and one `integration_events` row must exist. `TestEmailTemplateConcurrentDraftWritesAndPublishesKeepOneReferencedDraft` (`apps/anchor/cmd/it/ct/email_template_publish_test.go`) runs eight publishes, eight draft updates and eight draft reads of one template at once. Every call must succeed, and the template must end with one `DRAFT` row that its draft pointer names. Against the code before these fixes, both failed with 500s on every run. Run them with `go test ./cmd/it/ct/... -run 'TestClerkWebhookConcurrentDuplicate|TestEmailTemplateConcurrent' -count=1` from `apps/anchor`.
