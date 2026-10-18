@@ -22,12 +22,12 @@ export default defineConfig({
       exportFromIndex: true,
       "~hooks": {
         operations: {
-          getKind: (op: { method: string; path: string }) => {
+          getKind: (op) => {
             if (op.method === "post" && op.path.includes("/search")) {
-              return ["query"];
+              return ["query"] as const;
             }
 
-            return [op.method === "get" ? "query" : "mutation"];
+            return [op.method === "get" ? "query" : "mutation"] as const;
           },
         },
       },

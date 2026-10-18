@@ -35,7 +35,7 @@ export function isHttpQueryError(error: unknown): error is HttpQueryError {
 interface RawSdkResult<TData> {
 	data?: TData;
 	error?: unknown;
-	response: Response;
+	response?: Response;
 }
 
 /**
@@ -50,6 +50,10 @@ export async function unwrapQuery<TData>(
 	request: Promise<RawSdkResult<TData>>,
 ): Promise<TData> {
 	const { data, error, response } = await request;
+	// Transport and validation failures from the SDK have no HTTP response.
+	if (!response) {
+		throw error ?? new Error("Request failed before receiving a response");
+	}
 	if (!response.ok || error !== undefined) {
 		throw new HttpQueryError(response.status, error);
 	}

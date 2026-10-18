@@ -16,3 +16,11 @@ Owner-managed reusable workflows under `nanostack-dev/ci-workflows/.github/workf
 Frameworks outside Nanostack include Uber FX wiring, go-jet generated SQL, OpenAPI/oapi-codegen and React/TanStack/Vite/Playwright. Exact versions belong in module/package lockfiles, not a second version list in prose.
 
 A local clone of a dependency is an optional source-inspection shortcut. Without one, read its GitHub guide/source at the relevant ref, or create an isolated checkout wherever convenient; never assume a parent/sibling path. Normal product work uses the published pin. A neutral reusable UI change goes to the design-system repository; Anchor's screens/permissions remain here. Keep each dependency change in its owner's PR and link companion PRs when contracts move together.
+
+## Security refreshes
+
+Align the Go toolchain in CI and the runtime image. Regenerate and commit the UI
+client when updating its generator, then verify HTTP-status and transport-error
+handling as well as authenticated browser journeys. Security overrides apply
+only to affected dependency ranges; preserve release-age checks for other
+packages. Verify frozen install, audit, typecheck and build before deployment.
