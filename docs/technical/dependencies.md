@@ -24,3 +24,6 @@ client when updating its generator, then verify HTTP-status and transport-error
 handling as well as authenticated browser journeys. Security overrides apply
 only to affected dependency ranges; preserve release-age checks for other
 packages. Verify frozen install, audit, typecheck and build before deployment.
+The static Go binary runs in a digest-pinned Debian 13 distroless nonroot image;
+refresh that digest for CA and timezone package advisories, and scan the final
+published image rather than assuming a compiler rebuild refreshes the base.
