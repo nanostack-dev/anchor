@@ -158,14 +158,14 @@ jobs:
       id-token: write
     with:
       app_name: anchor
-      # 1.27.2 matches the toolchain go.mod pins. It is not in the
+      # 1.27.3 matches the toolchain go.mod pins. It is not in the
       # actions/go-versions manifest yet, but setup-go falls back to the
       # official Go distribution site when the manifest misses.
       #
       # It cannot stay on 1.26.5 and rely on the toolchain directive: setup-go
       # exports GOTOOLCHAIN=local, so Go refuses to fetch a newer toolchain and
       # fails with "go.mod requires go >= 1.27 (running go 1.26.5)".
-      go_version: '1.27.2'
+      go_version: '1.27.3'
       cache_dependency_path: apps/anchor/go.sum
       download_dependencies_dir: apps/anchor
       lint_working_directory: ./apps/anchor
