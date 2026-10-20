@@ -631,6 +631,111 @@ export const zOrganizationApiKeyValidateRequest = z.object({
     required_scopes: z.array(z.string())
 });
 
+/**
+ * `user` is a product user named by its external user ID (the identity provider's user ID). `organization_api_key` is a raw organization API key value.
+ */
+export const zAccessSubjectType = z.enum(['user', 'organization_api_key']);
+
+export const zAccessSubject = z.object({
+    type: zAccessSubjectType,
+    id: z.string(),
+    properties: z.record(z.string(), z.unknown()).optional()
+});
+
+export const zAccessResourceType = z.enum(['organization', 'workspace']);
+
+export const zAccessResourceProperties = z.object({
+    organization_id: z.string().optional()
+});
+
+export const zAccessResource = z.object({
+    type: zAccessResourceType,
+    id: z.string().optional(),
+    properties: zAccessResourceProperties.optional()
+});
+
+export const zAccessAction = z.object({
+    name: z.string(),
+    properties: z.record(z.string(), z.unknown()).optional()
+});
+
+/**
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+ */
+export const zAccessDenyReason = z.enum([
+    'SUBJECT_NOT_SYNCED',
+    'API_KEY_INVALID',
+    'API_KEY_INACTIVE',
+    'ORGANIZATION_NOT_FOUND',
+    'NOT_A_MEMBER',
+    'WORKSPACE_NOT_IN_ORGANIZATION',
+    'MISSING_PERMISSION',
+    'NOT_EVALUATED'
+]);
+
+export const zAccessIdentityRef = z.object({
+    id: z.string(),
+    name: z.string().optional()
+});
+
+/**
+ * Anchor's extension of the AuthZEN decision context.
+ */
+export const zAccessDecisionContext = z.object({
+    reason: zAccessDenyReason.optional(),
+    missing_permissions: z.array(z.string()).optional(),
+    organization: zAccessIdentityRef.optional(),
+    role: zAccessIdentityRef.optional(),
+    product_user: zAccessIdentityRef.optional(),
+    api_key: zAccessIdentityRef.optional(),
+    permissions: z.array(z.string()).optional()
+});
+
+export const zAccessEvaluationRequest = z.object({
+    subject: zAccessSubject,
+    action: zAccessAction,
+    resource: zAccessResource,
+    context: z.record(z.string(), z.unknown()).optional()
+});
+
+export const zAccessEvaluationResponse = z.object({
+    decision: z.boolean(),
+    context: zAccessDecisionContext
+});
+
+export const zAccessEvaluationsSemantic = z.enum([
+    'execute_all',
+    'deny_on_first_deny',
+    'permit_on_first_permit'
+]);
+
+export const zAccessEvaluationsOptions = z.object({
+    evaluations_semantic: zAccessEvaluationsSemantic.optional()
+});
+
+export const zAccessEvaluationItem = z.object({
+    action: zAccessAction
+});
+
+export const zAccessEvaluationsRequest = z.object({
+    subject: zAccessSubject,
+    resource: zAccessResource,
+    context: z.record(z.string(), z.unknown()).optional(),
+    evaluations: z.array(zAccessEvaluationItem),
+    options: zAccessEvaluationsOptions.optional()
+});
+
+export const zAccessItemDecision = z.object({
+    decision: z.boolean(),
+    context: zAccessDecisionContext.optional()
+});
+
+export const zAccessEvaluationsResponse = z.object({
+    decision: z.boolean(),
+    context: zAccessDecisionContext,
+    evaluations: z.array(zAccessItemDecision)
+});
+
 export const zOrganizationApiKeyIntrospectRequest = z.object({
     api_key: z.string(),
     required_scopes: z.array(z.string()).optional()
@@ -2372,6 +2477,28 @@ export const zIntrospectOrganizationApiKeyPath = z.object({
  * Organization API key introspection result.
  */
 export const zIntrospectOrganizationApiKeyResponse = zOrganizationApiKeyValidateResponse;
+
+export const zEvaluateAccessBody = zAccessEvaluationRequest;
+
+export const zEvaluateAccessPath = z.object({
+    product_id: zKsuid
+});
+
+/**
+ * The access decision.
+ */
+export const zEvaluateAccessResponse = zAccessEvaluationResponse;
+
+export const zEvaluateAccessBatchBody = zAccessEvaluationsRequest;
+
+export const zEvaluateAccessBatchPath = z.object({
+    product_id: zKsuid
+});
+
+/**
+ * The access decisions.
+ */
+export const zEvaluateAccessBatchResponse = zAccessEvaluationsResponse;
 
 /**
  * Organization details (name, optional description).

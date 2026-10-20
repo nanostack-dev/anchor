@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 
+	"anchor/internal/access"
+
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
 	"github.com/nanostack-dev/nanostack-framework/modules/logging"
@@ -57,6 +59,7 @@ func startAnchor(target ...any) {
 		events.NewModule(),
 		license.NewModule(),
 		invitation.NewModule(),
+		access.NewModule(),
 		session.NewModule(),
 		api.NewModule(),
 		middleware.NewModule(),

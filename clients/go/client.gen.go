@@ -340,6 +340,42 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id} (the `UpdateProduct` operationId).
 	UpdateProduct(ctx context.Context, productId ProductIdParameter, body UpdateProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EvaluateAccessWithBody Evaluate Access
+	//
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+	EvaluateAccessWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EvaluateAccess Evaluate Access
+	//
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+	EvaluateAccess(ctx context.Context, productId ProductIdParameter, body EvaluateAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EvaluateAccessBatchWithBody Evaluate Access For Several Actions
+	//
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+	EvaluateAccessBatchWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EvaluateAccessBatch Evaluate Access For Several Actions
+	//
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+	EvaluateAccessBatch(ctx context.Context, productId ProductIdParameter, body EvaluateAccessBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateProductAPIKeyWithBody Create Product API Key
 	//
 	// Creates a new product API key within a specific product. Can optionally assign initial permissions. Requires Platform Bearer token.
@@ -2273,6 +2309,82 @@ func (c *Client) UpdateProductWithBody(ctx context.Context, productId ProductIdP
 // Corresponds with PUT /v1/products/{product_id} (the `UpdateProduct` operationId).
 func (c *Client) UpdateProduct(ctx context.Context, productId ProductIdParameter, body UpdateProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProductRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EvaluateAccessWithBody Evaluate Access
+//
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+func (c *Client) EvaluateAccessWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEvaluateAccessRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EvaluateAccess Evaluate Access
+//
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+func (c *Client) EvaluateAccess(ctx context.Context, productId ProductIdParameter, body EvaluateAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEvaluateAccessRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EvaluateAccessBatchWithBody Evaluate Access For Several Actions
+//
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+func (c *Client) EvaluateAccessBatchWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEvaluateAccessBatchRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EvaluateAccessBatch Evaluate Access For Several Actions
+//
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+func (c *Client) EvaluateAccessBatch(ctx context.Context, productId ProductIdParameter, body EvaluateAccessBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEvaluateAccessBatchRequest(c.Server, productId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5899,6 +6011,100 @@ func NewUpdateProductRequestWithBody(server string, productId ProductIdParameter
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEvaluateAccessRequest calls the generic EvaluateAccess builder with application/json body
+func NewEvaluateAccessRequest(server string, productId ProductIdParameter, body EvaluateAccessJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEvaluateAccessRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewEvaluateAccessRequestWithBody constructs an http.Request for the EvaluateAccess method, with any body, and a specified content type
+func NewEvaluateAccessRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/access/v1/evaluation", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEvaluateAccessBatchRequest calls the generic EvaluateAccessBatch builder with application/json body
+func NewEvaluateAccessBatchRequest(server string, productId ProductIdParameter, body EvaluateAccessBatchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEvaluateAccessBatchRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewEvaluateAccessBatchRequestWithBody constructs an http.Request for the EvaluateAccessBatch method, with any body, and a specified content type
+func NewEvaluateAccessBatchRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/access/v1/evaluations", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -11341,6 +11547,42 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /v1/products/{product_id} (the `UpdateProduct` operationId).
 	UpdateProductWithResponse(ctx context.Context, productId ProductIdParameter, body UpdateProductJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductResponse, error)
 
+	// EvaluateAccessWithBodyWithResponse Evaluate Access
+	//
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+	EvaluateAccessWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EvaluateAccessResponse, error)
+
+	// EvaluateAccessWithResponse Evaluate Access
+	//
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+	EvaluateAccessWithResponse(ctx context.Context, productId ProductIdParameter, body EvaluateAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*EvaluateAccessResponse, error)
+
+	// EvaluateAccessBatchWithBodyWithResponse Evaluate Access For Several Actions
+	//
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+	EvaluateAccessBatchWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EvaluateAccessBatchResponse, error)
+
+	// EvaluateAccessBatchWithResponse Evaluate Access For Several Actions
+	//
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+	EvaluateAccessBatchWithResponse(ctx context.Context, productId ProductIdParameter, body EvaluateAccessBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*EvaluateAccessBatchResponse, error)
+
 	// CreateProductAPIKeyWithBodyWithResponse Create Product API Key
 	//
 	// Creates a new product API key within a specific product. Can optionally assign initial permissions. Requires Platform Bearer token.
@@ -13941,6 +14183,130 @@ func (r UpdateProductResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProductResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type EvaluateAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AccessEvaluationResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EvaluateAccessResponse) GetJSON200() *AccessEvaluationResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EvaluateAccessResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EvaluateAccessResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EvaluateAccessResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r EvaluateAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EvaluateAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EvaluateAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EvaluateAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type EvaluateAccessBatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AccessEvaluationsResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON200() *AccessEvaluationsResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetBody returns the raw response body bytes
+func (r EvaluateAccessBatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EvaluateAccessBatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EvaluateAccessBatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EvaluateAccessBatchResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21447,6 +21813,66 @@ func (c *ClientWithResponses) UpdateProductWithResponse(ctx context.Context, pro
 	return ParseUpdateProductResponse(rsp)
 }
 
+// EvaluateAccessWithBodyWithResponse Evaluate Access
+//
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+func (c *ClientWithResponses) EvaluateAccessWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EvaluateAccessResponse, error) {
+	rsp, err := c.EvaluateAccessWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEvaluateAccessResponse(rsp)
+}
+
+// EvaluateAccessWithResponse Evaluate Access
+//
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluation (the `EvaluateAccess` operationId).
+func (c *ClientWithResponses) EvaluateAccessWithResponse(ctx context.Context, productId ProductIdParameter, body EvaluateAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*EvaluateAccessResponse, error) {
+	rsp, err := c.EvaluateAccess(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEvaluateAccessResponse(rsp)
+}
+
+// EvaluateAccessBatchWithBodyWithResponse Evaluate Access For Several Actions
+//
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+func (c *ClientWithResponses) EvaluateAccessBatchWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EvaluateAccessBatchResponse, error) {
+	rsp, err := c.EvaluateAccessBatchWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEvaluateAccessBatchResponse(rsp)
+}
+
+// EvaluateAccessBatchWithResponse Evaluate Access For Several Actions
+//
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/access/v1/evaluations (the `EvaluateAccessBatch` operationId).
+func (c *ClientWithResponses) EvaluateAccessBatchWithResponse(ctx context.Context, productId ProductIdParameter, body EvaluateAccessBatchJSONRequestBody, reqEditors ...RequestEditorFn) (*EvaluateAccessBatchResponse, error) {
+	rsp, err := c.EvaluateAccessBatch(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEvaluateAccessBatchResponse(rsp)
+}
+
 // CreateProductAPIKeyWithBodyWithResponse Create Product API Key
 //
 // Creates a new product API key within a specific product. Can optionally assign initial permissions. Requires Platform Bearer token.
@@ -24769,6 +25195,100 @@ func ParseUpdateProductResponse(rsp *http.Response) (*UpdateProductResponse, err
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEvaluateAccessResponse parses an HTTP response from a EvaluateAccessWithResponse call
+func ParseEvaluateAccessResponse(rsp *http.Response) (*EvaluateAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EvaluateAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AccessEvaluationResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEvaluateAccessBatchResponse parses an HTTP response from a EvaluateAccessBatchWithResponse call
+func ParseEvaluateAccessBatchResponse(rsp *http.Response) (*EvaluateAccessBatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EvaluateAccessBatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AccessEvaluationsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	}
 

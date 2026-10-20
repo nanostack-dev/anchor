@@ -36,6 +36,99 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccessDenyReason.
+const (
+	APIKEYINACTIVE             AccessDenyReason = "API_KEY_INACTIVE"
+	APIKEYINVALID              AccessDenyReason = "API_KEY_INVALID"
+	MISSINGPERMISSION          AccessDenyReason = "MISSING_PERMISSION"
+	NOTAMEMBER                 AccessDenyReason = "NOT_A_MEMBER"
+	NOTEVALUATED               AccessDenyReason = "NOT_EVALUATED"
+	ORGANIZATIONNOTFOUND       AccessDenyReason = "ORGANIZATION_NOT_FOUND"
+	SUBJECTNOTSYNCED           AccessDenyReason = "SUBJECT_NOT_SYNCED"
+	WORKSPACENOTINORGANIZATION AccessDenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
+)
+
+// Valid indicates whether the value is a known member of the AccessDenyReason enum.
+func (e AccessDenyReason) Valid() bool {
+	switch e {
+	case APIKEYINACTIVE:
+		return true
+	case APIKEYINVALID:
+		return true
+	case MISSINGPERMISSION:
+		return true
+	case NOTAMEMBER:
+		return true
+	case NOTEVALUATED:
+		return true
+	case ORGANIZATIONNOTFOUND:
+		return true
+	case SUBJECTNOTSYNCED:
+		return true
+	case WORKSPACENOTINORGANIZATION:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AccessEvaluationsSemantic.
+const (
+	DenyOnFirstDeny     AccessEvaluationsSemantic = "deny_on_first_deny"
+	ExecuteAll          AccessEvaluationsSemantic = "execute_all"
+	PermitOnFirstPermit AccessEvaluationsSemantic = "permit_on_first_permit"
+)
+
+// Valid indicates whether the value is a known member of the AccessEvaluationsSemantic enum.
+func (e AccessEvaluationsSemantic) Valid() bool {
+	switch e {
+	case DenyOnFirstDeny:
+		return true
+	case ExecuteAll:
+		return true
+	case PermitOnFirstPermit:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AccessResourceType.
+const (
+	Organization AccessResourceType = "organization"
+	Workspace    AccessResourceType = "workspace"
+)
+
+// Valid indicates whether the value is a known member of the AccessResourceType enum.
+func (e AccessResourceType) Valid() bool {
+	switch e {
+	case Organization:
+		return true
+	case Workspace:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AccessSubjectType.
+const (
+	OrganizationApiKey AccessSubjectType = "organization_api_key"
+	User               AccessSubjectType = "user"
+)
+
+// Valid indicates whether the value is a known member of the AccessSubjectType enum.
+func (e AccessSubjectType) Valid() bool {
+	switch e {
+	case OrganizationApiKey:
+		return true
+	case User:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ClerkIntegrationInstanceCreateRequestProviderType.
 const (
 	CLERK ClerkIntegrationInstanceCreateRequestProviderType = "CLERK"
@@ -215,6 +308,119 @@ func (e UserOrganizationInclude) Valid() bool {
 		return false
 	}
 }
+
+// AccessAction defines model for AccessAction.
+type AccessAction struct {
+	// Name A resource permission name, such as `flows:read`.
+	Name       string                  `json:"name"`
+	Properties *map[string]interface{} `json:"properties,omitempty"`
+}
+
+// AccessDecisionContext Anchor's extension of the AuthZEN decision context.
+type AccessDecisionContext struct {
+	ApiKey             *AccessIdentityRef `json:"api_key,omitempty"`
+	MissingPermissions *[]string          `json:"missing_permissions,omitempty"`
+	Organization       *AccessIdentityRef `json:"organization,omitempty"`
+
+	// Permissions Every permission the role or API key holds in the organization.
+	Permissions *[]string          `json:"permissions,omitempty"`
+	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
+
+	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+	Reason *AccessDenyReason  `json:"reason,omitempty"`
+	Role   *AccessIdentityRef `json:"role,omitempty"`
+}
+
+// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+type AccessDenyReason string
+
+// AccessEvaluationItem defines model for AccessEvaluationItem.
+type AccessEvaluationItem struct {
+	Action AccessAction `json:"action"`
+}
+
+// AccessEvaluationRequest defines model for AccessEvaluationRequest.
+type AccessEvaluationRequest struct {
+	Action   AccessAction            `json:"action"`
+	Context  *map[string]interface{} `json:"context,omitempty"`
+	Resource AccessResource          `json:"resource"`
+	Subject  AccessSubject           `json:"subject"`
+}
+
+// AccessEvaluationResponse defines model for AccessEvaluationResponse.
+type AccessEvaluationResponse struct {
+	// Context Anchor's extension of the AuthZEN decision context.
+	Context  AccessDecisionContext `json:"context"`
+	Decision bool                  `json:"decision"`
+}
+
+// AccessEvaluationsOptions defines model for AccessEvaluationsOptions.
+type AccessEvaluationsOptions struct {
+	EvaluationsSemantic *AccessEvaluationsSemantic `json:"evaluations_semantic,omitempty"`
+}
+
+// AccessEvaluationsRequest defines model for AccessEvaluationsRequest.
+type AccessEvaluationsRequest struct {
+	Context     *map[string]interface{}   `json:"context,omitempty"`
+	Evaluations []AccessEvaluationItem    `json:"evaluations"`
+	Options     *AccessEvaluationsOptions `json:"options,omitempty"`
+	Resource    AccessResource            `json:"resource"`
+	Subject     AccessSubject             `json:"subject"`
+}
+
+// AccessEvaluationsResponse defines model for AccessEvaluationsResponse.
+type AccessEvaluationsResponse struct {
+	// Context Anchor's extension of the AuthZEN decision context.
+	Context     AccessDecisionContext `json:"context"`
+	Decision    bool                  `json:"decision"`
+	Evaluations []AccessItemDecision  `json:"evaluations"`
+}
+
+// AccessEvaluationsSemantic defines model for AccessEvaluationsSemantic.
+type AccessEvaluationsSemantic string
+
+// AccessIdentityRef defines model for AccessIdentityRef.
+type AccessIdentityRef struct {
+	Id   string  `json:"id"`
+	Name *string `json:"name,omitempty"`
+}
+
+// AccessItemDecision defines model for AccessItemDecision.
+type AccessItemDecision struct {
+	// Context Anchor's extension of the AuthZEN decision context.
+	Context  *AccessDecisionContext `json:"context,omitempty"`
+	Decision bool                   `json:"decision"`
+}
+
+// AccessResource defines model for AccessResource.
+type AccessResource struct {
+	// Id The organization or workspace ID. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+	Id         *string                   `json:"id,omitempty"`
+	Properties *AccessResourceProperties `json:"properties,omitempty"`
+	Type       AccessResourceType        `json:"type"`
+}
+
+// AccessResourceProperties defines model for AccessResourceProperties.
+type AccessResourceProperties struct {
+	// OrganizationId The workspace's organization. Required for a user subject on a workspace resource.
+	OrganizationId *string `json:"organization_id,omitempty"`
+}
+
+// AccessResourceType defines model for AccessResourceType.
+type AccessResourceType string
+
+// AccessSubject defines model for AccessSubject.
+type AccessSubject struct {
+	// Id The external user ID, or the raw organization API key. A raw key is never logged.
+	Id         string                  `json:"id"`
+	Properties *map[string]interface{} `json:"properties,omitempty"`
+
+	// Type `user` is a product user named by its external user ID (the identity provider's user ID). `organization_api_key` is a raw organization API key value.
+	Type AccessSubjectType `json:"type"`
+}
+
+// AccessSubjectType `user` is a product user named by its external user ID (the identity provider's user ID). `organization_api_key` is a raw organization API key value.
+type AccessSubjectType string
 
 // ApiError defines model for ApiError.
 type ApiError = fault.Detail
@@ -3284,6 +3490,12 @@ type SearchProductsJSONRequestBody = ProductSearchRequest
 // UpdateProductJSONRequestBody defines body for UpdateProduct for application/json ContentType.
 type UpdateProductJSONRequestBody = ProductRequest
 
+// EvaluateAccessJSONRequestBody defines body for EvaluateAccess for application/json ContentType.
+type EvaluateAccessJSONRequestBody = AccessEvaluationRequest
+
+// EvaluateAccessBatchJSONRequestBody defines body for EvaluateAccessBatch for application/json ContentType.
+type EvaluateAccessBatchJSONRequestBody = AccessEvaluationsRequest
+
 // CreateProductAPIKeyJSONRequestBody defines body for CreateProductAPIKey for application/json ContentType.
 type CreateProductAPIKeyJSONRequestBody = ProductAPIKeyCreateRequest
 
@@ -3704,6 +3916,12 @@ type ServerInterface interface {
 	// UpdateProduct Update Product
 	// (PUT /v1/products/{product_id})
 	UpdateProduct(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// EvaluateAccess Evaluate Access
+	// (POST /v1/products/{product_id}/access/v1/evaluation)
+	EvaluateAccess(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// EvaluateAccessBatch Evaluate Access For Several Actions
+	// (POST /v1/products/{product_id}/access/v1/evaluations)
+	EvaluateAccessBatch(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
 	// CreateProductAPIKey Create Product API Key
 	// (POST /v1/products/{product_id}/api-keys)
 	CreateProductAPIKey(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -4121,6 +4339,18 @@ func (_ Unimplemented) GetProduct(w http.ResponseWriter, r *http.Request, produc
 // UpdateProduct Update Product
 // (PUT /v1/products/{product_id})
 func (_ Unimplemented) UpdateProduct(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// EvaluateAccess Evaluate Access
+// (POST /v1/products/{product_id}/access/v1/evaluation)
+func (_ Unimplemented) EvaluateAccess(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// EvaluateAccessBatch Evaluate Access For Several Actions
+// (POST /v1/products/{product_id}/access/v1/evaluations)
+func (_ Unimplemented) EvaluateAccessBatch(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5079,6 +5309,58 @@ func (siw *ServerInterfaceWrapper) UpdateProduct(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateProduct(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EvaluateAccess operation middleware
+func (siw *ServerInterfaceWrapper) EvaluateAccess(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EvaluateAccess(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EvaluateAccessBatch operation middleware
+func (siw *ServerInterfaceWrapper) EvaluateAccessBatch(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EvaluateAccessBatch(w, r, productId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9041,6 +9323,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/products/{product_id}/auth/introspect", wrapper.IntrospectOrganizationAPIKey)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/access/v1/evaluation", wrapper.EvaluateAccess)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/access/v1/evaluations", wrapper.EvaluateAccessBatch)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations", wrapper.CreateProductOrganization)
 	})
 	r.Group(func(r chi.Router) {
@@ -10375,6 +10663,136 @@ func (response UpdateProduct409JSONResponse) VisitUpdateProductResponse(w http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *EvaluateAccessJSONRequestBody
+}
+
+type EvaluateAccessResponseObject interface {
+	VisitEvaluateAccessResponse(w http.ResponseWriter) error
+}
+
+type EvaluateAccess200JSONResponse AccessEvaluationResponse
+
+func (response EvaluateAccess200JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccess400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response EvaluateAccess400JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccess401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response EvaluateAccess401JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccess403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response EvaluateAccess403JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatchRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *EvaluateAccessBatchJSONRequestBody
+}
+
+type EvaluateAccessBatchResponseObject interface {
+	VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error
+}
+
+type EvaluateAccessBatch200JSONResponse AccessEvaluationsResponse
+
+func (response EvaluateAccessBatch200JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response EvaluateAccessBatch400JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response EvaluateAccessBatch401JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response EvaluateAccessBatch403JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -18897,6 +19315,12 @@ type StrictServerInterface interface {
 	// UpdateProduct Update Product
 	// (PUT /v1/products/{product_id})
 	UpdateProduct(ctx context.Context, request UpdateProductRequestObject) (UpdateProductResponseObject, error)
+	// EvaluateAccess Evaluate Access
+	// (POST /v1/products/{product_id}/access/v1/evaluation)
+	EvaluateAccess(ctx context.Context, request EvaluateAccessRequestObject) (EvaluateAccessResponseObject, error)
+	// EvaluateAccessBatch Evaluate Access For Several Actions
+	// (POST /v1/products/{product_id}/access/v1/evaluations)
+	EvaluateAccessBatch(ctx context.Context, request EvaluateAccessBatchRequestObject) (EvaluateAccessBatchResponseObject, error)
 	// CreateProductAPIKey Create Product API Key
 	// (POST /v1/products/{product_id}/api-keys)
 	CreateProductAPIKey(ctx context.Context, request CreateProductAPIKeyRequestObject) (CreateProductAPIKeyResponseObject, error)
@@ -19723,6 +20147,72 @@ func (sh *strictHandler) UpdateProduct(w http.ResponseWriter, r *http.Request, p
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateProductResponseObject); ok {
 		if err := validResponse.VisitUpdateProductResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// EvaluateAccess operation middleware
+func (sh *strictHandler) EvaluateAccess(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request EvaluateAccessRequestObject
+
+	request.ProductId = productId
+
+	var body EvaluateAccessJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.EvaluateAccess(ctx, request.(EvaluateAccessRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "EvaluateAccess")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(EvaluateAccessResponseObject); ok {
+		if err := validResponse.VisitEvaluateAccessResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// EvaluateAccessBatch operation middleware
+func (sh *strictHandler) EvaluateAccessBatch(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request EvaluateAccessBatchRequestObject
+
+	request.ProductId = productId
+
+	var body EvaluateAccessBatchJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.EvaluateAccessBatch(ctx, request.(EvaluateAccessBatchRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "EvaluateAccessBatch")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(EvaluateAccessBatchResponseObject); ok {
+		if err := validResponse.VisitEvaluateAccessBatchResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

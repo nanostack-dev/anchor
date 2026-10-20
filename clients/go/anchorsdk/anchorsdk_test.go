@@ -647,6 +647,31 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantPath:   "/v1/products/prd_test/auth/introspect",
 			wantBody:   `{"api_key":"anchor_org_apikey_x","required_scopes":[]}`,
 		},
+		{
+			name:  "access for a user on a workspace",
+			reply: stubResponse{status: http.StatusOK, body: `{"decision":true,"context":{},"evaluations":[{"decision":true}]}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.AccessForUser("user_1").InWorkspace("org_1", "ws_1").Permissions("flows:read").Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/access/v1/evaluations",
+			wantBody: `{"evaluations":[{"action":{"name":"flows:read"}}],` +
+				`"resource":{"id":"ws_1","properties":{"organization_id":"org_1"},"type":"workspace"},` +
+				`"subject":{"id":"user_1","type":"user"}}`,
+		},
+		{
+			name:  "access for an API key in its own organization",
+			reply: stubResponse{status: http.StatusOK, body: `{"decision":false,"context":{"reason":"API_KEY_INVALID"},"evaluations":[]}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.AccessForAPIKey("anchor_org_apikey_x").DenyOnFirstDeny().Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/access/v1/evaluations",
+			wantBody: `{"evaluations":[],"options":{"evaluations_semantic":"deny_on_first_deny"},` +
+				`"resource":{"type":"organization"},"subject":{"id":"anchor_org_apikey_x","type":"organization_api_key"}}`,
+		},
 	}
 
 	for _, tt := range tests {
