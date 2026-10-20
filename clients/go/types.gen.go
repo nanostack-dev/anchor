@@ -1227,7 +1227,10 @@ type AccessDenyReason string
 
 // AccessEvaluationItem defines model for AccessEvaluationItem.
 type AccessEvaluationItem struct {
-	Action AccessAction `json:"action"`
+	Action   *AccessAction           `json:"action,omitempty"`
+	Context  *map[string]interface{} `json:"context,omitempty"`
+	Resource *AccessResource         `json:"resource,omitempty"`
+	Subject  *AccessSubject          `json:"subject,omitempty"`
 }
 
 // AccessEvaluationRequest defines model for AccessEvaluationRequest.
@@ -1252,8 +1255,9 @@ type AccessEvaluationsOptions struct {
 
 // AccessEvaluationsRequest defines model for AccessEvaluationsRequest.
 type AccessEvaluationsRequest struct {
+	Action      *AccessAction             `json:"action,omitempty"`
 	Context     *map[string]interface{}   `json:"context,omitempty"`
-	Evaluations []AccessEvaluationItem    `json:"evaluations"`
+	Evaluations *[]AccessEvaluationItem   `json:"evaluations,omitempty"`
 	Options     *AccessEvaluationsOptions `json:"options,omitempty"`
 	Resource    AccessResource            `json:"resource"`
 	Subject     AccessSubject             `json:"subject"`

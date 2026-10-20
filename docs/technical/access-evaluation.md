@@ -9,15 +9,21 @@ checks itself. EchoPoint is the first caller.
 `POST /v1/products/{product_id}/access/v1/evaluations` decides several actions in
 one call; `POST /v1/products/{product_id}/access/v1/evaluation` decides one. Both
 follow the [OpenID AuthZEN Authorization API 1.0](https://openid.net/specs/authorization-api-1_0.html)
-shape. Per-item subject and resource overrides of the AuthZEN batch are not supported.
+shape. In a batch, a top-level `action` is the default for items without one and,
+with no items, is evaluated alone. Per-item `subject` and `resource` overrides are
+refused with 400 rather than ignored, so a request is never answered for a different
+subject or resource than the caller named.
 
 - **Subject:** `user` with the external (identity provider) user ID, or
-  `organization_api_key` with the raw key. The raw key is never logged.
+  `organization_api_key` with the raw key. The request logger never records the
+  body of these routes, introspection or key validation, even with
+  `LOG_REQUEST_BODY=true`.
 - **Resource:** `organization` or `workspace`. A user needs the organization: the
   organization ID, or `properties.organization_id` for a workspace. An API key
   defaults to its own organization when none is named.
-- **Action:** a resource permission name such as `flows:read`. An empty
-  `evaluations` list asks only whether the subject reaches the resource.
+- **Action:** a resource permission name such as `flows:read`. A batch with no
+  items and no top-level action asks only whether the subject reaches the resource
+  (an Anchor extension of AuthZEN).
 - **Caller credential:** a product API key with `product_user:read` and
   `organization_api_key:read`.
 

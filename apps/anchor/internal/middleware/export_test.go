@@ -1,0 +1,3 @@
+package middleware
+
+var NewRequestLoggingMiddlewareWithBodies = newRequestLoggingMiddleware

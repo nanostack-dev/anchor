@@ -880,7 +880,7 @@ export const evaluateAccess = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Evaluate Access For Several Actions
  *
- * Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+ * Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
  */
 export const evaluateAccessBatch = <ThrowOnError extends boolean = false>(options: Options<EvaluateAccessBatchData, ThrowOnError>) => (options.client ?? client).post<EvaluateAccessBatchResponses, EvaluateAccessBatchErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],

@@ -54,3 +54,8 @@ func (c AccessClient) Evaluate(body client.EvaluateAccessJSONRequestBody) client
 	require.NotNil(c.t, resp.JSON200)
 	return *resp.JSON200
 }
+
+func (c AccessClient) EvaluateRaw(body client.EvaluateAccessJSONRequestBody) (*client.EvaluateAccessResponse, error) {
+	c.t.Helper()
+	return c.client.EvaluateAccessWithResponse(context.Background(), c.productID, body)
+}

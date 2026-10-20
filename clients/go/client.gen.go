@@ -360,7 +360,7 @@ type ClientInterface interface {
 
 	// EvaluateAccessBatchWithBody Evaluate Access For Several Actions
 	//
-	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -369,7 +369,7 @@ type ClientInterface interface {
 
 	// EvaluateAccessBatch Evaluate Access For Several Actions
 	//
-	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -2359,7 +2359,7 @@ func (c *Client) EvaluateAccess(ctx context.Context, productId ProductIdParamete
 
 // EvaluateAccessBatchWithBody Evaluate Access For Several Actions
 //
-// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2378,7 +2378,7 @@ func (c *Client) EvaluateAccessBatchWithBody(ctx context.Context, productId Prod
 
 // EvaluateAccessBatch Evaluate Access For Several Actions
 //
-// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -11567,7 +11567,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessBatchWithBodyWithResponse Evaluate Access For Several Actions
 	//
-	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11576,7 +11576,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessBatchWithResponse Evaluate Access For Several Actions
 	//
-	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+	// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14200,6 +14200,8 @@ type EvaluateAccessResponse struct {
 	JSON401 *Unauthorized
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *Forbidden
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalServerError
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14220,6 +14222,11 @@ func (r EvaluateAccessResponse) GetJSON401() *Unauthorized {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r EvaluateAccessResponse) GetJSON403() *Forbidden {
 	return r.JSON403
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EvaluateAccessResponse) GetJSON500() *InternalServerError {
+	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -14262,6 +14269,8 @@ type EvaluateAccessBatchResponse struct {
 	JSON401 *Unauthorized
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *Forbidden
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalServerError
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -14282,6 +14291,11 @@ func (r EvaluateAccessBatchResponse) GetJSON401() *Unauthorized {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r EvaluateAccessBatchResponse) GetJSON403() *Forbidden {
 	return r.JSON403
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON500() *InternalServerError {
+	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
@@ -21845,7 +21859,7 @@ func (c *ClientWithResponses) EvaluateAccessWithResponse(ctx context.Context, pr
 
 // EvaluateAccessBatchWithBodyWithResponse Evaluate Access For Several Actions
 //
-// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21860,7 +21874,7 @@ func (c *ClientWithResponses) EvaluateAccessBatchWithBodyWithResponse(ctx contex
 
 // EvaluateAccessBatchWithResponse Evaluate Access For Several Actions
 //
-// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape without per-item subject or resource overrides. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. An empty `evaluations` list asks only whether the subject can reach the resource. `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
+// Decides several actions for one subject and one resource in a single call, following the AuthZEN batch evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored. The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed. With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied with reason `NOT_EVALUATED`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -25243,6 +25257,13 @@ func ParseEvaluateAccessResponse(rsp *http.Response) (*EvaluateAccessResponse, e
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil
@@ -25289,6 +25310,13 @@ func ParseEvaluateAccessBatchResponse(rsp *http.Response) (*EvaluateAccessBatchR
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 

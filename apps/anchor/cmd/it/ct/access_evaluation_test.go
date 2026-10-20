@@ -98,12 +98,12 @@ func userOnWorkspace(
 	}
 }
 
-func accessItems(actions ...string) []ct.AccessEvaluationItem {
+func accessItems(actions ...string) *[]ct.AccessEvaluationItem {
 	items := make([]ct.AccessEvaluationItem, 0, len(actions))
 	for _, action := range actions {
-		items = append(items, ct.AccessEvaluationItem{Action: ct.AccessAction{Name: action}})
+		items = append(items, ct.AccessEvaluationItem{Action: &ct.AccessAction{Name: action}})
 	}
-	return items
+	return &items
 }
 
 func requireDenied(t *testing.T, response ct.AccessEvaluationsResponse, reason ct.AccessDenyReason) {
@@ -139,7 +139,7 @@ func TestAccessEvaluation(t *testing.T) {
 		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
 			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
 			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-			Evaluations: []ct.AccessEvaluationItem{},
+			Evaluations: accessItems(),
 		})
 
 		assert.True(t, response.Decision)
@@ -385,5 +385,157 @@ func TestAccessEvaluationSeesWritesOnTheNextCall(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
 
 		requireDenied(t, w.access.EvaluateBatch(body), ct.APIKEYINVALID)
+	})
+}
+
+func TestAccessEvaluationBatchFollowsAuthZENDefaults(t *testing.T) {
+	t.Parallel()
+	w := newAccessWorld(t)
+	read, deleteAction := w.permissions.FileRead, w.permissions.FileDelete
+
+	t.Run("A top-level action with no items is evaluated alone", func(t *testing.T) {
+		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
+		body.Evaluations = nil
+		body.Action = &ct.AccessAction{Name: deleteAction}
+
+		response := w.access.EvaluateBatch(body)
+
+		requireDenied(t, response, ct.MISSINGPERMISSION)
+		assert.Equal(t, []string{deleteAction}, *response.Context.MissingPermissions)
+	})
+
+	t.Run("A top-level action is the default for items without one", func(t *testing.T) {
+		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
+		body.Action = &ct.AccessAction{Name: deleteAction}
+		body.Evaluations = &[]ct.AccessEvaluationItem{{}, {Action: &ct.AccessAction{Name: read}}}
+
+		response := w.access.EvaluateBatch(body)
+
+		require.Len(t, response.Evaluations, 2)
+		assert.False(t, response.Evaluations[0].Decision, "the default action is evaluated")
+		assert.True(t, response.Evaluations[1].Decision)
+	})
+
+	t.Run("A per-item resource override is refused instead of ignored", func(t *testing.T) {
+		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
+		body.Evaluations = &[]ct.AccessEvaluationItem{{
+			Action:   &ct.AccessAction{Name: read},
+			Resource: &ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceB},
+		}}
+
+		resp := w.access.EvaluateBatchRaw(body)
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	})
+
+	t.Run("A per-item subject override is refused instead of ignored", func(t *testing.T) {
+		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
+		body.Evaluations = &[]ct.AccessEvaluationItem{{
+			Action:  &ct.AccessAction{Name: read},
+			Subject: &ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
+		}}
+
+		resp := w.access.EvaluateBatchRaw(body)
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	})
+}
+
+func TestAccessEvaluationRejectsMalformedRequests(t *testing.T) {
+	t.Parallel()
+	w := newAccessWorld(t)
+	read := w.permissions.FileRead
+	cases := map[string]ct.EvaluateAccessBatchJSONRequestBody{
+		"A blank subject id is a bad request":   userOnWorkspace("  ", w.orgA.Id, w.workspaceA, read),
+		"An empty action name is a bad request": userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, ""),
+		"A workspace without an id is a bad request": {
+			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
+			Resource:    ct.AccessResource{Type: ct.Workspace},
+			Evaluations: accessItems(read),
+		},
+		"An item with no action and no default is a bad request": {
+			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
+			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
+			Evaluations: &[]ct.AccessEvaluationItem{{}},
+		},
+		"An unknown subject type is a bad request": {
+			Subject:     ct.AccessSubject{Type: "service_account", Id: w.externalID},
+			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
+			Evaluations: accessItems(read),
+		},
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			resp := w.access.EvaluateBatchRaw(body)
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		})
+	}
+
+	t.Run("The single evaluation refuses an empty action name", func(t *testing.T) {
+		resp, err := w.product.AccessClientWith(w.product.AllScopeAPIKeyClient()).
+			EvaluateRaw(ct.EvaluateAccessJSONRequestBody{
+				Subject:  ct.AccessSubject{Type: ct.User, Id: w.externalID},
+				Resource: ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
+				Action:   ct.AccessAction{Name: ""},
+			})
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+	})
+}
+
+func TestAccessEvaluationForARoleWithoutPermissions(t *testing.T) {
+	t.Parallel()
+	t.Run("A member whose role holds nothing reaches the organization but no action", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		empty := createDSLProductRoleWithPermissions(t, w.product, "empty-"+uuid.NewString(), nil, []string{})
+		_, externalID := w.member(t, w.orgA.Id, empty.ID)
+
+		reach := w.access.EvaluateBatch(userOnWorkspace(externalID, w.orgA.Id, w.workspaceA))
+		action := w.access.EvaluateBatch(userOnWorkspace(externalID, w.orgA.Id, w.workspaceA, w.permissions.FileRead))
+
+		assert.True(t, reach.Decision)
+		assert.Empty(t, *reach.Context.Permissions)
+		requireDenied(t, action, ct.MISSINGPERMISSION)
+	})
+}
+
+// Two products share nothing: the same external user ID resolves per product,
+// and a product's credential cannot evaluate another product's data.
+func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
+	t.Parallel()
+	first := newAccessWorld(t)
+	second := newAccessWorld(t)
+	sharedExternalID := "user_shared_" + itshared.Faker.UUID().V4()
+	firstUser := createDSLProductUser(t, first.product)
+	setDSLProductUserExternalID(t, first.product, firstUser.ID, sharedExternalID)
+	createDSLMembership(t, first.product, firstUser.ID, first.orgA.Id, first.role.ID)
+	secondUser := createDSLProductUser(t, second.product)
+	setDSLProductUserExternalID(t, second.product, secondUser.ID, sharedExternalID)
+	createDSLMembership(t, second.product, secondUser.ID, second.orgA.Id, second.role.ID)
+
+	t.Run("The same external user ID resolves to each product's own user", func(t *testing.T) {
+		response := second.access.EvaluateBatch(
+			userOnWorkspace(sharedExternalID, second.orgA.Id, second.workspaceA, second.permissions.FileRead),
+		)
+
+		assert.True(t, response.Decision)
+		assert.Equal(t, secondUser.ID, response.Context.ProductUser.Id)
+	})
+
+	t.Run("A product cannot evaluate another product's organization", func(t *testing.T) {
+		response := second.access.EvaluateBatch(
+			userOnWorkspace(sharedExternalID, first.orgA.Id, first.workspaceA, first.permissions.FileRead),
+		)
+		requireDenied(t, response, ct.ORGANIZATIONNOTFOUND)
+	})
+
+	t.Run("A product cannot evaluate another product's API key", func(t *testing.T) {
+		response := second.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
+			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: first.apiKey},
+			Resource:    ct.AccessResource{Type: ct.Organization},
+			Evaluations: accessItems(first.permissions.FileRead),
+		})
+		requireDenied(t, response, ct.APIKEYINVALID)
 	})
 }

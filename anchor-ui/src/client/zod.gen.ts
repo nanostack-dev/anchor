@@ -714,14 +714,18 @@ export const zAccessEvaluationsOptions = z.object({
 });
 
 export const zAccessEvaluationItem = z.object({
-    action: zAccessAction
+    action: zAccessAction.optional(),
+    subject: zAccessSubject.optional(),
+    resource: zAccessResource.optional(),
+    context: z.record(z.string(), z.unknown()).optional()
 });
 
 export const zAccessEvaluationsRequest = z.object({
     subject: zAccessSubject,
     resource: zAccessResource,
+    action: zAccessAction.optional(),
     context: z.record(z.string(), z.unknown()).optional(),
-    evaluations: z.array(zAccessEvaluationItem),
+    evaluations: z.array(zAccessEvaluationItem).optional(),
     options: zAccessEvaluationsOptions.optional()
 });
 

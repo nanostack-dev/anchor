@@ -336,7 +336,10 @@ type AccessDenyReason string
 
 // AccessEvaluationItem defines model for AccessEvaluationItem.
 type AccessEvaluationItem struct {
-	Action AccessAction `json:"action"`
+	Action   *AccessAction           `json:"action,omitempty"`
+	Context  *map[string]interface{} `json:"context,omitempty"`
+	Resource *AccessResource         `json:"resource,omitempty"`
+	Subject  *AccessSubject          `json:"subject,omitempty"`
 }
 
 // AccessEvaluationRequest defines model for AccessEvaluationRequest.
@@ -361,8 +364,9 @@ type AccessEvaluationsOptions struct {
 
 // AccessEvaluationsRequest defines model for AccessEvaluationsRequest.
 type AccessEvaluationsRequest struct {
+	Action      *AccessAction             `json:"action,omitempty"`
 	Context     *map[string]interface{}   `json:"context,omitempty"`
-	Evaluations []AccessEvaluationItem    `json:"evaluations"`
+	Evaluations *[]AccessEvaluationItem   `json:"evaluations,omitempty"`
 	Options     *AccessEvaluationsOptions `json:"options,omitempty"`
 	Resource    AccessResource            `json:"resource"`
 	Subject     AccessSubject             `json:"subject"`
@@ -10732,6 +10736,22 @@ func (response EvaluateAccess403JSONResponse) VisitEvaluateAccessResponse(w http
 	return err
 }
 
+type EvaluateAccess500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response EvaluateAccess500JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type EvaluateAccessBatchRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *EvaluateAccessBatchJSONRequestBody
@@ -10793,6 +10813,22 @@ func (response EvaluateAccessBatch403JSONResponse) VisitEvaluateAccessBatchRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response EvaluateAccessBatch500JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }

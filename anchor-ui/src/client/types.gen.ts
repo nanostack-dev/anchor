@@ -1338,16 +1338,22 @@ export type AccessEvaluationsOptions = {
 };
 
 export type AccessEvaluationItem = {
-    action: AccessAction;
+    action?: AccessAction;
+    subject?: AccessSubject;
+    resource?: AccessResource;
+    context?: {
+        [key: string]: unknown;
+    };
 };
 
 export type AccessEvaluationsRequest = {
     subject: AccessSubject;
     resource: AccessResource;
+    action?: AccessAction;
     context?: {
         [key: string]: unknown;
     };
-    evaluations: Array<AccessEvaluationItem>;
+    evaluations?: Array<AccessEvaluationItem>;
     options?: AccessEvaluationsOptions;
 };
 
@@ -5647,6 +5653,10 @@ export type EvaluateAccessErrors = {
      * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type EvaluateAccessError = EvaluateAccessErrors[keyof EvaluateAccessErrors];
@@ -5685,6 +5695,10 @@ export type EvaluateAccessBatchErrors = {
      * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
 };
 
 export type EvaluateAccessBatchError = EvaluateAccessBatchErrors[keyof EvaluateAccessBatchErrors];

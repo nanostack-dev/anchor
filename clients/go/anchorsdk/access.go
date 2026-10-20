@@ -38,7 +38,7 @@ func (c *Client) accessCheck(subject nanoclient.AccessSubject) *AccessCheck {
 	return &AccessCheck{c: c, body: nanoclient.AccessEvaluationsRequest{
 		Subject:     subject,
 		Resource:    nanoclient.AccessResource{Type: nanoclient.Organization},
-		Evaluations: []nanoclient.AccessEvaluationItem{},
+		Evaluations: &[]nanoclient.AccessEvaluationItem{},
 	}}
 }
 
@@ -64,8 +64,8 @@ func (a *AccessCheck) InWorkspace(organizationID, workspaceID string) *AccessChe
 // whether the subject can reach the resource.
 func (a *AccessCheck) Permissions(names ...string) *AccessCheck {
 	for _, name := range names {
-		a.body.Evaluations = append(a.body.Evaluations, nanoclient.AccessEvaluationItem{
-			Action: nanoclient.AccessAction{Name: name},
+		*a.body.Evaluations = append(*a.body.Evaluations, nanoclient.AccessEvaluationItem{
+			Action: &nanoclient.AccessAction{Name: name},
 		})
 	}
 	return a
