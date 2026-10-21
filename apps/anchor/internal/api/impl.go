@@ -1,6 +1,7 @@
 package api
 
 import (
+	accesssvc "anchor/internal/access/service"
 	emailsvc "anchor/internal/email/service"
 	invitationsvc "anchor/internal/invitation/service"
 	licensesvc "anchor/internal/license/service"
@@ -39,6 +40,7 @@ type AnchorAPI struct {
 	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
+	AccessEvaluator               accesssvc.Evaluator
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	logger                        zerolog.Logger
@@ -70,6 +72,7 @@ type Params struct {
 	LicenseMigrationService       licensesvc.LicenseMigrationService
 	UsageService                  licensesvc.UsageService
 	UsageSeriesService            licensesvc.UsageSeriesService
+	AccessEvaluator               accesssvc.Evaluator
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
 	Logger                        zerolog.Logger
@@ -101,6 +104,7 @@ func NewAPI(params Params) *AnchorAPI {
 		LicenseMigrationService:       params.LicenseMigrationService,
 		UsageService:                  params.UsageService,
 		UsageSeriesService:            params.UsageSeriesService,
+		AccessEvaluator:               params.AccessEvaluator,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
 		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),

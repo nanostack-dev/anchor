@@ -7,6 +7,8 @@ info:
     Workspaces, Users (Platform & Product), Roles, Permissions, and API Keys.
     V1 focuses on a single-PlatformTenant deployment model (Open Source).
 tags:
+- name: Access
+  description: Access evaluation. Decides whether a product user or an organization API key may act on an organization or a workspace, following the OpenID AuthZEN Authorization API 1.0 shape.
 - name: PlatformAuth
   description: Platform User authentication operations (Login, User Info).
 - name: PlatformInvitation
@@ -2093,6 +2095,186 @@ components:
           description: Required permission scopes that the API key must satisfy.
           items:
             type: string
+
+    AccessSubjectType:
+      type: string
+      enum: [user, organization_api_key]
+      description: >-
+        `user` is a product user named by its external user ID (the identity provider's user ID).
+        `organization_api_key` is a raw organization API key value.
+    AccessSubject:
+      type: object
+      required: [type, id]
+      properties:
+        type:
+          $ref: "#/components/schemas/AccessSubjectType"
+        id:
+          type: string
+          description: The external user ID, or the raw organization API key. A raw key is never logged.
+        properties:
+          type: object
+          additionalProperties: true
+    AccessResourceType:
+      type: string
+      enum: [organization, workspace]
+    AccessResourceProperties:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          description: The workspace's organization. Required for a user subject on a workspace resource.
+    AccessResource:
+      type: object
+      required: [type]
+      properties:
+        type:
+          $ref: "#/components/schemas/AccessResourceType"
+        id:
+          type: string
+          description: >-
+            The organization or workspace ID. Required except for an organization resource with an organization API key
+            subject, where an absent ID means the key's own organization.
+        properties:
+          $ref: "#/components/schemas/AccessResourceProperties"
+    AccessAction:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: A resource permission name, such as `flows:read`.
+        properties:
+          type: object
+          additionalProperties: true
+    AccessDenyReason:
+      type: string
+      enum:
+      - SUBJECT_NOT_SYNCED
+      - API_KEY_INVALID
+      - API_KEY_INACTIVE
+      - ORGANIZATION_NOT_FOUND
+      - NOT_A_MEMBER
+      - WORKSPACE_NOT_IN_ORGANIZATION
+      - MISSING_PERMISSION
+      - NOT_EVALUATED
+      description: >-
+        Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet.
+        `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired.
+        `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member
+        of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does
+        not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action.
+        `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+    AccessIdentityRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    AccessDecisionContext:
+      type: object
+      description: Anchor's extension of the AuthZEN decision context.
+      properties:
+        reason:
+          $ref: "#/components/schemas/AccessDenyReason"
+        missing_permissions:
+          type: array
+          items:
+            type: string
+        organization:
+          $ref: "#/components/schemas/AccessIdentityRef"
+        role:
+          $ref: "#/components/schemas/AccessIdentityRef"
+        product_user:
+          $ref: "#/components/schemas/AccessIdentityRef"
+        api_key:
+          $ref: "#/components/schemas/AccessIdentityRef"
+        permissions:
+          type: array
+          description: Every permission the role or API key holds in the organization.
+          items:
+            type: string
+    AccessEvaluationRequest:
+      type: object
+      required: [subject, action, resource]
+      properties:
+        subject:
+          $ref: "#/components/schemas/AccessSubject"
+        action:
+          $ref: "#/components/schemas/AccessAction"
+        resource:
+          $ref: "#/components/schemas/AccessResource"
+        context:
+          type: object
+          additionalProperties: true
+    AccessEvaluationResponse:
+      type: object
+      required: [decision, context]
+      properties:
+        decision:
+          type: boolean
+        context:
+          $ref: "#/components/schemas/AccessDecisionContext"
+    AccessEvaluationsSemantic:
+      type: string
+      enum: [execute_all, deny_on_first_deny, permit_on_first_permit]
+    AccessEvaluationsOptions:
+      type: object
+      properties:
+        evaluations_semantic:
+          $ref: "#/components/schemas/AccessEvaluationsSemantic"
+    AccessEvaluationItem:
+      type: object
+      properties:
+        action:
+          $ref: "#/components/schemas/AccessAction"
+        subject:
+          $ref: "#/components/schemas/AccessSubject"
+        resource:
+          $ref: "#/components/schemas/AccessResource"
+        context:
+          type: object
+          additionalProperties: true
+    AccessEvaluationsRequest:
+      type: object
+      required: [subject, resource]
+      properties:
+        subject:
+          $ref: "#/components/schemas/AccessSubject"
+        resource:
+          $ref: "#/components/schemas/AccessResource"
+        action:
+          $ref: "#/components/schemas/AccessAction"
+        context:
+          type: object
+          additionalProperties: true
+        evaluations:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessEvaluationItem"
+        options:
+          $ref: "#/components/schemas/AccessEvaluationsOptions"
+    AccessItemDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: boolean
+        context:
+          $ref: "#/components/schemas/AccessDecisionContext"
+    AccessEvaluationsResponse:
+      type: object
+      required: [decision, context, evaluations]
+      properties:
+        decision:
+          type: boolean
+        context:
+          $ref: "#/components/schemas/AccessDecisionContext"
+        evaluations:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessItemDecision"
 
     OrganizationAPIKeyIntrospectRequest:
       type: object
@@ -6488,6 +6670,81 @@ paths:
                 $ref: "#/components/schemas/OrganizationAPIKeyValidateForbiddenResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/access/v1/evaluation:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Evaluate Access
+      description: >-
+        Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0
+        Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key.
+        The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`.
+        A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`.
+        Every call reads current data, so a membership, role, workspace or API key change applies to the next call.
+        Evaluating an organization API key updates its last_used_at as introspection does.
+      operationId: evaluateAccess
+      tags: [Access]
+      security:
+      - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessEvaluationRequest"
+      responses:
+        "200":
+          description: The access decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessEvaluationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /v1/products/{product_id}/access/v1/evaluations:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Evaluate Access For Several Actions
+      description: >-
+        Decides several actions for one subject and one resource in a single call, following the AuthZEN batch
+        evaluations shape. A top-level `action` is the default for items without one, and with no items it is evaluated
+        alone, as AuthZEN specifies. Per-item `subject` and `resource` overrides are refused with 400 rather than ignored.
+        The top-level `decision` is true only when the subject can reach the resource and every evaluation is allowed.
+        With no items and no top-level action, the call asks only whether the subject can reach the resource (an Anchor
+        extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied
+        with reason `NOT_EVALUATED`.
+      operationId: evaluateAccessBatch
+      tags: [Access]
+      security:
+      - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessEvaluationsRequest"
+      responses:
+        "200":
+          description: The access decisions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessEvaluationsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   # --- Product Organization Management ---
   /v1/products/{product_id}/organizations:
     parameters:

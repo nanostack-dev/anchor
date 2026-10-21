@@ -1228,6 +1228,146 @@ export type OrganizationApiKeyValidateRequest = {
     required_scopes: Array<string>;
 };
 
+/**
+ * `user` is a product user named by its external user ID (the identity provider's user ID). `organization_api_key` is a raw organization API key value.
+ */
+export enum AccessSubjectType {
+    USER = 'user',
+    ORGANIZATION_API_KEY = 'organization_api_key'
+}
+
+export type AccessSubject = {
+    type: AccessSubjectType;
+    /**
+     * The external user ID, or the raw organization API key. A raw key is never logged.
+     */
+    id: string;
+    properties?: {
+        [key: string]: unknown;
+    };
+};
+
+export enum AccessResourceType {
+    ORGANIZATION = 'organization',
+    WORKSPACE = 'workspace'
+}
+
+export type AccessResourceProperties = {
+    /**
+     * The workspace's organization. Required for a user subject on a workspace resource.
+     */
+    organization_id?: string;
+};
+
+export type AccessResource = {
+    type: AccessResourceType;
+    /**
+     * The organization or workspace ID. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+     */
+    id?: string;
+    properties?: AccessResourceProperties;
+};
+
+export type AccessAction = {
+    /**
+     * A resource permission name, such as `flows:read`.
+     */
+    name: string;
+    properties?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+ */
+export enum AccessDenyReason {
+    SUBJECT_NOT_SYNCED = 'SUBJECT_NOT_SYNCED',
+    API_KEY_INVALID = 'API_KEY_INVALID',
+    API_KEY_INACTIVE = 'API_KEY_INACTIVE',
+    ORGANIZATION_NOT_FOUND = 'ORGANIZATION_NOT_FOUND',
+    NOT_A_MEMBER = 'NOT_A_MEMBER',
+    WORKSPACE_NOT_IN_ORGANIZATION = 'WORKSPACE_NOT_IN_ORGANIZATION',
+    MISSING_PERMISSION = 'MISSING_PERMISSION',
+    NOT_EVALUATED = 'NOT_EVALUATED'
+}
+
+export type AccessIdentityRef = {
+    id: string;
+    name?: string;
+};
+
+/**
+ * Anchor's extension of the AuthZEN decision context.
+ */
+export type AccessDecisionContext = {
+    reason?: AccessDenyReason;
+    missing_permissions?: Array<string>;
+    organization?: AccessIdentityRef;
+    role?: AccessIdentityRef;
+    product_user?: AccessIdentityRef;
+    api_key?: AccessIdentityRef;
+    /**
+     * Every permission the role or API key holds in the organization.
+     */
+    permissions?: Array<string>;
+};
+
+export type AccessEvaluationRequest = {
+    subject: AccessSubject;
+    action: AccessAction;
+    resource: AccessResource;
+    context?: {
+        [key: string]: unknown;
+    };
+};
+
+export type AccessEvaluationResponse = {
+    decision: boolean;
+    context: AccessDecisionContext;
+};
+
+export enum AccessEvaluationsSemantic {
+    EXECUTE_ALL = 'execute_all',
+    DENY_ON_FIRST_DENY = 'deny_on_first_deny',
+    PERMIT_ON_FIRST_PERMIT = 'permit_on_first_permit'
+}
+
+export type AccessEvaluationsOptions = {
+    evaluations_semantic?: AccessEvaluationsSemantic;
+};
+
+export type AccessEvaluationItem = {
+    action?: AccessAction;
+    subject?: AccessSubject;
+    resource?: AccessResource;
+    context?: {
+        [key: string]: unknown;
+    };
+};
+
+export type AccessEvaluationsRequest = {
+    subject: AccessSubject;
+    resource: AccessResource;
+    action?: AccessAction;
+    context?: {
+        [key: string]: unknown;
+    };
+    evaluations?: Array<AccessEvaluationItem>;
+    options?: AccessEvaluationsOptions;
+};
+
+export type AccessItemDecision = {
+    decision: boolean;
+    context?: AccessDecisionContext;
+};
+
+export type AccessEvaluationsResponse = {
+    decision: boolean;
+    context: AccessDecisionContext;
+    evaluations: Array<AccessItemDecision>;
+};
+
 export type OrganizationApiKeyIntrospectRequest = {
     /**
      * Raw organization API key value to introspect.
@@ -5487,6 +5627,90 @@ export type IntrospectOrganizationApiKeyResponses = {
 };
 
 export type IntrospectOrganizationApiKeyResponse = IntrospectOrganizationApiKeyResponses[keyof IntrospectOrganizationApiKeyResponses];
+
+export type EvaluateAccessData = {
+    body: AccessEvaluationRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/access/v1/evaluation';
+};
+
+export type EvaluateAccessErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
+};
+
+export type EvaluateAccessError = EvaluateAccessErrors[keyof EvaluateAccessErrors];
+
+export type EvaluateAccessResponses = {
+    /**
+     * The access decision.
+     */
+    200: AccessEvaluationResponse;
+};
+
+export type EvaluateAccessResponse = EvaluateAccessResponses[keyof EvaluateAccessResponses];
+
+export type EvaluateAccessBatchData = {
+    body: AccessEvaluationsRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/access/v1/evaluations';
+};
+
+export type EvaluateAccessBatchErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
+     */
+    500: ApiErrorResponse;
+};
+
+export type EvaluateAccessBatchError = EvaluateAccessBatchErrors[keyof EvaluateAccessBatchErrors];
+
+export type EvaluateAccessBatchResponses = {
+    /**
+     * The access decisions.
+     */
+    200: AccessEvaluationsResponse;
+};
+
+export type EvaluateAccessBatchResponse = EvaluateAccessBatchResponses[keyof EvaluateAccessBatchResponses];
 
 export type CreateProductOrganizationData = {
     /**
