@@ -14,19 +14,14 @@ func (s *AnchorAPI) EvaluateAccess(
 	ctx context.Context,
 	request EvaluateAccessRequestObject,
 ) (EvaluateAccessResponseObject, error) {
-	decision, err := s.AccessEvaluator.Evaluate(ctx, accesssvc.EvaluateInput{
-		ProductID: request.ProductId,
-		Subject:   toAccessSubject(request.Body.Subject),
-		Resource:  toAccessResource(request.Body.Resource),
-		Actions:   []string{request.Body.Action.Name},
-	})
+	body := request.Body
+	question := askAbout(request.ProductId, body.Subject, body.Resource).Can(body.Action.Name)
+
+	decision, err := s.AccessEvaluator.Evaluate(ctx, question)
 	if err != nil {
 		return nil, err
 	}
-	return EvaluateAccess200JSONResponse{
-		Decision: decision.Allowed,
-		Context:  toAccessDecisionContext(decision),
-	}, nil
+	return EvaluateAccess200JSONResponse{Decision: decision.Allowed, Context: decisionContext(decision)}, nil
 }
 
 // EvaluateAccessBatch decides several actions for one subject and resource.
@@ -34,37 +29,34 @@ func (s *AnchorAPI) EvaluateAccessBatch(
 	ctx context.Context,
 	request EvaluateAccessBatchRequestObject,
 ) (EvaluateAccessBatchResponseObject, error) {
-	actions, err := batchActions(*request.Body)
+	body := request.Body
+	actions, err := batchActions(*body)
 	if err != nil {
 		return nil, err
 	}
-	semantic := functional.FromPtr(request.Body.Options).
-		Map(func(options AccessEvaluationsOptions) accesssvc.Semantic {
-			return accesssvc.Semantic(functional.FromPtr(options.EvaluationsSemantic).OrElse(ExecuteAll))
-		}).
-		OrElse(accesssvc.ExecuteAll)
-	decision, err := s.AccessEvaluator.Evaluate(ctx, accesssvc.EvaluateInput{
-		ProductID: request.ProductId,
-		Subject:   toAccessSubject(request.Body.Subject),
-		Resource:  toAccessResource(request.Body.Resource),
-		Actions:   actions,
-		Semantic:  semantic,
-	})
+	question := askAbout(request.ProductId, body.Subject, body.Resource).
+		Can(actions...).
+		Stopping(batchSemantic(body.Options))
+
+	decision, err := s.AccessEvaluator.Evaluate(ctx, question)
 	if err != nil {
 		return nil, err
 	}
 	return EvaluateAccessBatch200JSONResponse{
-		Decision: decision.Allowed,
-		Context:  toAccessDecisionContext(decision),
-		Evaluations: functional.Slice(decision.Items).Map(func(item accesssvc.ItemDecision) AccessItemDecision {
-			result := AccessItemDecision{Decision: item.Allowed}
-			if !item.Allowed {
-				reason := AccessDenyReason(item.Reason)
-				result.Context = &AccessDecisionContext{Reason: &reason}
-			}
-			return result
-		}),
+		Decision:    decision.Allowed,
+		Context:     decisionContext(decision),
+		Evaluations: functional.Slice(decision.Items).Map(itemDecision),
 	}, nil
+}
+
+func askAbout(productID string, subject AccessSubject, resource AccessResource) accesssvc.Request {
+	organizationID := ""
+	if resource.Properties != nil {
+		organizationID = functional.FromPtr(resource.Properties.OrganizationId).OrElse("")
+	}
+	return accesssvc.Ask(productID).
+		As(accesssvc.SubjectType(subject.Type), subject.Id).
+		On(accesssvc.ResourceType(resource.Type), functional.FromPtr(resource.Id).OrElse(""), organizationID)
 }
 
 // batchActions applies AuthZEN's batch defaults: a top-level action fills items
@@ -85,42 +77,34 @@ func batchActions(body AccessEvaluationsRequest) ([]string, error) {
 			return nil, fault.BadRequest("UNSUPPORTED_ACCESS_OVERRIDE",
 				"Per-item subject and resource overrides are not supported; send one request per subject and resource.")
 		}
-		action := item.Action
+		action := functional.OptionOf(item.Action, item.Action != nil).OrElse(body.Action)
 		if action == nil {
-			action = body.Action
-		}
-		if action == nil {
-			return nil, fault.BadRequest(
-				"INVALID_ACCESS_ACTION",
-				"Each evaluation needs an action, or a top-level action as its default.",
-			)
+			return nil, fault.BadRequest("INVALID_ACCESS_ACTION",
+				"Each evaluation needs an action, or a top-level action as its default.")
 		}
 		actions = append(actions, action.Name)
 	}
 	return actions, nil
 }
 
-func toAccessSubject(subject AccessSubject) accesssvc.Subject {
-	return accesssvc.Subject{Type: accesssvc.SubjectType(subject.Type), ID: subject.Id}
+func batchSemantic(options *AccessEvaluationsOptions) accesssvc.Semantic {
+	if options == nil || options.EvaluationsSemantic == nil {
+		return accesssvc.ExecuteAll
+	}
+	return accesssvc.Semantic(*options.EvaluationsSemantic)
 }
 
-func toAccessResource(resource AccessResource) accesssvc.Resource {
-	result := accesssvc.Resource{
-		Type: accesssvc.ResourceType(resource.Type),
-		ID:   functional.FromPtr(resource.Id).OrElse(""),
+func itemDecision(item accesssvc.ItemDecision) AccessItemDecision {
+	if item.Allowed {
+		return AccessItemDecision{Decision: true}
 	}
-	if resource.Properties != nil {
-		result.OrganizationID = functional.FromPtr(resource.Properties.OrganizationId).OrElse("")
-	}
-	return result
+	return AccessItemDecision{Context: &AccessDecisionContext{Reason: denyReason(item.Reason)}}
 }
 
-func toAccessDecisionContext(decision accesssvc.Decision) AccessDecisionContext {
-	result := AccessDecisionContext{}
-	if decision.Reason != "" {
-		reason := AccessDenyReason(decision.Reason)
-		result.Reason = &reason
-	}
+// decisionContext carries the deny reason and, when the subject reached the
+// organization, who it resolved to and what it holds.
+func decisionContext(decision accesssvc.Decision) AccessDecisionContext {
+	result := AccessDecisionContext{Reason: denyReason(decision.Reason)}
 	if len(decision.MissingPermissions) > 0 {
 		result.MissingPermissions = &decision.MissingPermissions
 	}
@@ -128,24 +112,27 @@ func toAccessDecisionContext(decision accesssvc.Decision) AccessDecisionContext 
 	if identity == nil {
 		return result
 	}
-	result.Organization = &AccessIdentityRef{Id: identity.OrganizationID, Name: optionalName(identity.OrganizationName)}
 	permissions := append([]string{}, identity.Permissions...)
 	result.Permissions = &permissions
-	if identity.RoleID != "" {
-		result.Role = &AccessIdentityRef{Id: identity.RoleID, Name: optionalName(identity.RoleName)}
-	}
-	if identity.ProductUserID != "" {
-		result.ProductUser = &AccessIdentityRef{
-			Id:   identity.ProductUserID,
-			Name: optionalName(identity.ProductUserName),
-		}
-	}
-	if identity.APIKeyID != "" {
-		result.ApiKey = &AccessIdentityRef{Id: identity.APIKeyID}
-	}
+	result.Organization = identityRef(identity.OrganizationID, identity.OrganizationName)
+	result.Role = identityRef(identity.RoleID, identity.RoleName)
+	result.ProductUser = identityRef(identity.ProductUserID, identity.ProductUserName)
+	result.ApiKey = identityRef(identity.APIKeyID, "")
 	return result
 }
 
-func optionalName(name string) *string {
-	return functional.OptionOf(name, name != "").ToPtr()
+func denyReason(reason accesssvc.DenyReason) *AccessDenyReason {
+	if reason == "" {
+		return nil
+	}
+	wire := AccessDenyReason(reason)
+	return &wire
+}
+
+// identityRef is nil for an absent identity, so the field is left out.
+func identityRef(id, name string) *AccessIdentityRef {
+	if id == "" {
+		return nil
+	}
+	return &AccessIdentityRef{Id: id, Name: functional.OptionOf(name, name != "").ToPtr()}
 }

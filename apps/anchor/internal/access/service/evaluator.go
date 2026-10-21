@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"slices"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
@@ -19,7 +18,7 @@ import (
 // It reads Postgres on every call and caches nothing, so a membership, role,
 // workspace or API key write applies to the next evaluation without eviction.
 type Evaluator interface {
-	Evaluate(ctx context.Context, input EvaluateInput) (Decision, error)
+	Evaluate(ctx context.Context, request Request) (Decision, error)
 }
 
 type evaluator struct {
@@ -49,107 +48,51 @@ func NewEvaluator(
 	}
 }
 
-func (e *evaluator) Evaluate(ctx context.Context, input EvaluateInput) (Decision, error) {
-	if err := validate.ValidateStruct(input); err != nil {
+// Evaluate walks the subject toward the resource, organization first, then the
+// workspace, and decides the actions with whatever identity it reached.
+func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, error) {
+	if err := validate.ValidateStruct(request); err != nil {
 		return Decision{}, err
 	}
-	if err := validateResource(input.Subject, input.Resource); err != nil {
+	if err := request.checkResource(); err != nil {
 		return Decision{}, err
 	}
-
-	identity, reason, err := e.resolve(ctx, input)
+	subject, err := e.reachOrganization(ctx, request)
 	if err != nil {
 		return Decision{}, err
 	}
-	if reason != "" {
-		return denyAll(input.Actions, reason), nil
+	if subject, err = e.reachWorkspace(ctx, request, subject); err != nil {
+		return Decision{}, err
 	}
-	return decide(input.Actions, input.Semantic, identity), nil
+	return subject.decide(request.Actions, request.Semantic), nil
 }
 
-func validateResource(subject Subject, resource Resource) error {
-	if resource.Type == ResourceWorkspace && resource.ID == "" {
-		return fault.BadRequest("INVALID_ACCESS_RESOURCE", "A workspace resource needs an id.")
+func (e *evaluator) reachOrganization(ctx context.Context, request Request) (reach, error) {
+	if request.Subject.Type == SubjectOrganizationAPIKey {
+		return e.reachAsAPIKey(ctx, request)
 	}
-	if subject.Type == SubjectUser && resourceOrganization(resource) == "" {
-		return fault.BadRequest(
-			"INVALID_ACCESS_RESOURCE",
-			"A user subject needs the organization: the organization id, or properties.organization_id for a workspace.",
-		)
-	}
-	return nil
+	return e.reachAsUser(ctx, request)
 }
 
-// resourceOrganization is the organization the request names, or "" when it names none.
-func resourceOrganization(resource Resource) string {
-	if resource.Type == ResourceOrganization {
-		return resource.ID
-	}
-	return resource.OrganizationID
-}
-
-// resolve returns the subject's identity in the requested organization, or the
-// reason the subject cannot reach the resource at all.
-func (e *evaluator) resolve(ctx context.Context, input EvaluateInput) (*Identity, DenyReason, error) {
-	var identity *Identity
-	var reason DenyReason
-	var err error
-	if input.Subject.Type == SubjectUser {
-		identity, reason, err = e.resolveUser(
-			ctx,
-			input.ProductID,
-			input.Subject.ID,
-			resourceOrganization(input.Resource),
-		)
-	} else {
-		identity, reason, err = e.resolveAPIKey(
-			ctx,
-			input.ProductID,
-			input.Subject.ID,
-			resourceOrganization(input.Resource),
-		)
-	}
-	if err != nil || reason != "" {
-		return nil, reason, err
-	}
-	if input.Resource.Type == ResourceWorkspace {
-		found, findErr := e.workspaces.FindByID(ctx, input.ProductID, identity.OrganizationID, input.Resource.ID)
-		if findErr != nil {
-			e.logger.Error().
-				Err(findErr).
-				Str("product_id", input.ProductID).
-				Msg("access evaluation: workspace lookup failed")
-			return nil, "", fault.ErrUnexpected
-		}
-		if found.IsAbsent() {
-			return nil, ReasonWorkspaceNotInOrganization, nil
-		}
-	}
-	return identity, "", nil
-}
-
-func (e *evaluator) resolveUser(
-	ctx context.Context, productID, externalID, organizationID string,
-) (*Identity, DenyReason, error) {
-	productUser, err := e.productUsers.FindByExternalID(ctx, productID, externalID)
+func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, error) {
+	found, err := e.productUsers.FindByExternalID(ctx, request.ProductID, request.Subject.ID)
 	if err != nil {
-		e.logger.Error().Err(err).Str("product_id", productID).Msg("access evaluation: product user lookup failed")
-		return nil, "", fault.ErrUnexpected
+		return reach{}, e.unexpected(err, request, "product user")
 	}
-	user, synced := productUser.Get()
+	user, synced := found.Get()
 	if !synced {
-		return nil, ReasonSubjectNotSynced, nil
+		return stoppedBy(ReasonSubjectNotSynced), nil
 	}
-	membership, err := e.memberships.FindByProductUserIDAndOrgID(ctx, productID, user.ID, organizationID, true)
+	membership, err := e.memberships.FindByProductUserIDAndOrgID(
+		ctx, request.ProductID, user.ID, request.Organization(), true)
 	if err != nil {
-		e.logger.Error().Err(err).Str("product_id", productID).Msg("access evaluation: membership lookup failed")
-		return nil, "", fault.ErrUnexpected
+		return reach{}, e.unexpected(err, request, "membership")
 	}
 	member, isMember := membership.Get()
 	if !isMember {
-		return e.absentMembershipReason(ctx, productID, organizationID)
+		return e.whyNotAMember(ctx, request)
 	}
-	return &Identity{
+	return reached(&Identity{
 		OrganizationID:   member.OrganizationID,
 		OrganizationName: member.OrganizationName,
 		RoleID:           member.RoleID,
@@ -157,85 +100,62 @@ func (e *evaluator) resolveUser(
 		ProductUserID:    user.ID,
 		ProductUserName:  user.Name,
 		Permissions:      member.RolePermissions,
-	}, "", nil
+	}), nil
 }
 
-// absentMembershipReason tells a missing organization from a missing membership;
-// it costs a query only on that deny path.
-func (e *evaluator) absentMembershipReason(
-	ctx context.Context,
-	productID, organizationID string,
-) (*Identity, DenyReason, error) {
-	organization, err := e.organizations.FindByID(ctx, productID, organizationID)
+// whyNotAMember tells a missing organization from a missing membership; it
+// costs a query only on that deny path.
+func (e *evaluator) whyNotAMember(ctx context.Context, request Request) (reach, error) {
+	organization, err := e.organizations.FindByID(ctx, request.ProductID, request.Organization())
 	if err != nil {
-		e.logger.Error().Err(err).Str("product_id", productID).Msg("access evaluation: organization lookup failed")
-		return nil, "", fault.ErrUnexpected
+		return reach{}, e.unexpected(err, request, "organization")
 	}
 	if organization.IsAbsent() {
-		return nil, ReasonOrganizationNotFound, nil
+		return stoppedBy(ReasonOrganizationNotFound), nil
 	}
-	return nil, ReasonNotAMember, nil
+	return stoppedBy(ReasonNotAMember), nil
 }
 
-func (e *evaluator) resolveAPIKey(
-	ctx context.Context, productID, rawKey, organizationID string,
-) (*Identity, DenyReason, error) {
-	result, err := e.apiKeys.IntrospectAPIKey(ctx, orgapikey.IntrospectOrganizationAPIKeyInput{
-		ProductID:   productID,
-		APIKeyValue: rawKey,
+func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, error) {
+	key, err := e.apiKeys.IntrospectAPIKey(ctx, orgapikey.IntrospectOrganizationAPIKeyInput{
+		ProductID:   request.ProductID,
+		APIKeyValue: request.Subject.ID,
 	})
-	if errors.Is(err, orgapikey.ErrOrganizationAPIKeyCredentialNotFound) || errors.Is(err, coresvc.ErrInvalidAPIKey) {
-		return nil, ReasonAPIKeyInvalid, nil
+	switch {
+	case errors.Is(err, orgapikey.ErrOrganizationAPIKeyCredentialNotFound), errors.Is(err, coresvc.ErrInvalidAPIKey):
+		return stoppedBy(ReasonAPIKeyInvalid), nil
+	case err != nil:
+		return reach{}, err
+	case key.Inactive:
+		return stoppedBy(ReasonAPIKeyInactive), nil
+	case request.Organization() != "" && request.Organization() != key.APIKey.OrganizationID:
+		return stoppedBy(ReasonNotAMember), nil
 	}
+	return reached(&Identity{
+		OrganizationID: key.APIKey.OrganizationID,
+		APIKeyID:       key.APIKey.ID,
+		Permissions:    key.Permissions,
+	}), nil
+}
+
+// reachWorkspace checks that a requested workspace belongs to the organization
+// the subject reached. Unknown and foreign workspaces stop the same way.
+func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, error) {
+	if request.Resource.Type != ResourceWorkspace || subject.stopped != "" {
+		return subject, nil
+	}
+	found, err := e.workspaces.FindByID(ctx, request.ProductID, subject.identity.OrganizationID, request.Resource.ID)
 	if err != nil {
-		return nil, "", err
+		return reach{}, e.unexpected(err, request, "workspace")
 	}
-	if result.Inactive {
-		return nil, ReasonAPIKeyInactive, nil
+	if found.IsAbsent() {
+		return stoppedBy(ReasonWorkspaceNotInOrganization), nil
 	}
-	if organizationID != "" && organizationID != result.APIKey.OrganizationID {
-		return nil, ReasonNotAMember, nil
-	}
-	return &Identity{
-		OrganizationID: result.APIKey.OrganizationID,
-		APIKeyID:       result.APIKey.ID,
-		Permissions:    result.Permissions,
-	}, "", nil
+	return subject, nil
 }
 
-func denyAll(actions []string, reason DenyReason) Decision {
-	items := make([]ItemDecision, len(actions))
-	for i := range items {
-		items[i] = ItemDecision{Reason: reason}
-	}
-	return Decision{Reason: reason, Items: items}
-}
-
-func decide(actions []string, semantic Semantic, identity *Identity) Decision {
-	decision := Decision{Allowed: true, Identity: identity, Items: make([]ItemDecision, len(actions))}
-	stopped := false
-	for i, action := range actions {
-		if stopped {
-			decision.Items[i] = ItemDecision{Reason: ReasonNotEvaluated}
-			decision.Allowed = false
-			continue
-		}
-		if slices.Contains(identity.Permissions, action) {
-			decision.Items[i] = ItemDecision{Allowed: true}
-			stopped = semantic == PermitOnFirstPermit
-			continue
-		}
-		decision.Items[i] = ItemDecision{Reason: ReasonMissingPermission}
-		decision.Allowed = false
-		decision.MissingPermissions = append(decision.MissingPermissions, action)
-		stopped = semantic == DenyOnFirstDeny
-	}
-	if !decision.Allowed {
-		decision.Reason = ReasonMissingPermission
-		if len(decision.MissingPermissions) == 0 {
-			// Only NOT_EVALUATED items denied: permit_on_first_permit skipped the rest.
-			decision.Reason = ReasonNotEvaluated
-		}
-	}
-	return decision
+func (e *evaluator) unexpected(err error, request Request, lookup string) error {
+	e.logger.Error().Err(err).Str("product_id", request.ProductID).Str("lookup", lookup).
+		Msg("access evaluation lookup failed")
+	return fault.ErrUnexpected
 }

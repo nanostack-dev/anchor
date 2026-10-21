@@ -41,27 +41,9 @@ const (
 	PermitOnFirstPermit Semantic = "permit_on_first_permit"
 )
 
-type Subject struct {
-	Type SubjectType `validate:"required,oneof=user organization_api_key"`
-	// ID is the external user ID or the raw API key. Never log it for a key.
-	ID string `validate:"required,notblank"`
-}
-
-type Resource struct {
-	Type ResourceType `validate:"required,oneof=organization workspace"`
-	// ID is the organization or workspace ID. Empty only for an organization
-	// resource with an API key subject, meaning the key's organization.
-	ID string
-	// OrganizationID is the workspace's organization; required for a user on a workspace.
-	OrganizationID string
-}
-
-type EvaluateInput struct {
-	ProductID string   `validate:"required,notblank"`
-	Subject   Subject  `validate:"required"`
-	Resource  Resource `validate:"required"`
-	Actions   []string `validate:"dive,required,notblank"`
-	Semantic  Semantic `validate:"omitempty,oneof=execute_all deny_on_first_deny permit_on_first_permit"`
+// stopsAfter reports whether the semantic skips the actions after this one.
+func (s Semantic) stopsAfter(item ItemDecision) bool {
+	return (s == DenyOnFirstDeny && !item.Allowed) || (s == PermitOnFirstPermit && item.Allowed)
 }
 
 // Identity is who the subject resolved to in the organization.

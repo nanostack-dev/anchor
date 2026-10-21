@@ -19,47 +19,46 @@ import (
 // accessWorld is one product with organization A (a member, a workspace, an API
 // key) and organization B (a workspace the member cannot reach).
 type accessWorld struct {
-	product     *itdsl.ProductContext
-	access      itdsl.AccessClient
-	permissions organizationAPIKeyResourcePermissions
-	orgA        ct.ProductOrganizationResponse
-	orgB        ct.ProductOrganizationResponse
-	workspaceA  string
-	workspaceB  string
-	role        *itdsl.ProductRole
-	externalID  string
-	userID      string
-	apiKey      string
-	apiKeyID    string
+	product    *itdsl.ProductContext
+	access     itdsl.AccessClient
+	read       string
+	update     string
+	remove     string
+	orgA       ct.ProductOrganizationResponse
+	orgB       ct.ProductOrganizationResponse
+	workspaceA string
+	workspaceB string
+	role       *itdsl.ProductRole
+	externalID string
+	userID     string
+	apiKey     string
+	apiKeyID   string
 }
 
 func newAccessWorld(t *testing.T) accessWorld {
 	t.Helper()
 	product := createTestProductContext(t)
 	permissions := givenOrganizationAPIKeyResourcePermissions(t, product)
-	world := accessWorld{
-		product:     product,
-		access:      product.Access(),
-		permissions: permissions,
-		orgA:        product.CreateOrganization(t, "Org-A-"+uuid.NewString(), nil),
-		orgB:        product.CreateOrganization(t, "Org-B-"+uuid.NewString(), nil),
+	w := accessWorld{
+		product: product,
+		access:  product.Access(),
+		read:    permissions.FileRead,
+		update:  permissions.FileUpdate,
+		remove:  permissions.FileDelete,
+		orgA:    product.CreateOrganization(t, "Org-A-"+uuid.NewString(), nil),
+		orgB:    product.CreateOrganization(t, "Org-B-"+uuid.NewString(), nil),
 	}
-	world.workspaceA = product.Workspaces(world.orgA.Id).
-		Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "A-" + uuid.NewString()}).
-		Id
-	world.workspaceB = product.Workspaces(world.orgB.Id).
-		Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "B-" + uuid.NewString()}).
-		Id
-	world.role = createDSLProductRoleWithPermissions(
-		t,
-		product,
-		"reader-"+uuid.NewString(),
-		nil,
-		[]string{permissions.FileRead},
-	)
-	world.userID, world.externalID = world.member(t, world.orgA.Id, world.role.ID)
-	world.apiKeyID, world.apiKey = world.organizationAPIKey(t, world.orgA.Id, permissions.FileRead)
-	return world
+	w.workspaceA = w.workspace(w.orgA.Id)
+	w.workspaceB = w.workspace(w.orgB.Id)
+	w.role = createDSLProductRoleWithPermissions(t, product, "reader-"+uuid.NewString(), nil, []string{w.read})
+	w.userID, w.externalID = w.member(t, w.orgA.Id, w.role.ID)
+	w.apiKeyID, w.apiKey = w.organizationAPIKey(t, w.orgA.Id, w.read)
+	return w
+}
+
+func (w accessWorld) workspace(organizationID string) string {
+	return w.product.Workspaces(organizationID).
+		Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + uuid.NewString()}).Id
 }
 
 // member creates a product user with an external ID and a membership.
@@ -83,27 +82,9 @@ func (w accessWorld) organizationAPIKey(t *testing.T, organizationID string, per
 	return resp.JSON201.Id, resp.JSON201.Value
 }
 
-func userOnWorkspace(
-	externalID, organizationID, workspaceID string,
-	actions ...string,
-) ct.EvaluateAccessBatchJSONRequestBody {
-	return ct.EvaluateAccessBatchJSONRequestBody{
-		Subject: ct.AccessSubject{Type: ct.User, Id: externalID},
-		Resource: ct.AccessResource{
-			Type:       ct.Workspace,
-			Id:         &workspaceID,
-			Properties: &ct.AccessResourceProperties{OrganizationId: &organizationID},
-		},
-		Evaluations: accessItems(actions...),
-	}
-}
-
-func accessItems(actions ...string) *[]ct.AccessEvaluationItem {
-	items := make([]ct.AccessEvaluationItem, 0, len(actions))
-	for _, action := range actions {
-		items = append(items, ct.AccessEvaluationItem{Action: &ct.AccessAction{Name: action}})
-	}
-	return &items
+// memberInWorkspaceA is the world's member asking about workspace A.
+func (w accessWorld) memberInWorkspaceA() itdsl.AccessQuestion {
+	return w.access.User(w.externalID).InWorkspace(w.orgA.Id, w.workspaceA)
 }
 
 func requireDenied(t *testing.T, response ct.AccessEvaluationsResponse, reason ct.AccessDenyReason) {
@@ -113,34 +94,31 @@ func requireDenied(t *testing.T, response ct.AccessEvaluationsResponse, reason c
 	assert.Equal(t, reason, *response.Context.Reason)
 }
 
+func requireStatus(t *testing.T, want, got int, body []byte) {
+	t.Helper()
+	assert.Equal(t, want, got, string(body))
+}
+
 func TestAccessEvaluation(t *testing.T) {
 	t.Parallel()
 	w := newAccessWorld(t)
-	read := w.permissions.FileRead
 
 	t.Run("A member with the permission is allowed on a workspace of the organization", func(t *testing.T) {
-		response := w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, read))
+		response := w.memberInWorkspaceA().Can(w.read).Decide()
 
 		assert.True(t, response.Decision)
 		require.Len(t, response.Evaluations, 1)
 		assert.True(t, response.Evaluations[0].Decision)
-		require.NotNil(t, response.Context.Organization)
+		assert.Nil(t, response.Context.Reason)
 		assert.Equal(t, w.orgA.Id, response.Context.Organization.Id)
 		assert.Equal(t, w.orgA.Name, *response.Context.Organization.Name)
-		require.NotNil(t, response.Context.Role)
 		assert.Equal(t, w.role.ID, response.Context.Role.Id)
-		require.NotNil(t, response.Context.ProductUser)
 		assert.Equal(t, w.userID, response.Context.ProductUser.Id)
-		assert.Equal(t, []string{read}, *response.Context.Permissions)
-		assert.Nil(t, response.Context.Reason)
+		assert.Equal(t, []string{w.read}, *response.Context.Permissions)
 	})
 
 	t.Run("An empty evaluation list asks only whether the member reaches the organization", func(t *testing.T) {
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
-			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-			Evaluations: accessItems(),
-		})
+		response := w.access.User(w.externalID).InOrganization(w.orgA.Id).Decide()
 
 		assert.True(t, response.Decision)
 		assert.Empty(t, response.Evaluations)
@@ -148,24 +126,17 @@ func TestAccessEvaluation(t *testing.T) {
 	})
 
 	t.Run("A missing permission is denied and named", func(t *testing.T) {
-		response := w.access.EvaluateBatch(
-			userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, read, w.permissions.FileDelete),
-		)
+		response := w.memberInWorkspaceA().Can(w.read, w.remove).Decide()
 
 		requireDenied(t, response, ct.MISSINGPERMISSION)
-		assert.Equal(t, []string{w.permissions.FileDelete}, *response.Context.MissingPermissions)
+		assert.Equal(t, []string{w.remove}, *response.Context.MissingPermissions)
 		require.Len(t, response.Evaluations, 2)
 		assert.True(t, response.Evaluations[0].Decision)
-		assert.False(t, response.Evaluations[1].Decision)
 		assert.Equal(t, ct.MISSINGPERMISSION, *response.Evaluations[1].Context.Reason)
 	})
 
 	t.Run("Deny on first deny leaves the remaining actions not evaluated", func(t *testing.T) {
-		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, w.permissions.FileDelete, read)
-		semantic := ct.DenyOnFirstDeny
-		body.Options = &ct.AccessEvaluationsOptions{EvaluationsSemantic: &semantic}
-
-		response := w.access.EvaluateBatch(body)
+		response := w.memberInWorkspaceA().Can(w.remove, w.read).DenyOnFirstDeny().Decide()
 
 		requireDenied(t, response, ct.MISSINGPERMISSION)
 		require.Len(t, response.Evaluations, 2)
@@ -175,89 +146,65 @@ func TestAccessEvaluation(t *testing.T) {
 
 	t.Run("A workspace of another organization and an unknown workspace are refused the same way", func(t *testing.T) {
 		for _, workspaceID := range []string{w.workspaceB, ids.MustNew("ws")} {
-			response := w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, workspaceID, read))
+			response := w.access.User(w.externalID).InWorkspace(w.orgA.Id, workspaceID).Can(w.read).Decide()
+
 			requireDenied(t, response, ct.WORKSPACENOTINORGANIZATION)
 			assert.Nil(t, response.Context.Organization, "a refusal before the permission check carries no identity")
 		}
 	})
 
 	t.Run("A user who is not a member of the organization is refused", func(t *testing.T) {
-		response := w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgB.Id, w.workspaceB, read))
+		response := w.access.User(w.externalID).InWorkspace(w.orgB.Id, w.workspaceB).Can(w.read).Decide()
 		requireDenied(t, response, ct.NOTAMEMBER)
 	})
 
 	t.Run("An unknown organization is refused as not found", func(t *testing.T) {
-		unknown := ids.MustNew("org")
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
-			Resource:    ct.AccessResource{Type: ct.Organization, Id: &unknown},
-			Evaluations: accessItems(read),
-		})
+		response := w.access.User(w.externalID).InOrganization(ids.MustNew("org")).Can(w.read).Decide()
 		requireDenied(t, response, ct.ORGANIZATIONNOTFOUND)
 	})
 
 	t.Run("An external ID with no product user yet is refused as not synced", func(t *testing.T) {
-		response := w.access.EvaluateBatch(userOnWorkspace("user_"+uuid.NewString(), w.orgA.Id, w.workspaceA, read))
+		response := w.access.User("user_"+uuid.NewString()).InWorkspace(w.orgA.Id, w.workspaceA).Can(w.read).Decide()
 		requireDenied(t, response, ct.SUBJECTNOTSYNCED)
 	})
 
 	t.Run("An organization API key is evaluated in its own organization", func(t *testing.T) {
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceA},
-			Evaluations: accessItems(read),
-		})
+		response := w.access.APIKey(w.apiKey).InWorkspace("", w.workspaceA).Can(w.read).Decide()
 
 		assert.True(t, response.Decision)
 		assert.Equal(t, w.orgA.Id, response.Context.Organization.Id)
-		require.NotNil(t, response.Context.ApiKey)
 		assert.Equal(t, w.apiKeyID, response.Context.ApiKey.Id)
 		assert.Nil(t, response.Context.ProductUser)
 	})
 
 	t.Run("An organization API key cannot reach another organization's workspace", func(t *testing.T) {
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceB},
-			Evaluations: accessItems(read),
-		})
+		response := w.access.APIKey(w.apiKey).InWorkspace("", w.workspaceB).Can(w.read).Decide()
 		requireDenied(t, response, ct.WORKSPACENOTINORGANIZATION)
 	})
 
 	t.Run("An organization API key naming another organization is not a member", func(t *testing.T) {
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgB.Id},
-			Evaluations: accessItems(read),
-		})
+		response := w.access.APIKey(w.apiKey).InOrganization(w.orgB.Id).Can(w.read).Decide()
 		requireDenied(t, response, ct.NOTAMEMBER)
 	})
 
 	t.Run("An unknown API key is refused as invalid", func(t *testing.T) {
-		response := w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: "not-a-key-" + uuid.NewString()},
-			Resource:    ct.AccessResource{Type: ct.Organization},
-			Evaluations: accessItems(read),
-		})
+		response := w.access.APIKey("not-a-key-" + uuid.NewString()).Can(w.read).Decide()
 		requireDenied(t, response, ct.APIKEYINVALID)
 	})
 
 	t.Run("The single evaluation endpoint decides one action", func(t *testing.T) {
-		response := w.access.Evaluate(ct.EvaluateAccessJSONRequestBody{
-			Subject:  ct.AccessSubject{Type: ct.User, Id: w.externalID},
-			Resource: ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-			Action:   ct.AccessAction{Name: w.permissions.FileDelete},
-		})
+		resp := w.access.User(w.externalID).InOrganization(w.orgA.Id).Can(w.remove).Single()
 
-		assert.False(t, response.Decision)
-		assert.Equal(t, ct.MISSINGPERMISSION, *response.Context.Reason)
-		assert.Equal(t, []string{w.permissions.FileDelete}, *response.Context.MissingPermissions)
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		assert.False(t, resp.JSON200.Decision)
+		assert.Equal(t, ct.MISSINGPERMISSION, *resp.JSON200.Context.Reason)
+		assert.Equal(t, []string{w.remove}, *resp.JSON200.Context.MissingPermissions)
 	})
 
 	t.Run("The SDK decides the same as the API", func(t *testing.T) {
 		decision, err := w.product.SDKClient().AccessForUser(w.externalID).
 			InWorkspace(w.orgA.Id, w.workspaceA).
-			Permissions(read).
+			Permissions(w.read).
 			Do(t.Context())
 
 		require.NoError(t, err)
@@ -266,19 +213,14 @@ func TestAccessEvaluation(t *testing.T) {
 	})
 
 	t.Run("A user subject without an organization is a bad request", func(t *testing.T) {
-		resp := w.access.EvaluateBatchRaw(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
-			Resource:    ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceA},
-			Evaluations: accessItems(read),
-		})
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		resp := w.access.User(w.externalID).InWorkspace("", w.workspaceA).Can(w.read).Send()
+		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 	})
 
 	t.Run("A product key without the read scopes cannot evaluate", func(t *testing.T) {
 		limited, _ := w.product.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
-		resp := w.product.AccessClientWith(limited).
-			EvaluateBatchRaw(userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, read))
-		assert.Equal(t, http.StatusForbidden, resp.StatusCode(), string(resp.Body))
+		resp := w.product.AccessClientWith(limited).User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Send()
+		requireStatus(t, http.StatusForbidden, resp.StatusCode(), resp.Body)
 	})
 }
 
@@ -286,69 +228,47 @@ func TestAccessEvaluation(t *testing.T) {
 // the next evaluation sees the write.
 func TestAccessEvaluationSeesWritesOnTheNextCall(t *testing.T) {
 	t.Parallel()
+	admin := func(w accessWorld) *ct.ClientWithResponses { return w.product.AllScopeAPIKeyClient() }
 
 	t.Run("A deleted workspace is refused on the next evaluation", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
-		workspaces := w.product.Workspaces(w.orgA.Id)
-		workspaceID := workspaces.Create(
-			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Temp-" + uuid.NewString()},
-		).Id
-		require.True(
-			t,
-			w.access.EvaluateBatch(
-				userOnWorkspace(w.externalID, w.orgA.Id, workspaceID, w.permissions.FileRead),
-			).Decision,
-		)
+		workspaceID := w.workspace(w.orgA.Id)
+		question := w.access.User(w.externalID).InWorkspace(w.orgA.Id, workspaceID).Can(w.read)
+		require.True(t, question.Decide().Decision)
 
-		workspaces.Delete(workspaceID)
+		w.product.Workspaces(w.orgA.Id).Delete(workspaceID)
 
-		requireDenied(
-			t,
-			w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, workspaceID, w.permissions.FileRead)),
-			ct.WORKSPACENOTINORGANIZATION,
-		)
+		requireDenied(t, question.Decide(), ct.WORKSPACENOTINORGANIZATION)
 	})
 
 	t.Run("A removed member is refused on the next evaluation", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
-		require.True(
-			t,
-			w.access.EvaluateBatch(
-				userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, w.permissions.FileRead),
-			).Decision,
-		)
+		question := w.memberInWorkspaceA().Can(w.read)
+		require.True(t, question.Decide().Decision)
 
-		resp, err := w.product.AllScopeAPIKeyClient().RemoveOrganizationMemberWithResponse(
-			context.Background(), w.product.ProductID, w.orgA.Id, w.userID)
+		resp, err := admin(
+			w,
+		).RemoveOrganizationMemberWithResponse(t.Context(), w.product.ProductID, w.orgA.Id, w.userID)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		requireStatus(t, http.StatusNoContent, resp.StatusCode(), resp.Body)
 
-		requireDenied(
-			t,
-			w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, w.permissions.FileRead)),
-			ct.NOTAMEMBER,
-		)
+		requireDenied(t, question.Decide(), ct.NOTAMEMBER)
 	})
 
 	t.Run("A permission added to the role applies on the next evaluation", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
-		update := w.permissions.FileUpdate
-		requireDenied(
-			t,
-			w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, update)),
-			ct.MISSINGPERMISSION,
-		)
+		question := w.memberInWorkspaceA().Can(w.update)
+		requireDenied(t, question.Decide(), ct.MISSINGPERMISSION)
 
-		resp, err := w.product.AllScopeAPIKeyClient().AssignPermissionToProductRoleWithResponse(
-			context.Background(),
-			w.product.ProductID, w.role.ID, ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: update})
+		resp, err := admin(w).AssignPermissionToProductRoleWithResponse(t.Context(), w.product.ProductID, w.role.ID,
+			ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: w.update})
 		require.NoError(t, err)
 		require.Less(t, resp.StatusCode(), 300, string(resp.Body))
 
-		assert.True(t, w.access.EvaluateBatch(userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, update)).Decision)
+		assert.True(t, question.Decide().Decision)
 	})
 
 	t.Run("A deactivated organization API key is refused as inactive", func(t *testing.T) {
@@ -356,60 +276,47 @@ func TestAccessEvaluationSeesWritesOnTheNextCall(t *testing.T) {
 		w := newAccessWorld(t)
 		inactive := ct.OrganizationAPIKeyStatusINACTIVE
 
-		resp, err := w.product.AllScopeAPIKeyClient().UpdateOrganizationAPIKeyWithResponse(
-			context.Background(), w.product.ProductID, w.orgA.Id, w.apiKeyID,
+		resp, err := admin(
+			w,
+		).UpdateOrganizationAPIKeyWithResponse(t.Context(), w.product.ProductID, w.orgA.Id, w.apiKeyID,
 			ct.UpdateOrganizationAPIKeyJSONRequestBody{Name: "Key-" + uuid.NewString(), Status: &inactive})
 		require.NoError(t, err)
 		require.Less(t, resp.StatusCode(), 300, string(resp.Body))
 
-		requireDenied(t, w.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Organization},
-			Evaluations: accessItems(w.permissions.FileRead),
-		}), ct.APIKEYINACTIVE)
+		requireDenied(t, w.access.APIKey(w.apiKey).Can(w.read).Decide(), ct.APIKEYINACTIVE)
 	})
 
 	t.Run("A deleted organization API key is refused on the next evaluation", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
-		body := ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Organization},
-			Evaluations: accessItems(w.permissions.FileRead),
-		}
-		require.True(t, w.access.EvaluateBatch(body).Decision)
+		question := w.access.APIKey(w.apiKey).Can(w.read)
+		require.True(t, question.Decide().Decision)
 
-		resp, err := w.product.AllScopeAPIKeyClient().DeleteOrganizationAPIKeyWithResponse(
-			context.Background(), w.product.ProductID, w.orgA.Id, w.apiKeyID)
+		resp, err := admin(
+			w,
+		).DeleteOrganizationAPIKeyWithResponse(t.Context(), w.product.ProductID, w.orgA.Id, w.apiKeyID)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		requireStatus(t, http.StatusNoContent, resp.StatusCode(), resp.Body)
 
-		requireDenied(t, w.access.EvaluateBatch(body), ct.APIKEYINVALID)
+		requireDenied(t, question.Decide(), ct.APIKEYINVALID)
 	})
 }
 
 func TestAccessEvaluationBatchFollowsAuthZENDefaults(t *testing.T) {
 	t.Parallel()
 	w := newAccessWorld(t)
-	read, deleteAction := w.permissions.FileRead, w.permissions.FileDelete
 
 	t.Run("A top-level action with no items is evaluated alone", func(t *testing.T) {
-		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
-		body.Evaluations = nil
-		body.Action = &ct.AccessAction{Name: deleteAction}
-
-		response := w.access.EvaluateBatch(body)
+		response := w.memberInWorkspaceA().Default(w.remove).Items().Decide()
 
 		requireDenied(t, response, ct.MISSINGPERMISSION)
-		assert.Equal(t, []string{deleteAction}, *response.Context.MissingPermissions)
+		assert.Equal(t, []string{w.remove}, *response.Context.MissingPermissions)
 	})
 
 	t.Run("A top-level action is the default for items without one", func(t *testing.T) {
-		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
-		body.Action = &ct.AccessAction{Name: deleteAction}
-		body.Evaluations = &[]ct.AccessEvaluationItem{{}, {Action: &ct.AccessAction{Name: read}}}
-
-		response := w.access.EvaluateBatch(body)
+		response := w.memberInWorkspaceA().Default(w.remove).
+			Items(ct.AccessEvaluationItem{}, ct.AccessEvaluationItem{Action: &ct.AccessAction{Name: w.read}}).
+			Decide()
 
 		require.Len(t, response.Evaluations, 2)
 		assert.False(t, response.Evaluations[0].Decision, "the default action is evaluated")
@@ -417,69 +324,48 @@ func TestAccessEvaluationBatchFollowsAuthZENDefaults(t *testing.T) {
 	})
 
 	t.Run("A per-item resource override is refused instead of ignored", func(t *testing.T) {
-		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
-		body.Evaluations = &[]ct.AccessEvaluationItem{{
-			Action:   &ct.AccessAction{Name: read},
+		resp := w.memberInWorkspaceA().Items(ct.AccessEvaluationItem{
+			Action:   &ct.AccessAction{Name: w.read},
 			Resource: &ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceB},
-		}}
+		}).Send()
 
-		resp := w.access.EvaluateBatchRaw(body)
-
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 	})
 
 	t.Run("A per-item subject override is refused instead of ignored", func(t *testing.T) {
-		body := userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA)
-		body.Evaluations = &[]ct.AccessEvaluationItem{{
-			Action:  &ct.AccessAction{Name: read},
+		resp := w.memberInWorkspaceA().Items(ct.AccessEvaluationItem{
+			Action:  &ct.AccessAction{Name: w.read},
 			Subject: &ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-		}}
+		}).Send()
 
-		resp := w.access.EvaluateBatchRaw(body)
-
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 	})
 }
 
 func TestAccessEvaluationRejectsMalformedRequests(t *testing.T) {
 	t.Parallel()
 	w := newAccessWorld(t)
-	read := w.permissions.FileRead
-	cases := map[string]ct.EvaluateAccessBatchJSONRequestBody{
-		"A blank subject id is a bad request":   userOnWorkspace("  ", w.orgA.Id, w.workspaceA, read),
-		"An empty action name is a bad request": userOnWorkspace(w.externalID, w.orgA.Id, w.workspaceA, ""),
-		"A workspace without an id is a bad request": {
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: w.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Workspace},
-			Evaluations: accessItems(read),
-		},
-		"An item with no action and no default is a bad request": {
-			Subject:     ct.AccessSubject{Type: ct.User, Id: w.externalID},
-			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-			Evaluations: &[]ct.AccessEvaluationItem{{}},
-		},
-		"An unknown subject type is a bad request": {
-			Subject:     ct.AccessSubject{Type: "service_account", Id: w.externalID},
-			Resource:    ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-			Evaluations: accessItems(read),
-		},
+	cases := map[string]itdsl.AccessQuestion{
+		"A blank subject id is a bad request": w.access.User("  ").
+			InWorkspace(w.orgA.Id, w.workspaceA).
+			Can(w.read),
+		"An empty action name is a bad request":      w.memberInWorkspaceA().Can(""),
+		"A workspace without an id is a bad request": w.access.APIKey(w.apiKey).InWorkspace("", "").Can(w.read),
+		"An item with no action and no default is a bad request": w.access.User(w.externalID).
+			InOrganization(w.orgA.Id).Items(ct.AccessEvaluationItem{}),
+		"An unknown subject type is a bad request": w.access.As("service_account", w.externalID).
+			InOrganization(w.orgA.Id).Can(w.read),
 	}
-	for name, body := range cases {
+	for name, question := range cases {
 		t.Run(name, func(t *testing.T) {
-			resp := w.access.EvaluateBatchRaw(body)
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+			resp := question.Send()
+			requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 		})
 	}
 
 	t.Run("The single evaluation refuses an empty action name", func(t *testing.T) {
-		resp, err := w.product.AccessClientWith(w.product.AllScopeAPIKeyClient()).
-			EvaluateRaw(ct.EvaluateAccessJSONRequestBody{
-				Subject:  ct.AccessSubject{Type: ct.User, Id: w.externalID},
-				Resource: ct.AccessResource{Type: ct.Organization, Id: &w.orgA.Id},
-				Action:   ct.AccessAction{Name: ""},
-			})
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		resp := w.access.User(w.externalID).InOrganization(w.orgA.Id).Can("").Single()
+		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 	})
 }
 
@@ -490,9 +376,10 @@ func TestAccessEvaluationForARoleWithoutPermissions(t *testing.T) {
 		w := newAccessWorld(t)
 		empty := createDSLProductRoleWithPermissions(t, w.product, "empty-"+uuid.NewString(), nil, []string{})
 		_, externalID := w.member(t, w.orgA.Id, empty.ID)
+		inWorkspace := w.access.User(externalID).InWorkspace(w.orgA.Id, w.workspaceA)
 
-		reach := w.access.EvaluateBatch(userOnWorkspace(externalID, w.orgA.Id, w.workspaceA))
-		action := w.access.EvaluateBatch(userOnWorkspace(externalID, w.orgA.Id, w.workspaceA, w.permissions.FileRead))
+		reach := inWorkspace.Decide()
+		action := inWorkspace.Can(w.read).Decide()
 
 		assert.True(t, reach.Decision)
 		assert.Empty(t, *reach.Context.Permissions)
@@ -515,27 +402,21 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 	createDSLMembership(t, second.product, secondUser.ID, second.orgA.Id, second.role.ID)
 
 	t.Run("The same external user ID resolves to each product's own user", func(t *testing.T) {
-		response := second.access.EvaluateBatch(
-			userOnWorkspace(sharedExternalID, second.orgA.Id, second.workspaceA, second.permissions.FileRead),
-		)
+		response := second.access.User(sharedExternalID).InWorkspace(second.orgA.Id, second.workspaceA).
+			Can(second.read).Decide()
 
 		assert.True(t, response.Decision)
 		assert.Equal(t, secondUser.ID, response.Context.ProductUser.Id)
 	})
 
 	t.Run("A product cannot evaluate another product's organization", func(t *testing.T) {
-		response := second.access.EvaluateBatch(
-			userOnWorkspace(sharedExternalID, first.orgA.Id, first.workspaceA, first.permissions.FileRead),
-		)
+		response := second.access.User(sharedExternalID).InWorkspace(first.orgA.Id, first.workspaceA).
+			Can(first.read).Decide()
 		requireDenied(t, response, ct.ORGANIZATIONNOTFOUND)
 	})
 
 	t.Run("A product cannot evaluate another product's API key", func(t *testing.T) {
-		response := second.access.EvaluateBatch(ct.EvaluateAccessBatchJSONRequestBody{
-			Subject:     ct.AccessSubject{Type: ct.OrganizationApiKey, Id: first.apiKey},
-			Resource:    ct.AccessResource{Type: ct.Organization},
-			Evaluations: accessItems(first.permissions.FileRead),
-		})
+		response := second.access.APIKey(first.apiKey).Can(first.read).Decide()
 		requireDenied(t, response, ct.APIKEYINVALID)
 	})
 }
