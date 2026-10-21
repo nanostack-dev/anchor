@@ -2,7 +2,7 @@ module anchor
 
 go 1.27
 
-toolchain go1.27.2
+toolchain go1.27.3
 
 require (
 	github.com/clerk/clerk-sdk-go/v2 v2.7.0
