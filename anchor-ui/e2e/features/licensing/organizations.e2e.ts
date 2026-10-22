@@ -45,7 +45,7 @@ test("organization license search distinguishes matched, customized and unlicens
 	).toHaveCount(0);
 	await page
 		.getByRole("link", {
-			name: `Open ${unlicensed.name}’s license`,
+			name: `View ${unlicensed.name}’s license`,
 			exact: true,
 		})
 		.click();
@@ -492,7 +492,7 @@ test("organization licenses name a tier listed after the first hundred templates
 	await captureReviewCheckpoint(page, testInfo, "organizations-tier-filtered");
 	await page
 		.getByRole("link", {
-			name: `Open ${customized.name}’s license`,
+			name: `View ${customized.name}’s license`,
 			exact: true,
 		})
 		.click();

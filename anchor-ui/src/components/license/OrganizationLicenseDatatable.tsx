@@ -319,7 +319,7 @@ export function OrganizationLicenseDatatable({
 						)}
 						icon={Eye}
 						variant="outline"
-						aria-label={`Open ${row.original.organization_name}’s license`}
+						aria-label={`View ${row.original.organization_name}’s license`}
 					>
 						View
 					</ButtonLink>
