@@ -68,6 +68,16 @@ func InvitationData(organizationID, invitationID string) Data {
 	}
 }
 
+// WorkspaceMembershipData is the payload of the workspace membership events.
+func WorkspaceMembershipData(organizationID, workspaceID, productUserID, roleID string) Data {
+	return Data{
+		FieldOrganizationID: organizationID,
+		FieldWorkspaceID:    workspaceID,
+		FieldProductUserID:  productUserID,
+		FieldRoleID:         roleID,
+	}
+}
+
 type Event struct {
 	Type      Type   `validate:"required"`
 	ProductID string `validate:"required,notblank"`

@@ -45,6 +45,7 @@ func TestCursorSearches(t *testing.T) {
 		"searchProductOrganizations":           organizationsCursorCase,
 		"searchOrganizationWorkspaces":         workspacesCursorCase,
 		"searchOrganizationMembers":            membersCursorCase,
+		"searchWorkspaceMembers":               workspaceMembersCursorCase,
 		"searchOrganizationInvitations":        organizationInvitationsCursorCase,
 		"searchProductOrganizationInvitations": productInvitationsCursorCase,
 		"searchOrganizationLicenses":           organizationLicensesCursorCase,
@@ -480,6 +481,33 @@ func membersCursorCase(t *testing.T) cursorCase {
 				ctx, product.ProductID, organization.Id, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchOrganizationMembersResponse) []byte { return r.Body })
+		},
+	}
+}
+
+func workspaceMembersCursorCase(t *testing.T) cursorCase {
+	w := newWorkspaceMemberWorld(t)
+	w.assignNewMembers(cursorFixtureRows)
+	execSQL(t, "UPDATE workspace_memberships SET created_at = $1 WHERE workspace_id = $2", tiedAt(), w.workspaceID)
+
+	client := w.product.AllScopeAPIKeyClient()
+	return cursorCase{
+		rows: orderedRows{
+			from:  "workspace_memberships m JOIN product_users u ON u.id = m.product_user_id",
+			where: "m.workspace_id = $1", args: []any{w.workspaceID}, idExpr: "m.product_user_id",
+			defaultField: "assigned_at", defaultDescending: true,
+			fields: []sortField{
+				{name: "assigned_at", expr: "m.created_at"},
+				{name: "email", expr: "u.email"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"product_user_ids": []string{"no-such-id"}}},
+		idField: "product_user_id",
+		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
+			response, err := client.SearchWorkspaceMembersWithBodyWithResponse(
+				ctx, w.product.ProductID, w.organizationID, w.workspaceID, "application/json", body,
+			)
+			return httpCall(response, err, func(r *ct.SearchWorkspaceMembersResponse) []byte { return r.Body })
 		},
 	}
 }

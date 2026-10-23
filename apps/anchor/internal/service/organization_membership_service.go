@@ -8,6 +8,7 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
+	workspacememberrepo "anchor/internal/workspacemember/repository"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -62,6 +63,7 @@ type organizationMembershipService struct {
 	productRoleRepo   repository.ProductRoleRepository
 	productUserRepo   repository.ProductUserRepository
 	organizationRepo  repository.OrganizationRepository
+	workspaceMembers  workspacememberrepo.Repository
 	transactor        transactor.Transactor
 	events            events.Emitter
 	logger            zerolog.Logger
@@ -72,6 +74,7 @@ func NewOrganizationMembershipService(
 	productRoleRepo repository.ProductRoleRepository,
 	productUserRepo repository.ProductUserRepository,
 	organizationRepo repository.OrganizationRepository,
+	workspaceMembers workspacememberrepo.Repository,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -81,6 +84,7 @@ func NewOrganizationMembershipService(
 		productRoleRepo:   productRoleRepo,
 		productUserRepo:   productUserRepo,
 		organizationRepo:  organizationRepo,
+		workspaceMembers:  workspaceMembers,
 		transactor:        tx,
 		events:            eventEmitter,
 		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
@@ -292,6 +296,9 @@ func (s *organizationMembershipService) RemoveMember(
 		if delErr := s.orgMembershipRepo.Delete(txCtx, input.OrganizationID, input.ProductUserID); delErr != nil {
 			return delErr
 		}
+		if wsErr := s.removeWorkspaceRoles(txCtx, input); wsErr != nil {
+			return wsErr
+		}
 		return s.emitMembership(
 			txCtx, events.MembershipDeleted, input.ProductID, input.OrganizationID, input.ProductUserID,
 		)
@@ -310,6 +317,33 @@ func (s *organizationMembershipService) RemoveMember(
 		Str("product_user_id", input.ProductUserID).
 		Msg("member removed from organization")
 
+	return nil
+}
+
+// removeWorkspaceRoles deletes the roles the removed member held in the
+// workspaces of the organization. It runs after the membership delete, which
+// waits for any workspace role write that holds the membership row, so no role
+// is assigned to a member who is leaving.
+func (s *organizationMembershipService) removeWorkspaceRoles(
+	ctx context.Context, input organization.RemoveMemberInput,
+) error {
+	removed, err := s.workspaceMembers.DeleteByOrganizationAndProductUser(
+		ctx, input.ProductID, input.OrganizationID, input.ProductUserID,
+	)
+	if err != nil {
+		return err
+	}
+	for _, role := range removed {
+		if emitErr := s.events.Emit(ctx, events.Event{
+			Type:      events.WorkspaceMembershipDeleted,
+			ProductID: input.ProductID,
+			Data: events.WorkspaceMembershipData(
+				input.OrganizationID, role.WorkspaceID, role.ProductUserID, role.RoleID,
+			),
+		}); emitErr != nil {
+			return emitErr
+		}
+	}
 	return nil
 }
 

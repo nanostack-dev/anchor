@@ -29,6 +29,7 @@ import (
 	invitationrepository "anchor/internal/invitation/repository"
 	licenserepository "anchor/internal/license/repository"
 	"anchor/internal/repository"
+	workspacememberrepository "anchor/internal/workspacemember/repository"
 )
 
 // unknownSort asks for a sort field no search maps.
@@ -132,6 +133,12 @@ func TestSearchRepositoriesRefuseASortTheyDoNotMap(t *testing.T) {
 			_, err := repository.NewOrganizationMembershipRepository(nil, logger).SearchByOrgID(
 				ctx, "product", "organization",
 				unknownSort[organization.SearchMembersFilter, organization.SortFieldMember]())
+			return err
+		},
+		"searchWorkspaceMembers": func() error {
+			_, err := workspacememberrepository.NewRepository(nil, logger).Search(
+				ctx, "product", "organization", "workspace",
+				unknownSort[workspace.SearchMembersFilter, workspace.SortFieldMember]())
 			return err
 		},
 		"searchUserOrganizations": func() error {

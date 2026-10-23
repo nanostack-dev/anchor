@@ -22,7 +22,13 @@ type workspaceRoleWorld struct {
 func newWorkspaceRoleWorld(t *testing.T) workspaceRoleWorld {
 	t.Helper()
 	w := newAccessWorld(t)
-	editor := createDSLProductRoleWithPermissions(t, w.product, "editor-"+uuid.NewString(), nil, []string{w.read, w.update})
+	editor := createDSLProductRoleWithPermissions(
+		t,
+		w.product,
+		"editor-"+uuid.NewString(),
+		nil,
+		[]string{w.read, w.update},
+	)
 	return workspaceRoleWorld{accessWorld: w, editor: editor.ID, workspace2: w.workspace(w.orgA.Id)}
 }
 

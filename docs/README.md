@@ -20,6 +20,8 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 
 - [api key permission cache](api-key-permission-cache.md)
 - [Access evaluation](technical/access-evaluation.md): the AuthZEN-shaped call a product makes to decide one request, its reasons and freshness
+- [Authorization with OpenFGA](technical/authorization-openfga.md): the in-process OpenFGA store each decision reads, its model, tuples and how writes reach it
+- [Workspace members](technical/workspace-members.md): the roles organization members hold in a workspace, their rules, events and removal
 - [Cursor-paginated searches](technical/cursor-pagination.md): the cursor contract, every search with its order, keys and index, the deprecated lists and the tests
 - [Clerk reconcile scheduler](technical/clerk-reconcile-scheduler.md): one self-rescheduling chain, duplicate collapse and the per-instance lock
 - [api key prefix config](api-key-prefix-config.md)

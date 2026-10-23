@@ -29,6 +29,7 @@ Each ordering ends with the tiebreak, and the tiebreak follows the direction of 
 | `searchProductOrganizations` | `created_at` ASC | `id` | name, created_at, updated_at | `(product_id, created_at, id)` |
 | `searchOrganizationWorkspaces` | `created_at` ASC | `id` | name, created_at, updated_at | `(organization_id, created_at, id)` |
 | `searchOrganizationMembers` | `joined_at` DESC | `product_user_id` (composite key, organization fixed) | joined_at, email | `(organization_id, created_at, product_user_id)` |
+| `searchWorkspaceMembers` | `assigned_at` DESC | `product_user_id` (composite key, workspace fixed) | assigned_at, email | none: the `(workspace_id, product_user_id)` primary key finds the workspace's members and the page sorts them |
 | `searchOrganizationInvitations`, `searchProductOrganizationInvitations` | `created_at` ASC | `id` | created_at, email, expires_at | `(organization_id, created_at, id)`, `(product_id, created_at, id)` |
 | `searchOrganizationLicenses` | `organization_name` ASC | `organizations.id` | organization_name, instantiated_at (nullable through the left join, NULLs last in both directions) | none for a name order: the scope index finds the product's organizations and the page sorts them |
 | `searchIntegrationAuditLogs` | `created_at` DESC | `id` | created_at, action, severity | `(integration_instance_id, created_at, id)` |

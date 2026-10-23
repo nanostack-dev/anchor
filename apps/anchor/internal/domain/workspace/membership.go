@@ -23,3 +23,10 @@ const (
 	SortFieldMemberAssignedAt SortFieldMember = "assigned_at"
 	SortFieldMemberEmail      SortFieldMember = "email"
 )
+
+// RemovedMembership identifies a workspace role a delete removed.
+type RemovedMembership struct {
+	WorkspaceID   string
+	ProductUserID string
+	RoleID        string
+}
