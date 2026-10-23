@@ -17,9 +17,10 @@ type authzStoresTable struct {
 	postgres.Table
 
 	// Columns
-	ProductID postgres.ColumnString
-	StoreID   postgres.ColumnString
-	CreatedAt postgres.ColumnTimestampz
+	ProductID    postgres.ColumnString
+	StoreID      postgres.ColumnString
+	CreatedAt    postgres.ColumnTimestampz
+	ReconciledAt postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -61,21 +62,23 @@ func newAuthzStoresTable(schemaName, tableName, alias string) *AuthzStoresTable 
 
 func newAuthzStoresTableImpl(schemaName, tableName, alias string) authzStoresTable {
 	var (
-		ProductIDColumn = postgres.StringColumn("product_id")
-		StoreIDColumn   = postgres.StringColumn("store_id")
-		CreatedAtColumn = postgres.TimestampzColumn("created_at")
-		allColumns      = postgres.ColumnList{ProductIDColumn, StoreIDColumn, CreatedAtColumn}
-		mutableColumns  = postgres.ColumnList{StoreIDColumn, CreatedAtColumn}
-		defaultColumns  = postgres.ColumnList{CreatedAtColumn}
+		ProductIDColumn    = postgres.StringColumn("product_id")
+		StoreIDColumn      = postgres.StringColumn("store_id")
+		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
+		ReconciledAtColumn = postgres.TimestampzColumn("reconciled_at")
+		allColumns         = postgres.ColumnList{ProductIDColumn, StoreIDColumn, CreatedAtColumn, ReconciledAtColumn}
+		mutableColumns     = postgres.ColumnList{StoreIDColumn, CreatedAtColumn, ReconciledAtColumn}
+		defaultColumns     = postgres.ColumnList{CreatedAtColumn, ReconciledAtColumn}
 	)
 
 	return authzStoresTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ProductID: ProductIDColumn,
-		StoreID:   StoreIDColumn,
-		CreatedAt: CreatedAtColumn,
+		ProductID:    ProductIDColumn,
+		StoreID:      StoreIDColumn,
+		CreatedAt:    CreatedAtColumn,
+		ReconciledAt: ReconciledAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

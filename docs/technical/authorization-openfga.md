@@ -54,19 +54,34 @@ A role or permission the catalog no longer defines produces no tuple.
 
 1. A write emits its product event inside its transaction (an existing rule). The
    `Marker` observer upserts `authz_sync_marks (product_id, organization_id)` and bumps
-   its `revision`. `organization_id` is `''` for role, permission and product user events.
-2. `Authorizer.Resolve` calls `Syncer.Fresh`, which reads the marks for that organization
-   and the product. With none, it reads from the store directly.
-3. Otherwise it takes `pg_advisory_xact_lock('authz-sync:<product>')`, re-reads the marks,
-   rebuilds the model if the catalog changed, diffs each named organization (all of them
-   for a product-wide mark or a new store), applies deletes then writes (idempotent:
-   `on_missing`/`on_duplicate` ignore), and deletes each mark only if its revision is
-   unchanged. A write that lands during a sync keeps its mark.
-4. The `Sweeper` does the same every 5 seconds for the oldest marks, and on start creates
-   and fills the store of every product without one.
+   its `revision`. The scope is the organization the event names, or one of two product
+   scopes:
+   - `#model` for a role or permission change: only the model is rebuilt, because tuples
+     name roles, not permissions.
+   - `#product` for a deleted role, permission or product user: tuples may linger in
+     organizations no event named. They grant nothing (the model or the cascade already
+     removed what they meant), so only the sweeper replays this scope.
+2. `Authorizer.Resolve` asks `Syncer` for a view. With no mark for the organization or
+   the model, and the store's latest model equal to the one built from the current
+   catalog, it reads the store directly.
+3. Otherwise it tries `pg_try_advisory_xact_lock('authz-sync:<product>')`. When another
+   sync holds it, the decision waits outside any transaction (10 to 200 ms backoff) and
+   looks again, so waiters hold no pooled connection. Under the lock it re-reads the
+   marks, rebuilds the model if the catalog changed (models are written only here, so an
+   older catalog can never become the latest), diffs each named organization, applies
+   deletes then writes (idempotent: `on_missing`/`on_duplicate` ignore), and deletes each
+   mark only if its revision is unchanged and no write holds it (`FOR UPDATE SKIP LOCKED`).
+4. A sync runs detached from the request (`context.WithoutCancel`, 30 s bound), so a
+   client that hangs up does not roll back work the next caller would redo. A new store
+   is recorded in `authz_stores` in its own transaction; a store left by a sync that
+   failed before recording it is found by name and adopted.
+5. The `Sweeper`, every 5 seconds on each replica: fills the store of products that have
+   none, replays the oldest marks (product scope included), and rewrites in full the one
+   product whose `reconciled_at` is older than 15 minutes. The full rewrite repairs drift
+   from writes that left no mark, such as a SQL data fix or an API key that expired.
 
-Each replica caches a product's catalog against the store's latest model ID, so a model
-written by another replica invalidates it.
+A decision checks every catalog permission in batches of 50, OpenFGA's limit. Role names
+in the decision come from Postgres, so a rename shows on the next call on every replica.
 
 ## Inspecting a store
 
@@ -80,6 +95,14 @@ WHERE store = (SELECT store_id FROM authz_stores WHERE product_id = '<product_id
 
 ## Limits and follow-ups
 
-- A product-wide mark resyncs every organization of the product under one lock.
+- **Model size grows as roles × permissions.** Each permission relation lists the roles
+  that grant it, on two types. With every role granting every permission, about 60 roles
+  × 35 permissions reaches OpenFGA's 256 KB model limit, and every role edit writes a new
+  model version that is never deleted. The alternative is to store role grants as tuples
+  (OpenFGA's custom-roles pattern), which keeps the model constant but needs a per-scope
+  permission object, so a grant change writes tuples in every organization using the role.
+- **Decision cost.** A decision checks every catalog permission so it can report them all;
+  with tens of permissions and roles that is hundreds of datastore reads. Checking only the
+  requested actions, and computing the reported list another way, would cut it.
 - Deleting a product leaves its OpenFGA store behind (`authz_stores` cascades, the store does not).
 - Resource-level sharing, folders and teams need model types the catalog does not describe yet.

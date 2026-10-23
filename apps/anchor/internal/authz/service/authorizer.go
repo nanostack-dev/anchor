@@ -34,8 +34,9 @@ type Access struct {
 	// WorkspaceInOrganization is false when a workspace resource is unknown or
 	// belongs to another organization; it is true for an organization resource.
 	WorkspaceInOrganization bool
-	OrganizationRole        functional.Option[model.Role]
-	WorkspaceRole           functional.Option[model.Role]
+	// The role IDs the subject holds; a product user holds at most one of each.
+	OrganizationRoleID functional.Option[string]
+	WorkspaceRoleID    functional.Option[string]
 	// Permissions are every permission held on the resource, sorted.
 	Permissions []string
 }
@@ -101,28 +102,25 @@ func (q Question) Resolve(ctx context.Context) (Access, error) {
 	organization := model.Organization(q.organizationID)
 	access := Access{WorkspaceInOrganization: q.workspaceID == ""}
 
-	if access.OrganizationExists, err = q.has(ctx, current, organization, model.RelationProduct,
-		model.Product(q.product.productID)); err != nil || !access.OrganizationExists {
+	access.OrganizationExists, err = q.has(ctx, current, organization,
+		model.RelationProduct, model.Product(q.product.productID))
+	if err != nil || !access.OrganizationExists {
 		return access, err
 	}
-	if access.IsMember, access.OrganizationRole, err = q.membership(
-		ctx,
-		current,
-		organization,
-	); err != nil ||
-		!access.IsMember {
+	access.IsMember, access.OrganizationRoleID, err = q.membership(ctx, current, organization)
+	if err != nil || !access.IsMember {
 		return access, err
 	}
 
 	resource := organization
 	if q.workspaceID != "" {
 		resource = model.Workspace(q.workspaceID)
-		if access.WorkspaceInOrganization, err = q.has(ctx, current, resource, model.RelationOrganization,
-			organization); err != nil || !access.WorkspaceInOrganization {
+		access.WorkspaceInOrganization, err = q.has(ctx, current, resource, model.RelationOrganization, organization)
+		if err != nil || !access.WorkspaceInOrganization {
 			return access, err
 		}
 		if !q.isKey {
-			if access.WorkspaceRole, err = q.role(ctx, current, resource); err != nil {
+			if access.WorkspaceRoleID, err = q.role(ctx, current, resource); err != nil {
 				return access, err
 			}
 		}
@@ -137,33 +135,40 @@ func (q Question) Resolve(ctx context.Context) (Access, error) {
 // of its own organization by construction.
 func (q Question) membership(
 	ctx context.Context, current view, organization string,
-) (bool, functional.Option[model.Role], error) {
+) (bool, functional.Option[string], error) {
 	if q.isKey {
-		return true, functional.None[model.Role](), nil
+		return true, functional.None[string](), nil
 	}
 	tuples, err := current.store.read(ctx, &openfgav1.ReadRequestTupleKey{Object: organization, User: q.subject})
 	if err != nil {
-		return false, functional.None[model.Role](), err
+		return false, functional.None[string](), err
 	}
 	isMember := slices.ContainsFunc(tuples, func(t model.Tuple) bool { return t.Relation == model.RelationMember })
 	return isMember, roleIn(current.catalog, tuples), nil
 }
 
-func (q Question) role(ctx context.Context, current view, object string) (functional.Option[model.Role], error) {
+func (q Question) role(ctx context.Context, current view, object string) (functional.Option[string], error) {
 	tuples, err := current.store.read(ctx, &openfgav1.ReadRequestTupleKey{Object: object, User: q.subject})
 	if err != nil {
-		return functional.None[model.Role](), err
+		return functional.None[string](), err
 	}
 	return roleIn(current.catalog, tuples), nil
 }
 
-func roleIn(catalog model.Catalog, tuples []model.Tuple) functional.Option[model.Role] {
+// roleIn returns the role the tuples assign. Postgres allows one role per
+// member and scope, so at most one tuple names a role the catalog defines; the
+// lowest ID wins should a stale one linger until the next sync.
+func roleIn(catalog model.Catalog, tuples []model.Tuple) functional.Option[string] {
+	var roleIDs []string
 	for _, tuple := range tuples {
-		if role, ok := catalog.RoleByRelation(tuple.Relation); ok {
-			return functional.Some(role)
+		if role, ok := catalog.RoleAssignedBy(tuple.Relation).Get(); ok {
+			roleIDs = append(roleIDs, role.ID)
 		}
 	}
-	return functional.None[model.Role]()
+	if len(roleIDs) == 0 {
+		return functional.None[string]()
+	}
+	return functional.Some(slices.Min(roleIDs))
 }
 
 func (q Question) has(ctx context.Context, current view, object, relation, user string) (bool, error) {

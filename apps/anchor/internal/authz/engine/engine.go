@@ -7,6 +7,7 @@ package engine
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 
 	frameworkconfig "github.com/nanostack-dev/nanostack-framework/modules/config"
 	frameworkpostgres "github.com/nanostack-dev/nanostack-framework/modules/postgres"
+	"github.com/nanostack-dev/pgkit/pglock"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/openfga/openfga/pkg/server"
 	"github.com/openfga/openfga/pkg/storage/migrate"
@@ -29,6 +31,7 @@ const (
 	datastoreEngine  = "postgres"
 	migrationTimeout = time.Minute
 	pingTimeout      = 10 * time.Second
+	migrationLockKey = "openfga-migrations"
 	maxOpenConns     = 10
 	maxIdleConns     = 5
 	connMaxIdleTime  = 5 * time.Minute
@@ -43,6 +46,7 @@ type Params struct {
 	fx.In
 	Lifecycle fx.Lifecycle
 	Loader    frameworkconfig.Loader
+	DB        *sql.DB
 	Logger    zerolog.Logger
 }
 
@@ -56,12 +60,7 @@ func New(params Params) (Engine, error) {
 	}
 	uri := datastoreURI(pg)
 
-	if err := migrate.RunMigrations(migrate.MigrationConfig{
-		Engine:      datastoreEngine,
-		URI:         uri,
-		Timeout:     migrationTimeout,
-		PingTimeout: pingTimeout,
-	}); err != nil {
+	if err := migrateExclusively(params.DB, uri); err != nil {
 		return nil, fmt.Errorf("migrate openfga schema: %w", err)
 	}
 
@@ -92,6 +91,30 @@ func New(params Params) (Engine, error) {
 	}})
 	params.Logger.Info().Str("schema", schema).Msg("openfga started in-process")
 	return openfga, nil
+}
+
+// migrateExclusively runs OpenFGA's migrations while holding a session advisory
+// lock, because replicas start together and OpenFGA's migrator takes no lock
+// of its own.
+func migrateExclusively(db *sql.DB, uri string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), migrationTimeout)
+	defer cancel()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	key := pglock.KeyHash(migrationLockKey)
+	if _, lockErr := conn.ExecContext(ctx, "SELECT pg_advisory_lock($1)", key); lockErr != nil {
+		return fmt.Errorf("lock openfga migrations: %w", lockErr)
+	}
+	defer func() { _, _ = conn.ExecContext(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", key) }()
+	return migrate.RunMigrations(migrate.MigrationConfig{
+		Engine:      datastoreEngine,
+		URI:         uri,
+		Timeout:     migrationTimeout,
+		PingTimeout: pingTimeout,
+	})
 }
 
 // datastoreURI points OpenFGA at Anchor's database with its own schema first on

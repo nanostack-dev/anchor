@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"google.golang.org/protobuf/proto"
@@ -13,9 +14,10 @@ import (
 )
 
 const (
-	// OpenFGA's defaults for one Write call and one Read page.
+	// OpenFGA's defaults for one Write call, one Read page and one BatchCheck.
 	maxTuplesPerWrite = 100
 	readPageSize      = 100
+	maxChecksPerBatch = 50
 
 	onDuplicateIgnore = "ignore"
 	onMissingIgnore   = "ignore"
@@ -122,17 +124,27 @@ func (s store) ensureModel(ctx context.Context, built model.Model) (string, erro
 	return written.GetAuthorizationModelId(), nil
 }
 
-// holds asks which of the relations the user has on the object, in one call.
+// holds asks which of the relations the user has on the object, in as few
+// calls as OpenFGA's batch limit allows.
 func (s store) holds(ctx context.Context, modelID, user, object string, relations []string) (map[string]bool, error) {
 	held := make(map[string]bool, len(relations))
-	if len(relations) == 0 {
-		return held, nil
+	for start := 0; start < len(relations); start += maxChecksPerBatch {
+		batch := relations[start:min(start+maxChecksPerBatch, len(relations))]
+		if err := s.batchCheck(ctx, modelID, user, object, batch, held); err != nil {
+			return nil, err
+		}
 	}
+	return held, nil
+}
+
+func (s store) batchCheck(
+	ctx context.Context, modelID, user, object string, relations []string, held map[string]bool,
+) error {
 	checks := make([]*openfgav1.BatchCheckItem, len(relations))
 	for i, relation := range relations {
 		checks[i] = &openfgav1.BatchCheckItem{
 			TupleKey:      &openfgav1.CheckRequestTupleKey{User: user, Relation: relation, Object: object},
-			CorrelationId: fmt.Sprintf("c%d", i),
+			CorrelationId: strconv.Itoa(i),
 		}
 	}
 	response, err := s.engine.BatchCheck(ctx, &openfgav1.BatchCheckRequest{
@@ -141,16 +153,16 @@ func (s store) holds(ctx context.Context, modelID, user, object string, relation
 		Checks:               checks,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("batch check: %w", err)
+		return fmt.Errorf("batch check: %w", err)
 	}
 	for i, relation := range relations {
 		result := response.GetResult()[checks[i].GetCorrelationId()]
 		if result.GetError() != nil {
-			return nil, fmt.Errorf("check %s: %s", relation, result.GetError().GetMessage())
+			return fmt.Errorf("check %s: %s", relation, result.GetError().GetMessage())
 		}
 		held[relation] = result.GetAllowed()
 	}
-	return held, nil
+	return nil
 }
 
 func sameModel(a, b *openfgav1.AuthorizationModel) bool {

@@ -4,11 +4,16 @@
 CREATE SCHEMA IF NOT EXISTS openfga;
 
 -- One OpenFGA store per product. The store ID never changes once created.
+-- reconciled_at is when the store was last rewritten from Postgres in full; the
+-- sweeper repairs one overdue product at a time.
 CREATE TABLE authz_stores (
     product_id VARCHAR(255) PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
     store_id VARCHAR(64) NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reconciled_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX idx_authz_stores_reconciled_at ON authz_stores(reconciled_at);
 
 -- A row says the relationship store may lag Postgres for one organization, or
 -- for the whole product when organization_id is ''. Writes bump revision in the

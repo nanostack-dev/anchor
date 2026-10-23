@@ -10,6 +10,7 @@ import (
 	coresvc "anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 )
@@ -28,6 +29,7 @@ type Evaluator interface {
 type evaluator struct {
 	productUsers  repository.ProductUserRepository
 	organizations repository.OrganizationRepository
+	roles         repository.ProductRoleRepository
 	apiKeys       coresvc.OrganizationAPIKeyService
 	authorizer    *authz.Authorizer
 	logger        zerolog.Logger
@@ -36,6 +38,7 @@ type evaluator struct {
 func NewEvaluator(
 	productUsers repository.ProductUserRepository,
 	organizations repository.OrganizationRepository,
+	roles repository.ProductRoleRepository,
 	apiKeys coresvc.OrganizationAPIKeyService,
 	authorizer *authz.Authorizer,
 	logger zerolog.Logger,
@@ -43,6 +46,7 @@ func NewEvaluator(
 	return &evaluator{
 		productUsers:  productUsers,
 		organizations: organizations,
+		roles:         roles,
 		apiKeys:       apiKeys,
 		authorizer:    authorizer,
 		logger:        logger.With().Str("component", "access_evaluator").Logger(),
@@ -163,14 +167,35 @@ func (e *evaluator) reach(
 	if found, ok := organization.Get(); ok {
 		identity.OrganizationName = found.Name
 	}
-	if role, ok := access.OrganizationRole.Get(); ok {
-		identity.RoleID, identity.RoleName = role.ID, role.Name
+	if identity.RoleID, identity.RoleName, err = e.role(ctx, request, access.OrganizationRoleID); err != nil {
+		return reach{}, err
 	}
-	if role, ok := access.WorkspaceRole.Get(); ok {
-		identity.WorkspaceRoleID, identity.WorkspaceRoleName = role.ID, role.Name
+	if identity.WorkspaceRoleID, identity.WorkspaceRoleName, err = e.role(
+		ctx, request, access.WorkspaceRoleID,
+	); err != nil {
+		return reach{}, err
 	}
 	identity.Permissions = access.Permissions
 	return reached(identity), nil
+}
+
+// role names a role the store says the subject holds. Names are display data,
+// read from Postgres so a rename shows on the next call.
+func (e *evaluator) role(
+	ctx context.Context, request Request, roleID functional.Option[string],
+) (string, string, error) {
+	id, held := roleID.Get()
+	if !held {
+		return "", "", nil
+	}
+	found, err := e.roles.FindByProductIDAndRoleID(ctx, request.ProductID, id)
+	if err != nil {
+		return "", "", e.unexpected(err, request, "role")
+	}
+	if role, ok := found.Get(); ok {
+		return id, role.Name, nil
+	}
+	return id, "", nil
 }
 
 func (e *evaluator) unexpected(err error, request Request, lookup string) error {

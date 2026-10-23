@@ -33,4 +33,4 @@ Each carries `{organization_id, workspace_id, product_user_id, role_id}`:
 
 Deleting a workspace or a product user removes the rows by foreign key cascade and emits no workspace membership event. Deleting a role that a workspace role still names is refused as role in use.
 
-Access evaluation does not read workspace roles yet ([access evaluation](access-evaluation.md)).
+On a workspace, [access evaluation](access-evaluation.md) grants a member the permissions of their organization role and of their workspace role together, and reports the second as `context.workspace_role`.

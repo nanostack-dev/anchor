@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"anchor/internal/authz/repository"
 	"anchor/internal/events"
@@ -19,46 +20,43 @@ func NewMarker(repo repository.Repository) *Marker {
 }
 
 func (m *Marker) ObserveTx(ctx context.Context, event events.Event) error {
-	switch stalenessOf(event.Type) {
-	case staleProduct:
-		return m.repo.Mark(ctx, event.ProductID, repository.ProductWide)
-	case staleOrganization:
-		if organizationID := event.Data[events.FieldOrganizationID]; organizationID != "" {
-			return m.repo.Mark(ctx, event.ProductID, organizationID)
+	scopes, err := staleScopes(event)
+	if err != nil {
+		return err
+	}
+	for _, scope := range scopes {
+		if markErr := m.repo.Mark(ctx, event.ProductID, scope); markErr != nil {
+			return markErr
 		}
-		return nil
-	case staleNothing:
-		return nil
 	}
 	return nil
 }
 
-type staleness int
-
-const (
-	staleNothing staleness = iota
-	// staleOrganization: the tuples of the organization the event names change.
-	staleOrganization
-	// staleProduct: the model changes, or tuples in organizations the event does
-	// not name, as when a deleted product user loses every membership by cascade.
-	staleProduct
-)
-
-// stalenessOf lists every event type, so a new type fails the exhaustive lint
+// staleScopes lists every event type, so a new type fails the exhaustive lint
 // until someone decides whether it changes access.
-func stalenessOf(eventType events.Type) staleness {
-	switch eventType {
+func staleScopes(event events.Event) ([]string, error) {
+	switch event.Type {
 	case events.OrganizationCreated, events.OrganizationDeleted,
 		events.MembershipCreated, events.MembershipUpdated, events.MembershipDeleted,
 		events.WorkspaceCreated, events.WorkspaceDeleted,
 		events.WorkspaceMembershipCreated, events.WorkspaceMembershipUpdated, events.WorkspaceMembershipDeleted,
 		events.OrganizationAPIKeyCreated, events.OrganizationAPIKeyUpdated, events.OrganizationAPIKeyDeleted:
-		return staleOrganization
-	case events.ProductRoleCreated, events.ProductRoleUpdated, events.ProductRoleDeleted,
-		events.ProductResourcePermissionCreated, events.ProductResourcePermissionUpdated,
-		events.ProductResourcePermissionDeleted,
-		events.ProductUserDeleted:
-		return staleProduct
+		organizationID := event.Data[events.FieldOrganizationID]
+		if organizationID == "" {
+			return nil, fmt.Errorf("authz: %s event without %s", event.Type, events.FieldOrganizationID)
+		}
+		return []string{organizationID}, nil
+	case events.ProductRoleCreated, events.ProductRoleUpdated,
+		events.ProductResourcePermissionCreated, events.ProductResourcePermissionUpdated:
+		return []string{repository.ModelScope}, nil
+	case events.ProductRoleDeleted, events.ProductResourcePermissionDeleted:
+		// The new model drops the relation, so leftover tuples grant nothing;
+		// the product sweep removes them.
+		return []string{repository.ModelScope, repository.ProductScope}, nil
+	case events.ProductUserDeleted:
+		// Its memberships are gone by cascade, and evaluation refuses an unknown
+		// product user before it reads the store.
+		return []string{repository.ProductScope}, nil
 	case events.OrganizationUpdated, events.WorkspaceUpdated,
 		events.OrganizationInvitationCreated, events.OrganizationInvitationUpdated,
 		events.OrganizationInvitationDeleted, events.OrganizationInvitationAccepted,
@@ -68,7 +66,7 @@ func stalenessOf(eventType events.Type) staleness {
 		// Names, invitations and licenses hold no access. An accepted invitation
 		// adds its member through MembershipCreated; a Clerk delete also emits
 		// ProductUserDeleted.
-		return staleNothing
+		return nil, nil
 	}
-	return staleNothing
+	return nil, nil
 }

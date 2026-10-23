@@ -12,7 +12,8 @@ import (
 )
 
 type AuthzStores struct {
-	ProductID string `sql:"primary_key"`
-	StoreID   string
-	CreatedAt time.Time
+	ProductID    string `sql:"primary_key"`
+	StoreID      string
+	CreatedAt    time.Time
+	ReconciledAt time.Time
 }

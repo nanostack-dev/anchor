@@ -32,7 +32,7 @@ const (
 	permissionRelationPrefix = "can"
 	// Enough of a SHA-256 to keep two names apart once both are truncated or
 	// reduced to the same safe characters ("flows:read" and "flows_read").
-	relationHashLength = 8
+	relationHashLength = 12
 )
 
 // RoleRelation names the relation that assigns a product role, on an

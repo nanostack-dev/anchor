@@ -2,18 +2,21 @@
 // answers access questions from it.
 //
 // Postgres stays the source of truth. A write never calls OpenFGA: in its own
-// transaction it leaves a mark naming the organization it changed, or the whole
-// product for a role or permission change. The syncer replays marks, either
-// right before a decision that depends on them or from the background sweeper,
-// so a decision always sees every committed write.
+// transaction it leaves a mark naming the organization it changed, or a
+// product scope (see repository.ModelScope and repository.ProductScope). The
+// syncer replays marks, right before a decision that depends on them or from
+// the background sweeper, so a decision always sees every committed write.
 package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/pgkit/pglock"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/rs/zerolog"
@@ -21,6 +24,18 @@ import (
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/model"
 	"anchor/internal/authz/repository"
+)
+
+const (
+	// syncTimeout bounds one sync. It runs detached from the request, so a
+	// client that hangs up does not roll back work the next caller would redo.
+	syncTimeout = 30 * time.Second
+	// A decision that finds its product's sync busy waits outside any
+	// transaction, so waiters hold no pooled connection.
+	lockRetryMin = 10 * time.Millisecond
+	lockRetryMax = 200 * time.Millisecond
+	// lockRetryGrowth multiplies the wait after each busy attempt.
+	lockRetryGrowth = 2
 )
 
 // view is what a decision reads: a product's store, the model its tuples were
@@ -61,7 +76,8 @@ func newSyncer(openfga engine.Engine, repo repository.Repository, lock productLo
 
 // productLock runs fn while no other sync of the product runs, on any replica.
 type productLock interface {
-	Do(ctx context.Context, productID string, fn func(context.Context) error) error
+	// TryDo reports false, without running fn, when another sync holds the lock.
+	TryDo(ctx context.Context, productID string, fn func(context.Context) error) (bool, error)
 }
 
 // advisoryLock holds a Postgres transaction-scoped advisory lock for the
@@ -71,55 +87,124 @@ type advisoryLock struct {
 	tx transactor.Transactor
 }
 
-func (l advisoryLock) Do(ctx context.Context, productID string, fn func(context.Context) error) error {
-	return l.tx.InTx(ctx, func(txCtx context.Context) error {
-		if _, err := transactor.CurrentTx(txCtx).ExecContext(
-			txCtx, "SELECT pg_advisory_xact_lock($1)", pglock.KeyHash("authz-sync:"+productID),
-		); err != nil {
+var errLockBusy = errors.New("authz sync lock busy")
+
+func (l advisoryLock) TryDo(ctx context.Context, productID string, fn func(context.Context) error) (bool, error) {
+	err := l.tx.InTx(ctx, func(txCtx context.Context) error {
+		acquired, err := pglock.TryAdvisoryXactLock(txCtx, transactor.CurrentTx(txCtx), "authz-sync:"+productID)
+		if err != nil {
 			return fmt.Errorf("lock authz sync: %w", err)
+		}
+		if !acquired {
+			return errLockBusy
 		}
 		return fn(txCtx)
 	})
+	if errors.Is(err, errLockBusy) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // fresh returns a view of the product in which every committed write to the
 // organization, and to the product's catalog, is already applied.
 func (s *Syncer) fresh(ctx context.Context, productID, organizationID string) (view, error) {
-	marks, err := s.repo.PendingFor(ctx, productID, organizationID)
-	if err != nil {
-		return view{}, err
+	pending := func(txCtx context.Context) ([]repository.Mark, error) {
+		return s.repo.PendingFor(txCtx, productID, organizationID)
 	}
-	storeID, known, err := s.knownStore(ctx, productID)
-	if err != nil {
-		return view{}, err
+	backoff := lockRetryMin
+	for {
+		current, ready, err := s.readyView(ctx, productID, organizationID)
+		if err != nil || ready {
+			return current, err
+		}
+		current, synced, err := s.trySync(ctx, productID, pending, false)
+		if err != nil || synced {
+			return current, err
+		}
+		select {
+		case <-ctx.Done():
+			return view{}, ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff = min(lockRetryGrowth*backoff, lockRetryMax)
 	}
-	if len(marks) > 0 || !known {
-		return s.syncLocked(ctx, productID, func(txCtx context.Context) ([]repository.Mark, error) {
-			return s.repo.PendingFor(txCtx, productID, organizationID)
-		})
-	}
-	return s.currentView(ctx, productID, storeID)
 }
 
-// SyncProduct replays every pending mark of a product, and creates and fills
-// its store if it has none yet. The sweeper calls it.
+// readyView returns the view without syncing when nothing the decision depends
+// on is pending and the store's latest model matches the catalog.
+func (s *Syncer) readyView(ctx context.Context, productID, organizationID string) (view, bool, error) {
+	marks, err := s.repo.PendingFor(ctx, productID, organizationID)
+	if err != nil || len(marks) > 0 {
+		return view{}, false, err
+	}
+	storeID, err := s.knownStore(ctx, productID)
+	if err != nil || storeID.IsAbsent() {
+		return view{}, false, err
+	}
+	target := store{engine: s.engine, id: storeID.Value()}
+	latest, err := target.latestModel(ctx)
+	if err != nil || latest == nil {
+		return view{}, false, err
+	}
+	if cached, ok := s.cachedView(productID); ok && cached.modelID == latest.GetId() {
+		return cached, true, nil
+	}
+	// Another replica wrote the latest model. Adopt it only if it is the model
+	// of the catalog as it is now; otherwise sync under the lock, which is the
+	// only place models are written, so an older catalog can never win.
+	catalog, err := s.repo.Catalog(ctx, productID)
+	if err != nil {
+		return view{}, false, err
+	}
+	built, err := model.Build(catalog)
+	if err != nil || !sameModel(latest, built.Proto) {
+		return view{}, false, err
+	}
+	current := view{store: target, modelID: latest.GetId(), catalog: catalog}
+	s.remember(productID, current)
+	return current, true, nil
+}
+
+// SyncProduct replays every pending mark of a product, product scope included,
+// and creates and fills the store of a product that has none. It skips a
+// product another sync holds. The sweeper calls it.
 func (s *Syncer) SyncProduct(ctx context.Context, productID string) error {
-	_, err := s.syncLocked(ctx, productID, func(txCtx context.Context) ([]repository.Mark, error) {
+	_, _, err := s.trySync(ctx, productID, func(txCtx context.Context) ([]repository.Mark, error) {
 		return s.repo.PendingForProduct(txCtx, productID)
-	})
+	}, false)
 	return err
 }
 
-// syncLocked replays the marks pending reads under the product's lock, and
-// clears them with the lock's transaction. Two syncs of one product could
-// otherwise interleave, and the one that read Postgres first could overwrite
-// the newer one's tuples.
-func (s *Syncer) syncLocked(
-	ctx context.Context, productID string, pending func(context.Context) ([]repository.Mark, error),
-) (view, error) {
+// Reconcile rewrites every organization of a product from Postgres, whatever
+// the marks say, and records when. It repairs drift from writes that bypassed
+// the services, such as a data fix in SQL or an API key that expired.
+func (s *Syncer) Reconcile(ctx context.Context, productID string) error {
+	_, synced, err := s.trySync(ctx, productID, func(txCtx context.Context) ([]repository.Mark, error) {
+		return s.repo.PendingForProduct(txCtx, productID)
+	}, true)
+	if err != nil || !synced {
+		return err
+	}
+	return s.repo.Reconciled(ctx, productID)
+}
+
+// trySync replays the marks pending reads under the product's lock and clears
+// them with the lock's transaction. Two syncs of one product could otherwise
+// interleave, and the one that read Postgres first could overwrite the newer
+// one's tuples or model.
+func (s *Syncer) trySync(
+	ctx context.Context, productID string,
+	pending func(context.Context) ([]repository.Mark, error), wholeProduct bool,
+) (view, bool, error) {
+	work, cancel := context.WithTimeout(context.WithoutCancel(ctx), syncTimeout)
+	defer cancel()
+
 	var result view
-	err := s.lock.Do(ctx, productID, func(txCtx context.Context) error {
-		storeID, created, err := s.ensureStore(txCtx, productID)
+	acquired, err := s.lock.TryDo(work, productID, func(txCtx context.Context) error {
+		// The store is recorded outside the lock's transaction, so a sync that
+		// fails afterwards still leaves it known instead of orphaned.
+		storeID, created, err := s.ensureStore(work, productID)
 		if err != nil {
 			return err
 		}
@@ -127,7 +212,7 @@ func (s *Syncer) syncLocked(
 		if err != nil {
 			return err
 		}
-		if result, err = s.replay(txCtx, productID, storeID, created, marks); err != nil {
+		if result, err = s.replay(txCtx, productID, storeID, wholeProduct || created, marks); err != nil {
 			return err
 		}
 		for _, mark := range marks {
@@ -137,27 +222,31 @@ func (s *Syncer) syncLocked(
 		}
 		return nil
 	})
-	if err != nil {
-		return view{}, err
+	if err != nil || !acquired {
+		return view{}, false, err
 	}
 	s.remember(productID, result)
-	return result, nil
+	return result, true, nil
 }
 
-// replay brings the model up to date, then every organization a mark names, or
-// all of them when the store is new or a mark covers the whole product.
+// replay rebuilds the model, then every organization a mark names, or all of
+// them when asked or when a mark covers the whole product.
 func (s *Syncer) replay(
-	ctx context.Context, productID, storeID string, newStore bool, marks []repository.Mark,
+	ctx context.Context, productID, storeID string, wholeProduct bool, marks []repository.Mark,
 ) (view, error) {
 	current, err := s.syncModel(ctx, productID, storeID)
 	if err != nil {
 		return view{}, err
 	}
-	organizationIDs := make([]string, 0, len(marks))
-	wholeProduct := newStore
+	var organizationIDs []string
 	for _, mark := range marks {
-		wholeProduct = wholeProduct || mark.IsProductWide()
-		organizationIDs = append(organizationIDs, mark.OrganizationID)
+		switch {
+		case mark.IsProduct():
+			wholeProduct = true
+		case mark.IsModel():
+		default:
+			organizationIDs = append(organizationIDs, mark.OrganizationID)
+		}
 	}
 	if wholeProduct {
 		if organizationIDs, err = s.allOrganizations(ctx, current, productID); err != nil {
@@ -173,7 +262,7 @@ func (s *Syncer) replay(
 }
 
 // syncModel builds the product's model from its catalog and makes it the
-// store's latest.
+// store's latest. Only a sync holding the product's lock calls it.
 func (s *Syncer) syncModel(ctx context.Context, productID, storeID string) (view, error) {
 	catalog, err := s.repo.Catalog(ctx, productID)
 	if err != nil {
@@ -268,27 +357,11 @@ func (s *Syncer) allOrganizations(ctx context.Context, current view, productID s
 	return ids, nil
 }
 
-// currentView returns the cached view while its model is still the store's
-// latest. Another replica may have synced a catalog change meanwhile; a new
-// latest model is how this replica learns it.
-func (s *Syncer) currentView(ctx context.Context, productID, storeID string) (view, error) {
-	target := store{engine: s.engine, id: storeID}
-	latest, err := target.latestModel(ctx)
-	if err != nil {
-		return view{}, err
-	}
+func (s *Syncer) cachedView(productID string) (view, bool) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	cached, ok := s.views[productID]
-	s.mu.Unlock()
-	if ok && latest != nil && cached.modelID == latest.GetId() {
-		return cached, nil
-	}
-	current, err := s.syncModel(ctx, productID, storeID)
-	if err != nil {
-		return view{}, err
-	}
-	s.remember(productID, current)
-	return current, nil
+	return cached, ok
 }
 
 func (s *Syncer) remember(productID string, current view) {
@@ -298,22 +371,19 @@ func (s *Syncer) remember(productID string, current view) {
 	s.stores[productID] = current.store.id
 }
 
-func (s *Syncer) knownStore(ctx context.Context, productID string) (string, bool, error) {
+func (s *Syncer) knownStore(ctx context.Context, productID string) (functional.Option[string], error) {
 	s.mu.Lock()
 	storeID, ok := s.stores[productID]
 	s.mu.Unlock()
 	if ok {
-		return storeID, true, nil
+		return functional.Some(storeID), nil
 	}
-	found, err := s.repo.FindStoreID(ctx, productID)
-	if err != nil {
-		return "", false, err
-	}
-	return found.OrElse(""), found.IsPresent(), nil
+	return s.repo.FindStoreID(ctx, productID)
 }
 
 // ensureStore returns the product's store, creating it on first use. It runs
-// under the product's sync lock, so two replicas never create two stores.
+// under the product's lock, so two replicas never create two stores, and it
+// adopts a store left by an earlier attempt that never got recorded.
 func (s *Syncer) ensureStore(ctx context.Context, productID string) (string, bool, error) {
 	found, err := s.repo.FindStoreID(ctx, productID)
 	if err != nil {
@@ -322,14 +392,33 @@ func (s *Syncer) ensureStore(ctx context.Context, productID string) (string, boo
 	if found.IsPresent() {
 		return found.Value(), false, nil
 	}
-	created, err := s.engine.CreateStore(ctx, &openfgav1.CreateStoreRequest{Name: productID})
-	if err != nil {
-		return "", false, fmt.Errorf("create openfga store: %w", err)
-	}
-	storeID, err := s.repo.SaveStoreID(ctx, productID, created.GetId())
+	storeID, err := s.storeNamed(ctx, productID)
 	if err != nil {
 		return "", false, err
 	}
-	s.logger.Info().Str("product_id", productID).Str("store_id", storeID).Msg("created openfga store")
+	if storeID == "" {
+		created, createErr := s.engine.CreateStore(ctx, &openfgav1.CreateStoreRequest{Name: productID})
+		if createErr != nil {
+			return "", false, fmt.Errorf("create openfga store: %w", createErr)
+		}
+		storeID = created.GetId()
+	}
+	if storeID, err = s.repo.SaveStoreID(ctx, productID, storeID); err != nil {
+		return "", false, err
+	}
+	s.logger.Info().Str("product_id", productID).Str("store_id", storeID).Msg("recorded openfga store")
 	return storeID, true, nil
+}
+
+func (s *Syncer) storeNamed(ctx context.Context, productID string) (string, error) {
+	stores, err := s.engine.ListStores(ctx, &openfgav1.ListStoresRequest{Name: productID})
+	if err != nil {
+		return "", fmt.Errorf("list openfga stores: %w", err)
+	}
+	for _, candidate := range stores.GetStores() {
+		if candidate.GetName() == productID {
+			return candidate.GetId(), nil
+		}
+	}
+	return "", nil
 }

@@ -2,8 +2,11 @@ package model
 
 import (
 	"fmt"
+
 	"slices"
 	"strings"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/openfga/language/pkg/go/transformer"
@@ -18,7 +21,6 @@ type Catalog struct {
 
 type Role struct {
 	ID          string
-	Name        string
 	Permissions []string
 }
 
@@ -28,14 +30,14 @@ func (c Catalog) HasRole(roleID string) bool {
 	return slices.ContainsFunc(c.Roles, func(role Role) bool { return role.ID == roleID })
 }
 
-// RoleByRelation finds the role a relation assigns.
-func (c Catalog) RoleByRelation(relation string) (Role, bool) {
+// RoleAssignedBy finds the role a relation assigns.
+func (c Catalog) RoleAssignedBy(relation string) functional.Option[Role] {
 	for _, role := range c.Roles {
 		if RoleRelation(role.ID) == relation {
-			return role, true
+			return functional.Some(role)
 		}
 	}
-	return Role{}, false
+	return functional.None[Role]()
 }
 
 // HasPermission reports whether the catalog defines the permission.

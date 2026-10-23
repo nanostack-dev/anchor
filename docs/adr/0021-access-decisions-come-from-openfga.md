@@ -13,8 +13,8 @@ Zanzibar-style systems express all of them as relationship tuples and a model th
 Every access decision is read from an OpenFGA store, one per product, served by OpenFGA running in the Anchor process on Anchor's Postgres (schema `openfga`). Postgres stays the source of truth for organizations, members, workspaces, roles, permissions and API keys; the store mirrors them.
 
 - **Model per product.** Anchor builds each product's model from its catalog. A role is a relation assignable on an organization and on a workspace. A permission is a computed relation: on an organization it is held through a role that grants it or directly by an API key; on a workspace through a workspace role that grants it or through the organization. A member's permissions in a workspace are therefore their organization role's and their workspace role's together.
-- **Writes leave marks, not OpenFGA calls.** Every write already emits a product event inside its transaction. An in-transaction observer turns the events that change access into a mark naming the organization, or the whole product for a role, permission or product user change. The mark commits or rolls back with the write.
-- **Decisions replay marks first.** Before answering, the evaluator replays any mark for the organization or product, under a per-product advisory lock, then reads from the store. A background sweeper replays the rest and fills the store of a product that has none. A sync is a diff between the tuples Postgres implies and the tuples the store holds, so replaying it twice changes nothing.
+- **Writes leave marks, not OpenFGA calls.** Every write already emits a product event inside its transaction. An in-transaction observer turns the events that change access into a mark naming the organization, the product's model (a role or permission change), or the whole product (a deletion whose leftover tuples grant nothing). The mark commits or rolls back with the write.
+- **Decisions replay marks first.** Before answering, the evaluator replays the marks of the organization and of the model, under a per-product try-lock, waiting outside any transaction when another sync holds it. Models are written only under that lock. A background sweeper replays the rest, fills the store of a product that has none, and rewrites one product in full every 15 minutes to repair drift. A sync is a diff between the tuples Postgres implies and the tuples the store holds, so replaying it twice changes nothing.
 - **The evaluator keeps its contract.** The AuthZEN request and response are unchanged except for a new `workspace_role` in the decision context. Postgres still resolves who asks (a product user's external ID, an API key's credential) and the display names.
 
 ## Considered Options
@@ -26,7 +26,9 @@ Every access decision is read from an OpenFGA store, one per product, served by 
 
 ## Consequences
 
-- The first decision after a write pays for the sync of that organization. A product-wide mark (a role or permission change, a deleted product user) resyncs every organization of the product.
+- The first decision after a write pays for the sync of that organization; after a role or permission change, for a model rebuild only.
+- The model grows as roles × permissions and reaches OpenFGA's 256 KB limit around 60 roles that each grant 35 permissions. Storing role grants as tuples avoids that at the cost of fan-out writes; see [authorization with OpenFGA](../technical/authorization-openfga.md#limits-and-follow-ups).
+- A decision checks every catalog permission so it can report them all, which costs hundreds of datastore reads for large catalogs.
 - The binary carries OpenFGA and its dependencies, and Anchor owns OpenFGA's migrations in the `openfga` schema.
-- An organization API key that expires without a write keeps its tuples until the next sync of its organization. Introspection refuses it first, so no decision reaches the store.
+- An organization API key that expires without a write keeps its tuples until the next reconcile. Introspection refuses it first, so no decision reaches the store.
 - The check cache is off: a cached answer could outlive a write. Turning it on needs invalidation tied to the marks.
