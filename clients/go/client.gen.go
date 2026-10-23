@@ -342,7 +342,7 @@ type ClientInterface interface {
 
 	// EvaluateAccessWithBody Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -351,7 +351,7 @@ type ClientInterface interface {
 
 	// EvaluateAccess Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1525,6 +1525,58 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
 	UpdateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchWorkspaceMembersWithBody Search Workspace Members
+	//
+	// Search the members that hold a role in one workspace.
+	// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+	SearchWorkspaceMembersWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchWorkspaceMembers Search Workspace Members
+	//
+	// Search the members that hold a role in one workspace.
+	// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+	SearchWorkspaceMembers(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body SearchWorkspaceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveWorkspaceMember Remove Workspace Role
+	//
+	// Removes the role a member holds in one workspace. The member keeps their organization role, so they keep the permissions it grants in every workspace of the organization.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `RemoveWorkspaceMember` operationId).
+	RemoveWorkspaceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkspaceMember Get Workspace Member
+	//
+	// Gets the role an organization member holds in one workspace.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `GetWorkspaceMember` operationId).
+	GetWorkspaceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AssignWorkspaceMemberRoleWithBody Assign Workspace Role
+	//
+	// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+	AssignWorkspaceMemberRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AssignWorkspaceMemberRole Assign Workspace Role
+	//
+	// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+	AssignWorkspaceMemberRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, body AssignWorkspaceMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchProductPermissionsWithBody Search built-in Product Permissions
 	//
 	// Searches the built-in Anchor permissions available for a product. These permissions govern access to the product itself within Anchor (e.g. product:settings:read). They are system-defined and cannot be created or deleted via the API. Requires Platform Bearer token.
@@ -2321,7 +2373,7 @@ func (c *Client) UpdateProduct(ctx context.Context, productId ProductIdParameter
 
 // EvaluateAccessWithBody Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2340,7 +2392,7 @@ func (c *Client) EvaluateAccessWithBody(ctx context.Context, productId ProductId
 
 // EvaluateAccess Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4769,6 +4821,118 @@ func (c *Client) UpdateOrganizationWorkspaceWithBody(ctx context.Context, produc
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
 func (c *Client) UpdateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationWorkspaceRequest(c.Server, productId, organizationId, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkspaceMembersWithBody Search Workspace Members
+//
+// Search the members that hold a role in one workspace.
+// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+func (c *Client) SearchWorkspaceMembersWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkspaceMembersRequestWithBody(c.Server, productId, organizationId, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchWorkspaceMembers Search Workspace Members
+//
+// Search the members that hold a role in one workspace.
+// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+func (c *Client) SearchWorkspaceMembers(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body SearchWorkspaceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchWorkspaceMembersRequest(c.Server, productId, organizationId, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveWorkspaceMember Remove Workspace Role
+//
+// Removes the role a member holds in one workspace. The member keeps their organization role, so they keep the permissions it grants in every workspace of the organization.
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `RemoveWorkspaceMember` operationId).
+func (c *Client) RemoveWorkspaceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveWorkspaceMemberRequest(c.Server, productId, organizationId, workspaceId, productUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkspaceMember Get Workspace Member
+//
+// Gets the role an organization member holds in one workspace.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `GetWorkspaceMember` operationId).
+func (c *Client) GetWorkspaceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkspaceMemberRequest(c.Server, productId, organizationId, workspaceId, productUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AssignWorkspaceMemberRoleWithBody Assign Workspace Role
+//
+// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+func (c *Client) AssignWorkspaceMemberRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAssignWorkspaceMemberRoleRequestWithBody(c.Server, productId, organizationId, workspaceId, productUserId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AssignWorkspaceMemberRole Assign Workspace Role
+//
+// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+func (c *Client) AssignWorkspaceMemberRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, body AssignWorkspaceMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAssignWorkspaceMemberRoleRequest(c.Server, productId, organizationId, workspaceId, productUserId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10185,6 +10349,245 @@ func NewUpdateOrganizationWorkspaceRequestWithBody(server string, productId Prod
 	return req, nil
 }
 
+// NewSearchWorkspaceMembersRequest calls the generic SearchWorkspaceMembers builder with application/json body
+func NewSearchWorkspaceMembersRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body SearchWorkspaceMembersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchWorkspaceMembersRequestWithBody(server, productId, organizationId, workspaceId, "application/json", bodyReader)
+}
+
+// NewSearchWorkspaceMembersRequestWithBody constructs an http.Request for the SearchWorkspaceMembers method, with any body, and a specified content type
+func NewSearchWorkspaceMembersRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s/members/search", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveWorkspaceMemberRequest constructs an http.Request for the RemoveWorkspaceMember method
+func NewRemoveWorkspaceMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkspaceMemberRequest constructs an http.Request for the GetWorkspaceMember method
+func NewGetWorkspaceMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAssignWorkspaceMemberRoleRequest calls the generic AssignWorkspaceMemberRole builder with application/json body
+func NewAssignWorkspaceMemberRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, body AssignWorkspaceMemberRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAssignWorkspaceMemberRoleRequestWithBody(server, productId, organizationId, workspaceId, productUserId, "application/json", bodyReader)
+}
+
+// NewAssignWorkspaceMemberRoleRequestWithBody constructs an http.Request for the AssignWorkspaceMemberRole method, with any body, and a specified content type
+func NewAssignWorkspaceMemberRoleRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSearchProductPermissionsRequest calls the generic SearchProductPermissions builder with application/json body
 func NewSearchProductPermissionsRequest(server string, productId ProductIdParameter, body SearchProductPermissionsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -11549,7 +11952,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithBodyWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -11558,7 +11961,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12799,6 +13202,62 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
 	UpdateOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationWorkspaceResponse, error)
+
+	// SearchWorkspaceMembersWithBodyWithResponse Search Workspace Members
+	//
+	// Search the members that hold a role in one workspace.
+	// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+	SearchWorkspaceMembersWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkspaceMembersResponse, error)
+
+	// SearchWorkspaceMembersWithResponse Search Workspace Members
+	//
+	// Search the members that hold a role in one workspace.
+	// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+	SearchWorkspaceMembersWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body SearchWorkspaceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkspaceMembersResponse, error)
+
+	// RemoveWorkspaceMemberWithResponse Remove Workspace Role
+	//
+	// Removes the role a member holds in one workspace. The member keeps their organization role, so they keep the permissions it grants in every workspace of the organization.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `RemoveWorkspaceMember` operationId).
+	RemoveWorkspaceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*RemoveWorkspaceMemberResponse, error)
+
+	// GetWorkspaceMemberWithResponse Get Workspace Member
+	//
+	// Gets the role an organization member holds in one workspace.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `GetWorkspaceMember` operationId).
+	GetWorkspaceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*GetWorkspaceMemberResponse, error)
+
+	// AssignWorkspaceMemberRoleWithBodyWithResponse Assign Workspace Role
+	//
+	// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+	AssignWorkspaceMemberRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignWorkspaceMemberRoleResponse, error)
+
+	// AssignWorkspaceMemberRoleWithResponse Assign Workspace Role
+	//
+	// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+	AssignWorkspaceMemberRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, body AssignWorkspaceMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignWorkspaceMemberRoleResponse, error)
 
 	// SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
 	//
@@ -20002,6 +20461,282 @@ func (r UpdateOrganizationWorkspaceResponse) ContentType() string {
 	return ""
 }
 
+type SearchWorkspaceMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkspaceMemberListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchWorkspaceMembersResponse) GetJSON200() *WorkspaceMemberListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchWorkspaceMembersResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchWorkspaceMembersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchWorkspaceMembersResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchWorkspaceMembersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchWorkspaceMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchWorkspaceMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchWorkspaceMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchWorkspaceMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveWorkspaceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveWorkspaceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveWorkspaceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveWorkspaceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveWorkspaceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkspaceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkspaceMemberResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkspaceMemberResponse) GetJSON200() *WorkspaceMemberResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetWorkspaceMemberResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetWorkspaceMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetWorkspaceMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetWorkspaceMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkspaceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkspaceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkspaceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkspaceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AssignWorkspaceMemberRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkspaceMemberResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON200() *WorkspaceMemberResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r AssignWorkspaceMemberRoleResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r AssignWorkspaceMemberRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AssignWorkspaceMemberRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AssignWorkspaceMemberRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AssignWorkspaceMemberRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchProductPermissionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21829,7 +22564,7 @@ func (c *ClientWithResponses) UpdateProductWithResponse(ctx context.Context, pro
 
 // EvaluateAccessWithBodyWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -21844,7 +22579,7 @@ func (c *ClientWithResponses) EvaluateAccessWithBodyWithResponse(ctx context.Con
 
 // EvaluateAccessWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call sees current data, so a membership, role, workspace or API key change applies to the next call. Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace, a product user holds the permissions of their organization role and of their workspace role together. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23846,6 +24581,98 @@ func (c *ClientWithResponses) UpdateOrganizationWorkspaceWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseUpdateOrganizationWorkspaceResponse(rsp)
+}
+
+// SearchWorkspaceMembersWithBodyWithResponse Search Workspace Members
+//
+// Search the members that hold a role in one workspace.
+// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+func (c *ClientWithResponses) SearchWorkspaceMembersWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchWorkspaceMembersResponse, error) {
+	rsp, err := c.SearchWorkspaceMembersWithBody(ctx, productId, organizationId, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkspaceMembersResponse(rsp)
+}
+
+// SearchWorkspaceMembersWithResponse Search Workspace Members
+//
+// Search the members that hold a role in one workspace.
+// Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search (the `SearchWorkspaceMembers` operationId).
+func (c *ClientWithResponses) SearchWorkspaceMembersWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body SearchWorkspaceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchWorkspaceMembersResponse, error) {
+	rsp, err := c.SearchWorkspaceMembers(ctx, productId, organizationId, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchWorkspaceMembersResponse(rsp)
+}
+
+// RemoveWorkspaceMemberWithResponse Remove Workspace Role
+//
+// Removes the role a member holds in one workspace. The member keeps their organization role, so they keep the permissions it grants in every workspace of the organization.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `RemoveWorkspaceMember` operationId).
+func (c *ClientWithResponses) RemoveWorkspaceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*RemoveWorkspaceMemberResponse, error) {
+	rsp, err := c.RemoveWorkspaceMember(ctx, productId, organizationId, workspaceId, productUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveWorkspaceMemberResponse(rsp)
+}
+
+// GetWorkspaceMemberWithResponse Get Workspace Member
+//
+// Gets the role an organization member holds in one workspace.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `GetWorkspaceMember` operationId).
+func (c *ClientWithResponses) GetWorkspaceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*GetWorkspaceMemberResponse, error) {
+	rsp, err := c.GetWorkspaceMember(ctx, productId, organizationId, workspaceId, productUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkspaceMemberResponse(rsp)
+}
+
+// AssignWorkspaceMemberRoleWithBodyWithResponse Assign Workspace Role
+//
+// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+func (c *ClientWithResponses) AssignWorkspaceMemberRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AssignWorkspaceMemberRoleResponse, error) {
+	rsp, err := c.AssignWorkspaceMemberRoleWithBody(ctx, productId, organizationId, workspaceId, productUserId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAssignWorkspaceMemberRoleResponse(rsp)
+}
+
+// AssignWorkspaceMemberRoleWithResponse Assign Workspace Role
+//
+// Gives an organization member a role in one workspace, or replaces the role they already hold there. In that workspace the member holds the permissions of their organization role and of this role together. The product user must already be a member of the organization; removing them from the organization also removes every workspace role they hold in it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id} (the `AssignWorkspaceMemberRole` operationId).
+func (c *ClientWithResponses) AssignWorkspaceMemberRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid, body AssignWorkspaceMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*AssignWorkspaceMemberRoleResponse, error) {
+	rsp, err := c.AssignWorkspaceMemberRole(ctx, productId, organizationId, workspaceId, productUserId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAssignWorkspaceMemberRoleResponse(rsp)
 }
 
 // SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
@@ -29798,6 +30625,225 @@ func ParseUpdateOrganizationWorkspaceResponse(rsp *http.Response) (*UpdateOrgani
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProductWorkspaceResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchWorkspaceMembersResponse parses an HTTP response from a SearchWorkspaceMembersWithResponse call
+func ParseSearchWorkspaceMembersResponse(rsp *http.Response) (*SearchWorkspaceMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchWorkspaceMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkspaceMemberListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveWorkspaceMemberResponse parses an HTTP response from a RemoveWorkspaceMemberWithResponse call
+func ParseRemoveWorkspaceMemberResponse(rsp *http.Response) (*RemoveWorkspaceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveWorkspaceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkspaceMemberResponse parses an HTTP response from a GetWorkspaceMemberWithResponse call
+func ParseGetWorkspaceMemberResponse(rsp *http.Response) (*GetWorkspaceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkspaceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkspaceMemberResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAssignWorkspaceMemberRoleResponse parses an HTTP response from a AssignWorkspaceMemberRoleWithResponse call
+func ParseAssignWorkspaceMemberRoleResponse(rsp *http.Response) (*AssignWorkspaceMemberRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AssignWorkspaceMemberRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkspaceMemberResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

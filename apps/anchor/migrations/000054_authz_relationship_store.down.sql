@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS authz_sync_marks;
+DROP TABLE IF EXISTS authz_stores;
+DROP SCHEMA IF EXISTS openfga CASCADE;

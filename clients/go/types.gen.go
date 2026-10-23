@@ -1200,6 +1200,24 @@ func (e UserOrganizationSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for WorkspaceMemberSearchRequestSortBy.
+const (
+	WorkspaceMemberSearchRequestSortByAssignedAt WorkspaceMemberSearchRequestSortBy = "assigned_at"
+	WorkspaceMemberSearchRequestSortByEmail      WorkspaceMemberSearchRequestSortBy = "email"
+)
+
+// Valid indicates whether the value is a known member of the WorkspaceMemberSearchRequestSortBy enum.
+func (e WorkspaceMemberSearchRequestSortBy) Valid() bool {
+	switch e {
+	case WorkspaceMemberSearchRequestSortByAssignedAt:
+		return true
+	case WorkspaceMemberSearchRequestSortByEmail:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccessAction defines model for AccessAction.
 type AccessAction struct {
 	// Name A resource permission name, such as `flows:read`.
@@ -1213,13 +1231,16 @@ type AccessDecisionContext struct {
 	MissingPermissions *[]string          `json:"missing_permissions,omitempty"`
 	Organization       *AccessIdentityRef `json:"organization,omitempty"`
 
-	// Permissions Every permission the role or API key holds in the organization.
+	// Permissions Every permission the subject holds on the resource. On a workspace a product user holds the permissions of their organization role and of their workspace role together.
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
 	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
+
+	// WorkspaceRole The role the product user holds in the workspace resource, when they hold one there.
+	WorkspaceRole *AccessIdentityRef `json:"workspace_role,omitempty"`
 }
 
 // AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
@@ -4254,6 +4275,91 @@ type WorkspaceFilter struct {
 	Names []string `json:"names,omitempty"`
 }
 
+// WorkspaceMemberFilter Filter criteria for searching workspace members.
+type WorkspaceMemberFilter struct {
+	// ProductUserIds Filter by specific product user IDs.
+	ProductUserIds *[]Ksuid `json:"product_user_ids,omitempty"`
+
+	// RoleIds Filter by the workspace role.
+	RoleIds *[]Ksuid `json:"role_ids,omitempty"`
+}
+
+// WorkspaceMemberListResponse Paginated list of workspace members.
+type WorkspaceMemberListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []WorkspaceMemberResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// WorkspaceMemberResponse A role an organization member holds in one workspace.
+type WorkspaceMemberResponse struct {
+	// AssignedAt When the member first got a role in this workspace.
+	AssignedAt time.Time `json:"assigned_at"`
+
+	// Email Email address of the member.
+	Email openapi_types.Email `json:"email"`
+
+	// Name Display name of the member.
+	Name *string `json:"name,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductUserId Ksuid `json:"product_user_id"`
+
+	// Role Role the member holds in the workspace, on top of their organization role.
+	Role struct {
+		// Id Unique identifier using KSUID format with a resource-specific prefix.
+		//
+		// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+		Id   Ksuid  `json:"id"`
+		Name string `json:"name"`
+	} `json:"role"`
+
+	// WorkspaceId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	WorkspaceId Ksuid `json:"workspace_id"`
+}
+
+// WorkspaceMemberRoleRequest The role to give a member in one workspace.
+type WorkspaceMemberRoleRequest struct {
+	// RoleId A role of the product.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+}
+
+// WorkspaceMemberSearchRequest defines model for WorkspaceMemberSearchRequest.
+type WorkspaceMemberSearchRequest struct {
+	// Filter Filter criteria for searching workspace members.
+	Filter *WorkspaceMemberFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *WorkspaceMemberSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// WorkspaceMemberSearchRequestSortBy Field to sort by.
+type WorkspaceMemberSearchRequestSortBy string
+
 // Ksuid Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -4631,6 +4737,12 @@ type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
 
 // UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
 type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
+
+// SearchWorkspaceMembersJSONRequestBody defines body for SearchWorkspaceMembers for application/json ContentType.
+type SearchWorkspaceMembersJSONRequestBody = WorkspaceMemberSearchRequest
+
+// AssignWorkspaceMemberRoleJSONRequestBody defines body for AssignWorkspaceMemberRole for application/json ContentType.
+type AssignWorkspaceMemberRoleJSONRequestBody = WorkspaceMemberRoleRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest

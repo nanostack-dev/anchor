@@ -686,6 +686,7 @@ export const zAccessDecisionContext = z.object({
     missing_permissions: z.array(z.string()).optional(),
     organization: zAccessIdentityRef.optional(),
     role: zAccessIdentityRef.optional(),
+    workspace_role: zAccessIdentityRef.optional(),
     product_user: zAccessIdentityRef.optional(),
     api_key: zAccessIdentityRef.optional(),
     permissions: z.array(z.string()).optional()
@@ -846,6 +847,49 @@ export const zOrganizationMemberRequest = z.object({
 export const zOrganizationMemberRoleRequest = z.object({
     role_id: zKsuid
 });
+
+/**
+ * A role an organization member holds in one workspace.
+ */
+export const zWorkspaceMemberResponse = z.object({
+    workspace_id: zKsuid,
+    organization_id: zKsuid,
+    product_user_id: zKsuid,
+    email: z.email(),
+    name: z.string().nullish(),
+    role: z.object({
+        id: zKsuid,
+        name: z.string()
+    }),
+    assigned_at: z.iso.datetime()
+});
+
+/**
+ * The role to give a member in one workspace.
+ */
+export const zWorkspaceMemberRoleRequest = z.object({
+    role_id: zKsuid
+});
+
+/**
+ * Filter criteria for searching workspace members.
+ */
+export const zWorkspaceMemberFilter = z.object({
+    product_user_ids: z.array(zKsuid).optional(),
+    role_ids: z.array(zKsuid).optional()
+});
+
+export const zWorkspaceMemberSearchRequest = zSearchRequest.and(z.object({
+    filter: zWorkspaceMemberFilter.optional(),
+    sort_by: z.enum(['assigned_at', 'email']).optional().default('assigned_at')
+}));
+
+/**
+ * Paginated list of workspace members.
+ */
+export const zWorkspaceMemberListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zWorkspaceMemberResponse)
+}));
 
 /**
  * Filter criteria for searching organization members.
@@ -2642,6 +2686,57 @@ export const zUpdateOrganizationWorkspacePath = z.object({
  * Workspace updated successfully.
  */
 export const zUpdateOrganizationWorkspaceResponse = zProductWorkspaceResponse;
+
+export const zRemoveWorkspaceMemberPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    workspace_id: zKsuid,
+    product_user_id: zKsuid
+});
+
+/**
+ * Successfully removed
+ */
+export const zRemoveWorkspaceMemberResponse = z.void();
+
+export const zGetWorkspaceMemberPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    workspace_id: zKsuid,
+    product_user_id: zKsuid
+});
+
+/**
+ * Success
+ */
+export const zGetWorkspaceMemberResponse = zWorkspaceMemberResponse;
+
+export const zAssignWorkspaceMemberRoleBody = zWorkspaceMemberRoleRequest;
+
+export const zAssignWorkspaceMemberRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    workspace_id: zKsuid,
+    product_user_id: zKsuid
+});
+
+/**
+ * The role the member now holds in the workspace.
+ */
+export const zAssignWorkspaceMemberRoleResponse = zWorkspaceMemberResponse;
+
+export const zSearchWorkspaceMembersBody = zWorkspaceMemberSearchRequest;
+
+export const zSearchWorkspaceMembersPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    workspace_id: zKsuid
+});
+
+/**
+ * Success
+ */
+export const zSearchWorkspaceMembersResponse = zWorkspaceMemberListResponse;
 
 export const zAddOrganizationMemberBody = zOrganizationMemberRequest;
 

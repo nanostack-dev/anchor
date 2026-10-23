@@ -49,6 +49,8 @@ tags:
   description: Manage Organizations within a Product. (Requires Product API Key)
 - name: OrganizationMember
   description: Manage members within an Organization. (Requires Product API Key)
+- name: WorkspaceMember
+  description: Give organization members a role in one workspace, on top of their organization role. (Requires Product API Key)
 - name: OrganizationInvitation
   description: Invite email addresses to an Organization and accept the invitation. Anchor
     returns the token to the Product and sends no email. (Requires Product API Key)
@@ -2186,13 +2188,18 @@ components:
           $ref: "#/components/schemas/AccessIdentityRef"
         role:
           $ref: "#/components/schemas/AccessIdentityRef"
+        workspace_role:
+          $ref: "#/components/schemas/AccessIdentityRef"
+          description: The role the product user holds in the workspace resource, when they hold one there.
         product_user:
           $ref: "#/components/schemas/AccessIdentityRef"
         api_key:
           $ref: "#/components/schemas/AccessIdentityRef"
         permissions:
           type: array
-          description: Every permission the role or API key holds in the organization.
+          description: >-
+            Every permission the subject holds on the resource. On a workspace a product user holds the permissions of
+            their organization role and of their workspace role together.
           items:
             type: string
     AccessEvaluationRequest:
@@ -2691,6 +2698,98 @@ components:
             x-go-type: organization.SortFieldMember
             x-go-type-import:
               path: anchor/internal/domain/organization
+    WorkspaceMemberResponse:
+      type: object
+      description: A role an organization member holds in one workspace.
+      properties:
+        workspace_id:
+          $ref: "#/components/schemas/ksuid"
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+        product_user_id:
+          $ref: "#/components/schemas/ksuid"
+        email:
+          type: string
+          format: email
+          description: Email address of the member.
+        name:
+          type: [string, "null"]
+          description: Display name of the member.
+        role:
+          type: object
+          description: Role the member holds in the workspace, on top of their organization role.
+          properties:
+            id:
+              $ref: "#/components/schemas/ksuid"
+            name:
+              type: string
+          required:
+          - id
+          - name
+        assigned_at:
+          type: string
+          format: date-time
+          description: When the member first got a role in this workspace.
+      required:
+      - workspace_id
+      - organization_id
+      - product_user_id
+      - email
+      - role
+      - assigned_at
+    WorkspaceMemberRoleRequest:
+      type: object
+      description: The role to give a member in one workspace.
+      properties:
+        role_id:
+          $ref: "#/components/schemas/ksuid"
+          description: A role of the product.
+      required:
+      - role_id
+    WorkspaceMemberFilter:
+      type: object
+      description: Filter criteria for searching workspace members.
+      properties:
+        product_user_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific product user IDs.
+        role_ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by the workspace role.
+    WorkspaceMemberSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/WorkspaceMemberFilter"
+          sort_by:
+            type: string
+            enum:
+            - assigned_at
+            - email
+            default: assigned_at
+            description: Field to sort by.
+            x-go-type: workspace.SortFieldMember
+            x-go-type-import:
+              path: anchor/internal/domain/workspace
+    WorkspaceMemberListResponse:
+      type: object
+      description: Paginated list of workspace members.
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/WorkspaceMemberResponse"
+        required:
+        - items
     OrganizationMemberFilter:
       type: object
       description: Filter criteria for searching organization members.
@@ -6680,7 +6779,9 @@ paths:
         Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key.
         The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`.
         A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`.
-        Every call reads current data, so a membership, role, workspace or API key change applies to the next call.
+        Every call sees current data, so a membership, role, workspace or API key change applies to the next call.
+        Decisions come from the product's relationship store, which Anchor keeps in step with its records. On a workspace,
+        a product user holds the permissions of their organization role and of their workspace role together.
         Evaluating an organization API key updates its last_used_at as introspection does.
       operationId: evaluateAccess
       tags: [Access]
@@ -7062,6 +7163,140 @@ paths:
           $ref: "#/components/responses/NotFound"
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    - $ref: '#/components/parameters/WorkspaceIdParameter'
+    - name: product_user_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ksuid'
+    get:
+      summary: Get Workspace Member
+      description: Gets the role an organization member holds in one workspace.
+      operationId: getWorkspaceMember
+      tags:
+      - WorkspaceMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:read
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Assign Workspace Role
+      description: >-
+        Gives an organization member a role in one workspace, or replaces the role they already hold there. In that
+        workspace the member holds the permissions of their organization role and of this role together. The product
+        user must already be a member of the organization; removing them from the organization also removes every
+        workspace role they hold in it.
+      operationId: assignWorkspaceMemberRole
+      tags:
+      - WorkspaceMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceMemberRoleRequest'
+      responses:
+        '200':
+          description: The role the member now holds in the workspace.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Remove Workspace Role
+      description: >-
+        Removes the role a member holds in one workspace. The member keeps their organization role, so they keep the
+        permissions it grants in every workspace of the organization.
+      operationId: removeWorkspaceMember
+      tags:
+      - WorkspaceMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:delete
+      responses:
+        '204':
+          description: Successfully removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    - $ref: '#/components/parameters/WorkspaceIdParameter'
+    post:
+      summary: Search Workspace Members
+      description: >-
+        Search the members that hold a role in one workspace.
+
+        Default order is `assigned_at` descending, then `product_user_id`, latest assignment first. Naming a `sort_by` without a `sort_direction` sorts ascending. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchWorkspaceMembers
+      tags:
+      - WorkspaceMember
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth:
+        - organization_member:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceMemberSearchRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMemberListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/products/{product_id}/organizations/{organization_id}/members:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

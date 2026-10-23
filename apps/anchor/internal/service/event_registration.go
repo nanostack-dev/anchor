@@ -56,6 +56,21 @@ func WorkspaceEventRegistration() events.Registration {
 			Name:        "Workspace deleted",
 			Description: "Emitted when a workspace is deleted.",
 		},
+		events.Definition{
+			Type:        events.WorkspaceMembershipCreated,
+			Name:        "Workspace membership created",
+			Description: "Emitted when an organization member gets a role in a workspace.",
+		},
+		events.Definition{
+			Type:        events.WorkspaceMembershipUpdated,
+			Name:        "Workspace membership updated",
+			Description: "Emitted when the role a member holds in a workspace changes.",
+		},
+		events.Definition{
+			Type:        events.WorkspaceMembershipDeleted,
+			Name:        "Workspace membership deleted",
+			Description: "Emitted when a member loses their role in a workspace.",
+		},
 	)
 }
 

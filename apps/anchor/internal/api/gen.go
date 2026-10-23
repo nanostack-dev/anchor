@@ -322,13 +322,16 @@ type AccessDecisionContext struct {
 	MissingPermissions *[]string          `json:"missing_permissions,omitempty"`
 	Organization       *AccessIdentityRef `json:"organization,omitempty"`
 
-	// Permissions Every permission the role or API key holds in the organization.
+	// Permissions Every permission the subject holds on the resource. On a workspace a product user holds the permissions of their organization role and of their workspace role together.
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
 	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
+
+	// WorkspaceRole The role the product user holds in the workspace resource, when they hold one there.
+	WorkspaceRole *AccessIdentityRef `json:"workspace_role,omitempty"`
 }
 
 // AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
@@ -3257,6 +3260,88 @@ type WorkspaceFilter struct {
 	Names []string `json:"names,omitempty"`
 }
 
+// WorkspaceMemberFilter Filter criteria for searching workspace members.
+type WorkspaceMemberFilter struct {
+	// ProductUserIds Filter by specific product user IDs.
+	ProductUserIds *[]Ksuid `json:"product_user_ids,omitempty"`
+
+	// RoleIds Filter by the workspace role.
+	RoleIds *[]Ksuid `json:"role_ids,omitempty"`
+}
+
+// WorkspaceMemberListResponse Paginated list of workspace members.
+type WorkspaceMemberListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                       `json:"count"`
+	Items []WorkspaceMemberResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// WorkspaceMemberResponse A role an organization member holds in one workspace.
+type WorkspaceMemberResponse struct {
+	// AssignedAt When the member first got a role in this workspace.
+	AssignedAt time.Time `json:"assigned_at"`
+
+	// Email Email address of the member.
+	Email openapi_types.Email `json:"email"`
+
+	// Name Display name of the member.
+	Name *string `json:"name,omitempty"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductUserId Ksuid `json:"product_user_id"`
+
+	// Role Role the member holds in the workspace, on top of their organization role.
+	Role struct {
+		// Id Unique identifier using KSUID format with a resource-specific prefix.
+		//
+		// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+		Id   Ksuid  `json:"id"`
+		Name string `json:"name"`
+	} `json:"role"`
+
+	// WorkspaceId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	WorkspaceId Ksuid `json:"workspace_id"`
+}
+
+// WorkspaceMemberRoleRequest The role to give a member in one workspace.
+type WorkspaceMemberRoleRequest struct {
+	// RoleId A role of the product.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	RoleId Ksuid `json:"role_id"`
+}
+
+// WorkspaceMemberSearchRequest defines model for WorkspaceMemberSearchRequest.
+type WorkspaceMemberSearchRequest struct {
+	// Filter Filter criteria for searching workspace members.
+	Filter *WorkspaceMemberFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by.
+	SortBy *workspace.SortFieldMember `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
 // Ksuid Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -3634,6 +3719,12 @@ type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
 
 // UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
 type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
+
+// SearchWorkspaceMembersJSONRequestBody defines body for SearchWorkspaceMembers for application/json ContentType.
+type SearchWorkspaceMembersJSONRequestBody = WorkspaceMemberSearchRequest
+
+// AssignWorkspaceMemberRoleJSONRequestBody defines body for AssignWorkspaceMemberRole for application/json ContentType.
+type AssignWorkspaceMemberRoleJSONRequestBody = WorkspaceMemberRoleRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest
@@ -4173,6 +4264,18 @@ type ServerInterface interface {
 	// UpdateOrganizationWorkspace Update Organization Workspace
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
 	UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
+	// SearchWorkspaceMembers Search Workspace Members
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search)
+	SearchWorkspaceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
+	// RemoveWorkspaceMember Remove Workspace Role
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid)
+	// GetWorkspaceMember Get Workspace Member
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	GetWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid)
+	// AssignWorkspaceMemberRole Assign Workspace Role
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	AssignWorkspaceMemberRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)
 	SearchProductPermissions(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -4839,6 +4942,30 @@ func (_ Unimplemented) GetOrganizationWorkspace(w http.ResponseWriter, r *http.R
 // UpdateOrganizationWorkspace Update Organization Workspace
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
 func (_ Unimplemented) UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchWorkspaceMembers Search Workspace Members
+// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search)
+func (_ Unimplemented) SearchWorkspaceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemoveWorkspaceMember Remove Workspace Role
+// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+func (_ Unimplemented) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetWorkspaceMember Get Workspace Member
+// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+func (_ Unimplemented) GetWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AssignWorkspaceMemberRole Assign Workspace Role
+// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+func (_ Unimplemented) AssignWorkspaceMemberRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8298,6 +8425,209 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationWorkspace(w http.ResponseWr
 	handler.ServeHTTP(w, r)
 }
 
+// SearchWorkspaceMembers operation middleware
+func (siw *ServerInterfaceWrapper) SearchWorkspaceMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workspace_id" -------------
+	var workspaceId WorkspaceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchWorkspaceMembers(w, r, productId, organizationId, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveWorkspaceMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workspace_id" -------------
+	var workspaceId WorkspaceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveWorkspaceMember(w, r, productId, organizationId, workspaceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkspaceMember operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkspaceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workspace_id" -------------
+	var workspaceId WorkspaceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkspaceMember(w, r, productId, organizationId, workspaceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AssignWorkspaceMemberRole operation middleware
+func (siw *ServerInterfaceWrapper) AssignWorkspaceMemberRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workspace_id" -------------
+	var workspaceId WorkspaceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AssignWorkspaceMemberRole(w, r, productId, organizationId, workspaceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SearchProductPermissions operation middleware
 func (siw *ServerInterfaceWrapper) SearchProductPermissions(w http.ResponseWriter, r *http.Request) {
 
@@ -9361,6 +9691,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}", wrapper.UpdateOrganizationWorkspace)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}", wrapper.RemoveWorkspaceMember)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}", wrapper.GetWorkspaceMember)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}", wrapper.AssignWorkspaceMemberRole)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search", wrapper.SearchWorkspaceMembers)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/members", wrapper.AddOrganizationMember)
@@ -17674,6 +18016,339 @@ func (response UpdateOrganizationWorkspace409JSONResponse) VisitUpdateOrganizati
 	return err
 }
 
+type SearchWorkspaceMembersRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
+	Body           *SearchWorkspaceMembersJSONRequestBody
+}
+
+type SearchWorkspaceMembersResponseObject interface {
+	VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error
+}
+
+type SearchWorkspaceMembers200JSONResponse WorkspaceMemberListResponse
+
+func (response SearchWorkspaceMembers200JSONResponse) VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchWorkspaceMembers400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchWorkspaceMembers400JSONResponse) VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchWorkspaceMembers401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchWorkspaceMembers401JSONResponse) VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchWorkspaceMembers403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchWorkspaceMembers403JSONResponse) VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchWorkspaceMembers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchWorkspaceMembers404JSONResponse) VisitSearchWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMemberRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
+	ProductUserId  Ksuid                   `json:"product_user_id"`
+}
+
+type RemoveWorkspaceMemberResponseObject interface {
+	VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error
+}
+
+type RemoveWorkspaceMember204Response struct {
+}
+
+func (response RemoveWorkspaceMember204Response) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveWorkspaceMember400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response RemoveWorkspaceMember400JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RemoveWorkspaceMember401JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RemoveWorkspaceMember403JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMember404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemoveWorkspaceMember404JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceMemberRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
+	ProductUserId  Ksuid                   `json:"product_user_id"`
+}
+
+type GetWorkspaceMemberResponseObject interface {
+	VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error
+}
+
+type GetWorkspaceMember200JSONResponse WorkspaceMemberResponse
+
+func (response GetWorkspaceMember200JSONResponse) VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceMember400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetWorkspaceMember400JSONResponse) VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetWorkspaceMember401JSONResponse) VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetWorkspaceMember403JSONResponse) VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceMember404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWorkspaceMember404JSONResponse) VisitGetWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRoleRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
+	ProductUserId  Ksuid                   `json:"product_user_id"`
+	Body           *AssignWorkspaceMemberRoleJSONRequestBody
+}
+
+type AssignWorkspaceMemberRoleResponseObject interface {
+	VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error
+}
+
+type AssignWorkspaceMemberRole200JSONResponse WorkspaceMemberResponse
+
+func (response AssignWorkspaceMemberRole200JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRole400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AssignWorkspaceMemberRole400JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRole401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AssignWorkspaceMemberRole401JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRole403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AssignWorkspaceMemberRole403JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRole404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AssignWorkspaceMemberRole404JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AssignWorkspaceMemberRole409JSONResponse struct{ ConflictJSONResponse }
+
+func (response AssignWorkspaceMemberRole409JSONResponse) VisitAssignWorkspaceMemberRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SearchProductPermissionsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *SearchProductPermissionsJSONRequestBody
@@ -19604,6 +20279,18 @@ type StrictServerInterface interface {
 	// UpdateOrganizationWorkspace Update Organization Workspace
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
 	UpdateOrganizationWorkspace(ctx context.Context, request UpdateOrganizationWorkspaceRequestObject) (UpdateOrganizationWorkspaceResponseObject, error)
+	// SearchWorkspaceMembers Search Workspace Members
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search)
+	SearchWorkspaceMembers(ctx context.Context, request SearchWorkspaceMembersRequestObject) (SearchWorkspaceMembersResponseObject, error)
+	// RemoveWorkspaceMember Remove Workspace Role
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	RemoveWorkspaceMember(ctx context.Context, request RemoveWorkspaceMemberRequestObject) (RemoveWorkspaceMemberResponseObject, error)
+	// GetWorkspaceMember Get Workspace Member
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	GetWorkspaceMember(ctx context.Context, request GetWorkspaceMemberRequestObject) (GetWorkspaceMemberResponseObject, error)
+	// AssignWorkspaceMemberRole Assign Workspace Role
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id})
+	AssignWorkspaceMemberRole(ctx context.Context, request AssignWorkspaceMemberRoleRequestObject) (AssignWorkspaceMemberRoleResponseObject, error)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)
 	SearchProductPermissions(ctx context.Context, request SearchProductPermissionsRequestObject) (SearchProductPermissionsResponseObject, error)
@@ -22694,6 +23381,135 @@ func (sh *strictHandler) UpdateOrganizationWorkspace(w http.ResponseWriter, r *h
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationWorkspaceResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchWorkspaceMembers operation middleware
+func (sh *strictHandler) SearchWorkspaceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
+	var request SearchWorkspaceMembersRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.WorkspaceId = workspaceId
+
+	var body SearchWorkspaceMembersJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchWorkspaceMembers(ctx, request.(SearchWorkspaceMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchWorkspaceMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchWorkspaceMembersResponseObject); ok {
+		if err := validResponse.VisitSearchWorkspaceMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveWorkspaceMember operation middleware
+func (sh *strictHandler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
+	var request RemoveWorkspaceMemberRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.WorkspaceId = workspaceId
+	request.ProductUserId = productUserId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveWorkspaceMember(ctx, request.(RemoveWorkspaceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveWorkspaceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveWorkspaceMemberResponseObject); ok {
+		if err := validResponse.VisitRemoveWorkspaceMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetWorkspaceMember operation middleware
+func (sh *strictHandler) GetWorkspaceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
+	var request GetWorkspaceMemberRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.WorkspaceId = workspaceId
+	request.ProductUserId = productUserId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkspaceMember(ctx, request.(GetWorkspaceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkspaceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWorkspaceMemberResponseObject); ok {
+		if err := validResponse.VisitGetWorkspaceMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AssignWorkspaceMemberRole operation middleware
+func (sh *strictHandler) AssignWorkspaceMemberRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, productUserId Ksuid) {
+	var request AssignWorkspaceMemberRoleRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.WorkspaceId = workspaceId
+	request.ProductUserId = productUserId
+
+	var body AssignWorkspaceMemberRoleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AssignWorkspaceMemberRole(ctx, request.(AssignWorkspaceMemberRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AssignWorkspaceMemberRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AssignWorkspaceMemberRoleResponseObject); ok {
+		if err := validResponse.VisitAssignWorkspaceMemberRoleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
