@@ -99,6 +99,7 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 		RoleName:         member.RoleName,
 		ProductUserID:    user.ID,
 		ProductUserName:  user.Name,
+		ProductUserEmail: user.Email,
 		Permissions:      member.RolePermissions,
 	}), nil
 }
@@ -134,6 +135,7 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 	return reached(&Identity{
 		OrganizationID: key.APIKey.OrganizationID,
 		APIKeyID:       key.APIKey.ID,
+		APIKeyName:     key.APIKey.Name,
 		Permissions:    key.Permissions,
 	}), nil
 }

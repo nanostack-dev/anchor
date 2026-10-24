@@ -54,13 +54,14 @@ func (auth *AuthMiddleware) authenticateProductAPIKey(
 	}
 
 	productIDPath := chi.URLParam(r, "product_id")
-	if _, err := auth.productAPIKeyKeyService.ValidateAPIKeyAndScopes(
+	key, err := auth.productAPIKeyKeyService.ValidateAPIKeyAndScopes(
 		ctx, apikey.ValidateAPIKeyScopesInput{
 			ProductID:   productIDPath,
 			Scopes:      requiredScopes,
 			APIKeyValue: r.Header.Get(ProductAPIKeyHeader),
 		},
-	); err != nil {
+	)
+	if err != nil {
 		if frameworkErr, ok := fault.As(err); ok {
 			return nil, &schemeError{fault: frameworkErr, reason: "api key rejected"}
 		}
@@ -78,6 +79,7 @@ func (auth *AuthMiddleware) authenticateProductAPIKey(
 	}
 
 	authorized := security.SetTenantID(ctx, prod.PlatformTenantID)
+	authorized = security.SetProductAPIKeyCaller(authorized, security.ProductAPIKeyCaller{ID: key.ID, Name: key.Name})
 	return security.SetProductScope(
 		authorized, security.ProductScope{ProductID: productIDPath},
 	), nil

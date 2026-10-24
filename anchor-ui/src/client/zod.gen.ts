@@ -675,7 +675,8 @@ export const zAccessDenyReason = z.enum([
 
 export const zAccessIdentityRef = z.object({
     id: z.string(),
-    name: z.string().optional()
+    name: z.string().optional(),
+    email: z.string().optional()
 });
 
 /**
