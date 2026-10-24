@@ -54,7 +54,9 @@ type Identity struct {
 	RoleName         string
 	ProductUserID    string
 	ProductUserName  string
+	ProductUserEmail string
 	APIKeyID         string
+	APIKeyName       string
 	Permissions      []string
 }
 

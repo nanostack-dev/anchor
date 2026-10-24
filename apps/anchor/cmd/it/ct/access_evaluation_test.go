@@ -31,8 +31,10 @@ type accessWorld struct {
 	role       *itdsl.ProductRole
 	externalID string
 	userID     string
+	userEmail  string
 	apiKey     string
 	apiKeyID   string
+	apiKeyName string
 }
 
 func newAccessWorld(t *testing.T) accessWorld {
@@ -51,8 +53,11 @@ func newAccessWorld(t *testing.T) accessWorld {
 	w.workspaceA = w.workspace(w.orgA.Id)
 	w.workspaceB = w.workspace(w.orgB.Id)
 	w.role = createDSLProductRoleWithPermissions(t, product, "reader-"+uuid.NewString(), nil, []string{w.read})
-	w.userID, w.externalID = w.member(t, w.orgA.Id, w.role.ID)
-	w.apiKeyID, w.apiKey = w.organizationAPIKey(t, w.orgA.Id, w.read)
+	var user *itdsl.ProductUser
+	user, w.externalID = w.member(t, w.orgA.Id, w.role.ID)
+	w.userID, w.userEmail = user.ID, user.Email
+	w.apiKeyName = "Key-" + uuid.NewString()
+	w.apiKeyID, w.apiKey = w.organizationAPIKey(t, w.orgA.Id, w.apiKeyName, w.read)
 	return w
 }
 
@@ -62,20 +67,22 @@ func (w accessWorld) workspace(organizationID string) string {
 }
 
 // member creates a product user with an external ID and a membership.
-func (w accessWorld) member(t *testing.T, organizationID, roleID string) (string, string) {
+func (w accessWorld) member(t *testing.T, organizationID, roleID string) (*itdsl.ProductUser, string) {
 	t.Helper()
 	user := createDSLProductUser(t, w.product)
 	externalID := "user_" + itshared.Faker.UUID().V4()
 	setDSLProductUserExternalID(t, w.product, user.ID, externalID)
 	createDSLMembership(t, w.product, user.ID, organizationID, roleID)
-	return user.ID, externalID
+	return user, externalID
 }
 
-func (w accessWorld) organizationAPIKey(t *testing.T, organizationID string, permissions ...string) (string, string) {
+func (w accessWorld) organizationAPIKey(
+	t *testing.T, organizationID, name string, permissions ...string,
+) (string, string) {
 	t.Helper()
 	resp, err := w.product.AllScopeAPIKeyClient().CreateOrganizationAPIKeyWithResponse(
 		context.Background(), w.product.ProductID, organizationID,
-		ct.CreateOrganizationAPIKeyJSONRequestBody{Name: "Key-" + uuid.NewString(), Permissions: permissions},
+		ct.CreateOrganizationAPIKeyJSONRequestBody{Name: name, Permissions: permissions},
 	)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
@@ -114,6 +121,7 @@ func TestAccessEvaluation(t *testing.T) {
 		assert.Equal(t, w.orgA.Name, *response.Context.Organization.Name)
 		assert.Equal(t, w.role.ID, response.Context.Role.Id)
 		assert.Equal(t, w.userID, response.Context.ProductUser.Id)
+		assert.Equal(t, w.userEmail, *response.Context.ProductUser.Email)
 		assert.Equal(t, []string{w.read}, *response.Context.Permissions)
 	})
 
@@ -174,6 +182,7 @@ func TestAccessEvaluation(t *testing.T) {
 		assert.True(t, response.Decision)
 		assert.Equal(t, w.orgA.Id, response.Context.Organization.Id)
 		assert.Equal(t, w.apiKeyID, response.Context.ApiKey.Id)
+		assert.Equal(t, w.apiKeyName, *response.Context.ApiKey.Name)
 		assert.Nil(t, response.Context.ProductUser)
 	})
 

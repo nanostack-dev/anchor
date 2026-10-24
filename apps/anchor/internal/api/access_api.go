@@ -117,7 +117,10 @@ func decisionContext(decision accesssvc.Decision) AccessDecisionContext {
 	result.Organization = identityRef(identity.OrganizationID, identity.OrganizationName)
 	result.Role = identityRef(identity.RoleID, identity.RoleName)
 	result.ProductUser = identityRef(identity.ProductUserID, identity.ProductUserName)
-	result.ApiKey = identityRef(identity.APIKeyID, "")
+	if email := identity.ProductUserEmail; result.ProductUser != nil {
+		result.ProductUser.Email = functional.OptionOf(email, email != "").ToPtr()
+	}
+	result.ApiKey = identityRef(identity.APIKeyID, identity.APIKeyName)
 	return result
 }
 
