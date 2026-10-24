@@ -15,6 +15,7 @@ import (
 	"anchor/internal/integration/provider"
 	"anchor/internal/repository"
 	"anchor/internal/security/encryption"
+	"anchor/internal/telemetry"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -95,7 +96,7 @@ func NewProvider(p NewProviderParams) *Provider {
 		configCipherErr: err,
 		events:          p.Events,
 		transactor:      p.Transactor,
-		httpClient: &http.Client{Transport: &http.Transport{
+		httpClient: &http.Client{Transport: telemetry.ExternalTransport(&http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout: clerkHTTPDialTimeout,
@@ -105,7 +106,7 @@ func NewProvider(p NewProviderParams) *Provider {
 			IdleConnTimeout:       clerkHTTPIdleConnTimeout,
 			TLSHandshakeTimeout:   clerkHTTPTLSTimeout,
 			ExpectContinueTimeout: clerkHTTPExpectContinueTimeout,
-		}, Timeout: clerkHTTPRequestTimeout},
+		}), Timeout: clerkHTTPRequestTimeout},
 		baseURL: clerkDefaultBaseURL,
 		logger:  componentLogger,
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
 	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
+	"github.com/nanostack-dev/nanostack-framework/pkg/tracing"
 	"github.com/nanostack-dev/pgkit/adminui"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -128,6 +129,9 @@ func startHTTPServer(params ServerParams) error {
 
 func setupRouter(params ServerParams) *chi.Mux {
 	router := chi.NewRouter()
+	// Names the server span after the matched chi route; it must be the first
+	// router middleware so it reads the final pattern after serving.
+	router.Use(tracing.RouteMiddleware)
 
 	corsMiddleware := cors.New(
 		cors.Options{
@@ -244,12 +248,14 @@ func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 
 	return &http.Server{
 		Addr: ":" + strconv.Itoa(params.ServerConfig.Port),
-		Handler: createHandler(
+		// The server span wraps everything, continuing an incoming W3C
+		// traceparent, so the request logger and DB queries join it.
+		Handler: tracing.Middleware()(createHandler(
 			router, params.API, errorMiddleware, []api.MiddlewareFunc{
 				middleware.NewRequestLoggingMiddleware(params.Logger),
 				authMiddleware.Create,
 			},
-		),
+		)),
 		ReadHeaderTimeout: readHeaderTimeout * time.Second,
 		ReadTimeout:       readTimeout * time.Second,
 		WriteTimeout:      writeTimeout * time.Second,

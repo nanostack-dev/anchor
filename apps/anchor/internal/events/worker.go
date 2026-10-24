@@ -10,6 +10,7 @@ import (
 	"time"
 
 	serviceconfig "anchor/internal/service/config"
+	"anchor/internal/telemetry"
 
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
@@ -48,7 +49,8 @@ func RegisterWorker(p WorkerParams) {
 		endpoints: p.EndpointService,
 		repo:      p.Endpoints,
 		http: &http.Client{
-			Timeout: deliveryTimeout,
+			Transport: telemetry.ExternalTransport(nil),
+			Timeout:   deliveryTimeout,
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 				return http.ErrUseLastResponse
 			},

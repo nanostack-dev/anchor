@@ -4,7 +4,7 @@ A standalone clone contains Anchor's source, agent guides, contract, generators 
 
 | Owner | Anchor use | When to read its source |
 | --- | --- | --- |
-| [nanostack-framework](https://github.com/nanostack-dev/nanostack-framework) | Validation, functional values, faults, config, logging, health and infrastructure modules | Before changing framework integration; inspect the pinned Go revision/API. |
+| [nanostack-framework](https://github.com/nanostack-dev/nanostack-framework) | Validation, functional values, faults, config, logging, tracing, health and infrastructure modules | Before changing framework integration; inspect the pinned Go revision/API. |
 | [pgkit](https://github.com/nanostack-dev/pgkit) | Persisted queue/lock primitives | Before changing durable jobs, lock or retry behavior; app event semantics remain in Anchor. |
 | [nanostack-design-system](https://github.com/nanostack-dev/nanostack-design-system) | Shared React components, layout and tokens | Before UI work; use source and `src/styles.css` on `origin/main`, reconciling the app's package pin. |
 | [echopoint-cli](https://github.com/nanostack-dev/echopoint-cli) | Runs deployed API flow suites selected by `anchor` tag | Before updating flow definitions/assertions or diagnosing post-deploy coverage. |
