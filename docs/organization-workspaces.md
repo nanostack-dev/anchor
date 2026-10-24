@@ -32,6 +32,8 @@ organizations at startup and does not assign resources to a preferred workspace.
 - Update: `PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}`
 - Delete: `DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}`
 
+Organization members can hold a role in a workspace: see [workspace members](technical/workspace-members.md).
+
 Workspace names are unique within an organization. The same workspace name can be reused in a different organization, including another organization under the same product.
 
 ## Examples

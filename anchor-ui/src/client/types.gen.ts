@@ -1305,10 +1305,14 @@ export type AccessDecisionContext = {
     missing_permissions?: Array<string>;
     organization?: AccessIdentityRef;
     role?: AccessIdentityRef;
+    /**
+     * The role the product user holds in the workspace resource, when they hold one there.
+     */
+    workspace_role?: AccessIdentityRef;
     product_user?: AccessIdentityRef;
     api_key?: AccessIdentityRef;
     /**
-     * Every permission the role or API key holds in the organization.
+     * Every permission the subject holds on the resource. On a workspace a product user holds the permissions of their organization role and of their workspace role together.
      */
     permissions?: Array<string>;
 };
@@ -1651,6 +1655,73 @@ export type OrganizationMemberSearchRequest = SearchRequest & {
      * Field to sort by.
      */
     sort_by?: 'joined_at' | 'email';
+};
+
+/**
+ * A role an organization member holds in one workspace.
+ */
+export type WorkspaceMemberResponse = {
+    workspace_id: Ksuid;
+    organization_id: Ksuid;
+    product_user_id: Ksuid;
+    /**
+     * Email address of the member.
+     */
+    email: string;
+    /**
+     * Display name of the member.
+     */
+    name?: string | null;
+    /**
+     * Role the member holds in the workspace, on top of their organization role.
+     */
+    role: {
+        id: Ksuid;
+        name: string;
+    };
+    /**
+     * When the member first got a role in this workspace.
+     */
+    assigned_at: string;
+};
+
+/**
+ * The role to give a member in one workspace.
+ */
+export type WorkspaceMemberRoleRequest = {
+    /**
+     * A role of the product.
+     */
+    role_id: Ksuid;
+};
+
+/**
+ * Filter criteria for searching workspace members.
+ */
+export type WorkspaceMemberFilter = {
+    /**
+     * Filter by specific product user IDs.
+     */
+    product_user_ids?: Array<Ksuid>;
+    /**
+     * Filter by the workspace role.
+     */
+    role_ids?: Array<Ksuid>;
+};
+
+export type WorkspaceMemberSearchRequest = SearchRequest & {
+    filter?: WorkspaceMemberFilter;
+    /**
+     * Field to sort by.
+     */
+    sort_by?: 'assigned_at' | 'email';
+};
+
+/**
+ * Paginated list of workspace members.
+ */
+export type WorkspaceMemberListResponse = PagedListResponse & {
+    items: Array<WorkspaceMemberResponse>;
 };
 
 /**
@@ -6211,6 +6282,213 @@ export type UpdateOrganizationWorkspaceResponses = {
 };
 
 export type UpdateOrganizationWorkspaceResponse = UpdateOrganizationWorkspaceResponses[keyof UpdateOrganizationWorkspaceResponses];
+
+export type RemoveWorkspaceMemberData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the workspace.
+         */
+        workspace_id: Ksuid;
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}';
+};
+
+export type RemoveWorkspaceMemberErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type RemoveWorkspaceMemberError = RemoveWorkspaceMemberErrors[keyof RemoveWorkspaceMemberErrors];
+
+export type RemoveWorkspaceMemberResponses = {
+    /**
+     * Successfully removed
+     */
+    204: void;
+};
+
+export type RemoveWorkspaceMemberResponse = RemoveWorkspaceMemberResponses[keyof RemoveWorkspaceMemberResponses];
+
+export type GetWorkspaceMemberData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the workspace.
+         */
+        workspace_id: Ksuid;
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}';
+};
+
+export type GetWorkspaceMemberErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetWorkspaceMemberError = GetWorkspaceMemberErrors[keyof GetWorkspaceMemberErrors];
+
+export type GetWorkspaceMemberResponses = {
+    /**
+     * Success
+     */
+    200: WorkspaceMemberResponse;
+};
+
+export type GetWorkspaceMemberResponse = GetWorkspaceMemberResponses[keyof GetWorkspaceMemberResponses];
+
+export type AssignWorkspaceMemberRoleData = {
+    body: WorkspaceMemberRoleRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the workspace.
+         */
+        workspace_id: Ksuid;
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/{product_user_id}';
+};
+
+export type AssignWorkspaceMemberRoleErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type AssignWorkspaceMemberRoleError = AssignWorkspaceMemberRoleErrors[keyof AssignWorkspaceMemberRoleErrors];
+
+export type AssignWorkspaceMemberRoleResponses = {
+    /**
+     * The role the member now holds in the workspace.
+     */
+    200: WorkspaceMemberResponse;
+};
+
+export type AssignWorkspaceMemberRoleResponse = AssignWorkspaceMemberRoleResponses[keyof AssignWorkspaceMemberRoleResponses];
+
+export type SearchWorkspaceMembersData = {
+    body: WorkspaceMemberSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the workspace.
+         */
+        workspace_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}/members/search';
+};
+
+export type SearchWorkspaceMembersErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchWorkspaceMembersError = SearchWorkspaceMembersErrors[keyof SearchWorkspaceMembersErrors];
+
+export type SearchWorkspaceMembersResponses = {
+    /**
+     * Success
+     */
+    200: WorkspaceMemberListResponse;
+};
+
+export type SearchWorkspaceMembersResponse = SearchWorkspaceMembersResponses[keyof SearchWorkspaceMembersResponses];
 
 export type AddOrganizationMemberData = {
     body: OrganizationMemberRequest;

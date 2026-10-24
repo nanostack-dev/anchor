@@ -7,6 +7,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
+	workspacemembersvc "anchor/internal/workspacemember/service"
 
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/rs/zerolog"
@@ -29,6 +30,7 @@ type AnchorAPI struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
+	WorkspaceMemberService        workspacemembersvc.WorkspaceMemberService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
 	IntegrationService            service.IntegrationService
@@ -61,6 +63,7 @@ type Params struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
+	WorkspaceMemberService        workspacemembersvc.WorkspaceMemberService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
 	IntegrationService            service.IntegrationService
@@ -93,6 +96,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ResourcePermissionService:     params.ResourcePermissionService,
 		OrganizationService:           params.OrganizationService,
 		WorkspaceService:              params.WorkspaceService,
+		WorkspaceMemberService:        params.WorkspaceMemberService,
 		OrganizationMembershipService: params.OrganizationMembershipService,
 		OrganizationInvitationService: params.OrganizationInvitationService,
 		IntegrationService:            params.IntegrationService,

@@ -116,6 +116,7 @@ func decisionContext(decision accesssvc.Decision) AccessDecisionContext {
 	result.Permissions = &permissions
 	result.Organization = identityRef(identity.OrganizationID, identity.OrganizationName)
 	result.Role = identityRef(identity.RoleID, identity.RoleName)
+	result.WorkspaceRole = identityRef(identity.WorkspaceRoleID, identity.WorkspaceRoleName)
 	result.ProductUser = identityRef(identity.ProductUserID, identity.ProductUserName)
 	result.ApiKey = identityRef(identity.APIKeyID, "")
 	return result

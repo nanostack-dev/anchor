@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"anchor/internal/access"
+	"anchor/internal/authz"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
@@ -26,6 +27,7 @@ import (
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
 	"anchor/internal/session"
+	"anchor/internal/workspacemember"
 
 	"go.uber.org/fx"
 )
@@ -59,6 +61,8 @@ func startAnchor(target ...any) {
 		events.NewModule(),
 		license.NewModule(),
 		invitation.NewModule(),
+		workspacemember.NewModule(),
+		authz.NewModule(),
 		access.NewModule(),
 		session.NewModule(),
 		api.NewModule(),

@@ -22,6 +22,10 @@ const (
 	WorkspaceUpdated Type = "workspace.updated"
 	WorkspaceDeleted Type = "workspace.deleted"
 
+	WorkspaceMembershipCreated Type = "workspace.membership.created"
+	WorkspaceMembershipUpdated Type = "workspace.membership.updated"
+	WorkspaceMembershipDeleted Type = "workspace.membership.deleted"
+
 	OrganizationAPIKeyCreated Type = "organization.api_key.created"
 	OrganizationAPIKeyUpdated Type = "organization.api_key.updated"
 	OrganizationAPIKeyDeleted Type = "organization.api_key.deleted"
@@ -61,6 +65,16 @@ func InvitationData(organizationID, invitationID string) Data {
 	return Data{
 		FieldOrganizationID: organizationID,
 		FieldInvitationID:   invitationID,
+	}
+}
+
+// WorkspaceMembershipData is the payload of the workspace membership events.
+func WorkspaceMembershipData(organizationID, workspaceID, productUserID, roleID string) Data {
+	return Data{
+		FieldOrganizationID: organizationID,
+		FieldWorkspaceID:    workspaceID,
+		FieldProductUserID:  productUserID,
+		FieldRoleID:         roleID,
 	}
 }
 

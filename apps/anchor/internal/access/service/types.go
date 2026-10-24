@@ -52,10 +52,14 @@ type Identity struct {
 	OrganizationName string
 	RoleID           string
 	RoleName         string
-	ProductUserID    string
-	ProductUserName  string
-	APIKeyID         string
-	Permissions      []string
+	// WorkspaceRoleID is set when a product user holds a role in the workspace
+	// the decision is about.
+	WorkspaceRoleID   string
+	WorkspaceRoleName string
+	ProductUserID     string
+	ProductUserName   string
+	APIKeyID          string
+	Permissions       []string
 }
 
 type ItemDecision struct {

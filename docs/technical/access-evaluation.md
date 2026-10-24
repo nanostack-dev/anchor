@@ -41,19 +41,21 @@ caller's product API key, 500 for a failure.
 
 ## Freshness
 
-The evaluator (`apps/anchor/internal/access`) reads Postgres on every call and caches
-nothing. An allowed user call costs three indexed reads: the product user by external
-ID, the membership joined to its role permissions, and the workspace when one is named.
-A refusal for a missing membership adds one organization read to tell
-`ORGANIZATION_NOT_FOUND` from `NOT_A_MEMBER`. Membership, role, workspace and API-key
-writes therefore apply to the next call, including Clerk ingest writes that bypass the
-services. A cache can be added if callers measure the latency as too high; it then
-needs eviction on each of those writes.
+Decisions come from the product's OpenFGA store ([authorization with OpenFGA](authorization-openfga.md)).
+Postgres resolves the product user by external ID, or the API key by its credential, and the
+organization name. Every other answer (the organization exists, the user is a member, the
+workspace belongs to the organization, the roles and every permission held) is read from the
+store. Each write that changes access leaves a mark in its own transaction, and the evaluator
+replays the marks of the organization and product before it reads, so membership, role,
+workspace and API-key writes apply to the next call, including Clerk ingest writes.
+
+On a workspace, a product user holds the permissions of their organization role and of their
+[workspace role](workspace-members.md) together; `context.workspace_role` names the second.
 
 Evaluating an API key goes through introspection, so it flips an expired key to
 inactive and updates `last_used_at` at most hourly, as introspection does.
 
 ## Not covered
 
-Workspace roles (`workspace_memberships`) are not read yet. A product user's
+A product user's
 `INACTIVE` status is not checked, matching what membership listings return today.
