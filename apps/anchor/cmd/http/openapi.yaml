@@ -2174,6 +2174,9 @@ components:
           type: string
         name:
           type: string
+        email:
+          type: string
+          description: The product user's email. Set on `product_user` only.
     AccessDecisionContext:
       type: object
       description: Anchor's extension of the AuthZEN decision context.

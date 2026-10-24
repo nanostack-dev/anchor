@@ -1297,8 +1297,10 @@ type AccessEvaluationsSemantic string
 
 // AccessIdentityRef defines model for AccessIdentityRef.
 type AccessIdentityRef struct {
-	Id   string  `json:"id"`
-	Name *string `json:"name,omitempty"`
+	// Email The product user's email. Set on `product_user` only.
+	Email *string `json:"email,omitempty"`
+	Id    string  `json:"id"`
+	Name  *string `json:"name,omitempty"`
 }
 
 // AccessItemDecision defines model for AccessItemDecision.

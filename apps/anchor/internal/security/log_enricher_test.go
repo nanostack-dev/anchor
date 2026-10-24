@@ -46,12 +46,13 @@ func TestBoundRequestLineCarriesIdentity(t *testing.T) {
 
 	line := sink.decode(t)
 	for key, want := range map[string]string{
-		"request_id": "req_fixed",
-		"method":     http.MethodGet,
-		"path":       "/tenants/abc/workspaces",
-		"user_id":    "usr_4mHt9pLz",
-		"tenant_id":  "tnt_92xQ",
-		"message":    "workspace loaded",
+		"request_id":     "req_fixed",
+		"method":         http.MethodGet,
+		"path":           "/tenants/abc/workspaces",
+		"principal_type": "user",
+		"user_id":        "usr_4mHt9pLz",
+		"tenant_id":      "tnt_92xQ",
+		"message":        "workspace loaded",
 	} {
 		if line[key] != want {
 			t.Errorf("%s = %v, want %v", key, line[key], want)
@@ -77,19 +78,29 @@ func TestEnricherAddsNothingWithoutACaller(t *testing.T) {
 	}
 }
 
-// Product API key auth sets a tenant but no user; the enricher must publish the
-// half that exists.
+// Product API key auth sets a tenant and the key but no user; the enricher must
+// publish the key as the caller.
 func TestEnricherHandlesTenantWithoutUser(t *testing.T) {
 	var sink capture
 	base := zerolog.New(&sink).Level(zerolog.DebugLevel)
 
 	ctx := security.SetTenantID(context.Background(), "tnt_platform")
+	ctx = security.SetProductAPIKeyCaller(ctx, security.ProductAPIKeyCaller{ID: "papk_7Qx", Name: "echopoint"})
 	ctx = log.NewBinder(base, security.NewLogEnricher()).Bind(ctx)
 	log.Ctx(ctx).Info().Msg("api key call")
 
 	line := sink.decode(t)
 	if line["tenant_id"] != "tnt_platform" {
 		t.Errorf("tenant_id = %v, want tnt_platform", line["tenant_id"])
+	}
+	for key, want := range map[string]string{
+		"principal_type": "api_key",
+		"api_key_id":     "papk_7Qx",
+		"api_key_name":   "echopoint",
+	} {
+		if line[key] != want {
+			t.Errorf("%s = %v, want %v", key, line[key], want)
+		}
 	}
 	if _, ok := line["user_id"]; ok {
 		t.Errorf("expected no user_id for API key auth, got %v", line["user_id"])

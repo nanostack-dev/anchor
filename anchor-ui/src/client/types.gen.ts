@@ -1295,6 +1295,10 @@ export enum AccessDenyReason {
 export type AccessIdentityRef = {
     id: string;
     name?: string;
+    /**
+     * The product user's email. Set on `product_user` only.
+     */
+    email?: string;
 };
 
 /**

@@ -105,9 +105,10 @@ func (e *evaluator) identifyUser(ctx context.Context, request Request) (identifi
 	}
 	return identified{
 		reach: reached(&Identity{
-			OrganizationID:  request.Organization(),
-			ProductUserID:   user.ID,
-			ProductUserName: user.Name,
+			OrganizationID:   request.Organization(),
+			ProductUserID:    user.ID,
+			ProductUserName:  user.Name,
+			ProductUserEmail: user.Email,
 		}),
 		question: on(e.authorizer.Product(request.ProductID).User(user.ID), request, request.Organization()),
 	}, nil
@@ -130,7 +131,7 @@ func (e *evaluator) identifyAPIKey(ctx context.Context, request Request) (identi
 	}
 	organizationID := key.APIKey.OrganizationID
 	return identified{
-		reach: reached(&Identity{OrganizationID: organizationID, APIKeyID: key.APIKey.ID}),
+		reach: reached(&Identity{OrganizationID: organizationID, APIKeyID: key.APIKey.ID, APIKeyName: key.APIKey.Name}),
 		question: on(
 			e.authorizer.Product(request.ProductID).APIKey(key.APIKey.ID), request, organizationID,
 		),

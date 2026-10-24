@@ -23,7 +23,10 @@ import (
 func NewLogEnricher() log.Enricher {
 	return log.EnricherFunc(func(ctx context.Context, c zerolog.Context) zerolog.Context {
 		if userID, ok := ctx.Value(currentUserIDKey).(string); ok && userID != "" {
-			c = c.Str("user_id", userID)
+			c = c.Str("principal_type", "user").Str("user_id", userID)
+		}
+		if key, ok := ctx.Value(productAPIKeyKey).(ProductAPIKeyCaller); ok && key.ID != "" {
+			c = c.Str("principal_type", "api_key").Str("api_key_id", key.ID).Str("api_key_name", key.Name)
 		}
 		if tenantID, ok := ctx.Value(tenantIDKey).(string); ok && tenantID != "" {
 			c = c.Str("tenant_id", tenantID)

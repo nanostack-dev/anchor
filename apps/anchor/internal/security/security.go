@@ -36,7 +36,14 @@ type contextKey string
 const (
 	currentUserIDKey contextKey = "current_user_id"
 	tenantIDKey      contextKey = "tenant_id"
+	productAPIKeyKey contextKey = "product_api_key"
 )
+
+// ProductAPIKeyCaller is the product API key that authenticated a request.
+type ProductAPIKeyCaller struct {
+	ID   string
+	Name string
+}
 
 // GetCurrentUserID safely retrieves the current user Name from context.
 func GetCurrentUserID(ctx context.Context) (string, error) {
@@ -76,6 +83,10 @@ func SetCurrentUserID(ctx context.Context, userID string) context.Context {
 
 func SetTenantID(ctx context.Context, tenantID string) context.Context {
 	return context.WithValue(ctx, tenantIDKey, tenantID)
+}
+
+func SetProductAPIKeyCaller(ctx context.Context, caller ProductAPIKeyCaller) context.Context {
+	return context.WithValue(ctx, productAPIKeyKey, caller)
 }
 func IsValidProductAPIKey(apiKey string) bool {
 	return validateSecretFormat(DefaultProductAPIKeyPrefix, apiKey)
