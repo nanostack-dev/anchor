@@ -1,1 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS idx_resources_resource_type_external_id;
