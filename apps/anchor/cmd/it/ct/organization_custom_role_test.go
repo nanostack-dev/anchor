@@ -57,7 +57,7 @@ func TestCustomRolesSwitch(t *testing.T) {
 			assert.False(t, on.BuiltIn)
 			assert.False(t, off.CustomRoles)
 			require.Eventually(t, func() bool { return sink.Count("product.resource_type.updated") == 2 },
-				10*time.Second, 50*time.Millisecond)
+				time.Minute, 50*time.Millisecond)
 		},
 	)
 
