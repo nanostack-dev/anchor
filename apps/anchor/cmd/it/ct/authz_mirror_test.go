@@ -16,7 +16,6 @@ import (
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/model"
 	authzrepository "anchor/internal/authz/repository"
-	authzservice "anchor/internal/authz/service"
 )
 
 const (
@@ -29,7 +28,6 @@ const (
 var (
 	authzEngines authzengine.Provider
 	authzRepo    authzrepository.Repository
-	authzSweeper *authzservice.Sweeper
 )
 
 // holder is a member or an active, unexpired Organization API key, and what
@@ -42,11 +40,11 @@ type holder struct {
 
 // checkAuthzMirror compares, for every Product the suite gave a model, what
 // each member and API key holds in Anchor's tables with OpenFGA's answer for
-// every permission of the Product. Decisions come from OpenFGA (ADR-0022 G4,
+// every permission of the Product. It runs before any sweep, so it checks
+// what the writes' own replays left. Decisions come from OpenFGA (ADR-0022 G4,
 // PR 7), and most writes in the suite are never followed by one, so this is
 // where their drift would show.
 func checkAuthzMirror(ctx context.Context) error {
-	authzSweeper.Sweep(ctx)
 	byProduct, err := mirrorHolders(ctx)
 	if err != nil {
 		return err

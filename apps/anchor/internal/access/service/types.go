@@ -1,6 +1,9 @@
 package service
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // SubjectType names who asks for access.
 type SubjectType string
@@ -54,6 +57,10 @@ func (s Semantic) stopsAfter(item ItemDecision) bool {
 type PermissionChecker interface {
 	Holds(ctx context.Context, check PermissionCheck) (map[string]bool, error)
 }
+
+// ErrPermissionStoreUnavailable wraps a failure of the relationship store
+// itself: not ready, failing, or too slow. The decision answers 503 for it.
+var ErrPermissionStoreUnavailable = errors.New("permission store unavailable")
 
 // PermissionCheck names the identity and the actions to answer for it.
 type PermissionCheck struct {

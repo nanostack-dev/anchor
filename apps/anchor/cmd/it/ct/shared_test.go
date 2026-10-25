@@ -60,7 +60,6 @@ func TestMain(m *testing.M) {
 				&templateSync,
 				&authzEngines,
 				&authzRepo,
-				&authzSweeper,
 			},
 			AfterRun: mailpit.StopShared,
 			// OpenFGA must hold what Anchor's tables imply once the suite ran

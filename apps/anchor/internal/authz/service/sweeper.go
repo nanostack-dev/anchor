@@ -26,6 +26,9 @@ const (
 	// replayTimeout bounds the replay that follows a request's commit; a
 	// catalog change replays every Organization of its Product.
 	replayTimeout = 30 * time.Second
+	// staleMarkAge is how late a replay is logged as authz.mark_stale: until
+	// it runs, decisions see the access from before the write.
+	staleMarkAge = time.Minute
 )
 
 // Sweeper keeps every store converging without a request driving it: it
@@ -111,6 +114,10 @@ func (s *Sweeper) replayMarks(ctx context.Context) {
 	byProduct := map[string][]repository.Mark{}
 	var order []string
 	for _, mark := range marks {
+		if age := s.now().Sub(mark.MarkedAt); age > staleMarkAge {
+			s.logger.Warn().Str("event", "authz.mark_stale").Str("product_id", mark.ProductID).
+				Str("organization_id", mark.OrganizationID).Dur("age", age).Msg("authz.mark_stale")
+		}
 		if _, seen := byProduct[mark.ProductID]; !seen {
 			order = append(order, mark.ProductID)
 		}

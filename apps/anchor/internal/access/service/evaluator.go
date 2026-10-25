@@ -4,22 +4,29 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
+	"time"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
 	coresvc "anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
 )
+
+// driftLogBurst caps the drift lines logged a minute.
+const driftLogBurst = 20
 
 // Evaluator decides whether a subject may act on an organization or a workspace.
 //
 // Postgres resolves who the subject is: the product user and its membership,
 // or the API key through introspection, and the workspace's organization.
-// Which actions it holds comes from OpenFGA, which every write that changes
-// access reaches before its response (ADR-0022 E5). Nothing is cached.
+// Which actions it holds comes from OpenFGA, which a write that changes access
+// usually reaches before its response, and otherwise within seconds, when the
+// sweeper replays its mark (ADR-0022 E5). Nothing is cached.
 type Evaluator interface {
 	Evaluate(ctx context.Context, request Request) (Decision, error)
 }
@@ -32,6 +39,7 @@ type evaluator struct {
 	apiKeys       coresvc.OrganizationAPIKeyService
 	permissions   PermissionChecker
 	logger        zerolog.Logger
+	driftSampler  zerolog.Sampler
 }
 
 func NewEvaluator(
@@ -51,6 +59,7 @@ func NewEvaluator(
 		apiKeys:       apiKeys,
 		permissions:   permissions,
 		logger:        logger.With().Str("component", "access_evaluator").Logger(),
+		driftSampler:  &zerolog.BurstSampler{Burst: driftLogBurst, Period: time.Minute},
 	}
 }
 
@@ -73,18 +82,49 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	if subject.stopped != "" {
 		return subject.decide(request.Actions, request.Semantic, nil), nil
 	}
+	identity := subject.identity
 	held, err := e.permissions.Holds(ctx, PermissionCheck{
 		ProductID:      request.ProductID,
-		OrganizationID: subject.identity.OrganizationID,
-		ProductUserID:  subject.identity.ProductUserID,
-		APIKeyID:       subject.identity.APIKeyID,
+		OrganizationID: identity.OrganizationID,
+		ProductUserID:  identity.ProductUserID,
+		APIKeyID:       identity.APIKeyID,
 		Actions:        request.Actions,
 	})
-	if err != nil {
-		e.logger.Error().Err(err).Str("product_id", request.ProductID).Msg("access permissions check failed")
+	switch {
+	case errors.Is(err, context.Canceled):
+		return Decision{}, err
+	case errors.Is(err, ErrPermissionStoreUnavailable):
+		log.Ctx(ctx).Warn().Err(err).Str("product_id", request.ProductID).
+			Str("organization_id", identity.OrganizationID).Msg("access decisions unavailable")
 		return Decision{}, ErrDecisionsUnavailable
+	case err != nil:
+		return Decision{}, e.unexpected(err, request, "permissions")
 	}
+	e.reportDrift(ctx, request, identity, held)
 	return subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] }), nil
+}
+
+// reportDrift logs, sampled, each action where OpenFGA and the permissions
+// Anchor's tables list for the identity disagree. A write's own replay window
+// can show one; a lasting one is a sync defect.
+func (e *evaluator) reportDrift(ctx context.Context, request Request, identity *Identity, held map[string]bool) {
+	logger := log.Ctx(ctx).Sample(e.driftSampler)
+	for _, action := range request.Actions {
+		listed := slices.Contains(identity.Permissions, action)
+		if listed == held[action] {
+			continue
+		}
+		logger.Warn().
+			Str("event", "authz.decision_drift").
+			Str("product_id", request.ProductID).
+			Str("organization_id", identity.OrganizationID).
+			Str("product_user_id", identity.ProductUserID).
+			Str("api_key_id", identity.APIKeyID).
+			Str("permission", action).
+			Bool("tables", listed).
+			Bool("openfga", held[action]).
+			Msg("authz.decision_drift")
+	}
 }
 
 // ErrDecisionsUnavailable answers a decision the relationship store can't

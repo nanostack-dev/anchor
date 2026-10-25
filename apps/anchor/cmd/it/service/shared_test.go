@@ -50,6 +50,9 @@ var (
 	AuthzSweeper            *authzservice.Sweeper
 	AuthzReplayer           *authzservice.Replayer
 	Evaluator               accessservice.Evaluator
+	ProductUserRepo         repository.ProductUserRepository
+	MembershipRepo          repository.OrganizationMembershipRepository
+	WorkspaceRepo           repository.WorkspaceRepository
 	TestDB                  *sql.DB
 )
 
@@ -85,6 +88,9 @@ func TestMain(m *testing.M) {
 				&AuthzSweeper,
 				&AuthzReplayer,
 				&Evaluator,
+				&ProductUserRepo,
+				&MembershipRepo,
+				&WorkspaceRepo,
 				&TestDB,
 			},
 		},

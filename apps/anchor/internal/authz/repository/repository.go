@@ -27,6 +27,7 @@ type Mark struct {
 	ProductID      string
 	OrganizationID string
 	Revision       int64
+	MarkedAt       time.Time
 }
 
 // Store is a Product's OpenFGA store and the model its tuples follow.
@@ -102,7 +103,9 @@ func (r *repositoryImpl) Mark(ctx context.Context, productID, organizationID str
 }
 
 func toMark(row dbmodel.AuthzSyncMarks) Mark {
-	return Mark{ProductID: row.ProductID, OrganizationID: row.OrganizationID, Revision: row.Revision}
+	return Mark{
+		ProductID: row.ProductID, OrganizationID: row.OrganizationID, Revision: row.Revision, MarkedAt: row.MarkedAt,
+	}
 }
 
 func (r *repositoryImpl) Pending(ctx context.Context, productID string) ([]Mark, error) {

@@ -72,25 +72,36 @@ Every sync runs under the Product's transaction-scoped advisory lock (`authz-syn
 The access evaluator (`internal/access/service`) still resolves who the subject is in Postgres, then asks OpenFGA what it holds (`service.Checker`, provided as `access/service.PermissionChecker`):
 
 1. **Postgres resolves the subject.** A user is found by external ID, then its membership in the Organization; an API key goes through introspection, which refuses an invalid, inactive or expired key; a named workspace must belong to the Organization. A subject stopped at any of these steps is denied with its reason, and OpenFGA is not asked.
-2. **OpenFGA answers each action.** `Checker.Holds` checks `can_<permission>` for `user:<product user>` or `api_key:<key>` on `organization:<id>`, in `BatchCheck`s of at most 50, under the model `authz_stores` records. A permission the model doesn't know is not held (`MISSING_PERMISSION`). A workspace decision is checked on its Organization, since a workspace's permissions are its Organization role's.
-3. **The first decision for a Product nothing has synced builds its store** with a full Product sync, then checks.
+2. **OpenFGA answers each action.** `Checker.Holds` checks `can_<permission>` for `user:<product user>` or `api_key:<key>` on `organization:<id>`, in `BatchCheck`s of at most 50 and within 5 s, under the model `authz_stores` records. A workspace decision is checked on its Organization, since a workspace's permissions are its Organization role's.
+3. **A permission the model doesn't define is not held** (`MISSING_PERMISSION`) and is not asked: the checker reads which relations the model defines on `organization`, once per model ID, since a model never changes. OpenFGA reports an unknown relation with the same code as throttling, so any item it fails on fails the decision.
+4. **A store answers once a full rebuild has filled it** (`authz_stores.reconciled_at`). Before that it may hold only the Organizations written since, and would deny the others. The first decision for a Product never rebuilt runs the rebuild, once per process and within 30 s, while the other decisions for that Product wait for it.
 
-The engine not being ready, a failed check, or an item OpenFGA fails on answers `503 ACCESS_DECISIONS_UNAVAILABLE`; the caller retries.
+Errors:
 
-The decision's context (`permissions`, the role and the key in the evaluation response) is still read from Anchor's tables. It describes the identity; the answer comes from OpenFGA.
+- The engine not being ready, a failed or slow check, an item OpenFGA fails on, or a rebuild that can't take its lock answers `503 ACCESS_DECISIONS_UNAVAILABLE`, logged at warn level with the request's fields; the caller retries.
+- A Postgres failure answers 500, like the rest of the evaluator. A caller that hangs up is not logged.
+
+The decision's context (`permissions`, the role and the key in the evaluation response) is still read from Anchor's tables. It describes the identity; the answer comes from OpenFGA. When the two disagree on an action, the evaluator logs `"event": "authz.decision_drift"`, sampled at 20 lines a minute. A write's own replay window can show one; a lasting one is a sync defect.
 
 ### Freshness
 
-Decisions never look for marks (E5). A write that changes access reaches the store before its response, so the next request sees it. When that replay can't run (its lock stayed busy for 3 s, or the process stopped), the mark stays, and decisions see the previous state until the sweeper replays it within 5 s. A write made outside an API request, such as a Clerk ingest, waits for the sweeper too.
+Decisions never look for marks (E5). A write that changes access usually reaches the store before its response, so the next request sees it. Otherwise the mark stays and decisions see the previous state until the sweeper replays it:
 
-The component suite checks, once its tests pass, that OpenFGA holds what the tables imply: after one sweep, every member's role permissions and every active key's permissions are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_mirror_test.go`).
+- the replay's lock stayed busy for 3 s, for example behind a rebuild of the same Product, or the process stopped: the next sweep, within 5 s;
+- the write was made outside an API request, such as a Clerk ingest: the next sweep;
+- the Product's sync is failing: the sweeper retries it every minute.
+
+A mark replayed more than a minute after it was made is logged as `"event": "authz.mark_stale"`.
+
+The component suite checks, once its tests pass and before any sweep, that OpenFGA holds what the tables imply: every member's role permissions and every active key's permissions are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_mirror_test.go`).
 
 ## Known limits
 
 - **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so those tuples are never read.
 - **One lock per Product.** Writes to different Organizations of one Product queue behind each other's replay, each waiting at most 3 s before leaving its mark to the sweeper. A rebuild holds the lock while it reads the whole store.
 - **A catalog change replays its whole Product** before its response, bounded at 30 s; a batch of catalog writes, such as a Terraform apply, repeats it per write.
+- **One rebuild per sweep.** The sweeper rebuilds one Product every 5 s, so each Product is rebuilt every 15 minutes only up to about 180 Products; beyond that, a rebuild comes around less often. Writes that leave no mark rely on it: copies the role backfill and reads make (PR 2b) emit nothing. They hold their template's permissions, so the answers stay the same.
 
 ## Tests
 
-`TestAuthzDecisions` covers a decision that follows the store (a deleted tuple denies until a reconcile repairs it), the first decision for a Product never synced, an undeclared permission, and more actions than one `BatchCheck` takes. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+`TestAuthzDecisions` covers a decision that follows the store (a deleted tuple denies until a reconcile repairs it), the first decision for a Product never rebuilt, a partly synced store, concurrent first decisions, an engine that isn't ready (503), an undeclared permission, and more actions than one `BatchCheck` takes. `TestAccessEvaluationSeesWritesOnTheNextCall` covers revocations only OpenFGA answers: a permission removed from a role, a member moved to another role, and a permission deleted from the catalog for an API key. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

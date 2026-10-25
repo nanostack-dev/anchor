@@ -1,15 +1,19 @@
 package service_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	accessservice "anchor/internal/access/service"
+	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/model"
+	authzservice "anchor/internal/authz/service"
 )
 
 func TestAuthzDecisions(t *testing.T) {
@@ -18,11 +22,11 @@ func TestAuthzDecisions(t *testing.T) {
 	t.Run("A decision comes from the store, and a reconcile repairs a deleted tuple", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		externalID, userID := givenMemberWithExternalID(t, w)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
 		require.True(t, evaluate(t, userRequest(w, externalID)).Allowed)
 
 		deleteTuple(t, w.productID, &openfgav1.TupleKeyWithoutCondition{
-			Object:   model.Assignment(w.organizationID, userID, w.templateID),
+			Object:   model.Assignment(w.organizationID, w.templateID),
 			Relation: model.RelationAssignee,
 			User:     model.User(userID),
 		})
@@ -45,6 +49,44 @@ func TestAuthzDecisions(t *testing.T) {
 		found, err := AuthzRepo.FindStore(t.Context(), w.productID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, found.Value().ModelID)
+		assert.NotNil(t, found.Value().ReconciledAt)
+	})
+
+	t.Run("A store some Organizations were synced into is rebuilt before it answers", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		externalID, _ := givenMemberWithExternalID(t, w)
+		other := givenOrganization(t, w.productID)
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, other))
+
+		assert.True(t, evaluate(t, userRequest(w, externalID)).Allowed)
+	})
+
+	t.Run("Concurrent first decisions for a Product all get its answer", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		externalID, _ := givenMemberWithExternalID(t, w)
+		var group errgroup.Group
+		for range 10 {
+			group.Go(func() error {
+				decision, err := Evaluator.Evaluate(t.Context(), userRequest(w, externalID))
+				if err == nil && !decision.Allowed {
+					err = errors.New("denied")
+				}
+				return err
+			})
+		}
+
+		require.NoError(t, group.Wait())
+	})
+
+	t.Run("An engine that isn't ready answers 503", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		externalID, _ := givenMemberWithExternalID(t, w)
+		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo, WorkspaceRepo,
+			OrgAPIKeyService, authzservice.NewChecker(notReady{}, AuthzRepo, AuthzSyncer), TestLogger)
+
+		_, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
+
+		require.ErrorIs(t, err, accessservice.ErrDecisionsUnavailable)
 	})
 
 	t.Run("A permission the Product doesn't declare is not held", func(t *testing.T) {
@@ -77,6 +119,10 @@ func TestAuthzDecisions(t *testing.T) {
 		assert.True(t, decision.Items[55].Allowed)
 	})
 }
+
+type notReady struct{}
+
+func (notReady) Get() (authzengine.Engine, error) { return nil, authzengine.ErrNotReady }
 
 func evaluate(t *testing.T, request accessservice.Request) accessservice.Decision {
 	t.Helper()

@@ -69,9 +69,11 @@ subject holds then comes from OpenFGA, in one in-process `BatchCheck` per 50
 actions ([authorization engine](authorization-engine.md#decisions)). Nothing is
 cached.
 
-A write that changes access reaches OpenFGA before its response, so it applies to
-the next call. A write made outside an API request, such as a Clerk ingest, or one
-whose replay couldn't run, applies within 5 s, when the sweeper replays its mark.
+A write that changes access usually reaches OpenFGA before its response, so it
+applies to the next call. A write made outside an API request, such as a Clerk
+ingest, or one whose replay couldn't run, applies when the sweeper replays its
+mark: within seconds, or a minute when the Product's sync is failing
+([freshness](authorization-engine.md#freshness)).
 
 Evaluating an API key goes through introspection, so it flips an expired key to
 inactive and updates `last_used_at` at most hourly, as introspection does.
