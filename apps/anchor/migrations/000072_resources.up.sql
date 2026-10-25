@@ -26,7 +26,9 @@ CREATE TABLE resources (
 CREATE INDEX idx_resources_organization_created_external_id ON resources (organization_id, created_at, external_id, id);
 CREATE INDEX idx_resources_organization_name_external_id ON resources (organization_id, name, external_id, id);
 CREATE INDEX idx_resources_parent_resource_id ON resources (parent_resource_id);
-CREATE INDEX idx_resources_resource_type_id ON resources (resource_type_id);
+-- Serves the type's usage counts and the lookup of a product ID across the
+-- Organizations of a Product.
+CREATE INDEX idx_resources_resource_type_external_id ON resources (resource_type_id, external_id);
 CREATE INDEX idx_resources_product_id ON resources (product_id);
 
 CREATE TRIGGER update_resources_updated_at
