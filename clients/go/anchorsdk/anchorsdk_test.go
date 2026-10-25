@@ -672,6 +672,33 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 				`"subject":{"id":"user_1","type":"user"}}`,
 		},
 		{
+			name:  "access for a user on an unregistered resource, parent named first",
+			reply: stubResponse{status: http.StatusOK, body: `{"decision":true,"context":{},"evaluations":[{"decision":true}]}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.AccessForUser("user_1").Under("folder", "f_1").OnResource("org_1", "document", "d_1").
+					Permissions("document:view").Explain().Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/access/v1/evaluations",
+			wantBody: `{"evaluations":[{"action":{"name":"document:view"}}],"options":{"explain":true},` +
+				`"resource":{"id":"d_1","properties":{"organization_id":"org_1",` +
+				`"parent":{"id":"f_1","type":"folder"}},"type":"document"},"subject":{"id":"user_1","type":"user"}}`,
+		},
+		{
+			name:  "access for an API key on an unregistered resource, parent named last",
+			reply: stubResponse{status: http.StatusOK, body: `{"decision":true,"context":{},"evaluations":[]}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.AccessForAPIKey("anchor_org_apikey_x").OnResource("", "document", "d_1").
+					Under("folder", "f_1").Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/access/v1/evaluations",
+			wantBody: `{"evaluations":[],"resource":{"id":"d_1","properties":{"parent":{"id":"f_1","type":"folder"}},` +
+				`"type":"document"},"subject":{"id":"anchor_org_apikey_x","type":"organization_api_key"}}`,
+		},
+		{
 			name:  "access for an API key in its own organization",
 			reply: stubResponse{status: http.StatusOK, body: `{"decision":false,"context":{"reason":"API_KEY_INVALID"},"evaluations":[]}`},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {

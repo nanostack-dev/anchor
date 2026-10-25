@@ -77,11 +77,15 @@ func (q AccessQuestion) InWorkspace(organizationID, workspaceID string) AccessQu
 }
 
 // OnResource targets a resource of the product's own types; organizationID ""
-// leaves the organization out.
+// leaves the organization out. A parent named before is kept.
 func (q AccessQuestion) OnResource(organizationID, resourceType, id string) AccessQuestion {
+	properties := client.AccessResourceProperties{OrganizationId: optional(organizationID)}
+	if q.body.Resource.Properties != nil {
+		properties.Parent = q.body.Resource.Properties.Parent
+	}
 	q.body.Resource = client.AccessResource{Type: resourceType, Id: optional(id)}
-	if organizationID != "" {
-		q.body.Resource.Properties = &client.AccessResourceProperties{OrganizationId: &organizationID}
+	if properties.OrganizationId != nil || properties.Parent != nil {
+		q.body.Resource.Properties = &properties
 	}
 	return q
 }

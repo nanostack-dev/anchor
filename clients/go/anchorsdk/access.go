@@ -63,10 +63,15 @@ func (a *AccessCheck) InWorkspace(organizationID, workspaceID string) *AccessChe
 
 // OnResource targets a resource of one of the product's resource types, named
 // by the product's own ID. organizationID may be empty for an API key subject.
+// A parent named before with [AccessCheck.Under] is kept.
 func (a *AccessCheck) OnResource(organizationID, resourceType, id string) *AccessCheck {
+	properties := nanoclient.AccessResourceProperties{OrganizationId: optional(organizationID)}
+	if a.body.Resource.Properties != nil {
+		properties.Parent = a.body.Resource.Properties.Parent
+	}
 	resource := nanoclient.AccessResource{Type: resourceType, Id: &id}
-	if organizationID != "" {
-		resource.Properties = &nanoclient.AccessResourceProperties{OrganizationId: &organizationID}
+	if properties.OrganizationId != nil || properties.Parent != nil {
+		resource.Properties = &properties
 	}
 	a.body.Resource = resource
 	return a

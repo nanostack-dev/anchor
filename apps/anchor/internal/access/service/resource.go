@@ -50,8 +50,9 @@ func (e *evaluator) reachResource(
 		}, nil
 	}
 	if request.Resource.Parent == nil {
-		reason, lookupErr := e.missing(ctx, request, organizationID, rt.ID, request.Resource.ID)
-		return stoppedBy(reason), located{}, lookupErr
+		// Another Organization's resource of the same ID is a different one
+		// (ADR-0022 B2), and saying it exists would leak it.
+		return stoppedBy(ReasonResourceNotFound), located{}, nil
 	}
 	return e.reachParent(ctx, request, tree, rt, subject)
 }
@@ -83,7 +84,7 @@ func (e *evaluator) reachParent(
 	}
 	registered, ok := found.Get()
 	if !ok {
-		reason, lookupErr := e.missing(ctx, request, organizationID, parentType.ID, parent.ID)
+		reason, lookupErr := e.missingParent(ctx, request, organizationID, parentType.ID, parent.ID)
 		return stoppedBy(reason), located{}, lookupErr
 	}
 	return subject, located{
@@ -92,15 +93,15 @@ func (e *evaluator) reachParent(
 	}, nil
 }
 
-// missing tells a resource another Organization of the Product registered
+// missingParent tells a parent another Organization of the Product registered
 // from one no Organization did; it costs a query only on that deny path.
-func (e *evaluator) missing(
+func (e *evaluator) missingParent(
 	ctx context.Context, request Request, organizationID, typeID, externalID string,
 ) (DenyReason, error) {
 	elsewhere, err := e.resources.RegisteredElsewhere(ctx, request.ProductID, organizationID, typeID, externalID)
 	switch {
 	case err != nil:
-		return "", e.unexpected(err, request, "resource elsewhere")
+		return "", e.unexpected(err, request, "parent elsewhere")
 	case elsewhere:
 		return ReasonResourceNotInOrganization, nil
 	default:

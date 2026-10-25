@@ -240,6 +240,32 @@ func TestAccessEvaluationOnResourcesThroughTheOrganization(t *testing.T) {
 		response := w.access.User(reader).OnResource(w.org.Id, "document", w.document).Can(projectManage).Decide()
 		requireDenied(t, response, ct.MISSINGPERMISSION)
 	})
+
+	t.Run("An organization-scoped permission the organization role holds is missing on a document", func(t *testing.T) {
+		billing := "billing:read"
+		w.product.CreateScopedPermissions(t, "organization", billing)
+		admin := createRoleTemplate(t, w.product, ct.CreateProductRoleJSONRequestBody{
+			Name: "Billing " + ids.MustNew("ct"), Permissions: []string{billing},
+		})
+		_, billingReader := w.newMember(t, admin.Id)
+		as := w.access.User(billingReader)
+
+		requireAllowed(t, as.InOrganization(w.org.Id).Can(billing).Decide())
+		requireDenied(t, as.OnResource(w.org.Id, "document", w.document).Can(billing).Decide(), ct.MISSINGPERMISSION)
+	})
+
+	t.Run("An organization API key is refused another organization's resources", func(t *testing.T) {
+		_, key := w.apiKey(t, documentView)
+		other := w.product.Resources(w.other.Id)
+		project, folder := resourceID(), resourceID()
+		other.Put("project", project, "Elsewhere", other.Top())
+		other.Put("folder", folder, "Elsewhere", itdsl.Ref("project", project))
+		as := w.access.APIKey(key)
+
+		requireDenied(t, as.OnResource("", "folder", folder).Can(documentView).Decide(), ct.RESOURCENOTFOUND)
+		requireDenied(t, as.OnResource("", "document", resourceID()).Under("folder", folder).
+			Can(documentView).Decide(), ct.RESOURCENOTINORGANIZATION)
+	})
 }
 
 func TestAccessEvaluationResourceDenyReasons(t *testing.T) {
@@ -271,9 +297,9 @@ func TestAccessEvaluationResourceDenyReasons(t *testing.T) {
 			reason:   ct.RESOURCENOTFOUND,
 		},
 		{
-			name:     "A resource registered only in another organization is denied as not in the organization",
+			name:     "A resource registered only in another organization is denied as not found",
 			question: w.asMember("folder", otherFolder),
-			reason:   ct.RESOURCENOTINORGANIZATION,
+			reason:   ct.RESOURCENOTFOUND,
 		},
 		{
 			name:     "A parent registered only in another organization is denied as not in the organization",
@@ -334,9 +360,20 @@ func TestAccessEvaluationResourceParents(t *testing.T) {
 	})
 
 	t.Run("Organization and workspace resources take no parent", func(t *testing.T) {
-		resp := w.access.User(w.memberExternalID).InOrganization(w.org.Id).Under("project", w.project).
-			Can(documentView).Send()
-		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
+		workspace := w.product.Workspaces(w.org.Id).
+			Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + ids.MustNew("ct")}).Id
+		as := w.access.User(w.memberExternalID)
+		for _, question := range []itdsl.AccessQuestion{
+			as.InOrganization(w.org.Id).Under("project", w.project),
+			as.InWorkspace(w.org.Id, workspace).Under("project", w.project),
+		} {
+			resp := question.Can(documentView).Send()
+
+			requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
+			require.NotNil(t, resp.JSON400)
+			require.NotEmpty(t, resp.JSON400.Errors)
+			assert.Equal(t, "INVALID_ACCESS_RESOURCE", resp.JSON400.Errors[0].Code)
+		}
 	})
 
 	t.Run("A resource without an id is a bad request", func(t *testing.T) {

@@ -5,11 +5,35 @@ import (
 	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/roleassignment"
 	resourcerepository "anchor/internal/resource/repository"
 )
+
+// explainOrSkip explains the decision, or, when Anchor's tables can't say
+// what granted it, logs why and leaves it unexplained: the explanation never
+// changes the decision OpenFGA made.
+func (e *evaluator) explainOrSkip(
+	ctx context.Context, request Request, identity *Identity, target located, decision *Decision,
+) {
+	err := e.explain(ctx, request, identity, target, decision)
+	if err == nil {
+		return
+	}
+	for i := range decision.Items {
+		decision.Items[i].GrantedBy = nil
+	}
+	log.Ctx(ctx).Warn().Err(err).
+		Str("event", "access.explain_failed").
+		Str("product_id", request.ProductID).
+		Str("organization_id", identity.OrganizationID).
+		Str("product_user_id", identity.ProductUserID).
+		Str("api_key_id", identity.APIKeyID).
+		Str("resource_type", string(request.Resource.Type)).
+		Msg("access.explain_failed")
+}
 
 // explain fills what granted each allowed item from Anchor's tables, once
 // OpenFGA allowed it: the subject's roles on the resource and its ancestors,

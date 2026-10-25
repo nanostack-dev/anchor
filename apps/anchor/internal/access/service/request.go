@@ -88,9 +88,10 @@ func (r Request) OnResource(organizationID, resourceType, id string) Request {
 	return r.On(ResourceType(resourceType), id, organizationID)
 }
 
-// On names the resource by type, for callers that map a wire value.
+// On names the resource by type, for callers that map a wire value. A parent
+// named before is kept, so Under works before or after it.
 func (r Request) On(resourceType ResourceType, id, organizationID string) Request {
-	r.Resource = Resource{Type: resourceType, ID: id, OrganizationID: organizationID}
+	r.Resource = Resource{Type: resourceType, ID: id, OrganizationID: organizationID, Parent: r.Resource.Parent}
 	return r
 }
 

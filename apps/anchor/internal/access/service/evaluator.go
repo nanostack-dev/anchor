@@ -130,9 +130,7 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	}
 	decision := subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] })
 	if request.Explain {
-		if err = e.explain(ctx, request, identity, target, &decision); err != nil {
-			return Decision{}, e.unexpected(err, request, "grants")
-		}
+		e.explainOrSkip(ctx, request, identity, target, &decision)
 	}
 	return decision, nil
 }

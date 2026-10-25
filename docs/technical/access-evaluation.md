@@ -57,23 +57,24 @@ resource after the subject, in this order; the first rule that fails is the reas
    on its own object, under its stored chain. A `properties.parent` that differs is
    ignored and logged at warn level as `"event": "access.parent_mismatch"`, sampled at
    20 lines a minute: naming a parent never widens access to a registered resource.
-3. **An unregistered resource with no parent** is `RESOURCE_NOT_IN_ORGANIZATION` when
-   another Organization of the Product registered that type and ID, otherwise
-   `RESOURCE_NOT_FOUND`.
+3. **An unregistered resource with no parent** is `RESOURCE_NOT_FOUND`, even when
+   another Organization of the Product registered that type and ID: IDs are unique
+   per Organization and type (ADR-0022 B2), so that is a different resource, and
+   naming it would tell a caller that the ID exists elsewhere.
 4. **An unregistered resource with a parent.** The parent's type must be one of the
    resource type's parent types, or its own when it nests in itself, otherwise
    `PARENT_TYPE_NOT_ALLOWED` (a parent type the Product does not declare included).
    The parent is the asked Organization, `{ "type": "organization", "id": … }`, or a
    resource registered in it. Another Organization as the parent, or a parent
-   registered only in another Organization, is `RESOURCE_NOT_IN_ORGANIZATION`; a parent
-   no Organization registered is `RESOURCE_NOT_FOUND`. The check then runs on an
+   registered only in another Organization, is `RESOURCE_NOT_IN_ORGANIZATION`, which
+   reveals that the parent exists in another Organization of the same Product; a
+   parent no Organization registered is `RESOURCE_NOT_FOUND`. The check then runs on an
    object of the resource's type that exists for that check only, with the parent
    given to OpenFGA as a contextual tuple
    ([authorization engine](authorization-engine.md#decisions)).
 
-An ID registered in another Organization does not stop step 4: IDs are unique per
-Organization and type (ADR-0022 B2), so another Organization's resource of the same
-ID is a different resource, and the parent decides.
+An ID registered in another Organization stops neither step 3 nor step 4: only the
+parent's own Organization counts.
 
 A role held on the resource, or on any resource above it, grants what it bundles,
 and so does the Organization role, the root of every chain. An Organization API key
@@ -96,12 +97,16 @@ extension inside AuthZEN's free-form `context`, so an AuthZEN client ignores it.
 ]
 ```
 
-The list is read from Anchor's tables once OpenFGA allowed the action: every role
+The list is read from Anchor's tables after OpenFGA allowed the action, not from the
+store that decided it: every role
 the user holds on the resource and its registered ancestors whose bundle holds the
 action, nearest first, then the Organization role when it holds the action. An API
 key's own grant is `{ "api_key": { "id", "name" }, "resource": { "type":
-"organization", "id": … } }`. A denied item carries none. In the moment a write takes
-to reach the store, the list can be empty for an allowed action.
+"organization", "id": … } }`. A denied item carries none. Right after a write, while
+it reaches the store, the list can briefly be empty or differ from the grant the
+store used. When the tables can't be read, the decision is answered without
+`granted_by` and logged at warn level as `"event": "access.explain_failed"`; an
+explanation never turns a decision into an error.
 
 Without the option nothing is read. With it, a call reads the resource's chain
 (at most 15 resources, one statement) and the user's assignments on it (one
@@ -134,8 +139,8 @@ every call: the product user by external ID, the membership joined to its role,
 and the workspace when one is named. A refusal for a missing membership adds one
 organization read to tell `ORGANIZATION_NOT_FOUND` from `NOT_A_MEMBER`. A resource
 of the Product's own types adds the type tree, the resource, and, for an
-unregistered one, its parent: three reads at most, plus one on a deny path to tell
-`RESOURCE_NOT_IN_ORGANIZATION` from `RESOURCE_NOT_FOUND`. What the subject holds
+unregistered one, its parent: three reads at most, plus one when the named parent is
+missing, to tell `RESOURCE_NOT_IN_ORGANIZATION` from `RESOURCE_NOT_FOUND`. What the subject holds
 then comes from OpenFGA, in one in-process `BatchCheck` per 50 actions
 ([authorization engine](authorization-engine.md#decisions)). Nothing is cached.
 
