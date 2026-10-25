@@ -50,11 +50,11 @@ An Organization implies:
 
 | Fact in Anchor's tables | Tuples |
 | --- | --- |
-| A membership: user *U* holds role row *R* in Organization *O* | `role_assignment:O.U.R # role @ role:R`, `role_assignment:O.U.R # assignee @ user:U`, `organization:O # assignment @ role_assignment:O.U.R` |
+| A membership: user *U* holds role row *R* in Organization *O* | `role_assignment:O.R # assignee @ user:U`, plus, once per role held in *O*, `role_assignment:O.R # role @ role:R` and `organization:O # assignment @ role_assignment:O.R` |
 | Role row *R* bundles permission *P* | `role:R # grants_P @ user:*` |
 | Active, unexpired API key *K* holds *P* | `organization:O # can_P @ api_key:K` |
 
-An assignment's ID holds everything its tuples say, so they never change: a member who changes role gets a new assignment. An Organization sync therefore reads the Organization's object, derives each linked assignment's tuples from its ID, and reads the roles the Organization owns or its members hold. It never deletes the grants of a role template a membership still holds itself, as a release before copies wrote, since other Organizations may hold it; a Product sync brings those in step.
+There is one assignment per role held in an Organization, with every member holding the role as an assignee. A check on the Organization therefore walks its roles, a handful, and looks up the subject among each one's assignees; its cost doesn't grow with the number of members. The ID holds the role, so the role tuple never changes: a member who changes role moves from one assignment's assignees to another's. An Organization sync reads the Organization's object, derives each linked assignment's role tuple from its ID, reads its assignees, and reads the roles the Organization owns or its members hold. It never deletes the grants of a role template a membership still holds itself, as a release before copies wrote, since other Organizations may hold it; a Product sync brings those in step.
 
 ## Keeping the store in step
 

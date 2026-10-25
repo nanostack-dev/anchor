@@ -55,13 +55,15 @@ func (s OrganizationState) Tuples(catalog Catalog) []Tuple {
 	}
 	organization := Organization(s.OrganizationID)
 	var tuples []Tuple
+	held := map[string]bool{}
 	for _, member := range s.Memberships {
-		assignment := Assignment(s.OrganizationID, member.ProductUserID, member.RoleRowID)
-		tuples = append(tuples,
-			Tuple{Object: assignment, Relation: RelationRole, User: Role(member.RoleRowID)},
-			Tuple{Object: assignment, Relation: RelationAssignee, User: User(member.ProductUserID)},
-			Tuple{Object: organization, Relation: RelationAssignment, User: assignment},
-		)
+		assignment := Assignment(s.OrganizationID, member.RoleRowID)
+		if !held[member.RoleRowID] {
+			held[member.RoleRowID] = true
+			tuples = append(tuples, AssignmentTuples(assignment)...)
+			tuples = append(tuples, Tuple{Object: organization, Relation: RelationAssignment, User: assignment})
+		}
+		tuples = append(tuples, Tuple{Object: assignment, Relation: RelationAssignee, User: User(member.ProductUserID)})
 	}
 	for _, role := range s.Roles {
 		for _, permission := range role.Permissions {
@@ -86,18 +88,15 @@ func (s OrganizationState) Tuples(catalog Catalog) []Tuple {
 	return tuples
 }
 
-// AssignmentTuples are the two tuples an assignment's ID implies, so a sync
-// that finds an assignment link it no longer wants removes them too without
-// reading them.
+// AssignmentTuples is the role tuple an assignment's ID implies, so a sync
+// that finds an assignment link it no longer wants removes it too without
+// reading it. Its assignees are read.
 func AssignmentTuples(assignment string) []Tuple {
 	parts, ok := ParseAssignment(assignment)
 	if !ok {
 		return nil
 	}
-	return []Tuple{
-		{Object: assignment, Relation: RelationRole, User: Role(parts.RoleRowID)},
-		{Object: assignment, Relation: RelationAssignee, User: User(parts.ProductUserID)},
-	}
+	return []Tuple{{Object: assignment, Relation: RelationRole, User: Role(parts.RoleRowID)}}
 }
 
 // Changes is what turns the stored tuples into the desired ones.
