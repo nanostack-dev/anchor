@@ -75,7 +75,7 @@ The column stays nullable until the cleanup because a rolling deploy runs the pr
 
 ### The workspace type
 
-The workspace migration (ADR-0022 A6) adds one type to each Product that has a built-in workspace: `workspace`, under `organization`, not nesting, created on the first start of this release or by the Product's first workspace. It is an ordinary type: the Product may rename it, add parent types, open custom roles on it or scope roles and permissions to it. A Product that already declared `workspace` keeps it when it may sit under `organization`; otherwise its catalog is left alone and its workspaces stay unregistered ([resources](resources.md#workspaces)). While its resources exist, A5 refuses to delete it or to remove `organization` from its parent types, as for any type.
+The workspace migration (ADR-0022 A6) adds one type to each Product that has a built-in workspace: `workspace`, under `organization`, not nesting, created on the first start of this release or by the Product's first workspace. It counts toward the 50 types a Product declares besides `organization`; a Product at that limit gets no `workspace` type, and its workspaces stay unregistered until it frees a slot. It is an ordinary type: the Product may rename it, add parent types, open custom roles on it or scope roles and permissions to it. A Product that already declared `workspace` keeps it when it may sit under `organization`; otherwise its catalog is left alone and its workspaces stay unregistered ([resources](resources.md#workspaces)). While its resources exist, A5 refuses to delete it or to remove `organization` from its parent types, as for any type.
 
 ## Tests
 

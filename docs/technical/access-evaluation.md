@@ -96,17 +96,30 @@ and a Product may also register its own through the resource routes. A `"type":
    both. A permission the `workspace` type doesn't hold, such as every
    Organization-scoped permission, is checked on the Organization instead
    (`PermissionCheck.Fallback`), so it answers as before workspaces were registered.
+   A resource the workspace mirror wrote counts only while its workspace exists: one
+   whose workspace a previous release deleted, without its resource, is
+   `WORKSPACE_NOT_IN_ORGANIZATION`, as it was before, until the next start's migration
+   deletes it ([resources](resources.md#mirrored-resources)).
 2. **A workspace of the workspace routes without a resource**, which happens when the
    Product's `workspace` type can't sit under the Organization or a previous release
-   wrote the workspace during a rolling deploy, is checked on its Organization alone.
+   created the workspace during a rolling deploy, is checked on its Organization alone.
 3. **Anything else**, an unknown workspace or one of another Organization, is
    `WORKSPACE_NOT_IN_ORGANIZATION`, never `RESOURCE_NOT_FOUND`. That reason gives way
    to `RESOURCE_NOT_IN_ORGANIZATION` once the workspace routes are removed (A6 phase 4).
 
-Before M5 (PR 15), `workspace` always named the built-in workspace, even when the
-Product declared a type of that slug; a resource registered under that type was
-refused with `WORKSPACE_NOT_IN_ORGANIZATION`. The declared type and the built-in
-workspaces are now one type, so such a resource is decided like any workspace.
+**Answers that change.** For a workspace of the workspace routes, every answer is
+the same as before, Organization-scoped permissions included. What is new: a role
+assigned on a workspace grants its workspace-scoped permissions, and a `workspace`
+resource the Product registered itself through the resource routes, with no
+workspace of that ID, is decided as registered rather than
+`WORKSPACE_NOT_IN_ORGANIZATION`. That is deliberate: the Product moves its
+workspaces to those routes in A6 phase 3, and registering a resource is how it says
+the resource exists. Before M5 (PR 15), `workspace` always named the built-in
+workspace, even when the Product declared a type of that slug.
+
+The drift log compares only decisions checked on the Organization alone, so it no
+longer covers a registered workspace's Organization-scoped actions: the evaluator
+doesn't know which actions the checker sent to the fallback.
 
 ### Explaining a decision
 
