@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 8 to answer
+5. [Open questions](#open-questions) — 4 to answer
 
 ---
 
@@ -237,7 +237,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
 |  | [DR-D8](#dr-d8) · Every role belongs to an Organization: template copies and custom roles | ✅ Accepted |  |
 |  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | 🔵 Proposed | 1 |
-|  | [DR-D10](#dr-d10) · Template changes, deletes, the default role and limits | 🟡 Pending | 4 |
+|  | [DR-D10](#dr-d10) · Template changes, deletes, the default role and limits | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
 |  | [DR-E3](#dr-e3) · Roles are data; the Product's OpenFGA model holds only types and permissions | ✅ Accepted (depends on ADR-0021) |  |
@@ -1404,9 +1404,9 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 
 <a id="dr-d10"></a>
 <details>
-<summary><b>DR-D10</b> · Template changes, deletes, the default role and limits — <i>🟡 Pending</i> · ❓ 4 questions</summary>
+<summary><b>DR-D10</b> · Template changes, deletes, the default role and limits — <i>✅ Accepted</i></summary>
 
-**Decision.** The recommended behaviour, one question each:
+**Decision.**
 
 | When | Recommended behaviour |
 | :-- | :-- |
@@ -1430,19 +1430,19 @@ The Product removes `document:share` from the `project-admin` template:
 
 > **Q-D10.1** When a template changes, do its copies follow? *(recommended: yes, except customized copies)*
 >
-> **Answer:** _pending_
+> **Answer:** yes, except customized copies.
 
 > **Q-D10.2** When a template is deleted, what happens to its copies? *(recommended: they become custom roles of their Organization)*
 >
-> **Answer:** _pending_
+> **Answer:** they become custom roles of their Organization.
 
 > **Q-D10.3** Can an Organization choose its own default role? *(recommended: yes, among its Organization-scoped roles)*
 >
-> **Answer:** _pending_
+> **Answer:** yes, among its Organization-scoped roles.
 
 > **Q-D10.4** A limit on custom roles per Organization? *(recommended: 50)*
 >
-> **Answer:** _pending_
+> **Answer:** at most 50 per Organization.
 
 </details>
 
@@ -2342,10 +2342,10 @@ Answer here or inline; each line links to its record.
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
 | [Q-D9.1](#dr-d9) | Organization behind the custom-roles switch too? | yes, off by default | |
-| [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | |
-| [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | |
-| [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | |
-| [Q-D10.4](#dr-d10) | Custom roles per Organization? | at most 50 | |
+| [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | **yes**, except customized copies |
+| [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | **custom roles** |
+| [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | **yes** |
+| [Q-D10.4](#dr-d10) | Custom roles per Organization? | at most 50 | **50** |
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | **yes**, extension, inside `context` |
 | [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | **mirror** |
 | [Q-E5.2](#dr-e5) | Sync before each decision, or after each write? | after each write | **after each write**, mark as backup |
