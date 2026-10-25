@@ -1,6 +1,6 @@
 # Resource types
 
-A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The model compiles the tree and the scopes, and [access evaluation](access-evaluation.md#resources) takes any declared type; every check on an organization or a workspace answers as before.
+A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The model compiles the tree and the scopes, and [access evaluation](access-evaluation.md#resources) takes any declared type; every check on an organization answers as before. A workspace is a resource of the Product's `workspace` type ([below](#the-workspace-type)).
 
 ## The tree
 
@@ -72,6 +72,10 @@ DR-F4 scopes the catalog pages. Code: `anchor-ui/src/components/product/roles/`,
 Migration `000054` adds the tables and a nullable `resource_type_id` on `product_roles` and `product_resource_permissions`. Public IDs are KSUIDs, which SQL cannot mint, so the backfill is code: on every start, under the `resource_types:organization-backfill` advisory lock, `RegisterOrganizationBackfill` gives each Product its `organization` type and scopes its unscoped roles and permissions to it (ADR-0022 G1). It is idempotent.
 
 The column stays nullable until the cleanup because a rolling deploy runs the previous release beside this one, and that release still writes unscoped rows. It also checks no bundle against scopes, so for that window an organization permission could be assigned to a role of another type; the next tree change that depends on it is then refused with `role_ids`, which names the role to fix. Reads treat a null scope as `organization`, which is what the next start's backfill writes. A Product created by the previous release gets its `organization` type the first time a write or read needs the tree.
+
+### The workspace type
+
+The workspace migration (ADR-0022 A6) adds one type to each Product that has a built-in workspace: `workspace`, under `organization`, not nesting, created on the first start of this release or by the Product's first workspace. It is an ordinary type: the Product may rename it, add parent types, open custom roles on it or scope roles and permissions to it. A Product that already declared `workspace` keeps it when it may sit under `organization`; otherwise its catalog is left alone and its workspaces stay unregistered ([resources](resources.md#workspaces)). While its resources exist, A5 refuses to delete it or to remove `organization` from its parent types, as for any type.
 
 ## Tests
 

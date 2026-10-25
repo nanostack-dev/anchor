@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
 	resourceservice "anchor/internal/resource/service"
 )
@@ -499,6 +500,26 @@ func TestDeprecatedWorkspaceRoutes(t *testing.T) {
 			assert.Equal(t, "@1792886400", answer.response.Header.Get("Deprecation"), name)
 			assert.Equal(t, answer.link, answer.response.Header.Get("Link"), name)
 		}
+	})
+
+	t.Run("A refused call without a credential carries the deprecation too", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+		path := "/v1/products/" + product.ProductID + "/organizations/" + org.Id + "/workspaces/search"
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, itshared.ServerURL+path,
+			strings.NewReader("{}"))
+		require.NoError(t, err)
+		request.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(request)
+
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		assert.Equal(t, "@1792886400", resp.Header.Get("Deprecation"))
+		assert.Equal(t, "</v1/products/"+product.ProductID+"/organizations/"+org.Id+
+			`/resources/search>; rel="successor-version"`, resp.Header.Get("Link"))
 	})
 
 	t.Run("Another route carries no deprecation", func(t *testing.T) {

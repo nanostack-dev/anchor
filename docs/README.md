@@ -27,11 +27,11 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, the organization backfill and the admin canvas
-- [Resources](technical/resources.md): the registry of a product's own resources, their parent rules, locks, internal events and parent tuples
+- [Resources](technical/resources.md): the registry of a product's own resources, their parent rules, locks, internal events and parent tuples, and the workspaces registered as resources
 - [Organization roles](technical/organization-roles.md): role templates, each Organization's copies, their IDs, keys and default roles
 - [Authorization engine](technical/authorization-engine.md): OpenFGA running inside Anchor, each Product's store, and the steps that move decisions onto it
 - [engineering best practices](engineering-best-practices.md)
-- [organization workspaces](organization-workspaces.md)
+- [organization workspaces](organization-workspaces.md) (deprecated: workspaces are resources)
 - [product events spec](product-events-spec.md)
 
 Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md). Each has its `.json` source and the standalone `.html` report beside it.

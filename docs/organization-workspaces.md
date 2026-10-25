@@ -1,6 +1,31 @@
 # Organization Workspaces
 
+> [!WARNING]
+> **Deprecated** ([ADR-0022](adr/0022-resource-types-scope-roles-and-permissions.md) A6). Workspaces are now resources of the Product's `workspace` [resource type](technical/resource-types.md#the-workspace-type). The routes below keep answering exactly as before until no Product calls them; then they are removed with the `workspaces` table, the `workspace.*` events and `workspace_memberships` (A6 phase 4, milestone M7). They get no new features.
+
 Anchor supports organization-scoped workspaces as the third level of the Product -> Organization -> Workspace hierarchy. Workspaces are managed through product and organization scoped API paths so every operation carries the owning product and organization context.
+
+## What replaces them
+
+| Today | Use instead |
+| --- | --- |
+| `POST …/organizations/{organization_id}/workspaces` | `PUT …/organizations/{organization_id}/resources/workspace/{id}` with the Product's own ID, a `name` and `"parent": { "type": "organization", "id": "<organization_id>" }` |
+| `GET` and `PUT …/workspaces/{workspace_id}` | `GET` and `PUT …/resources/workspace/{workspace_id}` |
+| `DELETE …/workspaces/{workspace_id}` | `DELETE …/resources/workspace/{workspace_id}`, with `?cascade=true` once it holds children or role assignments |
+| `POST …/workspaces/search` | `POST …/resources/search` with `"filter": { "resource_types": ["workspace"] }` |
+| A role on a workspace | `PUT …/resources/workspace/{workspace_id}/members/{product_user_id}` with a role scoped to `workspace` ([role assignments](technical/resources.md#role-assignments)) |
+| `workspace.*` events | `resource.role_assignment.*` for roles; resource events stay inside Anchor |
+
+Every existing workspace is already a resource with the **same ID** and its name, under its Organization: the startup migration registered it, and every write through these routes keeps it in step ([resources](technical/resources.md#workspaces)). A Product can therefore switch a workspace to the resource routes without moving data. A workspace's description stays on the workspace: resources carry a name only.
+
+Every response of these routes carries two headers:
+
+```http
+Deprecation: @1792886400
+Link: </v1/products/prod_123/organizations/org_123/resources/workspace/ws_2xWk...>; rel="successor-version"
+```
+
+`Deprecation` is the date of the deprecation, 2026-10-25, as [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745) defines it. `Link` names the replacing route: the workspace's resource for one workspace, the resource search for the collection and its search. Errors, including 401 and 404, carry them too. The OpenAPI contract marks the five operations `deprecated: true`, so the Go SDK and the UI client flag their callers.
 
 An organization has zero or more workspaces. They are ordinary peers: none has a
 default designation, and users can rename or delete every workspace.
@@ -113,6 +138,10 @@ Platform bearer callers can read workspaces through get and search endpoints. Th
 ## Isolation
 
 Repository reads, searches, updates, and deletes scope workspace rows through the owning organization and product. A workspace requested through the wrong organization or product path is treated as not found.
+
+## Access evaluation
+
+`"type": "workspace"` is decided through the workspace's resource: the Organization role reaches it through its parent, and roles assigned on it grant too. An Organization-scoped permission is still decided on the Organization, and an unknown or foreign workspace is still `WORKSPACE_NOT_IN_ORGANIZATION` ([access evaluation](technical/access-evaluation.md#workspaces)).
 
 ## Platform Admin UI
 

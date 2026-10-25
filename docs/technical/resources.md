@@ -138,7 +138,44 @@ A template deleted while custom roles are on turns its held copies into custom r
 
 An assignment is part of its resource's object state ([Authorization engine](authorization-engine.md#resource-tuples)): `rt_<slug>:<row> # assignment @ role_assignment:<row>.<role row>`, and on that assignment object `# role @ role:<role row>` and one `# assignee @ user:<product user>` per member holding the role there. Each assignment event marks its resource, and the resource sync reads the object and every assignment object it links or should link, so a replaced role, a removal and a member who left drop their tuples. The role's grants stay with the Organization's roles.
 
+## Workspaces
+
+The built-in workspaces are resources of the Product's `workspace` type (ADR-0022 A6, phases 1 and 2). The workspace routes are deprecated but keep working; each workspace keeps its row in `workspaces` and gets a reference with the **same ID**, the workspace's name and the Organization as parent. Code: `internal/resource/service/workspaces.go` (the writes) and `workspace_backfill.go` (the migration).
+
+### The workspace type
+
+A Product needs a `workspace` type that may sit under `organization`. `DeclareType` creates `workspace` (name *Workspace*, under `organization`, not nesting) through the resource type service, which emits the usual `product.resource_type.created`. A Product that already declared `workspace` with `organization` among its parent types keeps that type, whatever else it allows. A Product whose `workspace` can't sit under the Organization, or that can't declare another type (`RESOURCE_TYPE_LIMIT_REACHED`), keeps its catalog untouched: the backfill and every workspace write log an error naming the Product, and its workspaces stay unregistered. Their decisions then fall back to the Organization ([access evaluation](access-evaluation.md#workspaces)).
+
+### The migration
+
+On every start, under the `resources:workspace-backfill` advisory lock, `RegisterWorkspaceBackfill` runs `WorkspaceBackfill.Run` over every Product that has a workspace. KSUIDs can't be minted in SQL, so it is code, like the [resource type backfill](resource-types.md#backfill). For each Product it declares the type, then, for each Organization with workspaces, in one transaction:
+
+1. it registers every workspace that has no reference yet. The parent is the Organization by construction: that is the only parent a built-in workspace has, and the one default the migration takes;
+2. it moves each `workspace_memberships` row into a role assignment on the workspace's reference and deletes the row, when the row's role resolves in the Organization to a role scoped to the `workspace` type (D4: a role's scope must equal the resource's type). A template's ID names the Organization's copy, as for any assignment. A row whose role is scoped elsewhere, whose user is not a member, or whose member already holds a role on that workspace stays, and is logged at warn level with its workspace, product user, role and the refusing code. Workspace roles have been Organization-scoped since the G1 backfill, so in practice every existing row stays: the migration never invents a role. No route writes `workspace_memberships`, so the table normally holds no row.
+
+It only fills what is missing. A reference the resource routes renamed, moved or gave roles to keeps them, and a moved membership is never assigned again, so a rerun changes nothing and never brings back an assignment a Product removed. Each write emits its usual event (`resource.created`, internal; `resource.role_assignment.created`, delivered) and marks its object. No request replays those marks, so the [sweeper](authorization-engine.md#freshness) brings them to OpenFGA within seconds.
+
+### Writes through the workspace routes
+
+While the built-in Workspace lives, the workspace routes write the reference in the workspace's own transaction:
+
+| Route | Reference |
+| --- | --- |
+| Create (and an organization created with `workspace`) | Registered with the workspace's ID and name under the Organization. The Product's first workspace declares the type first, outside the transaction. |
+| Update | Re-registered with the workspace's name under the Organization: a rename renames it, and a reference the Product moved, renamed or deleted is put back. |
+| Delete | Deleted with `cascade`: its registered descendants and every role assignment on them go too, with their events. |
+
+A write the resource rules refuse (no type, or a type that can't sit under the Organization) leaves the workspace unregistered and is logged; the workspace route answers as it did before. The resource routes never create, rename or delete a row in `workspaces`, and a workspace registered only through them has no row there.
+
+**Who wins.** The last write wins: a workspace route rewrites the reference from the workspace row, and the resource routes may change it afterwards. The backfill writes only what is missing, so it never overwrites either side.
+
+**Locks.** A workspace write and the backfill take the locks of a resource write, in the same order: the Organization row (`FOR UPDATE` on create, `FOR KEY SHARE` otherwise), the catalog in share mode, then `resources:<organization_id>`. The backfill reads the workspaces only after the last one. A workspace write that holds the lock first commits before the backfill reads, so the backfill sees its row and its reference. One that waits commits its reference after the backfill, from its own row. A deleted workspace is therefore never registered again, and a new one is registered once (`TestWorkspaceBackfillRacesWorkspaceRoutes`). The type is declared outside the create's transaction because a refused type insert would abort it, and because the catalog lock would otherwise come after the Organization row; an organization created with a workspace declares it before its own transaction for the same reason.
+
+**Rolling deploy.** The previous release writes workspaces without references. The next start's backfill registers the ones it created. A rename it made leaves the old name on the reference until the next write through a workspace route, which only affects display. A workspace it deleted leaves its reference behind; deleting that reference through the resource routes removes it.
+
 ## Tests
+
+`TestWorkspaceBackfill`, `TestWorkspaceRoutesWriteTheirResource`, `TestDeprecatedWorkspaceRoutes` and `TestWorkspaceBackfillRacesWorkspaceRoutes` in `apps/anchor/cmd/it/ct/workspace_resource_test.go` cover the migration (type, references, a reused and an incompatible type, moved and kept memberships, reruns), the writes of the workspace routes, the deprecation headers, and the race between the backfill and those routes. `TestWorkspaceBackfillMirror` in `apps/anchor/cmd/it/service` checks the relationship store after the backfill.
 
 `TestPutResourceMember`, `TestPutResourceMemberRefusals`, `TestGetResourceMember`, `TestDeleteResourceMember`, `TestSearchResourceMembers`, `TestResourceMemberEvents`, `TestRemoveMemberRemovesResourceRoles`, `TestDeletesReleaseResourceRoles`, `TestDeleteResourceWithRoleAssignments`, `TestRoleHeldOnAResource`, `TestResourceMemberScopes`, `TestConcurrentResourceMemberWrites` and the serial `TestRoleTemplateDeleteDuringAnAssignment` in `apps/anchor/cmd/it/ct` cover the assignment rules, codes, limits, events and races; `searchResourceMembers` has a case in `TestCursorSearches`, and the end-of-suite mirror check also checks every assignment's tuples. `TestResourceAssignmentMirror` in `apps/anchor/cmd/it/service` covers the tuples after an assignment, a shared role, a replace, a removal, a member removal, a cascade, a stray assignee, a copy made by the assignment itself and the reconcile, and that an assignment's replay touches its resource only.
 

@@ -616,6 +616,8 @@ A slug and a scope fixed after creation keep every assignment and API call valid
 - **Access evaluation** answers `"type": "workspace"` through the generic model from phase 2. `WORKSPACE_NOT_IN_ORGANIZATION` stays until phase 4, then gives way to `RESOURCE_NOT_IN_ORGANIZATION` (E2).
 - **Today** the only consumer is Nanostack's own product, so phase 3 is one coordinated change on that side.
 
+> **Implementation note (M5, PR 15).** Phases 1 and 2 are in. A startup backfill under an advisory lock declares `workspace` under `organization` (reusing a declared one that may sit there, and leaving a Product whose slug can't alone, logged), registers each workspace with its ID and name, and moves a `workspace_memberships` row into a role assignment only when its role is scoped to `workspace`; workspace roles have been Organization-scoped since G1, so such rows stay and are logged. It only fills gaps. The workspace routes write the reference in their own transaction, and the last write of either side wins. Access evaluation checks a workspace on its resource and an Organization-scoped permission on the Organization, so every earlier answer holds. The five operations are `deprecated: true` and answer with `Deprecation` and `Link: rel="successor-version"` headers. Phase 3 is PR 16, in the Product's own repository; phase 4 is tracked by M7 ([#266](https://github.com/nanostack-dev/anchor/issues/266)). See [Resources](../technical/resources.md#workspaces).
+
 <details>
 <summary>📌 Real example</summary>
 
@@ -1500,6 +1502,8 @@ flowchart BT
 - **Explaining a decision** is an **Anchor extension to AuthZEN**. A caller that sends `options.explain: true` gets `granted_by`, the roles and resources that granted the permission. It lives **inside `context`**, which AuthZEN leaves free-form, so the response stays valid for any AuthZEN client, which ignores the key. Without the option, no `granted_by` is computed and a decision costs no more than a plain check.
 
 > **Implementation note (M4, PR 13).** A parent of a type the resource's type can't sit under is denied with a fourth reason, `PARENT_TYPE_NOT_ALLOWED`. An unregistered resource with no parent is `RESOURCE_NOT_FOUND` even when another Organization registered the same ID: under B2 that is a different resource, and naming it would reveal the ID exists there. `RESOURCE_NOT_IN_ORGANIZATION` is kept for a named parent registered only in another Organization, or a parent that is another Organization; it reveals that the parent exists in another Organization of the Product. `granted_by` lists `{ role: { id, name }, resource: { type, id } }`, and an API key's own grant is `{ api_key: { id, name }, resource: { type: "organization", id } }`. An unregistered resource is checked through a contextual parent tuple. Until M5 moves workspaces into the generic model (A6 phase 2), `workspace` keeps naming the built-in workspace even when a Product declares that slug. See [Access evaluation](../technical/access-evaluation.md#resources).
+
+> **Implementation note (M5, PR 15).** From A6 phase 2, `workspace` is decided through the Product's `workspace` type: a registered workspace is checked on its own object, with an Organization-scoped permission checked on the Organization; a built-in workspace without a resource falls back to its Organization; anything else stays `WORKSPACE_NOT_IN_ORGANIZATION`. See [Access evaluation](../technical/access-evaluation.md#workspaces).
 
 <details>
 <summary>📌 Real example</summary>
