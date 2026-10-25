@@ -45,6 +45,11 @@ var ErrProductUserEmailAlreadyExists = fault.Conflict(
 	"A product user with this email already exists in this product",
 )
 
+var ErrProductUserExternalIDAlreadyExists = fault.Conflict(
+	"PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS",
+	"A product user with this external ID already exists in this product",
+)
+
 type productUserService struct {
 	productUserRepo   repository.ProductUserRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
@@ -121,19 +126,27 @@ func (s *productUserService) Create(
 			return ErrProductUserEmailAlreadyExists
 		}
 
+		if err = s.ensureExternalIDIsFree(txCtx, input.ProductID, input.ExternalID); err != nil {
+			return err
+		}
+
 		productUser := user.ProductUser{
-			ProductID: input.ProductID,
-			Email:     input.Email,
-			Name:      input.Name,
-			Status:    input.Status,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			ProductID:  input.ProductID,
+			Email:      input.Email,
+			Name:       input.Name,
+			ExternalID: input.ExternalID,
+			Status:     input.Status,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
 		}
 		productUser.GenerateID()
 
 		createdUser, err = s.productUserRepo.Create(txCtx, productUser)
 		if errors.Is(err, repository.ErrProductUserEmailExists) {
 			return ErrProductUserEmailAlreadyExists
+		}
+		if errors.Is(err, repository.ErrProductUserExternalIDExists) {
+			return ErrProductUserExternalIDAlreadyExists
 		}
 		if err != nil {
 			logger.Error().
@@ -157,6 +170,22 @@ func (s *productUserService) Create(
 		})
 	})
 	return createdUser, err
+}
+
+func (s *productUserService) ensureExternalIDIsFree(
+	ctx context.Context, productID string, externalID *string,
+) error {
+	if externalID == nil {
+		return nil
+	}
+	holder, err := s.productUserRepo.FindByExternalID(ctx, productID, *externalID)
+	if err != nil {
+		return err
+	}
+	if holder.IsPresent() {
+		return ErrProductUserExternalIDAlreadyExists
+	}
+	return nil
 }
 
 func (s *productUserService) Delete(

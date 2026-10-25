@@ -862,7 +862,7 @@ export type ProductUserResponse = {
      */
     name?: string | null;
     /**
-     * External identifier for the user, typically from an external identity provider.
+     * The user's ID in its identity provider. The product sets it on create, or Clerk ingest sets it. Access evaluation names the user by this ID. It never changes after it is set. Absent when neither the product nor an integration gave one.
      */
     external_id?: string | null;
     status: ProductUserStatus;
@@ -1239,7 +1239,7 @@ export enum AccessSubjectType {
 export type AccessSubject = {
     type: AccessSubjectType;
     /**
-     * The external user ID, or the raw organization API key. A raw key is never logged.
+     * The product user's external ID (sent on product user create, or synced from Clerk), or the raw organization API key. A raw key is never logged.
      */
     id: string;
     properties?: {
@@ -4947,7 +4947,7 @@ export type UpdateProductApiKeyResponse = UpdateProductApiKeyResponses[keyof Upd
 
 export type CreateProductUserData = {
     /**
-     * Product user details (email required, name/status optional).
+     * Product user details (email required, name/status/external_id optional).
      */
     body: {
         /**
@@ -4962,6 +4962,14 @@ export type CreateProductUserData = {
          * Initial status (e.g., 'active' or 'invited'). Defaults might apply.
          */
         status?: ProductUserStatus;
+        /**
+         * The user's ID in the product's own identity provider. Access evaluation names the user by this ID (`subject.type: user`).
+         * Optional. Without it the user has no external ID until an identity provider integration (Clerk) syncs one, and access evaluation cannot name the user.
+         * Printable ASCII only (space to `~`). Unique within the product and compared exactly: letter case and spaces count. A blank value, a value longer than 255 characters, or a value with another character is refused with 400 `VALIDATION_ERROR`. An ID that another user of the product holds is refused with 409 `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS`.
+         * Set on create only. No operation changes it later, because a new ID would point every access decision made for the old ID at another person. To change it, delete the user and create it again.
+         * A Clerk integration of the same product uses the same IDs. A user created with a Clerk user ID is the user that Clerk ingest then updates and deletes: each Clerk event replaces the email and name with Clerk's values (an empty Clerk name clears it) and sets the user active.
+         */
+        external_id?: string;
     };
     path: {
         /**

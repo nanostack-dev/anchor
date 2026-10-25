@@ -2,6 +2,7 @@ package ct_test
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -381,6 +382,25 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 						t.Context(), product.ProductID,
 						raceProductUser(name),
 					)
+					if err != nil {
+						return raceOutcome(0, nil, err)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}))
+		},
+	)
+
+	t.Run(
+		"Concurrent product user create requests with one external ID produce one success and conflicts for all other writers",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			client, _ := product.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
+			assertOneWinnerPerName(t, http.StatusCreated, "PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS",
+				sameNameCreate(func(name string, writer int) nameRaceOutcome {
+					body := raceProductUser(name + "-" + strconv.Itoa(writer))
+					body.ExternalId = &name
+					resp, err := client.CreateProductUserWithResponse(t.Context(), product.ProductID, body)
 					if err != nil {
 						return raceOutcome(0, nil, err)
 					}

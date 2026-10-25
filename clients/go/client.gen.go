@@ -1555,7 +1555,11 @@ type ClientInterface interface {
 	// CreateProductUserWithBody Create Product User
 	//
 	// Creates a new user record associated with the specified Product.
-	// This only creates the user profile; authentication must be handled externally.
+	// This only creates the user profile; Anchor never authenticates the user.
+	// A product that is its own identity provider sends `external_id`, its own ID for the user,
+	// and then names the user by that ID in access evaluation.
+	// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+	// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 	// Requires an API Key with `product_user:create` permission.
 	//
 	// Takes any type of body and a specified content type.
@@ -1566,7 +1570,11 @@ type ClientInterface interface {
 	// CreateProductUser Create Product User
 	//
 	// Creates a new user record associated with the specified Product.
-	// This only creates the user profile; authentication must be handled externally.
+	// This only creates the user profile; Anchor never authenticates the user.
+	// A product that is its own identity provider sends `external_id`, its own ID for the user,
+	// and then names the user by that ID in access evaluation.
+	// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+	// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 	// Requires an API Key with `product_user:create` permission.
 	//
 	// Takes a body of the `application/json` content type.
@@ -4839,7 +4847,11 @@ func (c *Client) GetProductPermission(ctx context.Context, productId ProductIdPa
 // CreateProductUserWithBody Create Product User
 //
 // Creates a new user record associated with the specified Product.
-// This only creates the user profile; authentication must be handled externally.
+// This only creates the user profile; Anchor never authenticates the user.
+// A product that is its own identity provider sends `external_id`, its own ID for the user,
+// and then names the user by that ID in access evaluation.
+// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 // Requires an API Key with `product_user:create` permission.
 //
 // Takes any type of body and a specified content type.
@@ -4860,7 +4872,11 @@ func (c *Client) CreateProductUserWithBody(ctx context.Context, productId Produc
 // CreateProductUser Create Product User
 //
 // Creates a new user record associated with the specified Product.
-// This only creates the user profile; authentication must be handled externally.
+// This only creates the user profile; Anchor never authenticates the user.
+// A product that is its own identity provider sends `external_id`, its own ID for the user,
+// and then names the user by that ID in access evaluation.
+// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 // Requires an API Key with `product_user:create` permission.
 //
 // Takes a body of the `application/json` content type.
@@ -12832,7 +12848,11 @@ type ClientWithResponsesInterface interface {
 	// CreateProductUserWithBodyWithResponse Create Product User
 	//
 	// Creates a new user record associated with the specified Product.
-	// This only creates the user profile; authentication must be handled externally.
+	// This only creates the user profile; Anchor never authenticates the user.
+	// A product that is its own identity provider sends `external_id`, its own ID for the user,
+	// and then names the user by that ID in access evaluation.
+	// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+	// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 	// Requires an API Key with `product_user:create` permission.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -12843,7 +12863,11 @@ type ClientWithResponsesInterface interface {
 	// CreateProductUserWithResponse Create Product User
 	//
 	// Creates a new user record associated with the specified Product.
-	// This only creates the user profile; authentication must be handled externally.
+	// This only creates the user profile; Anchor never authenticates the user.
+	// A product that is its own identity provider sends `external_id`, its own ID for the user,
+	// and then names the user by that ID in access evaluation.
+	// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+	// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 	// Requires an API Key with `product_user:create` permission.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
@@ -23898,7 +23922,11 @@ func (c *ClientWithResponses) GetProductPermissionWithResponse(ctx context.Conte
 // CreateProductUserWithBodyWithResponse Create Product User
 //
 // Creates a new user record associated with the specified Product.
-// This only creates the user profile; authentication must be handled externally.
+// This only creates the user profile; Anchor never authenticates the user.
+// A product that is its own identity provider sends `external_id`, its own ID for the user,
+// and then names the user by that ID in access evaluation.
+// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 // Requires an API Key with `product_user:create` permission.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -23915,7 +23943,11 @@ func (c *ClientWithResponses) CreateProductUserWithBodyWithResponse(ctx context.
 // CreateProductUserWithResponse Create Product User
 //
 // Creates a new user record associated with the specified Product.
-// This only creates the user profile; authentication must be handled externally.
+// This only creates the user profile; Anchor never authenticates the user.
+// A product that is its own identity provider sends `external_id`, its own ID for the user,
+// and then names the user by that ID in access evaluation.
+// A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+// or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
 // Requires an API Key with `product_user:create` permission.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
