@@ -67,6 +67,10 @@ export function BulkActions<TData>({
 		refreshError?: string;
 	} | null>(null);
 	const running = useRef(false);
+	// The dialog keeps the last action on screen while it animates closed;
+	// clearing it with `pending` would leave the confirm button without a name.
+	const [shown, setShown] = useState(pending);
+	if (pending !== null && pending !== shown) setShown(pending);
 
 	useEffect(() => {
 		setPending((current) =>
@@ -190,14 +194,14 @@ export function BulkActions<TData>({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{pending?.action.label} ({pending?.rows.length})?
+							{shown?.action.label} ({shown?.rows.length})?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{pending?.action.description}
+							{shown?.action.description}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ul className="max-h-40 overflow-y-auto text-sm">
-						{pending?.rows.map((row) => (
+						{shown?.rows.map((row) => (
 							<li key={getRowId(row)}>{getRowLabel(row)}</li>
 						))}
 					</ul>
@@ -206,7 +210,7 @@ export function BulkActions<TData>({
 							className="flex items-center gap-2 text-sm"
 							aria-live="polite"
 						>
-							<Spinner /> Processed {progress} of {pending?.rows.length}
+							<Spinner /> Processed {progress} of {shown?.rows.length}
 						</output>
 					)}
 					<AlertDialogFooter>
@@ -214,12 +218,12 @@ export function BulkActions<TData>({
 							Cancel
 						</AlertDialogCancel>
 						<AlertDialogAction
-							tone={pending?.action.destructive ? "critical" : "brand"}
+							tone={shown?.action.destructive ? "critical" : "brand"}
 							variant="solid"
 							disabled={progress !== null || disabled}
 							onClick={() => void execute()}
 						>
-							{progress !== null ? "Working…" : pending?.action.label}
+							{progress !== null ? "Working…" : shown?.action.label}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
