@@ -4,7 +4,6 @@ import { type World, expect, test } from "../../support/fixtures";
 import { captureReviewCheckpoint } from "../../support/review";
 import { selectProduct } from "../../support/ui";
 import {
-	clearResourceTypes,
 	paths,
 	resourceTypeTree,
 	scopedPermission,
@@ -46,8 +45,6 @@ async function openResourceTypes(page: Page, world: World) {
 		page.getByRole("heading", { name: "Resource types", exact: true }),
 	).toBeVisible();
 }
-
-test.afterEach(async ({ world }) => clearResourceTypes(world));
 
 // Covers: PRODUCT_RESOURCE_TYPES
 test("access.resource-types-read: the published tree reads top down and shows what uses a type", async ({

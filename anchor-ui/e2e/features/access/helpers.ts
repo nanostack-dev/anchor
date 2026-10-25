@@ -1,12 +1,9 @@
 import type { Page } from "playwright/test";
 import type {
 	ProductOrganizationResponse,
-	ProductResourcePermissionListResponse,
 	ProductResourcePermissionResponse,
-	ProductResourceTypeListResponse,
 	ProductResourceTypeTreeItem,
 	ProductResourceTypeTreeResponse,
-	ProductRoleListResponse,
 	ProductRoleResponse,
 	ProductUserResponse,
 } from "../../../src/client";
@@ -135,39 +132,4 @@ export async function scopedRole(
 		resource_type: resourceType,
 		permissions,
 	});
-}
-
-/**
- * Removes every type but organization, and what is scoped to them, so the
- * product can be deleted. Deleting a product whose types have parent links
- * fails until the parent foreign key cascades; see troubleshooting/access.md.
- */
-export async function clearResourceTypes(world: World) {
-	const types = await world.api.post<ProductResourceTypeListResponse>(
-		`${world.productPath}/resource-types/search`,
-		{ pagination: { limit: 100 } },
-		200,
-	);
-	const slugs = types.items
-		.filter((type) => !type.built_in)
-		.map((type) => type.slug);
-	if (!slugs.length) return;
-	const filter = { resource_types: slugs };
-	const roles = await world.api.post<ProductRoleListResponse>(
-		`${world.productPath}/roles/search`,
-		{ filter, pagination: { limit: 100 } },
-		200,
-	);
-	for (const scoped of roles.items)
-		await world.api.remove(`${world.productPath}/roles/${scoped.id}`);
-	const grants = await world.api.post<ProductResourcePermissionListResponse>(
-		`${world.productPath}/resource-permissions/search`,
-		{ filter, pagination: { limit: 100 } },
-		200,
-	);
-	for (const scoped of grants.items)
-		await world.api.remove(
-			`${world.productPath}/resource-permissions/${encodeURIComponent(scoped.name)}`,
-		);
-	await resourceTypeTree(world, []);
 }
