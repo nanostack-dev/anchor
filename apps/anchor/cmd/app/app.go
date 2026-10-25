@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
 	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
 	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
+	"github.com/nanostack-dev/nanostack-framework/modules/tracing"
 	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
 
 	httpserver "anchor/cmd/http"
@@ -47,6 +48,7 @@ func startAnchor(target ...any) {
 
 	app := fx.New(
 		logging.Module,
+		tracing.Module,
 		config.Module,
 		postgres.Module,
 		transactor.Module,
