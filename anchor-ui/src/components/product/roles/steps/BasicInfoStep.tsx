@@ -1,6 +1,9 @@
 import type { ProductRoleResponse } from "@/client";
 import { FormValidationError } from "@/components/common/FormValidationError";
-import { ResourceTypeSelect } from "@/components/product/resource-types/ResourceTypeSelect";
+import {
+	ORGANIZATION_RESOURCE_TYPE,
+	ResourceTypeSelect,
+} from "@/components/product/resource-types/ResourceTypeSelect";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
 import { Input } from "@nanostackorg/design-system/components/input";
@@ -113,8 +116,9 @@ export function BasicInfoStep({
 										disabled
 									/>
 									<Box as="p" className="text-xs text-muted-foreground">
-										Held on an organization, the role covers every resource in
-										it. A role's resource type never changes.
+										{field.state.value === ORGANIZATION_RESOURCE_TYPE
+											? "Held on an organization, the role covers every resource in it. A role's resource type never changes."
+											: "A role's resource type never changes."}
 									</Box>
 									<FormValidationError field={field} />
 								</Box>

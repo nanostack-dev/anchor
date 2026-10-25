@@ -11,7 +11,7 @@ A Product declares a tree of **resource types** under the built-in `organization
 | Every other type lists one to ten parent types it may sit under. It never lists itself; `nests_in_itself` lets an instance sit under its own type. | `validateItem`, `Tree.Validate` | `400 RESOURCE_TYPE_PARENT_REQUIRED`, `400 VALIDATION_ERROR` past ten, `400 RESOURCE_TYPE_SELF_PARENT`, `400 RESOURCE_TYPE_NOT_FOUND` (also when a published tree leaves out a type another listed type sits under) |
 | No two types are each other's ancestors. | `Tree.Validate` | `400 RESOURCE_TYPE_CYCLE` |
 | The tree is at most 5 levels deep, counting `organization`, through each type's deepest parent. | `Tree.Validate`, `resourcetype.MaxDepth` | `400 RESOURCE_TYPE_TOO_DEEP` |
-| A Product declares at most 50 types besides `organization`. | `resourcetype.MaxOwnTypes` | `409 RESOURCE_TYPE_LIMIT_REACHED` |
+| A Product declares at most 50 types besides `organization`. | `resourcetype.MaxOwnTypes` | `409 RESOURCE_TYPE_LIMIT_REACHED` on create; `400 VALIDATION_ERROR` for a published tree of more than 50 |
 | A type that another type sits under, or that a role or permission is scoped to, can't be deleted. | `CountUsage`; a foreign key violation also answers the 409, with zero counts, because it aborts the transaction | `409 RESOURCE_TYPE_IN_USE` with `metadata.blocked_by` |
 | A change that would leave a role bundling a permission no longer at or below its scope is refused. | `checkReshape` | `409 RESOURCE_TYPE_IN_USE` with `metadata.role_ids` |
 
