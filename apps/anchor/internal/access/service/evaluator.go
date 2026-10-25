@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
@@ -15,8 +16,10 @@ import (
 
 // Evaluator decides whether a subject may act on an organization or a workspace.
 //
-// It reads Postgres on every call and caches nothing, so a membership, role,
-// workspace or API key write applies to the next evaluation without eviction.
+// Postgres resolves who the subject is: the product user and its membership,
+// or the API key through introspection, and the workspace's organization.
+// Which actions it holds comes from OpenFGA, which every write that changes
+// access reaches before its response (ADR-0022 E5). Nothing is cached.
 type Evaluator interface {
 	Evaluate(ctx context.Context, request Request) (Decision, error)
 }
@@ -27,6 +30,7 @@ type evaluator struct {
 	organizations repository.OrganizationRepository
 	workspaces    repository.WorkspaceRepository
 	apiKeys       coresvc.OrganizationAPIKeyService
+	permissions   PermissionChecker
 	logger        zerolog.Logger
 }
 
@@ -36,6 +40,7 @@ func NewEvaluator(
 	organizations repository.OrganizationRepository,
 	workspaces repository.WorkspaceRepository,
 	apiKeys coresvc.OrganizationAPIKeyService,
+	permissions PermissionChecker,
 	logger zerolog.Logger,
 ) Evaluator {
 	return &evaluator{
@@ -44,6 +49,7 @@ func NewEvaluator(
 		organizations: organizations,
 		workspaces:    workspaces,
 		apiKeys:       apiKeys,
+		permissions:   permissions,
 		logger:        logger.With().Str("component", "access_evaluator").Logger(),
 	}
 }
@@ -64,8 +70,30 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	if subject, err = e.reachWorkspace(ctx, request, subject); err != nil {
 		return Decision{}, err
 	}
-	return subject.decide(request.Actions, request.Semantic), nil
+	if subject.stopped != "" {
+		return subject.decide(request.Actions, request.Semantic, nil), nil
+	}
+	held, err := e.permissions.Holds(ctx, PermissionCheck{
+		ProductID:      request.ProductID,
+		OrganizationID: subject.identity.OrganizationID,
+		ProductUserID:  subject.identity.ProductUserID,
+		APIKeyID:       subject.identity.APIKeyID,
+		Actions:        request.Actions,
+	})
+	if err != nil {
+		e.logger.Error().Err(err).Str("product_id", request.ProductID).Msg("access permissions check failed")
+		return Decision{}, ErrDecisionsUnavailable
+	}
+	return subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] }), nil
 }
+
+// ErrDecisionsUnavailable answers a decision the relationship store can't
+// make right now; the caller retries.
+var ErrDecisionsUnavailable = fault.NewWithStatus(
+	"ACCESS_DECISIONS_UNAVAILABLE",
+	"Access decisions are unavailable for a moment. Try again.",
+	http.StatusServiceUnavailable,
+)
 
 func (e *evaluator) reachOrganization(ctx context.Context, request Request) (reach, error) {
 	if request.Subject.Type == SubjectOrganizationAPIKey {

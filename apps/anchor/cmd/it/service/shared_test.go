@@ -49,7 +49,6 @@ var (
 	AuthzSyncer             authzservice.Syncer
 	AuthzSweeper            *authzservice.Sweeper
 	AuthzReplayer           *authzservice.Replayer
-	ShadowStats             *authzservice.ShadowStats
 	Evaluator               accessservice.Evaluator
 	TestDB                  *sql.DB
 )
@@ -85,7 +84,6 @@ func TestMain(m *testing.M) {
 				&AuthzSyncer,
 				&AuthzSweeper,
 				&AuthzReplayer,
-				&ShadowStats,
 				&Evaluator,
 				&TestDB,
 			},

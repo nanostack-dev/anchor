@@ -3642,6 +3642,9 @@ type ResourceTypeIdParameter = Ksuid
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 type WorkspaceIdParameter = Ksuid
 
+// AccessDecisionsUnavailable defines model for AccessDecisionsUnavailable.
+type AccessDecisionsUnavailable = ApiErrorResponse
+
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 
@@ -10413,6 +10416,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	return r
 }
 
+type AccessDecisionsUnavailableJSONResponse ApiErrorResponse
+
 type BadRequestJSONResponse ApiErrorResponse
 
 type ConflictJSONResponse ApiErrorResponse
@@ -11655,6 +11660,22 @@ func (response EvaluateAccess500JSONResponse) VisitEvaluateAccessResponse(w http
 	return err
 }
 
+type EvaluateAccess503JSONResponse struct {
+	AccessDecisionsUnavailableJSONResponse
+}
+
+func (response EvaluateAccess503JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type EvaluateAccessBatchRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *EvaluateAccessBatchJSONRequestBody
@@ -11732,6 +11753,22 @@ func (response EvaluateAccessBatch500JSONResponse) VisitEvaluateAccessBatchRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch503JSONResponse struct {
+	AccessDecisionsUnavailableJSONResponse
+}
+
+func (response EvaluateAccessBatch503JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }

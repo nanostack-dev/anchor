@@ -1,13 +1,13 @@
 # Authorization engine
 
-Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-access-decisions-come-from-openfga.md), [ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) E3 and E5). The move ships in steps (ADR-0022 G4, milestone M2):
+Access decisions come from OpenFGA ([ADR-0021](../adr/0021-access-decisions-come-from-openfga.md), [ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) E3 and E5). The move shipped in steps (ADR-0022 G4, milestone M2):
 
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
 | PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
 | PR 5 | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
-| PR 6 (this) | Shadow: every decision runs on both evaluators and logs any difference | logged only |
-| PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
+| PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
+| PR 7 (this) | Decisions come from OpenFGA; the old evaluator's permission check is removed | yes |
 
 ## The engine
 
@@ -19,12 +19,11 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 - **Invalid indexes are rebuilt.** OpenFGA builds some indexes concurrently, and a rerun skips an index that exists even when an interrupted build left it invalid. After its migrations, still under the lock, the engine looks for invalid indexes in the `openfga` schema and rebuilds them with `REINDEX INDEX CONCURRENTLY`.
 - OpenFGA logs warnings and errors as JSON through its own logger, so a datastore fault behind an internal error stays diagnosable.
 - The check cache is off: a write must apply to the next decision, and a cached answer could outlive it.
-- The engine starts with the application even though nothing reads it yet, so its migrations and datastore are proven in every environment first.
 - Callers depend on the service interface, so running OpenFGA as its own deployment later changes only this package.
 
 ### Connections
 
-Each replica opens up to 10 OpenFGA connections, beside Anchor's own pool. The pool is idle until something reads the engine. Size it against the database's `max_connections` across every replica, including the extra replica of a start-first deploy, before decisions read it (PR 6).
+Each replica opens up to 10 OpenFGA connections, beside Anchor's own pool. Decisions, syncs and the sweeper share them. Size it against the database's `max_connections` across every replica, including the extra replica of a start-first deploy.
 
 ## Stores
 
@@ -68,29 +67,30 @@ Anchor's tables stay the source of truth (ADR-0022 E5):
 Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
 
 
-## Shadow decisions
+## Decisions
 
-`service.DecorateEvaluator`, put around the access evaluator at the application's root (`authz.ShadowDecisions`), runs every decision on both evaluators. The decision always comes from the current evaluator, and is returned before OpenFGA is asked. Once that evaluator reaches an identity in the Organization, a member or an Organization API key, OpenFGA answers every action it evaluated, in `BatchCheck`s of at most 50 on `organization:<id>`:
+The access evaluator (`internal/access/service`) still resolves who the subject is in Postgres, then asks OpenFGA what it holds (`service.Checker`, provided as `access/service.PermissionChecker`):
 
-- The comparison runs off the request path, at most 8 at a time, with a 500 ms budget. A decision that finds all 8 busy is not compared and is counted as dropped.
-- An answer that differs is logged at warn level with `"event": "authz.shadow_mismatch"`, the request's log fields, the product, resource, Organization, subject, permission and both answers. Mismatch lines are sampled at 20 a minute; `ShadowStats` counts every one.
-- A permission the model doesn't know answers not held, as after the switch. A failed read or check, or an item OpenFGA fails on, is counted as failed. The engine not being ready, or a Product with no model yet, is counted as skipped.
-- A subject the evaluator stops earlier (an unknown user, an invalid or inactive key, a non-member, an unknown Organization or workspace) is not compared. The switch (PR 7) keeps every one of those steps in Postgres, so OpenFGA never answers for such a subject.
-- A workspace decision is compared on its Organization, since today's workspace permissions are its Organization role's.
+1. **Postgres resolves the subject.** A user is found by external ID, then its membership in the Organization; an API key goes through introspection, which refuses an invalid, inactive or expired key; a named workspace must belong to the Organization. A subject stopped at any of these steps is denied with its reason, and OpenFGA is not asked.
+2. **OpenFGA answers each action.** `Checker.Holds` checks `can_<permission>` for `user:<product user>` or `api_key:<key>` on `organization:<id>`, in `BatchCheck`s of at most 50, under the model `authz_stores` records. A permission the model doesn't know is not held (`MISSING_PERMISSION`). A workspace decision is checked on its Organization, since a workspace's permissions are its Organization role's.
+3. **The first decision for a Product nothing has synced builds its store** with a full Product sync, then checks.
 
-The component suite checks two things once its tests pass (`CheckAfterRun` in `cmd/it/ct/shared_test.go`):
+The engine not being ready, a failed check, or an item OpenFGA fails on answers `503 ACCESS_DECISIONS_UNAVAILABLE`; the caller retries.
 
-1. **The shadow** compared at least one action and counted no difference, failure or drop.
-2. **The mirror.** After one sweep, every member's role permissions and every active key's permissions in Anchor's tables are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_mirror_test.go`). Most writes in the suite are never followed by a decision, so the shadow alone would not see their drift.
+The decision's context (`permissions`, the role and the key in the evaluation response) is still read from Anchor's tables. It describes the identity; the answer comes from OpenFGA.
 
-Decisions move to OpenFGA (PR 7) only once the suite and dev show no difference.
+### Freshness
+
+Decisions never look for marks (E5). A write that changes access reaches the store before its response, so the next request sees it. When that replay can't run (its lock stayed busy for 3 s, or the process stopped), the mark stays, and decisions see the previous state until the sweeper replays it within 5 s. A write made outside an API request, such as a Clerk ingest, waits for the sweeper too.
+
+The component suite checks, once its tests pass, that OpenFGA holds what the tables imply: after one sweep, every member's role permissions and every active key's permissions are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_mirror_test.go`).
 
 ## Known limits
 
-- **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so the shadow (PR 6) never compares it, and the switch (PR 7) must keep that resolution.
+- **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so those tuples are never read.
 - **One lock per Product.** Writes to different Organizations of one Product queue behind each other's replay, each waiting at most 3 s before leaving its mark to the sweeper. A rebuild holds the lock while it reads the whole store.
 - **A catalog change replays its whole Product** before its response, bounded at 30 s; a batch of catalog writes, such as a Terraform apply, repeats it per write.
 
 ## Tests
 
-`TestAuthzShadow` covers an agreeing and a disagreeing decision, and more actions than one `BatchCheck` takes. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+`TestAuthzDecisions` covers a decision that follows the store (a deleted tuple denies until a reconcile repairs it), the first decision for a Product never synced, an undeclared permission, and more actions than one `BatchCheck` takes. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

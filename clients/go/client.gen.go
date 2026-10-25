@@ -342,7 +342,7 @@ type ClientInterface interface {
 
 	// EvaluateAccessWithBody Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -351,7 +351,7 @@ type ClientInterface interface {
 
 	// EvaluateAccess Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -2494,7 +2494,7 @@ func (c *Client) UpdateProduct(ctx context.Context, productId ProductIdParameter
 
 // EvaluateAccessWithBody Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2513,7 +2513,7 @@ func (c *Client) EvaluateAccessWithBody(ctx context.Context, productId ProductId
 
 // EvaluateAccess Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -12675,7 +12675,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithBodyWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -12684,7 +12684,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -15511,6 +15511,8 @@ type EvaluateAccessResponse struct {
 	JSON403 *Forbidden
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalServerError
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *AccessDecisionsUnavailable
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -15536,6 +15538,11 @@ func (r EvaluateAccessResponse) GetJSON403() *Forbidden {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r EvaluateAccessResponse) GetJSON500() *InternalServerError {
 	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EvaluateAccessResponse) GetJSON503() *AccessDecisionsUnavailable {
+	return r.JSON503
 }
 
 // GetBody returns the raw response body bytes
@@ -15580,6 +15587,8 @@ type EvaluateAccessBatchResponse struct {
 	JSON403 *Forbidden
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalServerError
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *AccessDecisionsUnavailable
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -15605,6 +15614,11 @@ func (r EvaluateAccessBatchResponse) GetJSON403() *Forbidden {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r EvaluateAccessBatchResponse) GetJSON500() *InternalServerError {
 	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EvaluateAccessBatchResponse) GetJSON503() *AccessDecisionsUnavailable {
+	return r.JSON503
 }
 
 // GetBody returns the raw response body bytes
@@ -23973,7 +23987,7 @@ func (c *ClientWithResponses) UpdateProductWithResponse(ctx context.Context, pro
 
 // EvaluateAccessWithBodyWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -23988,7 +24002,7 @@ func (c *ClientWithResponses) EvaluateAccessWithBodyWithResponse(ctx context.Con
 
 // EvaluateAccessWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. Every call reads current data, so a membership, role, workspace or API key change applies to the next call. Evaluating an organization API key updates its last_used_at as introspection does.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`. A membership, role, workspace or API key change made through the API applies to the next call; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27705,6 +27719,13 @@ func ParseEvaluateAccessResponse(rsp *http.Response) (*EvaluateAccessResponse, e
 		}
 		response.JSON500 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest AccessDecisionsUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
 	}
 
 	return response, nil
@@ -27758,6 +27779,13 @@ func ParseEvaluateAccessBatchResponse(rsp *http.Response) (*EvaluateAccessBatchR
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest AccessDecisionsUnavailable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

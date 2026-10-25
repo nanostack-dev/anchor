@@ -61,22 +61,23 @@ the product sent on create.
 
 ## Freshness
 
-The evaluator (`apps/anchor/internal/access`) reads Postgres on every call and caches
-nothing. An allowed user call costs three indexed reads: the product user by external
-ID, the membership joined to its role permissions, and the workspace when one is named.
-A refusal for a missing membership adds one organization read to tell
-`ORGANIZATION_NOT_FOUND` from `NOT_A_MEMBER`. Membership, role, workspace and API-key
-writes therefore apply to the next call, including Clerk ingest writes that bypass the
-services. A cache can be added if callers measure the latency as too high; it then
-needs eviction on each of those writes.
+The evaluator (`apps/anchor/internal/access`) resolves the subject in Postgres on
+every call: the product user by external ID, the membership joined to its role,
+and the workspace when one is named. A refusal for a missing membership adds one
+organization read to tell `ORGANIZATION_NOT_FOUND` from `NOT_A_MEMBER`. What the
+subject holds then comes from OpenFGA, in one in-process `BatchCheck` per 50
+actions ([authorization engine](authorization-engine.md#decisions)). Nothing is
+cached.
+
+A write that changes access reaches OpenFGA before its response, so it applies to
+the next call. A write made outside an API request, such as a Clerk ingest, or one
+whose replay couldn't run, applies within 5 s, when the sweeper replays its mark.
 
 Evaluating an API key goes through introspection, so it flips an expired key to
 inactive and updates `last_used_at` at most hourly, as introspection does.
 
-Every decision that reaches a member or an Organization API key also runs on
-OpenFGA in shadow, after the answer is returned. The shadow never changes the
-answer and logs any difference as `authz.shadow_mismatch`
-([authorization engine](authorization-engine.md#shadow-decisions)).
+When OpenFGA can't answer, the call fails with `503 ACCESS_DECISIONS_UNAVAILABLE`
+instead of guessing.
 
 ## Not covered
 

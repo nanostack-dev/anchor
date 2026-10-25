@@ -6211,6 +6211,10 @@ export type EvaluateAccessErrors = {
      * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
      */
     500: ApiErrorResponse;
+    /**
+     * `ACCESS_DECISIONS_UNAVAILABLE`: the relationship store could not answer right now, so no decision was made. Retrying later succeeds.
+     */
+    503: ApiErrorResponse;
 };
 
 export type EvaluateAccessError = EvaluateAccessErrors[keyof EvaluateAccessErrors];
@@ -6253,6 +6257,10 @@ export type EvaluateAccessBatchErrors = {
      * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
      */
     500: ApiErrorResponse;
+    /**
+     * `ACCESS_DECISIONS_UNAVAILABLE`: the relationship store could not answer right now, so no decision was made. Retrying later succeeds.
+     */
+    503: ApiErrorResponse;
 };
 
 export type EvaluateAccessBatchError = EvaluateAccessBatchErrors[keyof EvaluateAccessBatchErrors];

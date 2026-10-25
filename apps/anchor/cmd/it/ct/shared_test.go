@@ -2,12 +2,10 @@ package ct_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
 	"anchor/cmd/it/shared/mailpit"
-	authzservice "anchor/internal/authz/service"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
@@ -33,7 +31,6 @@ var (
 	IntegrationRepo               repository.IntegrationInstanceRepository
 	initialWorkspaceOrganizations service.OrganizationService
 	initialWorkspaceTx            transactor.Transactor
-	shadowStats                   *authzservice.ShadowStats
 )
 
 func TestMain(m *testing.M) {
@@ -61,16 +58,15 @@ func TestMain(m *testing.M) {
 				&testDB,
 				&adjustmentBackfill,
 				&templateSync,
-				&shadowStats,
 				&authzEngines,
 				&authzRepo,
 				&authzSweeper,
 			},
 			AfterRun: mailpit.StopShared,
-			// Every decision the suite makes also runs on OpenFGA (ADR-0022
-			// G4, PR 6); decisions move there only once they always agree.
+			// OpenFGA must hold what Anchor's tables imply once the suite ran
+			// (ADR-0022 E5).
 			CheckAfterRun: func() error {
-				return errors.Join(checkAuthzShadow(), checkAuthzMirror(context.Background()))
+				return checkAuthzMirror(context.Background())
 			},
 		},
 	)

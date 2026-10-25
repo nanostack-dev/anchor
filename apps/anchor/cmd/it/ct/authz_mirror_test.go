@@ -40,31 +40,11 @@ type holder struct {
 	held           []string
 }
 
-// checkAuthzShadow fails the suite when the shadow saw a difference or could
-// not compare a decision, or compared nothing at all (ADR-0022 G4, PR 6).
-func checkAuthzShadow() error {
-	shadowStats.Settle()
-	switch {
-	case shadowStats.Mismatches() > 0:
-		return fmt.Errorf("%d access decisions differed between the evaluator and OpenFGA; "+
-			"search the log for authz.shadow_mismatch", shadowStats.Mismatches())
-	case shadowStats.Failed() > 0:
-		return fmt.Errorf("OpenFGA could not answer %d shadowed decisions; search the log for authz_shadow",
-			shadowStats.Failed())
-	case shadowStats.Dropped() > 0:
-		return fmt.Errorf("the shadow dropped %d decisions with every worker busy", shadowStats.Dropped())
-	case shadowStats.Compared() == 0:
-		return errors.New("the shadow compared no decision")
-	}
-	fmt.Fprintf(os.Stderr, "authz shadow: %d actions agree (%d decisions skipped without a model)\n",
-		shadowStats.Compared(), shadowStats.Skipped())
-	return nil
-}
-
 // checkAuthzMirror compares, for every Product the suite gave a model, what
 // each member and API key holds in Anchor's tables with OpenFGA's answer for
-// every permission of the Product. Most writes in the suite are never
-// followed by a decision, so the shadow alone would not see their drift.
+// every permission of the Product. Decisions come from OpenFGA (ADR-0022 G4,
+// PR 7), and most writes in the suite are never followed by one, so this is
+// where their drift would show.
 func checkAuthzMirror(ctx context.Context) error {
 	authzSweeper.Sweep(ctx)
 	byProduct, err := mirrorHolders(ctx)

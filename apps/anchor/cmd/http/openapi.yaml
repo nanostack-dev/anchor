@@ -5272,6 +5272,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
+    AccessDecisionsUnavailable:
+      description: >-
+        `ACCESS_DECISIONS_UNAVAILABLE`: the relationship store could not answer
+        right now, so no decision was made. Retrying later succeeds.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
     InternalServerError:
       description: >-
         The server failed for a reason the caller could not have influenced.
@@ -7437,8 +7445,9 @@ paths:
         Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key.
         The resource is an organization or a workspace. The action name is a resource permission name such as `flows:read`.
         A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`.
-        Every call reads current data, so a membership, role, workspace or API key change applies to the next call.
-        Evaluating an organization API key updates its last_used_at as introspection does.
+        A membership, role, workspace or API key change made through the API applies to the next call; one made outside
+        a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its
+        last_used_at as introspection does.
       operationId: evaluateAccess
       tags: [Access]
       security:
@@ -7464,6 +7473,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/AccessDecisionsUnavailable"
   /v1/products/{product_id}/access/v1/evaluations:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -7502,6 +7513,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/AccessDecisionsUnavailable"
   # --- Product Organization Management ---
   /v1/products/{product_id}/organizations:
     parameters:
