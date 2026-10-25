@@ -2063,6 +2063,8 @@ flowchart LR
 
 After it, every decision is unchanged, because Organization-scoped roles reach every resource below the Organization. The workspace move (A6) is a separate, later migration.
 
+> **Implementation note (PR 1).** Public IDs are KSUIDs, which SQL cannot mint, and a rolling deploy runs the previous release beside the new one. The seed and the scope backfill therefore run as an idempotent startup step, `resource_type_id` stays nullable, and a null scope reads as Organization until the G6 cleanup makes it `NOT NULL`. See [resource types](../technical/resource-types.md#backfill).
+
 <details>
 <summary>📌 Real example</summary>
 

@@ -70,3 +70,31 @@ func TestOrganizationBackfill(t *testing.T) {
 		assert.Equal(t, first, second)
 	})
 }
+
+func TestOrganizationBackfillKeepsScopedRoles(t *testing.T) {
+	t.Run("The backfill leaves a role scoped to another type alone", func(t *testing.T) {
+		ctx := t.Context()
+		productID := GivenATenantAndProduct(t).Product.ID
+		require.NoError(t, ResourceTypeRepo.EnsureOrganization(ctx, productID))
+		project := resourcetype.ResourceType{
+			ID: resourcetype.NewID(), ProductID: productID, Slug: "project", Name: "Project",
+			ParentTypes: []string{resourcetype.OrganizationSlug},
+		}
+		require.NoError(t, ResourceTypeRepo.Create(ctx, project))
+		scoped := role.ProductRole{
+			ProductID:      productID,
+			Name:           "Scoped " + uuid.NewString(),
+			ResourceTypeID: &project.ID,
+		}
+		scoped.GenerateID()
+		_, err := ProductRoleRepo.Create(ctx, scoped)
+		require.NoError(t, err)
+
+		require.NoError(t, rtservice.BackfillOrganizations(ctx, ProductRepository, ResourceTypeRepo, TestLogger))
+
+		stored, err := ProductRoleRepo.FindByProductIDAndRoleID(ctx, productID, scoped.ID)
+		require.NoError(t, err)
+		require.NotNil(t, stored.Value().ResourceTypeID)
+		assert.Equal(t, project.ID, *stored.Value().ResourceTypeID)
+	})
+}

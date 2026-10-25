@@ -239,7 +239,7 @@ export const zProductPermissionListResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
- * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+ * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
  */
 export const zResourceTypeSlug = z.string().regex(/^[a-z][a-z0-9_]{0,48}$/);
 

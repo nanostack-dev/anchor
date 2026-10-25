@@ -85,7 +85,7 @@ func TestCreateResourceTypeDuplicateSlug(t *testing.T) {
 
 func TestCreateResourceTypeOrganizationSlug(t *testing.T) {
 	t.Parallel()
-	t.Run("Declaring a second organization type answers 409", func(t *testing.T) {
+	t.Run("Declaring a type with the organization slug answers 409", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 
@@ -93,7 +93,7 @@ func TestCreateResourceTypeOrganizationSlug(t *testing.T) {
 			Slug: "organization", Name: "Organization", ParentTypes: []string{"organization"},
 		})
 
-		requireAPIError(t, resp, resp.Body, http.StatusConflict, "RESOURCE_TYPE_SLUG_DUPLICATE")
+		requireAPIError(t, resp, resp.Body, http.StatusConflict, "BUILT_IN_RESOURCE_TYPE")
 	})
 }
 
@@ -151,7 +151,30 @@ func TestCreateResourceTypeWithoutParent(t *testing.T) {
 			Slug: "project", Name: "Project", ParentTypes: []string{},
 		})
 
-		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "VALIDATION_ERROR")
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "RESOURCE_TYPE_PARENT_REQUIRED")
+	})
+}
+
+func TestCreateResourceTypeMaxParentTypes(t *testing.T) {
+	t.Parallel()
+	t.Run("A type lists ten parent types and an eleventh answers 400", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		types := product.ResourceTypes()
+		parents := []string{"organization"}
+		for i := range 10 {
+			parents = append(parents, types.CreateUnder(fmt.Sprintf("parent_%d", i), "organization").Slug)
+		}
+
+		within := types.CreateRaw(ct.CreateProductResourceTypeJSONRequestBody{
+			Slug: "ten_parents", Name: "Ten parents", ParentTypes: parents[:10],
+		})
+		beyond := types.CreateRaw(ct.CreateProductResourceTypeJSONRequestBody{
+			Slug: "eleven_parents", Name: "Eleven parents", ParentTypes: parents,
+		})
+
+		require.Equal(t, http.StatusCreated, within.StatusCode(), string(within.Body))
+		requireAPIError(t, beyond, beyond.Body, http.StatusBadRequest, "VALIDATION_ERROR")
 	})
 }
 

@@ -508,7 +508,7 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			return role.ErrProductRoleNotFound
 		}
 		roleScope := scopeSlug(tree, target.Value().ResourceTypeID)
-		if scopeErr := s.checkBundle(txCtx, tree, input.ProductID, roleScope, permissions); scopeErr != nil {
+		if scopeErr := s.checkBundle(txCtx, tree, input.ProductID, roleScope, resolvedPermissions); scopeErr != nil {
 			return scopeErr
 		}
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)

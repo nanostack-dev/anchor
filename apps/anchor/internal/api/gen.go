@@ -2628,10 +2628,10 @@ type ProductResourceTypeCreateRequest struct {
 	// NestsInItself `true` lets an instance sit under another instance of the same type, such as a folder inside a folder.
 	NestsInItself *bool `json:"nests_in_itself,omitempty"`
 
-	// ParentTypes Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+	// ParentTypes Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. An empty list answers 400 RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
 	ParentTypes []ResourceTypeSlug `json:"parent_types"`
 
-	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
 	//
 	// Examples: folder
 	Slug ResourceTypeSlug `json:"slug"`
@@ -2678,7 +2678,7 @@ type ProductResourceTypeResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	ProductId Ksuid `json:"product_id"`
 
-	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
 	//
 	// Examples: folder
 	Slug      ResourceTypeSlug `json:"slug"`
@@ -2710,7 +2710,7 @@ type ProductResourceTypeTreeItem struct {
 	NestsInItself *bool              `json:"nests_in_itself,omitempty"`
 	ParentTypes   []ResourceTypeSlug `json:"parent_types"`
 
-	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
 	//
 	// Examples: folder
 	Slug ResourceTypeSlug `json:"slug"`
@@ -3098,7 +3098,7 @@ type RegisterRequest struct {
 	TenantName *string `json:"tenant_name,omitempty"`
 }
 
-// ResourceTypeSlug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+// ResourceTypeSlug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
 //
 // Examples: folder
 type ResourceTypeSlug = string

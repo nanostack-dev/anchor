@@ -41,6 +41,36 @@ func TestUpdateResourceTypeAddsParent(t *testing.T) {
 	})
 }
 
+func TestUpdateResourceTypeTurnsNestingOff(t *testing.T) {
+	t.Parallel()
+	t.Run("Turning nests_in_itself off succeeds while no resource nests", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		tree := declareDocumentTree(t, product)
+
+		updated := product.ResourceTypes().Update(tree.folder.Id, ct.UpdateProductResourceTypeJSONRequestBody{
+			NestsInItself: new(false),
+		})
+
+		assert.False(t, updated.NestsInItself)
+	})
+}
+
+func TestUpdateResourceTypeWithoutParent(t *testing.T) {
+	t.Parallel()
+	t.Run("Replacing the parent types with none answers 400", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		project := product.ResourceTypes().CreateUnder("project", "organization")
+
+		resp := product.ResourceTypes().UpdateRaw(project.Id, ct.UpdateProductResourceTypeJSONRequestBody{
+			ParentTypes: &[]string{},
+		})
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "RESOURCE_TYPE_PARENT_REQUIRED")
+	})
+}
+
 func TestUpdateResourceTypeBuiltIn(t *testing.T) {
 	t.Parallel()
 	t.Run("Renaming the organization type answers 409", func(t *testing.T) {
