@@ -120,6 +120,7 @@ async function chooseType(page: Page, name: string) {
 
 // evaluateAccess accepts only a product API key while the admin UI sends its
 // platform token; forward the browser's call with a key scoped to evaluation.
+// Delete this once the contract adds platformBearerAuth to evaluateAccess.
 async function forwardEvaluationWithProductKey(page: Page, world: World) {
 	const key = await world.api.post<CreatedProductApiKeyResponse>(
 		`${world.productPath}/api-keys`,
@@ -183,9 +184,8 @@ test("access.explainer-allowed: allowed via folder-viewer on folder Design for a
 	await captureReviewCheckpoint(page, testInfo, "all-four-chosen");
 	await check(page, world);
 
-	const decision = panel(page).getByRole("status").filter({
-		hasText: "Allowed",
-	});
+	const decision = panel(page).getByRole("group", { name: "Access decision" });
+	await expect(decision).toContainText("Allowed");
 	await expect(decision).toContainText(
 		`${dan.name} has ${view.name} on Pricing page.`,
 	);
@@ -212,7 +212,9 @@ test("access.explainer-allowed: allowed via folder-viewer on folder Design for a
 		);
 	await typeNode(page, "Folder").scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "allowed-path-on-canvas");
-	await panel(page).scrollIntoViewIfNeeded();
+	await panel(page)
+		.getByRole("list", { name: "Path from the resource to the Organization" })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "allowed-explained");
 });
 
@@ -231,9 +233,8 @@ test("access.explainer-denied: denied with the reason for a project above the fo
 	await pick(page, "Resource", "Website", "Website redesign");
 	await check(page, world);
 
-	const decision = panel(page).getByRole("status").filter({
-		hasText: "Denied",
-	});
+	const decision = panel(page).getByRole("group", { name: "Access decision" });
+	await expect(decision).toContainText("Denied");
 	await expect(decision).toContainText(
 		`No role ${dan.name} holds on Website redesign or above it bundles ${view.name}.`,
 	);
@@ -253,6 +254,9 @@ test("access.explainer-denied: denied with the reason for a project above the fo
 	await expect(typeNode(page, "Folder")).toHaveAccessibleDescription(
 		"Slug folder. Nests in itself.",
 	);
+	await panel(page)
+		.getByRole("list", { name: "Path from the resource to the Organization" })
+		.scrollIntoViewIfNeeded();
 	await captureReviewCheckpoint(page, testInfo, "denied-explained");
 
 	await chooseType(page, "Document");

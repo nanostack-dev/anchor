@@ -184,8 +184,13 @@ export function AccessDecision({
 		return (
 			<Box className="access-result">
 				<Stack space="md">
-					{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; a decision is announced politely, not as an alert */}
-					<Alert tone="success" icon={CheckCircleIcon} role="status">
+					{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; the panel's live region announces the decision once */}
+					<Alert
+						tone="success"
+						icon={CheckCircleIcon}
+						role="group"
+						aria-label="Access decision"
+					>
 						<AlertTitle>Allowed</AlertTitle>
 						<AlertDescription>
 							<Stack space="sm">
@@ -224,8 +229,13 @@ export function AccessDecision({
 	return (
 		<Box className="access-result">
 			<Stack space="md">
-				{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; a decision is announced politely, not as an alert */}
-				<Alert tone="critical" icon={ProhibitIcon} role="status">
+				{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; the panel's live region announces the decision once */}
+				<Alert
+					tone="critical"
+					icon={ProhibitIcon}
+					role="group"
+					aria-label="Access decision"
+				>
 					<AlertTitle>Denied</AlertTitle>
 					<AlertDescription>
 						<Stack space="xs">
@@ -360,6 +370,13 @@ export function CheckAccessPanel({
 	const unavailable =
 		check.isError && apiErrorHasCode(check.error, UNAVAILABLE);
 	const typeLabel = resourceType ? typeName(types, resourceType) : "";
+	const announcement = check.isPending
+		? "Checking access…"
+		: explanation?.decision === "allowed"
+			? `Allowed. ${explanation.grants.map((grant) => `${grant.holder} on ${grant.link.name}`).join(", ")}`
+			: explanation?.decision === "denied"
+				? `Denied. ${explanation.title}`
+				: "";
 
 	return (
 		<Box
@@ -461,7 +478,7 @@ export function CheckAccessPanel({
 							itemBlocked={(item) =>
 								item.external_id
 									? undefined
-									: `${item.email} · No external ID yet, so Anchor can't name them in a check.`
+									: `${item.name ? `${item.email} · ` : ""}No external ID yet, so Anchor can't name them in a check.`
 							}
 							noMatch="No member matches."
 							nothing={
@@ -606,16 +623,14 @@ export function CheckAccessPanel({
 					</Button>
 					{!question && !check.isPending && (
 						<Text tone="muted" size="sm">
-							Choose all four to check.
+							Choose an organization, a member, a permission and a resource.
 						</Text>
 					)}
 				</Box>
 
-				{check.isPending && (
-					<output aria-live="polite" className="sr-only">
-						Checking access…
-					</output>
-				)}
+				<output aria-live="polite" className="sr-only">
+					{announcement}
+				</output>
 
 				{unavailable && check.variables && (
 					<Alert tone="warning" icon={CloudSlashIcon}>

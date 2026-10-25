@@ -386,26 +386,22 @@ export const CheckFails: Story = {
 	},
 };
 
-/** 503 ACCESS_DECISIONS_UNAVAILABLE: no decision was made, so the panel says so and retries. */
+const UNAVAILABLE_REPLY = {
+	status: 503,
+	body: {
+		errors: [
+			{
+				code: "ACCESS_DECISIONS_UNAVAILABLE",
+				message: "The relationship store could not answer.",
+			},
+		],
+	},
+};
+
+/** 503 ACCESS_DECISIONS_UNAVAILABLE: no decision was made, so the panel says so and offers a retry. */
 export const DecisionsUnavailable: Story = {
 	parameters: {
-		backend: {
-			...BACKEND,
-			evaluate: (_request: unknown, attempt: number) =>
-				attempt === 1
-					? {
-							status: 503,
-							body: {
-								errors: [
-									{
-										code: "ACCESS_DECISIONS_UNAVAILABLE",
-										message: "The relationship store could not answer.",
-									},
-								],
-							},
-						}
-					: { status: 200, body: denied("MISSING_PERMISSION") },
-		},
+		backend: { ...BACKEND, evaluate: () => UNAVAILABLE_REPLY },
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
@@ -415,10 +411,73 @@ export const DecisionsUnavailable: Story = {
 		await expect(alert).toHaveTextContent(
 			"Access decisions are unavailable right now",
 		);
+		await expect(
+			within(alert).getByRole("button", { name: "Try again" }),
+		).toBeVisible();
+		await expect(canvas.queryByText("Denied")).not.toBeInTheDocument();
+	},
+};
+
+/** Try again after a 503 asks the same question again. */
+export const RetriesAfterUnavailable: Story = {
+	parameters: {
+		backend: {
+			...BACKEND,
+			evaluate: (_request: unknown, attempt: number) =>
+				attempt === 1
+					? UNAVAILABLE_REPLY
+					: { status: 200, body: denied("MISSING_PERMISSION") },
+		},
+	},
+	play: async ({ canvasElement, parameters }) => {
+		const canvas = within(canvasElement);
+		await chooseAll(canvas);
+		await userEvent.click(canvas.getByRole("button", { name: "Check" }));
+		const alert = await canvas.findByRole("alert");
 		await userEvent.click(
 			within(alert).getByRole("button", { name: "Try again" }),
 		);
 		await shows(canvas, "Denied");
+		const evaluated = (parameters.backend as AccessBackend).evaluated ?? [];
+		await expect(evaluated).toHaveLength(2);
+		await expect(evaluated[1]).toEqual(evaluated[0]);
+	},
+};
+
+let release: (() => void) | undefined;
+
+/** An answer that arrives after a choice changed is dropped: it never shows next to the new question, and the canvas stays unlit. */
+export const LateAnswerAfterAChange: Story = {
+	parameters: {
+		backend: {
+			...BACKEND,
+			evaluate: () =>
+				new Promise((resolve) => {
+					release = () =>
+						resolve({
+							status: 200,
+							body: allowed([
+								{ role: "folder-viewer", type: "folder", id: DESIGN.id },
+							]),
+						});
+				}),
+		},
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		await chooseAll(canvas);
+		const check = canvas.getByRole("button", { name: "Check" });
+		await userEvent.click(check);
+		await waitFor(() => expect(check).toHaveAttribute("aria-busy", "true"));
+		await pick(canvas, "Permission", /^document:edit/);
+		release?.();
+		await waitFor(() => expect(check).not.toHaveAttribute("aria-busy"));
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		await expect(canvas.queryByText("Allowed")).not.toBeInTheDocument();
+		await expect(args.onHighlight).toHaveBeenLastCalledWith(null);
+		await expect(args.onHighlight).not.toHaveBeenCalledWith(
+			expect.objectContaining({ decision: "allowed" }),
+		);
 	},
 };
 

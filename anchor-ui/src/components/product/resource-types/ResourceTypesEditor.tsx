@@ -689,7 +689,7 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			)}
 
 			<Box className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<Box className="h-[26rem] min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:sticky lg:top-4 lg:h-[36rem]">
+				<Box className="h-[26rem] min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:sticky lg:top-20 lg:h-[36rem]">
 					<ResourceTypeCanvas
 						types={types}
 						layout={layout}

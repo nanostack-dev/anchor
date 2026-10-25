@@ -183,7 +183,7 @@ describe("explain", () => {
 		});
 	});
 
-	it("says a permission scoped below doesn't apply to the resource's type", () => {
+	it("says a permission of a type above doesn't apply to the resource's type", () => {
 		const explanation = explain(
 			{
 				decision: false,

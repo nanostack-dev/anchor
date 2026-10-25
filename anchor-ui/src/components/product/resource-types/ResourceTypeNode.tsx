@@ -239,7 +239,6 @@ export function ResourceTypeNode({ data }: NodeProps<ResourceTypeFlowNode>) {
 			{trace === "granted" && holders.length > 0 && (
 				<span
 					aria-hidden
-					title={holders.join(", ")}
 					className="pointer-events-none absolute -top-2.5 right-2 z-10 max-w-[70%] truncate rounded-full bg-success px-2 py-0.5 font-medium text-[11px] text-success-foreground shadow-xs"
 				>
 					◀ {holders.join(", ")}

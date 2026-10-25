@@ -153,7 +153,8 @@ export function denied(reason: string): AccessEvaluationResponse {
 	};
 }
 
-export type Reply = { status: number; body: unknown } | "pending";
+export type Answer = { status: number; body: unknown };
+export type Reply = Answer | Promise<Answer> | "pending";
 
 export interface AccessBackend {
 	types?: ProductResourceTypeResponse[];
@@ -234,7 +235,9 @@ export function accessRoute(
 			backend.evaluated?.length ?? 1,
 		) ?? { status: 200, body: denied("MISSING_PERMISSION") };
 		if (reply === "pending") return new Promise<Response>(() => {});
-		return Response.json(reply.body, { status: reply.status });
+		return Promise.resolve(reply).then((answer) =>
+			Response.json(answer.body, { status: answer.status }),
+		);
 	}
 	return undefined;
 }

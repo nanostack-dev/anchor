@@ -177,8 +177,7 @@ function denyCopy(
 		case AccessDenyReason.RESOURCE_NOT_FOUND:
 			return {
 				title: `${resource} isn't registered in ${organization}.`,
-				detail:
-					"Anchor checks a registered resource, or an unregistered one named with a registered parent. It may have been deleted since you chose it.",
+				detail: "It may have been deleted since you chose it.",
 			};
 		case AccessDenyReason.RESOURCE_NOT_IN_ORGANIZATION:
 			return {
@@ -195,7 +194,8 @@ function denyCopy(
 		case AccessDenyReason.WORKSPACE_NOT_IN_ORGANIZATION:
 			return {
 				title: `The workspace isn't in ${organization}.`,
-				detail: "It doesn't exist, or it belongs to another Organization.",
+				detail:
+					"Until workspaces move into the resource model, a type with the slug workspace is checked as the built-in workspace of that ID, which doesn't exist here or belongs to another Organization.",
 			};
 		case AccessDenyReason.API_KEY_INVALID:
 			return {
