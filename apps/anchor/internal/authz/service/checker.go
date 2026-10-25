@@ -64,9 +64,9 @@ func NewChecker(engines engine.Provider, repo repository.Repository, syncer Sync
 // Holds checks every action on the object, in BatchChecks of at most
 // checkBatch items. An unregistered resource is checked as an object of its
 // type that exists for the check only, with its parent given as a contextual
-// tuple. A permission the model doesn't define on the object's type is not
-// held, and is not asked; neither is anything on a type or a parent the model
-// lacks.
+// tuple. A permission the model doesn't define on the object's type is asked
+// on the check's fallback object, when it names one, or is not held and not
+// asked; neither is anything on a type or a parent the model lacks.
 // Anything OpenFGA can't answer, or can't answer in time, fails the decision
 // with accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
@@ -92,18 +92,26 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	if err != nil {
 		return nil, unavailable(err)
 	}
-	on, ok := checkTarget(check.Object, types)
-	if !ok {
-		return held, nil
-	}
-	defined := types[model.ResourceType(check.Object.Type)].relations
-	declared := functional.Slice(check.Actions).Filter(func(action string) bool {
-		return defined[model.CanRelation(action)]
-	})
-	for start := 0; start < len(declared); start += checkBatch {
-		actions := declared[start:min(start+checkBatch, len(declared))]
-		if err = c.holdsBatch(ctx, openfga, stored, subject, on, actions, held); err != nil {
-			return nil, unavailable(err)
+	remaining := check.Actions
+	for _, object := range []*accessservice.CheckedObject{&check.Object, check.Fallback} {
+		if object == nil || len(remaining) == 0 {
+			continue
+		}
+		on, ok := checkTarget(*object, types)
+		if !ok {
+			continue
+		}
+		defined := types[model.ResourceType(object.Type)].relations
+		split := functional.Slice(remaining).Partition(func(action string) bool {
+			return defined[model.CanRelation(action)]
+		})
+		declared := split.First
+		remaining = split.Second
+		for start := 0; start < len(declared); start += checkBatch {
+			actions := declared[start:min(start+checkBatch, len(declared))]
+			if err = c.holdsBatch(ctx, openfga, stored, subject, on, actions, held); err != nil {
+				return nil, unavailable(err)
+			}
 		}
 	}
 	return held, nil

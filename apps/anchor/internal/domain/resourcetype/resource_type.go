@@ -3,6 +3,7 @@
 package resourcetype
 
 import (
+	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -12,6 +13,11 @@ const (
 	// OrganizationSlug names the built-in root type every product has.
 	OrganizationSlug = "organization"
 	OrganizationName = "Organization"
+
+	// WorkspaceSlug names the type the built-in workspaces are registered as
+	// (ADR-0022 A6). A product may declare it itself, under organization.
+	WorkspaceSlug = "workspace"
+	WorkspaceName = "Workspace"
 
 	// MaxDepth counts the levels of the type tree, organization included.
 	MaxDepth = 5
@@ -49,4 +55,10 @@ func NewID() string {
 // BuiltIn reports whether the type is the product's organization root.
 func (t ResourceType) BuiltIn() bool {
 	return t.Slug == OrganizationSlug
+}
+
+// SitsUnderOrganization reports whether a resource of the type may have the
+// Organization as its parent.
+func (t ResourceType) SitsUnderOrganization() bool {
+	return slices.Contains(t.ParentTypes, OrganizationSlug)
 }

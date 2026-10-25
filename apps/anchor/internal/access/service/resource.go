@@ -13,22 +13,72 @@ import (
 // located is the object a decision checks, and the registered resource its
 // chain of ancestors starts at: the resource itself, or the parent an
 // unregistered one names. chainStart is empty when the chain is the
-// Organization alone.
+// Organization alone. fallback, when set, is checked for the actions the
+// model doesn't define on object.
 type located struct {
 	object     CheckedObject
+	fallback   *CheckedObject
 	chainStart string
+}
+
+// locate resolves what the decision checks once the subject reached its
+// Organization.
+func (e *evaluator) locate(ctx context.Context, request Request, subject reach) (reach, located, error) {
+	switch request.Resource.Type {
+	case ResourceOrganization:
+		return subject, located{object: OrganizationObject(subject.identity.OrganizationID)}, nil
+	case ResourceWorkspace:
+		return e.reachWorkspace(ctx, request, subject)
+	default:
+		return e.reachResource(ctx, request, subject)
+	}
+}
+
+// reachWorkspace resolves a workspace through the generic model (ADR-0022
+// A6): the reference registered in the Organization under the product's
+// workspace type, checked on its own object, so Organization roles reach it
+// through its parent and roles assigned on it grant too. An action scoped
+// above the workspace type, such as every Organization-scoped permission, is
+// checked on the Organization, as it was before workspaces were registered. A
+// built-in workspace whose reference is missing, because the product's type
+// refused it or an earlier release wrote it during a rolling deploy, is
+// checked on its Organization alone. Unknown and foreign workspaces stop the
+// same way.
+func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, located, error) {
+	organizationID := subject.identity.OrganizationID
+	organization := OrganizationObject(organizationID)
+	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
+	if err != nil {
+		return reach{}, located{}, e.unexpected(err, request, "resource types")
+	}
+	if rt, declared := tree.BySlug(resourcetype.WorkspaceSlug).Get(); declared {
+		found, findErr := e.resources.Find(ctx, organizationID, rt.ID, request.Resource.ID)
+		if findErr != nil {
+			return reach{}, located{}, e.unexpected(findErr, request, "workspace resource")
+		}
+		if registered, ok := found.Get(); ok {
+			return subject, located{
+				object:     CheckedObject{Type: rt.Slug, ID: registered.RowID},
+				fallback:   &organization,
+				chainStart: registered.RowID,
+			}, nil
+		}
+	}
+	found, err := e.workspaces.FindByID(ctx, request.ProductID, organizationID, request.Resource.ID)
+	if err != nil {
+		return reach{}, located{}, e.unexpected(err, request, "workspace")
+	}
+	if found.IsAbsent() {
+		return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, nil
+	}
+	return subject, located{object: organization}, nil
 }
 
 // reachResource resolves a resource of the Product's own types in Postgres,
 // in this order (ADR-0022 B1, E2): its type, the resource registered in the
 // Organization, and, for one the registry lacks, the parent the request
-// names. The built-in organization and workspace keep their own paths.
-func (e *evaluator) reachResource(
-	ctx context.Context, request Request, subject reach, target located,
-) (reach, located, error) {
-	if request.Resource.Type.builtIn() {
-		return subject, target, nil
-	}
+// names.
+func (e *evaluator) reachResource(ctx context.Context, request Request, subject reach) (reach, located, error) {
 	organizationID := subject.identity.OrganizationID
 	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
 	if err != nil {

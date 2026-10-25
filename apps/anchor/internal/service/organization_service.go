@@ -300,6 +300,12 @@ func (s *organizationService) Create(
 	}
 	org.GenerateID()
 
+	if input.Workspace != nil {
+		if err = s.workspaces.DeclareResourceType(ctx, input.ProductID); err != nil {
+			return organization.Organization{}, err
+		}
+	}
+
 	// One transaction so a refused license template leaves no organization behind.
 	var created organization.Organization
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -382,6 +388,12 @@ func (s *organizationService) CreateWithMember(
 	}
 	if existing.IsPresent() {
 		return existing.Value(), nil
+	}
+
+	if input.Workspace != nil {
+		if err = s.workspaces.DeclareResourceType(ctx, input.ProductID); err != nil {
+			return organization.OrganizationWithMemberResult{}, err
+		}
 	}
 
 	// No existing membership — acquire the lock and create the org + founding membership atomically.

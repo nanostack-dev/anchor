@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -13,6 +14,7 @@ import (
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	resourceservice "anchor/internal/resource/service"
 	"anchor/internal/searchx"
 )
 
@@ -29,6 +31,10 @@ type WorkspaceService interface {
 		ctx context.Context,
 		input workspace.SearchWorkspacesInput,
 	) (search.Result[workspace.Workspace], error)
+	// DeclareResourceType gives the product its workspace resource type. A
+	// caller that creates a workspace inside its own transaction calls it
+	// before that transaction; Create calls it before its own.
+	DeclareResourceType(ctx context.Context, productID string) error
 }
 
 func (s *workspaceService) ListByOrganizations(
@@ -40,9 +46,13 @@ func (s *workspaceService) ListByOrganizations(
 	return s.workspaceRepo.ListByOrganizations(ctx, input.ProductID, input.OrganizationIDs)
 }
 
+// workspaceService writes the built-in workspaces, and mirrors each write to
+// the workspace's resource reference in the same transaction (ADR-0022 A6,
+// phase 2).
 type workspaceService struct {
 	workspaceRepo    repository.WorkspaceRepository
 	organizationRepo repository.OrganizationRepository
+	resources        resourceservice.Workspaces
 	transactor       transactor.Transactor
 	events           events.Emitter
 	logger           zerolog.Logger
@@ -51,6 +61,7 @@ type workspaceService struct {
 func NewWorkspaceService(
 	workspaceRepo repository.WorkspaceRepository,
 	organizationRepo repository.OrganizationRepository,
+	resources resourceservice.Workspaces,
 	transactor transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -58,6 +69,7 @@ func NewWorkspaceService(
 	return &workspaceService{
 		workspaceRepo:    workspaceRepo,
 		organizationRepo: organizationRepo,
+		resources:        resources,
 		transactor:       transactor,
 		events:           eventEmitter,
 		logger: logger.With().Str(
@@ -117,6 +129,10 @@ func (s *workspaceService) Create(
 		return workspace.Workspace{}, err
 	}
 
+	if err := s.DeclareResourceType(ctx, input.ProductID); err != nil {
+		return workspace.Workspace{}, err
+	}
+
 	newWorkspace := workspace.Workspace{
 		OrganizationID: input.OrganizationID,
 		Name:           input.Name,
@@ -155,9 +171,12 @@ func (s *workspaceService) Create(
 		if createErr != nil {
 			return createErr
 		}
-		return s.emitWorkspace(
+		if err := s.emitWorkspace(
 			txCtx, events.WorkspaceCreated, input.ProductID, input.OrganizationID, created.ID,
-		)
+		); err != nil {
+			return err
+		}
+		return s.resources.Put(txCtx, input.ProductID, input.OrganizationID, created.ID, created.Name)
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -233,9 +252,12 @@ func (s *workspaceService) Update(
 		if updateErr != nil {
 			return updateErr
 		}
-		return s.emitWorkspace(
+		if emitErr := s.emitWorkspace(
 			txCtx, events.WorkspaceUpdated, input.ProductID, input.OrganizationID, updated.ID,
-		)
+		); emitErr != nil {
+			return emitErr
+		}
+		return s.resources.Put(txCtx, input.ProductID, input.OrganizationID, updated.ID, updated.Name)
 	})
 	if err != nil {
 		logger.Error().Err(err).
@@ -286,10 +308,24 @@ func (s *workspaceService) Delete(
 		); delErr != nil {
 			return delErr
 		}
-		return s.emitWorkspace(
+		if emitErr := s.emitWorkspace(
 			txCtx, events.WorkspaceDeleted, input.ProductID, input.OrganizationID, input.WorkspaceID,
-		)
+		); emitErr != nil {
+			return emitErr
+		}
+		return s.resources.Delete(txCtx, input.ProductID, input.OrganizationID, input.WorkspaceID)
 	})
+}
+
+// DeclareResourceType runs outside the create's transaction when it can: a
+// refused type insert would abort it, and the type's catalog lock would be
+// taken after the Organization's row, against the order of resource writes.
+func (s *workspaceService) DeclareResourceType(ctx context.Context, productID string) error {
+	if productID == "" {
+		return fault.ErrBadRequest
+	}
+	_, err := s.resources.DeclareType(ctx, productID)
+	return err
 }
 
 func (s *workspaceService) Search(

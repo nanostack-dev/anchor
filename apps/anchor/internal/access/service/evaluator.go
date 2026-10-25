@@ -28,8 +28,8 @@ const driftLogBurst = 20
 //
 // Postgres resolves who the subject is: the product user and its membership,
 // or the API key through introspection; then what the resource is: the
-// workspace's organization, or the registered resource or the parent an
-// unregistered one names. Which actions it holds comes from OpenFGA, which a
+// registered resource, a workspace's included, or the parent an unregistered
+// one names. Which actions it holds comes from OpenFGA, which a
 // write that changes access usually reaches before its response, and
 // otherwise within seconds, when the sweeper replays its mark (ADR-0022 E5).
 // Nothing is cached.
@@ -81,8 +81,7 @@ func NewEvaluator(
 }
 
 // Evaluate walks the subject toward the resource, organization first, then the
-// workspace or the resource, and decides the actions with whatever identity
-// it reached.
+// resource, and decides the actions with whatever identity it reached.
 func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, error) {
 	if err := validate.ValidateStruct(request); err != nil {
 		return Decision{}, err
@@ -94,13 +93,9 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	if err != nil {
 		return Decision{}, err
 	}
-	if subject, err = e.reachWorkspace(ctx, request, subject); err != nil {
-		return Decision{}, err
-	}
 	target := located{}
 	if subject.stopped == "" {
-		target = located{object: OrganizationObject(subject.identity.OrganizationID)}
-		if subject, target, err = e.reachResource(ctx, request, subject, target); err != nil {
+		if subject, target, err = e.locate(ctx, request, subject); err != nil {
 			return Decision{}, err
 		}
 	}
@@ -113,6 +108,7 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 		ProductUserID: identity.ProductUserID,
 		APIKeyID:      identity.APIKeyID,
 		Object:        target.object,
+		Fallback:      target.fallback,
 		Actions:       request.Actions,
 	})
 	switch {
@@ -125,7 +121,7 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	case err != nil:
 		return Decision{}, e.unexpected(err, request, "permissions")
 	}
-	if request.Resource.Type.builtIn() {
+	if target.object.Type == string(ResourceOrganization) {
 		e.reportDrift(ctx, request, identity, held)
 	}
 	decision := subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] })
@@ -137,9 +133,9 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 
 // reportDrift logs, sampled, each action where OpenFGA and the permissions
 // Anchor's tables list for the identity disagree. A write's own replay window
-// can show one; a lasting one is a sync defect. Only a decision on the
-// Organization or a workspace compares: roles held on a resource grant more
-// than the Organization's role lists.
+// can show one; a lasting one is a sync defect. Only a decision checked on the
+// Organization compares: roles held on a resource, a workspace's included,
+// grant more than the Organization's role lists.
 func (e *evaluator) reportDrift(ctx context.Context, request Request, identity *Identity, held map[string]bool) {
 	logger := log.Ctx(ctx).Sample(e.driftSampler)
 	for _, action := range request.Actions {
@@ -239,22 +235,6 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 		APIKeyName:     key.APIKey.Name,
 		Permissions:    key.Permissions,
 	}), nil
-}
-
-// reachWorkspace checks that a requested workspace belongs to the organization
-// the subject reached. Unknown and foreign workspaces stop the same way.
-func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, error) {
-	if request.Resource.Type != ResourceWorkspace || subject.stopped != "" {
-		return subject, nil
-	}
-	found, err := e.workspaces.FindByID(ctx, request.ProductID, subject.identity.OrganizationID, request.Resource.ID)
-	if err != nil {
-		return reach{}, e.unexpected(err, request, "workspace")
-	}
-	if found.IsAbsent() {
-		return stoppedBy(ReasonWorkspaceNotInOrganization), nil
-	}
-	return subject, nil
 }
 
 func (e *evaluator) unexpected(err error, request Request, lookup string) error {

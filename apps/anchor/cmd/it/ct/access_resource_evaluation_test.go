@@ -529,28 +529,37 @@ func TestAccessEvaluationOnResourcesSeesWritesOnTheNextCall(t *testing.T) {
 	})
 }
 
-// Until the built-in workspace is retired (ADR-0022 A6), a product's own
-// workspace type does not take over the workspace path.
+// A product's own workspace type and the workspaces of the workspace routes
+// are one type (ADR-0022 A6): a workspace registered through the resource
+// routes is decided like one the workspace routes created.
 func TestAccessEvaluationKeepsTheBuiltInWorkspace(t *testing.T) {
 	t.Parallel()
-	t.Run("A declared workspace type leaves workspace decisions on the built-in workspace", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		product.ResourceTypes().CreateUnder("workspace", "organization")
-		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		resources := product.Resources(org.Id)
-		registered := resourceID()
-		resources.Put("workspace", registered, "Registered", resources.Top())
-		role := createRoleTemplate(t, product, ct.CreateProductRoleJSONRequestBody{Name: "Member " + ids.MustNew("ct")})
-		user := createDSLProductUser(t, product)
-		externalID := "user_" + ids.MustNew("ext")
-		setDSLProductUserExternalID(t, product, user.ID, externalID)
-		addMember(t, product, org.Id, user.ID, role.Id)
-		builtIn := product.Workspaces(org.Id).
-			Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + ids.MustNew("ct")}).Id
-		access := product.Access().User(externalID)
+	t.Run(
+		"A workspace registered as a resource is decided like a workspace of the workspace routes",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			product.ResourceTypes().CreateUnder("workspace", "organization")
+			org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+			resources := product.Resources(org.Id)
+			registered := resourceID()
+			resources.Put("workspace", registered, "Registered", resources.Top())
+			role := createRoleTemplate(
+				t,
+				product,
+				ct.CreateProductRoleJSONRequestBody{Name: "Member " + ids.MustNew("ct")},
+			)
+			user := createDSLProductUser(t, product)
+			externalID := "user_" + ids.MustNew("ext")
+			setDSLProductUserExternalID(t, product, user.ID, externalID)
+			addMember(t, product, org.Id, user.ID, role.Id)
+			builtIn := product.Workspaces(org.Id).
+				Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + ids.MustNew("ct")}).Id
+			access := product.Access().User(externalID)
 
-		requireAllowed(t, access.InWorkspace(org.Id, builtIn).Decide())
-		requireDenied(t, access.InWorkspace(org.Id, registered).Decide(), ct.WORKSPACENOTINORGANIZATION)
-	})
+			requireAllowed(t, access.InWorkspace(org.Id, builtIn).Decide())
+			requireAllowed(t, access.InWorkspace(org.Id, registered).Decide())
+			requireDenied(t, access.InWorkspace(org.Id, resourceID()).Decide(), ct.WORKSPACENOTINORGANIZATION)
+		},
+	)
 }

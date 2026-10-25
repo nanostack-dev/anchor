@@ -1423,7 +1423,7 @@ type AccessResource struct {
 	Id         *string                   `json:"id,omitempty"`
 	Properties *AccessResourceProperties `json:"properties,omitempty"`
 
-	// Type `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+	// Type `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
 	//
 	// Examples: document
 	Type AccessResourceType `json:"type"`
@@ -1438,7 +1438,7 @@ type AccessResourceProperties struct {
 	Parent *ResourceParentRef `json:"parent,omitempty"`
 }
 
-// AccessResourceType `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+// AccessResourceType `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
 //
 // Examples: document
 type AccessResourceType = string
@@ -5276,12 +5276,18 @@ type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
 type UpdateOrganizationRoleJSONRequestBody = OrganizationRoleUpdateRequest
 
 // CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchOrganizationWorkspacesJSONRequestBody defines body for SearchOrganizationWorkspaces for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
 
 // UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.

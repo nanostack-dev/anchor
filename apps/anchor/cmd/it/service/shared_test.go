@@ -63,6 +63,7 @@ var (
 	ProductUserRepo         repository.ProductUserRepository
 	MembershipRepo          repository.OrganizationMembershipRepository
 	WorkspaceRepo           repository.WorkspaceRepository
+	WorkspaceBackfill       *resourceservice.WorkspaceBackfill
 	TestDB                  *sql.DB
 )
 
@@ -106,6 +107,7 @@ func TestMain(m *testing.M) {
 				&ProductUserRepo,
 				&MembershipRepo,
 				&WorkspaceRepo,
+				&WorkspaceBackfill,
 				&TestDB,
 			},
 		},
