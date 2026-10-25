@@ -978,7 +978,11 @@ export const updateProductApiKeyMutation = (options?: Partial<Options<UpdateProd
  * Create Product User
  *
  * Creates a new user record associated with the specified Product.
- * This only creates the user profile; authentication must be handled externally.
+ * This only creates the user profile; Anchor never authenticates the user.
+ * A product that is its own identity provider sends `external_id`, its own ID for the user,
+ * and then names the user by that ID in access evaluation.
+ * A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+ * or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
  * Requires an API Key with `product_user:create` permission.
  */
 export const createProductUserMutation = (options?: Partial<Options<CreateProductUserData>>): UseMutationOptions<CreateProductUserResponse, CreateProductUserError, Options<CreateProductUserData>> => {

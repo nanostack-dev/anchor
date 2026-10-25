@@ -1568,8 +1568,9 @@ components:
           examples: ["Jane Doe"]
         external_id:
           type: [string, "null"]
-          description: External identifier for the user, typically from an 
-            external identity provider.
+          description: The user's ID in its identity provider. The product sets it on create, or Clerk ingest
+            sets it. Access evaluation names the user by this ID. It never changes after it is set. Absent when
+            neither the product nor an integration gave one.
           examples: ["user_2nTFC..."]
         status:
           $ref: "#/components/schemas/ProductUserStatus"
@@ -2110,7 +2111,8 @@ components:
           $ref: "#/components/schemas/AccessSubjectType"
         id:
           type: string
-          description: The external user ID, or the raw organization API key. A raw key is never logged.
+          description: The product user's external ID (sent on product user create, or synced from Clerk), or the
+            raw organization API key. A raw key is never logged.
         properties:
           type: object
           additionalProperties: true
@@ -6178,14 +6180,18 @@ paths:
       summary: Create Product User
       description: |-
         Creates a new user record associated with the specified Product.
-        This only creates the user profile; authentication must be handled externally.
+        This only creates the user profile; Anchor never authenticates the user.
+        A product that is its own identity provider sends `external_id`, its own ID for the user,
+        and then names the user by that ID in access evaluation.
+        A 409 is `PRODUCT_USER_EMAIL_ALREADY_EXISTS` when another user of the product has the email,
+        or `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS` when another user of the product has the external ID.
         Requires an API Key with `product_user:create` permission.
       operationId: createProductUser
       tags: [ProductUser]
       security:
       - productApiKeyAuth: ["product_user:create"]
       requestBody:
-        description: Product user details (email required, name/status 
+        description: Product user details (email required, name/status/external_id 
           optional).
         required: true
         content:
@@ -6210,6 +6216,17 @@ paths:
                   $ref: "#/components/schemas/ProductUserStatus"
                   description: Initial status (e.g., 'active' or 'invited'). 
                     Defaults might apply.
+                external_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: |-
+                    The user's ID in the product's own identity provider. Access evaluation names the user by this ID (`subject.type: user`).
+                    Optional. Without it the user has no external ID until an identity provider integration (Clerk) syncs one, and access evaluation cannot name the user.
+                    Unique within the product and compared exactly: letter case and spaces count. A blank value or a value longer than 255 characters is refused with 400 `VALIDATION_ERROR`. An ID that another user of the product holds is refused with 409 `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS`.
+                    Set on create only. No operation changes it later, because a new ID would point every access decision made for the old ID at another person. To change it, delete the user and create it again.
+                    A Clerk integration of the same product uses the same IDs. A user created with a Clerk user ID is the user that Clerk ingest then updates and deletes.
+                  examples: ["usr_01JB7Z3K9Q"]
               required:
               - email
       responses:

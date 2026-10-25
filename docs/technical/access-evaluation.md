@@ -14,7 +14,7 @@ with no items, is evaluated alone. Per-item `subject` and `resource` overrides a
 refused with 400 rather than ignored, so a request is never answered for a different
 subject or resource than the caller named.
 
-- **Subject:** `user` with the external (identity provider) user ID, or
+- **Subject:** `user` with the product user's external ID, or
   `organization_api_key` with the raw key. The request logger never records the
   body of these routes, introspection or key validation, even with
   `LOG_REQUEST_BODY=true`.
@@ -38,6 +38,23 @@ permission held, allowed or not.
 
 Errors are only for the call itself: 400 for an invalid request, 401 and 403 for the
 caller's product API key, 500 for a failure.
+
+## Who a user subject is
+
+A user subject is the product user whose external ID equals `subject.id`, compared
+exactly, within the calling product. A product user gets an external ID in one of
+two ways ([ADR-0023](../adr/0023-a-product-can-be-its-own-identity-provider.md)):
+
+- The product is its own identity provider. It sends `external_id` on
+  `POST /v1/products/{product_id}/product-users`, usually its own account ID. In the
+  Go SDK: `c.Users().Create(email).ExternalID(accountID).Do(ctx)`.
+- A Clerk integration syncs the user. Clerk ingest writes the Clerk user ID.
+
+A user created without an external ID cannot be named here until Clerk syncs it, and
+any ID that no product user holds answers `SUBJECT_NOT_SYNCED`. No route changes an
+external ID after it is set: a changed ID would give one person's access decisions to
+another. The two sources share one set of IDs per product. A user created with a
+Clerk user ID is the user that Clerk ingest then updates and deletes.
 
 ## Freshness
 

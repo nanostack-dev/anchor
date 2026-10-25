@@ -8,10 +8,11 @@ import (
 )
 
 type CreateProductUserInput struct {
-	ProductID string            `validate:"required,notblank"`
-	Email     string            `validate:"required,email"`
-	Name      string            `validate:"required,notblank"`
-	Status    ProductUserStatus `validate:"required"`
+	ProductID  string            `validate:"required,notblank"`
+	Email      string            `validate:"required,email"`
+	Name       string            `validate:"required,notblank"`
+	Status     ProductUserStatus `validate:"required"`
+	ExternalID *string           `validate:"omitempty,notblank,max=255"`
 }
 
 type UpdateProductUserInput struct {

@@ -626,6 +626,17 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantBody:   `{"email":"a@b.com","name":"New User","status":"active"}`,
 		},
 		{
+			name:  "product user create with an external ID",
+			reply: stubResponse{status: http.StatusCreated, body: `{"id":"pusr_1","email":"a@b.com"}`},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Users().Create("a@b.com").Name("New User").ExternalID("usr_42").Do(ctx)
+				return err
+			},
+			wantMethod: http.MethodPost,
+			wantPath:   "/v1/products/prd_test/product-users",
+			wantBody:   `{"email":"a@b.com","name":"New User","external_id":"usr_42"}`,
+		},
+		{
 			name:  "introspect",
 			reply: stubResponse{status: http.StatusOK, body: `{"api_key":{},"permissions":[],"missing_privileges":[]}`},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
