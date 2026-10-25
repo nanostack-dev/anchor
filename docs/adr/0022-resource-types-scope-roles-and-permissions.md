@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 3 to answer
+5. [Open questions](#open-questions) — 1 to answer
 
 ---
 
@@ -243,11 +243,11 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-E3](#dr-e3) · Roles are data; the Product's OpenFGA model holds only types and permissions | ✅ Accepted (depends on ADR-0021) |  |
 |  | [DR-E4](#dr-e4) · Listing what a subject can reach | ⚪ Deferred |  |
 |  | [DR-E5](#dr-e5) · Anchor's tables stay the source of truth; OpenFGA holds a mirror written after each commit | ✅ Accepted |  |
-| **F. Admin UI** | [DR-F1](#dr-f1) · Three catalog pages | 🔵 Proposed |  |
-|  | [DR-F2](#dr-f2) · The canvas: React Flow with computed layout | 🔵 Proposed |  |
-|  | [DR-F3](#dr-f3) · Canvas interaction and motion | 🟡 Pending | 1 |
-|  | [DR-F4](#dr-f4) · Roles and permissions pages | 🔵 Proposed |  |
-|  | [DR-F5](#dr-f5) · An access explainer on the canvas | 🟡 Pending | 1 |
+| **F. Admin UI** | [DR-F1](#dr-f1) · Three catalog pages | ✅ Accepted |  |
+|  | [DR-F2](#dr-f2) · The canvas: React Flow with computed layout | ✅ Accepted |  |
+|  | [DR-F3](#dr-f3) · Canvas interaction and motion | ✅ Accepted |  |
+|  | [DR-F4](#dr-f4) · Roles and permissions pages | ✅ Accepted |  |
+|  | [DR-F5](#dr-f5) · An access explainer on the canvas | ✅ Accepted |  |
 | **G. Migration and rollout** | [DR-G1](#dr-g1) · Backfill everything to Organization | 🔵 Proposed |  |
 |  | [DR-G2](#dr-g2) · Compatibility | 🔵 Proposed |  |
 |  | [DR-G3](#dr-g3) · Events | 🟡 Pending | 1 |
@@ -1845,7 +1845,7 @@ Every Anchor collection is a cursor search with sort and filters, and every writ
 
 <a id="dr-f1"></a>
 <details>
-<summary><b>DR-F1</b> · Three catalog pages — <i>🔵 Proposed</i></summary>
+<summary><b>DR-F1</b> · Three catalog pages — <i>✅ Accepted</i></summary>
 
 **Decision.** Under **Product**:
 - **Resource types:** the canvas.
@@ -1872,7 +1872,7 @@ flowchart LR
 
 <a id="dr-f2"></a>
 <details>
-<summary><b>DR-F2</b> · The canvas: React Flow with computed layout — <i>🔵 Proposed</i></summary>
+<summary><b>DR-F2</b> · The canvas: React Flow with computed layout — <i>✅ Accepted</i></summary>
 
 **Decision.**
 - **Layout is computed, never stored.** Positions come from a top-down layered layout (`@dagrejs/dagre`, small and synchronous), recomputed on every change. Nodes can't be dragged, so the tree always reads top to bottom and no coordinates live in the database.
@@ -1929,7 +1929,7 @@ flowchart LR
 
 <a id="dr-f3"></a>
 <details>
-<summary><b>DR-F3</b> · Canvas interaction and motion — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-F3</b> · Canvas interaction and motion — <i>✅ Accepted</i></summary>
 
 **Decision (following Emil Kowalski's design engineering rules):**
 
@@ -1987,18 +1987,19 @@ flowchart LR
 
 > **Q-F3.1** Draft-then-publish, or save each change immediately? *(recommended: draft then publish; tree edits change the access model, and one validated publish gives one model version)*
 >
-> **Answer:** _pending_
+> **Answer:** draft then publish; one validated publish gives one model version.
 
 </details>
 
 <a id="dr-f4"></a>
 <details>
-<summary><b>DR-F4</b> · Roles and permissions pages — <i>🔵 Proposed</i></summary>
+<summary><b>DR-F4</b> · Roles and permissions pages — <i>✅ Accepted</i></summary>
 
 **Decision.**
 - **Creating a role** starts with its scope. The permission picker then lists only permissions of that type and the types below it, grouped by type in tree order (Organization first). Invalid bundles can't be chosen, rather than erroring after the fact.
 - **The permissions table** shows the scope and the roles that bundle each permission.
 - **Clicking a node** on the canvas links to both pages, filtered to that type.
+- **The roles page lists role templates** (D8). Each resource type's form carries the `custom_roles` switch (D9). An Organization's page lists its own roles read-only, marked template, customized or custom; customers edit them in the Product's own settings page.
 
 <details>
 <summary>📌 Real example</summary>
@@ -2023,7 +2024,7 @@ flowchart LR
 
 <a id="dr-f5"></a>
 <details>
-<summary><b>DR-F5</b> · An access explainer on the canvas — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-F5</b> · An access explainer on the canvas — <i>✅ Accepted</i></summary>
 
 **Decision.** A *Check access* panel takes a member, a permission and a resource, and answers *allowed* or *denied*. It also lights up the path on the canvas: the resource, its ancestors, and the node where the granting role is held. It's the "why can Dan see this?" tool every FGA product ships, and the main way to trust the model. It needs E2's `granted_by`.
 
@@ -2045,7 +2046,7 @@ flowchart LR
 
 > **Q-F5.1** In the first UI delivery, or a follow-up? *(recommended: follow-up, right after the canvas)*
 >
-> **Answer:** _pending_
+> **Answer:** a follow-up, right after the canvas.
 
 </details>
 
@@ -2349,6 +2350,6 @@ Answer here or inline; each line links to its record.
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | **yes**, extension, inside `context` |
 | [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | **mirror** |
 | [Q-E5.2](#dr-e5) | Sync before each decision, or after each write? | after each write | **after each write**, mark as backup |
-| [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | |
-| [Q-F5.1](#dr-f5) | Access explainer in the first UI delivery? | follow-up | |
+| [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | **draft then publish** |
+| [Q-F5.1](#dr-f5) | Access explainer in the first UI delivery? | follow-up | **follow-up** |
 | [Q-G3.1](#dr-g3) | Resource and assignment events to webhooks? | assignments yes, resources internal | |
