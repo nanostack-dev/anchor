@@ -259,6 +259,78 @@ describe("publish errors", () => {
 		]);
 	});
 
+	it("names the registered resources that block a delete", () => {
+		const [problem] = publishProblems(
+			{
+				errors: [
+					{
+						code: "RESOURCE_TYPE_IN_USE",
+						message: "document can't be deleted while other records use it.",
+						metadata: {
+							slug: "document",
+							blocked_by: {
+								child_types: 0,
+								roles: 0,
+								permissions: 0,
+								resources: 2,
+							},
+						},
+					},
+				],
+			},
+			nameOf,
+		);
+		expect(problem.message).toBe(
+			"Document can't be deleted: 2 registered resources use it.",
+		);
+	});
+
+	it("explains a parent type that registered resources still sit under", () => {
+		const [problem] = publishProblems(
+			{
+				errors: [
+					{
+						code: "RESOURCE_TYPE_IN_USE",
+						message:
+							"1 registered resource of type document sits under one of type project.",
+						metadata: {
+							slug: "document",
+							parent_type: "project",
+							blocked_by: { resources: 1 },
+						},
+					},
+				],
+			},
+			nameOf,
+		);
+		expect(problem.message).toBe(
+			"Document can't lose Project as a parent type: 1 registered resource sits under a Project. Move it first.",
+		);
+	});
+
+	it("explains nesting that registered resources still use", () => {
+		const [problem] = publishProblems(
+			{
+				errors: [
+					{
+						code: "RESOURCE_TYPE_IN_USE",
+						message:
+							"3 registered resources of type folder sit under one of type folder.",
+						metadata: {
+							slug: "folder",
+							parent_type: "folder",
+							blocked_by: { resources: 3 },
+						},
+					},
+				],
+			},
+			nameOf,
+		);
+		expect(problem.message).toBe(
+			"Folder can't stop nesting in itself: 3 registered resources sit under another Folder. Move them first.",
+		);
+	});
+
 	it("keeps the roles that block a reshape", () => {
 		const [problem] = publishProblems(
 			{

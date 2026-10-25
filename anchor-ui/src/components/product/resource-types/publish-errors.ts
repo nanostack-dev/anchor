@@ -12,6 +12,7 @@ interface BlockedBy {
 	child_types?: number;
 	roles?: number;
 	permissions?: number;
+	resources?: number;
 }
 
 function text(value: unknown) {
@@ -26,7 +27,29 @@ function blockers(blocked: BlockedBy) {
 			`${plural(blocked.roles, "role is", "roles are")} scoped to it`,
 		blocked.permissions &&
 			`${plural(blocked.permissions, "permission is", "permissions are")} scoped to it`,
+		blocked.resources &&
+			`${plural(blocked.resources, "registered resource uses", "registered resources use")} it`,
 	].filter(Boolean);
+}
+
+/** A parent type a registered resource still sits under can't be taken away. */
+function parentInUse(
+	subject: string,
+	parentType: string,
+	ownType: boolean,
+	resources: number,
+	nameOf: (slug: string) => string,
+) {
+	const sit = plural(
+		resources,
+		"registered resource sits",
+		"registered resources sit",
+	);
+	const move = resources === 1 ? "it" : "them";
+	if (ownType)
+		return `${subject} can't stop nesting in itself: ${sit} under another ${subject}. Move ${move} first.`;
+	const parent = nameOf(parentType);
+	return `${subject} can't lose ${parent} as a parent type: ${sit} under a ${parent}. Move ${move} first.`;
 }
 
 function describe(error: ApiError, nameOf: (slug: string) => string) {
@@ -43,6 +66,17 @@ function describe(error: ApiError, nameOf: (slug: string) => string) {
 		case "RESOURCE_TYPE_TOO_DEEP":
 			return `${subject} would sit at level ${metadata.depth ?? MAX_DEPTH + 1}. The tree is at most ${MAX_DEPTH} levels deep, counting Organization.`;
 		case "RESOURCE_TYPE_IN_USE": {
+			const parentType = text(metadata.parent_type);
+			if (parentType)
+				return parentInUse(
+					subject,
+					parentType,
+					parentType === slug,
+					Number(
+						(metadata.blocked_by as BlockedBy | undefined)?.resources ?? 0,
+					),
+					nameOf,
+				);
 			if (Array.isArray(metadata.role_ids))
 				return "Some roles would bundle permissions outside their scope with this tree. Remove those permissions from the roles first.";
 			const reasons = blockers((metadata.blocked_by ?? {}) as BlockedBy);
