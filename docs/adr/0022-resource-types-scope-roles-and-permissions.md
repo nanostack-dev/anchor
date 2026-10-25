@@ -233,7 +233,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D5](#dr-d5) · A default Organization role | ✅ Accepted |  |
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
-| **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | 🔵 Proposed |  |
+| **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | 🟡 Pending | 1 |
 |  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | 🔵 Proposed (depends on ADR-0021) |  |
 |  | [DR-E4](#dr-e4) · Listing what a subject can reach | ⚪ Deferred |  |
@@ -1239,7 +1239,7 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 
 <a id="dr-e1"></a>
 <details>
-<summary><b>DR-E1</b> · Grants only, inherited downward — <i>🔵 Proposed</i></summary>
+<summary><b>DR-E1</b> · Grants only, inherited downward — <i>✅ Accepted</i></summary>
 
 **Decision.** A subject holds *P* on *R* when:
 - a role it holds on *R* or on any ancestor of *R*, its Organization role included, bundles *P*; or
