@@ -1,10 +1,12 @@
 package ct_test
 
 import (
+	"fmt"
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
 	"anchor/cmd/it/shared/mailpit"
+	authzservice "anchor/internal/authz/service"
 	"anchor/internal/repository"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
@@ -30,6 +32,7 @@ var (
 	IntegrationRepo               repository.IntegrationInstanceRepository
 	initialWorkspaceOrganizations service.OrganizationService
 	initialWorkspaceTx            transactor.Transactor
+	shadowStats                   *authzservice.ShadowStats
 )
 
 func TestMain(m *testing.M) {
@@ -57,8 +60,18 @@ func TestMain(m *testing.M) {
 				&testDB,
 				&adjustmentBackfill,
 				&templateSync,
+				&shadowStats,
 			},
 			AfterRun: mailpit.StopShared,
+			// Every decision the suite makes also runs on OpenFGA (ADR-0022
+			// G4, PR 6); decisions move there only once they always agree.
+			CheckAfterRun: func() error {
+				if mismatches := shadowStats.Mismatches(); mismatches > 0 {
+					return fmt.Errorf("%d access decisions differed between the evaluator and OpenFGA; "+
+						"search the log for authz.shadow_mismatch", mismatches)
+				}
+				return nil
+			},
 		},
 	)
 }

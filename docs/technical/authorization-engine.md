@@ -5,8 +5,8 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
 | PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
-| PR 5 (this) | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
-| PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
+| PR 5 | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
+| PR 6 (this) | Shadow: every decision runs on both evaluators and logs any difference | logged only |
 | PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
 
 ## The engine
@@ -67,7 +67,17 @@ Anchor's tables stay the source of truth (ADR-0022 E5):
 
 Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
 
-Nothing reads the store for decisions yet; PR 6 compares its answers with the current evaluator.
+
+## Shadow decisions
+
+`service.DecorateEvaluator`, put around the access evaluator at the application's root (`authz.ShadowDecisions`), runs every decision on both evaluators. The decision always comes from the current evaluator. Once that evaluator reaches an identity in the Organization, a member or an Organization API key, OpenFGA answers every action it evaluated in one `BatchCheck` on `organization:<id>`:
+
+- An answer that differs is logged at warn level with `"event": "authz.shadow_mismatch"`, the product, Organization, subject, permission, and both answers, and is counted (`ShadowStats`).
+- A subject the evaluator stops earlier (an unknown user, an invalid or inactive key, a non-member, an unknown Organization) is not compared: it never reaches OpenFGA after the switch either.
+- A workspace decision is compared on its Organization, since today's workspace permissions are its Organization role's.
+- The engine not being ready, a Product with no model yet, a failed check or an item OpenFGA can't answer skips the comparison. The OpenFGA side has a 2 s budget.
+
+The component suite fails when the shadow counted a single difference (`CheckAfterRun` in `cmd/it/ct/shared_test.go`). Decisions move to OpenFGA (PR 7) only once the suite and dev show none.
 
 ## Known limits
 
@@ -77,4 +87,4 @@ Nothing reads the store for decisions yet; PR 6 compares its answers with the cu
 
 ## Tests
 
-`TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+`TestAuthzShadow` covers an agreeing and a disagreeing decision. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

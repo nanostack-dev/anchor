@@ -84,6 +84,9 @@ type TestConfig struct {
 	// resources (e.g. mailpit.StopShared); a defer in TestMain would never run
 	// because RunTestMain exits the process.
 	AfterRun func()
+	// CheckAfterRun runs once the package's tests passed; an error fails the
+	// package, for a rule that holds over the whole suite.
+	CheckAfterRun func() error
 }
 
 func SetupTest(config TestConfig) func() {
@@ -420,6 +423,12 @@ func RunTestMain(m *testing.M, config TestConfig) {
 		config.AfterInit()
 	}
 	exitCode := m.Run()
+	if exitCode == 0 && config.CheckAfterRun != nil {
+		if err := config.CheckAfterRun(); err != nil {
+			fmt.Fprintln(os.Stderr, "FAIL:", err)
+			exitCode = 1
+		}
+	}
 	if config.AfterRun != nil {
 		config.AfterRun()
 	}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	accessservice "anchor/internal/access/service"
 	authzengine "anchor/internal/authz/engine"
 	authzrepository "anchor/internal/authz/repository"
 	authzservice "anchor/internal/authz/service"
@@ -48,6 +49,8 @@ var (
 	AuthzSyncer             authzservice.Syncer
 	AuthzSweeper            *authzservice.Sweeper
 	AuthzReplayer           *authzservice.Replayer
+	ShadowStats             *authzservice.ShadowStats
+	Evaluator               accessservice.Evaluator
 	TestDB                  *sql.DB
 )
 
@@ -82,6 +85,8 @@ func TestMain(m *testing.M) {
 				&AuthzSyncer,
 				&AuthzSweeper,
 				&AuthzReplayer,
+				&ShadowStats,
+				&Evaluator,
 				&TestDB,
 			},
 		},

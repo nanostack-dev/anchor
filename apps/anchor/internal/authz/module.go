@@ -25,7 +25,15 @@ func NewModule() fx.Option {
 			service.NewSweeper,
 			service.NewReplayer,
 			events.AsTxObserver(service.NewMarker),
+			service.NewShadowStats,
 		),
 		fx.Invoke(func(sweeper *service.Sweeper, lc fx.Lifecycle) { sweeper.Run(lc) }),
 	)
+}
+
+// ShadowDecisions runs every access decision on both evaluators and logs any
+// difference, keeping the current evaluator's answer (ADR-0022 G4, PR 6). It
+// goes at the application's root, so every consumer of the evaluator gets it.
+func ShadowDecisions() fx.Option {
+	return fx.Decorate(service.DecorateEvaluator)
 }

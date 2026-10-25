@@ -61,6 +61,7 @@ func startAnchor(target ...any) {
 		resourcetype.NewModule(),
 		organizationrole.NewModule(),
 		authz.NewModule(),
+		authz.ShadowDecisions(),
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),
