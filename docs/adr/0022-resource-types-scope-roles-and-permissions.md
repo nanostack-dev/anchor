@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 1 to answer
+5. [Open questions](#open-questions) — all answered
 
 ---
 
@@ -248,12 +248,12 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-F3](#dr-f3) · Canvas interaction and motion | ✅ Accepted |  |
 |  | [DR-F4](#dr-f4) · Roles and permissions pages | ✅ Accepted |  |
 |  | [DR-F5](#dr-f5) · An access explainer on the canvas | ✅ Accepted |  |
-| **G. Migration and rollout** | [DR-G1](#dr-g1) · Backfill everything to Organization | 🔵 Proposed |  |
-|  | [DR-G2](#dr-g2) · Compatibility | 🔵 Proposed |  |
-|  | [DR-G3](#dr-g3) · Events | 🟡 Pending | 1 |
-|  | [DR-G4](#dr-g4) · Delivery order | 🔵 Proposed |  |
-|  | [DR-G5](#dr-g5) · The catalog is managed through the Terraform provider | 🔵 Proposed |  |
-|  | [DR-G6](#dr-g6) · Cleanup once every Product runs on the new model | 🔵 Proposed |  |
+| **G. Migration and rollout** | [DR-G1](#dr-g1) · Backfill everything to Organization | ✅ Accepted |  |
+|  | [DR-G2](#dr-g2) · Compatibility | ✅ Accepted |  |
+|  | [DR-G3](#dr-g3) · Events | ✅ Accepted |  |
+|  | [DR-G4](#dr-g4) · Delivery order | ✅ Accepted |  |
+|  | [DR-G5](#dr-g5) · The catalog is managed through the Terraform provider | ✅ Accepted |  |
+|  | [DR-G6](#dr-g6) · Cleanup once every Product runs on the new model | ✅ Accepted |  |
 
 </details>
 
@@ -2054,7 +2054,7 @@ flowchart LR
 
 <a id="dr-g1"></a>
 <details>
-<summary><b>DR-G1</b> · Backfill everything to Organization — <i>🔵 Proposed</i></summary>
+<summary><b>DR-G1</b> · Backfill everything to Organization — <i>✅ Accepted</i></summary>
 
 **Decision.** One migration:
 - seeds the `organization` type for every Product;
@@ -2094,7 +2094,7 @@ FROM role_templates rt JOIN organizations o ON o.product_id = rt.product_id;
 
 <a id="dr-g2"></a>
 <details>
-<summary><b>DR-G2</b> · Compatibility — <i>🔵 Proposed</i></summary>
+<summary><b>DR-G2</b> · Compatibility — <i>✅ Accepted</i></summary>
 
 **Decision.**
 - **No external customers yet.** This change may remove or reshape Anchor APIs where that simplifies the model. A removed API is deleted only once no Product depends on it, as A6 does for Workspace.
@@ -2119,7 +2119,7 @@ FROM role_templates rt JOIN organizations o ON o.product_id = rt.product_id;
 
 <a id="dr-g3"></a>
 <details>
-<summary><b>DR-G3</b> · Events — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-G3</b> · Events — <i>✅ Accepted</i></summary>
 
 **Decision.** New catalogued event types:
 - `product.resource_type.created|updated|deleted`;
@@ -2149,13 +2149,13 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 
 > **Q-G3.1** Send resource and assignment events to product webhooks, or keep them internal? Resource events can be frequent (every registered folder). *(recommended: assignments to webhooks, resources internal-only at first)*
 >
-> **Answer:** _pending_
+> **Answer:** assignment events go to webhooks; resource events stay internal at first.
 
 </details>
 
 <a id="dr-g4"></a>
 <details>
-<summary><b>DR-G4</b> · Delivery order — <i>🔵 Proposed</i></summary>
+<summary><b>DR-G4</b> · Delivery order — <i>✅ Accepted</i></summary>
 
 1. **Types and scopes:** the resource types API, scope fields on roles and permissions, the backfill (G1), and model compilation (E3). No visible change for existing products.
 2. **Canvas:** the Resource types page and the scoped Roles and Permissions pages (F1–F4).
@@ -2178,7 +2178,7 @@ flowchart LR
 
 <a id="dr-g5"></a>
 <details>
-<summary><b>DR-G5</b> · The catalog is managed through the Terraform provider — <i>🔵 Proposed</i></summary>
+<summary><b>DR-G5</b> · The catalog is managed through the Terraform provider — <i>✅ Accepted</i></summary>
 
 **Decision.** Everything a Product designs once (resource types, permissions and roles) can be managed as code with the Anchor Terraform provider (`nanostack-dev/terraform-provider-anchor`), through the same API the admin UI uses.
 
@@ -2264,7 +2264,7 @@ resource "anchor_product_role" "folder_viewer" {
 
 <a id="dr-g6"></a>
 <details>
-<summary><b>DR-G6</b> · Cleanup once every Product runs on the new model — <i>🔵 Proposed</i></summary>
+<summary><b>DR-G6</b> · Cleanup once every Product runs on the new model — <i>✅ Accepted</i></summary>
 
 **Decision.** Everything this ADR deprecates or replaces is removed in one deliberate cleanup, when every Product has moved to resource types and decisions from OpenFGA. The trigger is the same as A6's phase 4: request logs show no remaining caller and no event subscription, over a period agreed at the time.
 
@@ -2352,4 +2352,4 @@ Answer here or inline; each line links to its record.
 | [Q-E5.2](#dr-e5) | Sync before each decision, or after each write? | after each write | **after each write**, mark as backup |
 | [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | **draft then publish** |
 | [Q-F5.1](#dr-f5) | Access explainer in the first UI delivery? | follow-up | **follow-up** |
-| [Q-G3.1](#dr-g3) | Resource and assignment events to webhooks? | assignments yes, resources internal | |
+| [Q-G3.1](#dr-g3) | Resource and assignment events to webhooks? | assignments yes, resources internal | **assignments to webhooks**, resources internal |
