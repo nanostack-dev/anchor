@@ -8,6 +8,7 @@ import (
 	orgroleservice "anchor/internal/organizationrole/service"
 	resourceservice "anchor/internal/resource/service"
 	rtservice "anchor/internal/resourcetype/service"
+	assignmentservice "anchor/internal/roleassignment/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
 
@@ -32,6 +33,7 @@ type AnchorAPI struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	ResourceService               resourceservice.Service
+	RoleAssignmentService         assignmentservice.Service
 	OrganizationRoleService       orgroleservice.Service
 	OrganizationCustomRoleService service.OrganizationCustomRoleService
 	OrganizationService           service.OrganizationService
@@ -68,6 +70,7 @@ type Params struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	ResourceService               resourceservice.Service
+	RoleAssignmentService         assignmentservice.Service
 	OrganizationRoleService       orgroleservice.Service
 	OrganizationCustomRoleService service.OrganizationCustomRoleService
 	OrganizationService           service.OrganizationService
@@ -104,6 +107,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ResourcePermissionService:     params.ResourcePermissionService,
 		ResourceTypeService:           params.ResourceTypeService,
 		ResourceService:               params.ResourceService,
+		RoleAssignmentService:         params.RoleAssignmentService,
 		OrganizationRoleService:       params.OrganizationRoleService,
 		OrganizationCustomRoleService: params.OrganizationCustomRoleService,
 		OrganizationService:           params.OrganizationService,

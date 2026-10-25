@@ -1336,6 +1336,120 @@ components:
         required:
         - items
 
+    ResourceMemberPutRequest:
+      type: object
+      description: >-
+        The roles the member holds on the resource. The call replaces what the
+        member held there before. The list holds exactly one role while the
+        product allows one role per member per resource, which is the only
+        setting for now; the list shape stays when several roles are allowed.
+      required: [role_ids]
+      properties:
+        role_ids:
+          type: array
+          minItems: 1
+          maxItems: 10
+          description: >-
+            IDs of the Organization's roles, as its role routes show them. A
+            role template's ID names the Organization's copy of it. Every role
+            must be scoped to the resource's type. More than one ID answers 400
+            SINGLE_ROLE_PER_RESOURCE.
+          items:
+            $ref: "#/components/schemas/ksuid"
+          examples: [["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"]]
+
+    ResourceMemberRole:
+      type: object
+      description: A role the member holds on the resource.
+      required: [id, name]
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: >-
+            The role's ID in its Organization: the template's ID for a copy of
+            a role template, the role's own ID for a custom role.
+        name:
+          type: string
+          examples: ["Folder editor"]
+
+    ResourceMemberResponse:
+      type: object
+      description: >-
+        A member of the Organization and the roles they hold on one resource.
+      required: [product_user_id, roles, created_at, updated_at]
+      properties:
+        product_user_id:
+          $ref: "#/components/schemas/ksuid"
+        roles:
+          type: array
+          description: >-
+            The roles held on the resource. It holds one item while the product
+            allows one role per member per resource.
+          items:
+            $ref: "#/components/schemas/ResourceMemberRole"
+        created_at:
+          type: string
+          format: date-time
+          description: When the member first held a role on the resource.
+        updated_at:
+          type: string
+          format: date-time
+          description: When the member's roles on the resource last changed.
+
+    ResourceMemberFilter:
+      type: object
+      properties:
+        product_user_ids:
+          type: array
+          maxItems: 100
+          description: Keeps these members.
+          items:
+            $ref: "#/components/schemas/ksuid"
+          x-go-type-skip-optional-pointer: true
+        role_ids:
+          type: array
+          maxItems: 50
+          description: >-
+            Keeps members holding one of these roles on the resource. A role
+            template's ID names the Organization's copy of it.
+          items:
+            $ref: "#/components/schemas/ksuid"
+          x-go-type-skip-optional-pointer: true
+
+    ResourceMemberSortField:
+      type: string
+      enum: [created_at, product_user_id]
+      default: created_at
+      description: >-
+        Field to sort by. `created_at` is when the member first held a role on
+        the resource. Every order ends with `product_user_id`.
+      x-go-type: roleassignment.SortField
+      x-go-type-import:
+        path: anchor/internal/domain/roleassignment
+
+    ResourceMemberSearchRequest:
+      type: object
+      properties:
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+        filter:
+          $ref: "#/components/schemas/ResourceMemberFilter"
+        sort_by:
+          $ref: "#/components/schemas/ResourceMemberSortField"
+        sort_direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    ResourceMemberListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ResourceMemberResponse"
+        required:
+        - items
+
     RoleKey:
       type: string
       minLength: 1
@@ -8604,12 +8718,15 @@ paths:
     delete:
       summary: Delete Resource
       description: >-
-        Deletes a registered resource. A resource with registered children
-        answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`,
-        which deletes the resource and its whole subtree in one transaction.
-        Emits one `resource.deleted` per deleted resource, deepest first; these
-        events stay inside Anchor and are never delivered to the product's
-        event endpoint. Requires Product API Key with resource:delete.
+        Deletes a registered resource. A resource with registered children or
+        role assignments answers 409 RESOURCE_IN_USE with the counts, unless
+        `cascade=true`, which deletes the resource, its whole subtree and every
+        role assignment held on them in one transaction. Emits one
+        `resource.role_assignment.deleted` per role assignment removed, then
+        one `resource.deleted` per deleted resource, deepest first. The
+        `resource.deleted` events stay inside Anchor and are never delivered to
+        the product's event endpoint. Requires Product API Key with
+        resource:delete.
       operationId: deleteResource
       tags: [Resource]
       security:
@@ -8618,7 +8735,7 @@ paths:
       - name: cascade
         in: query
         required: false
-        description: "`true` also deletes every registered descendant. Absent means `false`."
+        description: "`true` also deletes every registered descendant and every role assignment on them. Absent means `false`."
         schema:
           type: boolean
           default: false
@@ -8656,6 +8773,215 @@ paths:
                     - code: RESOURCE_IN_USE
                       message: "This resource still has 1 registered child and 0 role assignments. Send cascade=true to delete them too."
                       metadata: { children: 1, role_assignments: 0 }
+  /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/ResourceTypePathParameter"
+    - $ref: "#/components/parameters/ResourceIdParameter"
+    post:
+      summary: Search Resource Members
+      description: >-
+        Searches the members holding a role on one registered resource. Filter
+        by product user or by role. Roles inherited from the Organization or
+        from a parent resource are not listed: only the roles held on this
+        resource are. Requires Platform Bearer token or Product API Key with
+        resource:read.
+
+        Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchResourceMembers
+      tags: [Resource]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceMemberSearchRequest"
+      responses:
+        "200":
+          description: Matching members.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceMemberListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/ResourceTypePathParameter"
+    - $ref: "#/components/parameters/ResourceIdParameter"
+    - name: product_user_id
+      in: path
+      required: true
+      description: A member of the Organization.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+    put:
+      summary: Assign Resource Roles
+      description: >-
+        Sets the roles a member of the Organization holds on one registered
+        resource, replacing the ones they held there before. The same body
+        twice changes nothing the second time.
+
+        `role_ids` holds exactly one role: a product allows one role per member
+        per resource. Each role is one of the Organization's roles, scoped to
+        the resource's type; a role template's ID names the Organization's copy
+        of it. Removing the member from the Organization removes their roles on
+        every resource of it.
+
+        Emits `resource.role_assignment.created` when the member held no role
+        on the resource, `resource.role_assignment.updated` when the role
+        changed, and nothing when it did not. Requires Product API Key with
+        resource_member:write.
+      operationId: putResourceMember
+      tags: [Resource]
+      security:
+      - productApiKeyAuth: ["resource_member:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceMemberPutRequest"
+            example: { "role_ids": ["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"] }
+      responses:
+        "200":
+          description: The member's roles on the resource after the call.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceMemberResponse"
+              example:
+                product_user_id: pusr_2qLAm9yQ4cH7eN1xK8rT3vZAbCd
+                roles: [{ id: role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf, name: Folder editor }]
+                created_at: "2026-10-24T10:02:44Z"
+                updated_at: "2026-10-24T10:02:44Z"
+        "400":
+          description: >-
+            The body is refused. `SINGLE_ROLE_PER_RESOURCE`: more than one role
+            ID. `ROLE_NOT_FOUND_IN_REQUEST`: a role ID names no role of the
+            Organization nor a role template of the product.
+            `ROLE_SCOPE_MISMATCH`: the role is scoped to another type than the
+            resource; an Organization role is held through the membership.
+            `VALIDATION_ERROR`: `role_ids` is missing, empty or longer than
+            10.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                singleRole:
+                  summary: Two roles on one resource
+                  value:
+                    errors:
+                    - code: SINGLE_ROLE_PER_RESOURCE
+                      message: "This product allows one role per member per resource. Send exactly one role ID."
+                      metadata: { max_roles: 1, role_ids: 2 }
+                scopeMismatch:
+                  summary: A project role on a folder
+                  value:
+                    errors:
+                    - code: ROLE_SCOPE_MISMATCH
+                      message: "Role role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf is scoped to project, so it can't be held on a folder."
+                      metadata: { role_id: role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf, role_resource_type: project, resource_type: folder }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >-
+            `ORGANIZATION_MEMBERSHIP_NOT_FOUND`: the product user is not a
+            member of the Organization. `RESOURCE_NOT_FOUND`,
+            `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_TYPE_NOT_REGISTRABLE` and
+            `ORGANIZATION_NOT_FOUND` as on the resource routes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                notAMember:
+                  summary: The product user is not a member
+                  value:
+                    errors:
+                    - code: ORGANIZATION_MEMBERSHIP_NOT_FOUND
+                      message: This organization has no membership for that product user
+    get:
+      summary: Get Resource Member
+      description: >-
+        Reads the roles a member holds on one registered resource. Roles
+        inherited from the Organization or from a parent resource are not
+        listed. Requires Platform Bearer token or Product API Key with
+        resource:read.
+      operationId: getResourceMember
+      tags: [Resource]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource:read"]
+      responses:
+        "200":
+          description: The member's roles on the resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceMemberResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >-
+            `RESOURCE_MEMBER_NOT_FOUND`: the product user holds no role on the
+            resource. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND` and
+            `ORGANIZATION_NOT_FOUND` as on the resource routes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                noRole:
+                  summary: No role held on the resource
+                  value:
+                    errors:
+                    - code: RESOURCE_MEMBER_NOT_FOUND
+                      message: This resource has no role assignment for that product user.
+    delete:
+      summary: Remove Resource Member
+      description: >-
+        Removes every role a member holds on one registered resource. The
+        member stays in the Organization, and keeps the roles held on other
+        resources. Emits one `resource.role_assignment.deleted` per role
+        removed. Requires Product API Key with resource_member:write.
+      operationId: deleteResourceMember
+      tags: [Resource]
+      security:
+      - productApiKeyAuth: ["resource_member:write"]
+      responses:
+        "204":
+          description: The member's roles on the resource are removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >-
+            `RESOURCE_MEMBER_NOT_FOUND`: the product user holds no role on the
+            resource. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND` and
+            `ORGANIZATION_NOT_FOUND` as on the resource routes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
   /v1/products/{product_id}/organizations/{organization_id}/invitations:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

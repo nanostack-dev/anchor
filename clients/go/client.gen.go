@@ -1477,7 +1477,7 @@ type ClientInterface interface {
 
 	// DeleteResource Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 	DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1510,6 +1510,62 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
 	PutResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchResourceMembersWithBody Search Resource Members
+	//
+	// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+	SearchResourceMembersWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchResourceMembers Search Resource Members
+	//
+	// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+	SearchResourceMembers(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body SearchResourceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteResourceMember Remove Resource Member
+	//
+	// Removes every role a member holds on one registered resource. The member stays in the Organization, and keeps the roles held on other resources. Emits one `resource.role_assignment.deleted` per role removed. Requires Product API Key with resource_member:write.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `DeleteResourceMember` operationId).
+	DeleteResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetResourceMember Get Resource Member
+	//
+	// Reads the roles a member holds on one registered resource. Roles inherited from the Organization or from a parent resource are not listed. Requires Platform Bearer token or Product API Key with resource:read.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `GetResourceMember` operationId).
+	GetResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutResourceMemberWithBody Assign Resource Roles
+	//
+	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+	PutResourceMemberWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutResourceMember Assign Resource Roles
+	//
+	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+	PutResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, body PutResourceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateOrganizationRoleWithBody Create Organization Custom Role
 	//
@@ -4900,7 +4956,7 @@ func (c *Client) SearchResources(ctx context.Context, productId ProductIdParamet
 
 // DeleteResource Delete Resource
 //
-// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 func (c *Client) DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4964,6 +5020,122 @@ func (c *Client) PutResourceWithBody(ctx context.Context, productId ProductIdPar
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
 func (c *Client) PutResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutResourceRequest(c.Server, productId, organizationId, resourceType, resourceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchResourceMembersWithBody Search Resource Members
+//
+// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+func (c *Client) SearchResourceMembersWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourceMembersRequestWithBody(c.Server, productId, organizationId, resourceType, resourceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchResourceMembers Search Resource Members
+//
+// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+func (c *Client) SearchResourceMembers(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body SearchResourceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourceMembersRequest(c.Server, productId, organizationId, resourceType, resourceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteResourceMember Remove Resource Member
+//
+// Removes every role a member holds on one registered resource. The member stays in the Organization, and keeps the roles held on other resources. Emits one `resource.role_assignment.deleted` per role removed. Requires Product API Key with resource_member:write.
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `DeleteResourceMember` operationId).
+func (c *Client) DeleteResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteResourceMemberRequest(c.Server, productId, organizationId, resourceType, resourceId, productUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetResourceMember Get Resource Member
+//
+// Reads the roles a member holds on one registered resource. Roles inherited from the Organization or from a parent resource are not listed. Requires Platform Bearer token or Product API Key with resource:read.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `GetResourceMember` operationId).
+func (c *Client) GetResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourceMemberRequest(c.Server, productId, organizationId, resourceType, resourceId, productUserId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutResourceMemberWithBody Assign Resource Roles
+//
+// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+func (c *Client) PutResourceMemberWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutResourceMemberRequestWithBody(c.Server, productId, organizationId, resourceType, resourceId, productUserId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutResourceMember Assign Resource Roles
+//
+// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+func (c *Client) PutResourceMember(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, body PutResourceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutResourceMemberRequest(c.Server, productId, organizationId, resourceType, resourceId, productUserId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10887,6 +11059,273 @@ func NewPutResourceRequestWithBody(server string, productId ProductIdParameter, 
 	return req, nil
 }
 
+// NewSearchResourceMembersRequest calls the generic SearchResourceMembers builder with application/json body
+func NewSearchResourceMembersRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body SearchResourceMembersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchResourceMembersRequestWithBody(server, productId, organizationId, resourceType, resourceId, "application/json", bodyReader)
+}
+
+// NewSearchResourceMembersRequestWithBody constructs an http.Request for the SearchResourceMembers method, with any body, and a specified content type
+func NewSearchResourceMembersRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s/members/search", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteResourceMemberRequest constructs an http.Request for the DeleteResourceMember method
+func NewDeleteResourceMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam4 string
+
+	pathParam4, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3, pathParam4)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetResourceMemberRequest constructs an http.Request for the GetResourceMember method
+func NewGetResourceMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam4 string
+
+	pathParam4, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3, pathParam4)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutResourceMemberRequest calls the generic PutResourceMember builder with application/json body
+func NewPutResourceMemberRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, body PutResourceMemberJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutResourceMemberRequestWithBody(server, productId, organizationId, resourceType, resourceId, productUserId, "application/json", bodyReader)
+}
+
+// NewPutResourceMemberRequestWithBody constructs an http.Request for the PutResourceMember method, with any body, and a specified content type
+func NewPutResourceMemberRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam4 string
+
+	pathParam4, err = runtime.StyleParamWithOptions("simple", false, "product_user_id", productUserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s/members/%s", pathParam0, pathParam1, pathParam2, pathParam3, pathParam4)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateOrganizationRoleRequest calls the generic CreateOrganizationRole builder with application/json body
 func NewCreateOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -14305,7 +14744,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteResourceWithResponse Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14342,6 +14781,66 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
 	PutResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PutResourceResponse, error)
+
+	// SearchResourceMembersWithBodyWithResponse Search Resource Members
+	//
+	// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+	SearchResourceMembersWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourceMembersResponse, error)
+
+	// SearchResourceMembersWithResponse Search Resource Members
+	//
+	// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+	SearchResourceMembersWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body SearchResourceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourceMembersResponse, error)
+
+	// DeleteResourceMemberWithResponse Remove Resource Member
+	//
+	// Removes every role a member holds on one registered resource. The member stays in the Organization, and keeps the roles held on other resources. Emits one `resource.role_assignment.deleted` per role removed. Requires Product API Key with resource_member:write.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `DeleteResourceMember` operationId).
+	DeleteResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*DeleteResourceMemberResponse, error)
+
+	// GetResourceMemberWithResponse Get Resource Member
+	//
+	// Reads the roles a member holds on one registered resource. Roles inherited from the Organization or from a parent resource are not listed. Requires Platform Bearer token or Product API Key with resource:read.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `GetResourceMember` operationId).
+	GetResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*GetResourceMemberResponse, error)
+
+	// PutResourceMemberWithBodyWithResponse Assign Resource Roles
+	//
+	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+	PutResourceMemberWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutResourceMemberResponse, error)
+
+	// PutResourceMemberWithResponse Assign Resource Roles
+	//
+	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+	PutResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, body PutResourceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*PutResourceMemberResponse, error)
 
 	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 	//
@@ -21733,6 +22232,261 @@ func (r PutResourceResponse) ContentType() string {
 	return ""
 }
 
+type SearchResourceMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceMemberListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchResourceMembersResponse) GetJSON200() *ResourceMemberListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchResourceMembersResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchResourceMembersResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchResourceMembersResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchResourceMembersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchResourceMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchResourceMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchResourceMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchResourceMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteResourceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteResourceMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteResourceMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteResourceMemberResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteResourceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteResourceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteResourceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteResourceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetResourceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceMemberResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetResourceMemberResponse) GetJSON200() *ResourceMemberResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetResourceMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetResourceMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetResourceMemberResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetResourceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetResourceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutResourceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceMemberResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiErrorResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutResourceMemberResponse) GetJSON200() *ResourceMemberResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PutResourceMemberResponse) GetJSON400() *ApiErrorResponse {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutResourceMemberResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutResourceMemberResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutResourceMemberResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r PutResourceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutResourceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutResourceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutResourceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateOrganizationRoleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -26678,7 +27432,7 @@ func (c *ClientWithResponses) SearchResourcesWithResponse(ctx context.Context, p
 
 // DeleteResourceWithResponse Delete Resource
 //
-// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -26738,6 +27492,102 @@ func (c *ClientWithResponses) PutResourceWithResponse(ctx context.Context, produ
 		return nil, err
 	}
 	return ParsePutResourceResponse(rsp)
+}
+
+// SearchResourceMembersWithBodyWithResponse Search Resource Members
+//
+// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+func (c *ClientWithResponses) SearchResourceMembersWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourceMembersResponse, error) {
+	rsp, err := c.SearchResourceMembersWithBody(ctx, productId, organizationId, resourceType, resourceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourceMembersResponse(rsp)
+}
+
+// SearchResourceMembersWithResponse Search Resource Members
+//
+// Searches the members holding a role on one registered resource. Filter by product user or by role. Roles inherited from the Organization or from a parent resource are not listed: only the roles held on this resource are. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `product_user_id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search (the `SearchResourceMembers` operationId).
+func (c *ClientWithResponses) SearchResourceMembersWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body SearchResourceMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourceMembersResponse, error) {
+	rsp, err := c.SearchResourceMembers(ctx, productId, organizationId, resourceType, resourceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourceMembersResponse(rsp)
+}
+
+// DeleteResourceMemberWithResponse Remove Resource Member
+//
+// Removes every role a member holds on one registered resource. The member stays in the Organization, and keeps the roles held on other resources. Emits one `resource.role_assignment.deleted` per role removed. Requires Product API Key with resource_member:write.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `DeleteResourceMember` operationId).
+func (c *ClientWithResponses) DeleteResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*DeleteResourceMemberResponse, error) {
+	rsp, err := c.DeleteResourceMember(ctx, productId, organizationId, resourceType, resourceId, productUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteResourceMemberResponse(rsp)
+}
+
+// GetResourceMemberWithResponse Get Resource Member
+//
+// Reads the roles a member holds on one registered resource. Roles inherited from the Organization or from a parent resource are not listed. Requires Platform Bearer token or Product API Key with resource:read.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `GetResourceMember` operationId).
+func (c *ClientWithResponses) GetResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, reqEditors ...RequestEditorFn) (*GetResourceMemberResponse, error) {
+	rsp, err := c.GetResourceMember(ctx, productId, organizationId, resourceType, resourceId, productUserId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourceMemberResponse(rsp)
+}
+
+// PutResourceMemberWithBodyWithResponse Assign Resource Roles
+//
+// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+func (c *ClientWithResponses) PutResourceMemberWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutResourceMemberResponse, error) {
+	rsp, err := c.PutResourceMemberWithBody(ctx, productId, organizationId, resourceType, resourceId, productUserId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutResourceMemberResponse(rsp)
+}
+
+// PutResourceMemberWithResponse Assign Resource Roles
+//
+// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id} (the `PutResourceMember` operationId).
+func (c *ClientWithResponses) PutResourceMemberWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid, body PutResourceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*PutResourceMemberResponse, error) {
+	rsp, err := c.PutResourceMember(ctx, productId, organizationId, resourceType, resourceId, productUserId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutResourceMemberResponse(rsp)
 }
 
 // CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
@@ -33094,6 +33944,204 @@ func ParsePutResourceResponse(rsp *http.Response) (*PutResourceResponse, error) 
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchResourceMembersResponse parses an HTTP response from a SearchResourceMembersWithResponse call
+func ParseSearchResourceMembersResponse(rsp *http.Response) (*SearchResourceMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchResourceMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceMemberListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteResourceMemberResponse parses an HTTP response from a DeleteResourceMemberWithResponse call
+func ParseDeleteResourceMemberResponse(rsp *http.Response) (*DeleteResourceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteResourceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetResourceMemberResponse parses an HTTP response from a GetResourceMemberWithResponse call
+func ParseGetResourceMemberResponse(rsp *http.Response) (*GetResourceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceMemberResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutResourceMemberResponse parses an HTTP response from a PutResourceMemberWithResponse call
+func ParsePutResourceMemberResponse(rsp *http.Response) (*PutResourceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutResourceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceMemberResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 

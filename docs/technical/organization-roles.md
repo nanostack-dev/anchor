@@ -12,6 +12,8 @@ A copy is addressed by its **template's ID** inside its Organization: `public_id
 
 Template routes, searches and resource type usage leave copies out (`organization_id IS NULL`).
 
+[Role assignments on resources](resources.md#role-assignments) hold an Organization's role the same way: a template's ID in `role_ids` resolves to the copy (`Resolve`), and `resource_role_assignments.role_id` stores the copy's row ID, or a custom role's. The role must be scoped to the resource's type.
+
 ## Copies
 
 A copy is made when it is first needed:
@@ -27,7 +29,7 @@ The ADR asks for a background job when a template is added. Copies made on first
 
 `EnsureCopies` copies in batches of 500 until nothing is missing, then moves the Organization's memberships that still hold a template onto the copy.
 
-A template change reaches its copies in the same transaction: a rename or a description change, and every permission assigned, unassigned or replaced (`SyncCopies`, which rewrites only the copies that differ). The copy keeps the template's key. Deleting a template no member holds deletes its copies; a template whose copy a member holds, or that a pending invitation names, answers `409 ROLE_IN_USE` as before.
+A template change reaches its copies in the same transaction: a rename or a description change, and every permission assigned, unassigned or replaced (`SyncCopies`, which rewrites only the copies that differ). The copy keeps the template's key. Deleting a template no member holds deletes its copies; a template whose copy a member holds, through a membership or a role assignment on a resource, or that a pending invitation names, answers `409 ROLE_IN_USE` as before. The in-use counts are `CountMembershipAssignments` for a template and its copies, and `CountHolders` for an Organization's own role; both include `resource_role_assignments`.
 
 Locks keep copies consistent with their templates:
 
@@ -52,7 +54,7 @@ Locks keep copies consistent with their templates:
 - An Organization role's `is_default` shows the effective default: the Organization's own choice, or else its copy of the Product's default template. A PATCH compares with that effective default: `true` on the role that already is the default changes nothing, so an Organization that never chose keeps following the Product's default. `false` on the Organization's own choice returns it to the template's copy; on that copy itself it changes nothing.
 - Adding a member, creating an Organization with a founding member, or creating an invitation without `role_id` uses the Organization's default. With none, the call answers `400 ROLE_REQUIRED`.
 
-Routes under `/organizations/{organization_id}/roles` take the `organization_role:read`, `:create`, `:update` and `:delete` API key scopes. The list-shaped `role_ids`, `role_keys` and `roles` contract arrives with role assignments (ADR-0022 D3, PR 12).
+Routes under `/organizations/{organization_id}/roles` take the `organization_role:read`, `:create`, `:update` and `:delete` API key scopes. Role assignments on resources use the list-shaped `role_ids` and `roles` contract (ADR-0022 D3); memberships keep their single `role_id`, and `role_keys` is not accepted yet.
 
 ## Custom roles and customized copies
 
@@ -66,16 +68,16 @@ A resource type's `custom_roles` switch lets each Organization shape its own rol
 | `PATCH` `is_default` only | allowed | allowed |
 | `POST .../roles/{role_id}/reset` | allowed | allowed |
 | `DELETE` of a custom role | allowed | allowed |
-| `DELETE` of a template a member holds | `409 ROLE_IN_USE` | its copies that are held, invited or customized become custom roles |
+| `DELETE` of a template a member holds, on the Organization or on a resource | `409 ROLE_IN_USE` | its copies that are held, invited or customized become custom roles |
 
 - A custom role names its `resource_type`; Anchor never picks one (`400 RESOURCE_TYPE_REQUIRED`). Its permissions follow the same scope rule as a template's (D1).
 - An Organization holds at most 50 custom roles (`409 CUSTOM_ROLE_LIMIT_REACHED`), counted under a lock on the Organization's row. Copies that become custom roles when their template is deleted count too, and may take it past 50; nobody loses access over a limit.
 - One key names one role in an Organization. A custom role's key may not equal another role of the Organization or any role template of the Product, since each template's copy holds its key. A template's key may not equal any Organization's custom role. Both sides hold an advisory lock on the key while they check, so the two can't race (`409 ROLE_KEY_DUPLICATE`).
 - A customized copy keeps its own name, description and permissions when its template changes; `SyncCopies` skips it. A reset brings back the template's and clears `customized`. A copy can't be deleted (`409 TEMPLATE_COPY_NOT_DELETABLE`), and only a copy can be reset (`409 NOT_A_TEMPLATE_COPY`).
-- A custom role a member holds, or that a pending invitation names, can't be deleted (`409 ROLE_IN_USE`). A delete locks the role's row before it counts, and a write that names a custom role holds it under a key share lock, so a member added during the delete answers `400 ROLE_NOT_FOUND_IN_REQUEST` instead of joining a role the delete removes. Deleting the Organization's chosen default returns it to the template's copy and emits `organization.role.updated` for that copy.
+- A custom role a member holds, on the Organization or on a resource, or that a pending invitation names, can't be deleted (`409 ROLE_IN_USE`). A delete locks the role's row before it counts, and a write that names a custom role holds it under a key share lock, so a member added during the delete answers `400 ROLE_NOT_FOUND_IN_REQUEST` instead of joining a role the delete removes. Deleting the Organization's chosen default returns it to the template's copy and emits `organization.role.updated` for that copy.
 - A change or reset of a role locks its row first, so it works from the role as a concurrent template change left it.
 - A template whose key one of an Organization's custom roles holds is not copied into that Organization; a write naming it there answers `400 ROLE_NOT_FOUND_IN_REQUEST`. Anchor refuses such a key, so this happens only with a custom role made while a release that didn't check custom keys ran.
-- Deleting a template with the switch on first gives every Organization with a member or a pending invitation on it its copy. Then the copies that are held, invited or customized become custom roles, with their own row ID as their ID; pending invitations move onto them. A copy that was its Organization's default through the Product's default template stays its default. Each emits `organization.role.created`; the members and invitations that now show the new ID emit nothing, so a consumer re-reads the Organization's members after that event. The other copies are deleted with the template.
+- Deleting a template with the switch on first gives every Organization with a member or a pending invitation on it its copy. Then the copies that are held (by a membership or a resource role assignment), invited or customized become custom roles, with their own row ID as their ID; pending invitations move onto them, and role assignments keep pointing at the same row. A copy that was its Organization's default through the Product's default template stays its default. Each emits `organization.role.created`; the members and invitations that now show the new ID emit nothing, so a consumer re-reads the Organization's members after that event. The other copies are deleted with the template.
 - The detach follows the `organization` type's switch, whatever the template's scope. A detached copy scoped to another type can't be changed until that type gets its own switch (phase 2), but it can be reset, deleted and assigned.
 - Turning the switch off keeps every custom role and customized copy working; it only refuses new ones and new changes. A template deleted while the switch is off removes its copies as before, customized ones included, unless a member holds one (`409 ROLE_IN_USE`).
 - The tree reshape check (resource types) reads the bundles of custom roles and customized copies too.

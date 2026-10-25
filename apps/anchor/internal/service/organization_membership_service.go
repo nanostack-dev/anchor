@@ -9,6 +9,7 @@ import (
 	"anchor/internal/events"
 	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
+	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -56,6 +57,7 @@ type OrganizationMembershipService interface {
 type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	organizationRoles orgroleservice.Service
+	roleAssignments   assignments.Service
 	productUserRepo   repository.ProductUserRepository
 	organizationRepo  repository.OrganizationRepository
 	transactor        transactor.Transactor
@@ -66,6 +68,7 @@ type organizationMembershipService struct {
 func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	organizationRoles orgroleservice.Service,
+	roleAssignments assignments.Service,
 	productUserRepo repository.ProductUserRepository,
 	organizationRepo repository.OrganizationRepository,
 	tx transactor.Transactor,
@@ -75,6 +78,7 @@ func NewOrganizationMembershipService(
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		organizationRoles: organizationRoles,
+		roleAssignments:   roleAssignments,
 		productUserRepo:   productUserRepo,
 		organizationRepo:  organizationRepo,
 		transactor:        tx,
@@ -291,6 +295,13 @@ func (s *organizationMembershipService) RemoveMember(
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// The member's role assignments on resources go with the membership
+		// through its foreign key, each with its event.
+		if releaseErr := s.roleAssignments.ReleaseMember(
+			txCtx, input.ProductID, input.OrganizationID, input.ProductUserID,
+		); releaseErr != nil {
+			return releaseErr
+		}
 		if delErr := s.orgMembershipRepo.Delete(txCtx, input.OrganizationID, input.ProductUserID); delErr != nil {
 			return delErr
 		}

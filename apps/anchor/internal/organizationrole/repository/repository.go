@@ -125,12 +125,13 @@ type Repository interface {
 	// permissions, and clears its customized flag.
 	Reset(ctx context.Context, productID, rowID, templateID string) error
 	DeleteCustom(ctx context.Context, productID, organizationID, rowID string) error
-	// CountHolders counts the memberships that hold the role and the pending
-	// invitations that name it.
+	// CountHolders counts the memberships and the resource role assignments
+	// that hold the role, and the pending invitations that name it.
 	CountHolders(ctx context.Context, productID, organizationID string, role organizationrole.Role) (int64, error)
-	// DetachCopies turns the template's copies that a member holds, a pending
-	// invitation names, or the Organization customized into custom roles of
-	// their Organization, moves those invitations onto them, and returns them.
+	// DetachCopies turns the template's copies that a member holds, on the
+	// Organization or on a resource, a pending invitation names, or the
+	// Organization customized into custom roles of their Organization, moves
+	// those invitations onto them, and returns them.
 	DetachCopies(ctx context.Context, productID, templateID string) ([]organizationrole.Role, error)
 	// OrganizationsOnTemplate lists the Organizations where a membership holds
 	// the template itself or a pending invitation names it.
@@ -839,6 +840,15 @@ func (r *repositoryImpl) CountHolders(
 	if err != nil {
 		return 0, err
 	}
+	assigned, err := transactor.QueryCount(ctx, r.db,
+		table.ResourceRoleAssignments.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.ResourceRoleAssignments.OrganizationID.EQ(postgres.String(organizationID)).
+				AND(table.ResourceRoleAssignments.RoleID.EQ(postgres.String(role.RowID))),
+		),
+	).Value()
+	if err != nil {
+		return 0, err
+	}
 	invited, err := transactor.QueryCount(ctx, r.db,
 		table.OrganizationInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
 			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
@@ -847,7 +857,7 @@ func (r *repositoryImpl) CountHolders(
 				AND(pendingInvitation()),
 		),
 	).Value()
-	return members + invited, err
+	return members + assigned + invited, err
 }
 
 func pendingInvitation() postgres.BoolExpression {
@@ -888,7 +898,11 @@ func (r *repositoryImpl) DetachCopies(
 		postgres.SELECT(postgres.Int(1)).FROM(table.OrganizationMemberships).WHERE(
 			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
 		),
-	)
+	).OR(postgres.EXISTS(
+		postgres.SELECT(postgres.Int(1)).FROM(table.ResourceRoleAssignments).WHERE(
+			table.ResourceRoleAssignments.RoleID.EQ(table.ProductRoles.ID),
+		),
+	))
 	invited := postgres.EXISTS(
 		postgres.SELECT(postgres.Int(1)).FROM(table.OrganizationInvitations).WHERE(
 			table.OrganizationInvitations.OrganizationID.EQ(table.ProductRoles.OrganizationID).

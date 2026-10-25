@@ -1080,6 +1080,24 @@ func (e ProductWorkspaceSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for ResourceMemberSortField.
+const (
+	ResourceMemberSortFieldCreatedAt     ResourceMemberSortField = "created_at"
+	ResourceMemberSortFieldProductUserId ResourceMemberSortField = "product_user_id"
+)
+
+// Valid indicates whether the value is a known member of the ResourceMemberSortField enum.
+func (e ResourceMemberSortField) Valid() bool {
+	switch e {
+	case ResourceMemberSortFieldCreatedAt:
+		return true
+	case ResourceMemberSortFieldProductUserId:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResourceSortField.
 const (
 	ResourceSortFieldCreatedAt ResourceSortField = "created_at"
@@ -4342,6 +4360,79 @@ type ResourceListResponse struct {
 	Total int64 `json:"total"`
 }
 
+// ResourceMemberFilter defines model for ResourceMemberFilter.
+type ResourceMemberFilter struct {
+	// ProductUserIds Keeps these members.
+	ProductUserIds []Ksuid `json:"product_user_ids,omitempty"`
+
+	// RoleIds Keeps members holding one of these roles on the resource. A role template's ID names the Organization's copy of it.
+	RoleIds []Ksuid `json:"role_ids,omitempty"`
+}
+
+// ResourceMemberListResponse defines model for ResourceMemberListResponse.
+type ResourceMemberListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                      `json:"count"`
+	Items []ResourceMemberResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// ResourceMemberPutRequest The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
+type ResourceMemberPutRequest struct {
+	// RoleIds IDs of the Organization's roles, as its role routes show them. A role template's ID names the Organization's copy of it. Every role must be scoped to the resource's type. More than one ID answers 400 SINGLE_ROLE_PER_RESOURCE.
+	//
+	// Examples: ["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"]
+	RoleIds []Ksuid `json:"role_ids"`
+}
+
+// ResourceMemberResponse A member of the Organization and the roles they hold on one resource.
+type ResourceMemberResponse struct {
+	// CreatedAt When the member first held a role on the resource.
+	CreatedAt time.Time `json:"created_at"`
+
+	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductUserId Ksuid `json:"product_user_id"`
+
+	// Roles The roles held on the resource. It holds one item while the product allows one role per member per resource.
+	Roles []ResourceMemberRole `json:"roles"`
+
+	// UpdatedAt When the member's roles on the resource last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ResourceMemberRole A role the member holds on the resource.
+type ResourceMemberRole struct {
+	// Id The role's ID in its Organization: the template's ID for a copy of a role template, the role's own ID for a custom role.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// Name Examples: Folder editor
+	Name string `json:"name"`
+}
+
+// ResourceMemberSearchRequest defines model for ResourceMemberSearchRequest.
+type ResourceMemberSearchRequest struct {
+	Filter     *ResourceMemberFilter `json:"filter,omitempty"`
+	Pagination *PaginationRequest    `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+	SortBy *ResourceMemberSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ResourceMemberSortField Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+type ResourceMemberSortField string
+
 // ResourceParentRef The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
 type ResourceParentRef struct {
 	// Id The parent's `id`, or the Organization's ID when `type` is `organization`.
@@ -4920,7 +5011,7 @@ type GetOrganizationMemberParams struct {
 
 // DeleteResourceParams defines parameters for DeleteResource.
 type DeleteResourceParams struct {
-	// Cascade `true` also deletes every registered descendant. Absent means `false`.
+	// Cascade `true` also deletes every registered descendant and every role assignment on them. Absent means `false`.
 	Cascade *bool `form:"cascade,omitempty" json:"cascade,omitempty"`
 }
 
@@ -5130,6 +5221,12 @@ type SearchResourcesJSONRequestBody = ResourceSearchRequest
 
 // PutResourceJSONRequestBody defines body for PutResource for application/json ContentType.
 type PutResourceJSONRequestBody = ResourcePutRequest
+
+// SearchResourceMembersJSONRequestBody defines body for SearchResourceMembers for application/json ContentType.
+type SearchResourceMembersJSONRequestBody = ResourceMemberSearchRequest
+
+// PutResourceMemberJSONRequestBody defines body for PutResourceMember for application/json ContentType.
+type PutResourceMemberJSONRequestBody = ResourceMemberPutRequest
 
 // CreateOrganizationRoleJSONRequestBody defines body for CreateOrganizationRole for application/json ContentType.
 type CreateOrganizationRoleJSONRequestBody = OrganizationRoleCreateRequest

@@ -39,6 +39,10 @@ type Repository interface {
 	// HoldOrganization reads the Organization FOR KEY SHARE, so it can't be
 	// deleted before the transaction ends, and reports whether it exists.
 	HoldOrganization(ctx context.Context, productID, organizationID string) (bool, error)
+	// ShareOrganization holds the Organization's resources in share mode until
+	// the transaction ends: role assignment writes run side by side, and never
+	// beside a registration, a move or a delete.
+	ShareOrganization(ctx context.Context, organizationID string) error
 	Find(ctx context.Context, organizationID, typeID, externalID string) (functional.Option[resource.Resource], error)
 	Create(ctx context.Context, r resource.Resource) error
 	Update(ctx context.Context, organizationID, rowID, name string, parentRowID *string) error
@@ -141,6 +145,12 @@ func (r *repositoryImpl) HoldOrganization(ctx context.Context, productID, organi
 		),
 	)
 	return found.IsPresent(), err
+}
+
+func (r *repositoryImpl) ShareOrganization(ctx context.Context, organizationID string) error {
+	_, err := transactor.Executor(ctx, r.db).ExecContext(ctx, `SELECT pg_advisory_xact_lock_shared($1)`,
+		pglock.KeyHash("resources:"+organizationID))
+	return err
 }
 
 func (r *repositoryImpl) Find(

@@ -16,6 +16,7 @@ import (
 	resourceservice "anchor/internal/resource/service"
 	rtrepository "anchor/internal/resourcetype/repository"
 	rtservice "anchor/internal/resourcetype/service"
+	assignmentservice "anchor/internal/roleassignment/service"
 	"anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -42,6 +43,7 @@ var (
 	ResourceTypeRepo        rtrepository.Repository
 	ResourceTypeService     rtservice.Service
 	ResourceService         resourceservice.Service
+	RoleAssignmentService   assignmentservice.Service
 	OrganizationRoleRepo    orgrolerepository.Repository
 	OrganizationRoleService orgroleservice.Service
 	ProductRoleService      service.ProductRoleService
@@ -82,6 +84,7 @@ func TestMain(m *testing.M) {
 				&ResourceTypeRepo,
 				&ResourceTypeService,
 				&ResourceService,
+				&RoleAssignmentService,
 				&OrganizationRoleRepo,
 				&OrganizationRoleService,
 				&ProductRoleService,

@@ -649,6 +649,76 @@ export type ResourceListResponse = PagedListResponse & {
 };
 
 /**
+ * The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
+ */
+export type ResourceMemberPutRequest = {
+    /**
+     * IDs of the Organization's roles, as its role routes show them. A role template's ID names the Organization's copy of it. Every role must be scoped to the resource's type. More than one ID answers 400 SINGLE_ROLE_PER_RESOURCE.
+     */
+    role_ids: Array<Ksuid>;
+};
+
+/**
+ * A role the member holds on the resource.
+ */
+export type ResourceMemberRole = {
+    /**
+     * The role's ID in its Organization: the template's ID for a copy of a role template, the role's own ID for a custom role.
+     */
+    id: Ksuid;
+    name: string;
+};
+
+/**
+ * A member of the Organization and the roles they hold on one resource.
+ */
+export type ResourceMemberResponse = {
+    product_user_id: Ksuid;
+    /**
+     * The roles held on the resource. It holds one item while the product allows one role per member per resource.
+     */
+    roles: Array<ResourceMemberRole>;
+    /**
+     * When the member first held a role on the resource.
+     */
+    created_at: string;
+    /**
+     * When the member's roles on the resource last changed.
+     */
+    updated_at: string;
+};
+
+export type ResourceMemberFilter = {
+    /**
+     * Keeps these members.
+     */
+    product_user_ids?: Array<Ksuid>;
+    /**
+     * Keeps members holding one of these roles on the resource. A role template's ID names the Organization's copy of it.
+     */
+    role_ids?: Array<Ksuid>;
+};
+
+/**
+ * Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+ */
+export enum ResourceMemberSortField {
+    CREATED_AT = 'created_at',
+    PRODUCT_USER_ID = 'product_user_id'
+}
+
+export type ResourceMemberSearchRequest = {
+    pagination?: PaginationRequest;
+    filter?: ResourceMemberFilter;
+    sort_by?: ResourceMemberSortField;
+    sort_direction?: SortDirection;
+};
+
+export type ResourceMemberListResponse = PagedListResponse & {
+    items: Array<ResourceMemberResponse>;
+};
+
+/**
  * A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
  */
 export type RoleKey = string;
@@ -7480,7 +7550,7 @@ export type DeleteResourceData = {
     };
     query?: {
         /**
-         * `true` also deletes every registered descendant. Absent means `false`.
+         * `true` also deletes every registered descendant and every role assignment on them. Absent means `false`.
          */
         cascade?: boolean;
     };
@@ -7624,6 +7694,226 @@ export type PutResourceResponses = {
 };
 
 export type PutResourceResponse = PutResourceResponses[keyof PutResourceResponses];
+
+export type SearchResourceMembersData = {
+    body: ResourceMemberSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search';
+};
+
+export type SearchResourceMembersErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchResourceMembersError = SearchResourceMembersErrors[keyof SearchResourceMembersErrors];
+
+export type SearchResourceMembersResponses = {
+    /**
+     * Matching members.
+     */
+    200: ResourceMemberListResponse;
+};
+
+export type SearchResourceMembersResponse = SearchResourceMembersResponses[keyof SearchResourceMembersResponses];
+
+export type DeleteResourceMemberData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+        /**
+         * A member of the Organization.
+         */
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}';
+};
+
+export type DeleteResourceMemberErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * `RESOURCE_MEMBER_NOT_FOUND`: the product user holds no role on the resource. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND` and `ORGANIZATION_NOT_FOUND` as on the resource routes.
+     */
+    404: ApiErrorResponse;
+};
+
+export type DeleteResourceMemberError = DeleteResourceMemberErrors[keyof DeleteResourceMemberErrors];
+
+export type DeleteResourceMemberResponses = {
+    /**
+     * The member's roles on the resource are removed.
+     */
+    204: void;
+};
+
+export type DeleteResourceMemberResponse = DeleteResourceMemberResponses[keyof DeleteResourceMemberResponses];
+
+export type GetResourceMemberData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+        /**
+         * A member of the Organization.
+         */
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}';
+};
+
+export type GetResourceMemberErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * `RESOURCE_MEMBER_NOT_FOUND`: the product user holds no role on the resource. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND` and `ORGANIZATION_NOT_FOUND` as on the resource routes.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetResourceMemberError = GetResourceMemberErrors[keyof GetResourceMemberErrors];
+
+export type GetResourceMemberResponses = {
+    /**
+     * The member's roles on the resource.
+     */
+    200: ResourceMemberResponse;
+};
+
+export type GetResourceMemberResponse = GetResourceMemberResponses[keyof GetResourceMemberResponses];
+
+export type PutResourceMemberData = {
+    body: ResourceMemberPutRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+        /**
+         * A member of the Organization.
+         */
+        product_user_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}';
+};
+
+export type PutResourceMemberErrors = {
+    /**
+     * The body is refused. `SINGLE_ROLE_PER_RESOURCE`: more than one role ID. `ROLE_NOT_FOUND_IN_REQUEST`: a role ID names no role of the Organization nor a role template of the product. `ROLE_SCOPE_MISMATCH`: the role is scoped to another type than the resource; an Organization role is held through the membership. `VALIDATION_ERROR`: `role_ids` is missing, empty or longer than 10.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * `ORGANIZATION_MEMBERSHIP_NOT_FOUND`: the product user is not a member of the Organization. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on the resource routes.
+     */
+    404: ApiErrorResponse;
+};
+
+export type PutResourceMemberError = PutResourceMemberErrors[keyof PutResourceMemberErrors];
+
+export type PutResourceMemberResponses = {
+    /**
+     * The member's roles on the resource after the call.
+     */
+    200: ResourceMemberResponse;
+};
+
+export type PutResourceMemberResponse = PutResourceMemberResponses[keyof PutResourceMemberResponses];
 
 export type CreateOrganizationInvitationData = {
     body: OrganizationInvitationCreateRequest;

@@ -59,6 +59,11 @@
       "resource:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}": {
+    "productApiKeyAuth": [
+      "resource_member:write"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -216,6 +221,12 @@
     ]
   },
   "GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource:read"
+    ]
+  },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "resource:read"
@@ -503,6 +514,12 @@
       "resource:read"
     ]
   },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource:read"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations/{organization_id}/roles": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -654,6 +671,11 @@
   "PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}": {
     "productApiKeyAuth": [
       "resource:write"
+    ]
+  },
+  "PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}": {
+    "productApiKeyAuth": [
+      "resource_member:write"
     ]
   },
   "PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
