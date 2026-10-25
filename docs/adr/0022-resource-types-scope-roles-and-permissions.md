@@ -1132,7 +1132,7 @@ erDiagram
 <details>
 <summary><b>DR-D5</b> · A default Organization role — <i>✅ Accepted</i></summary>
 
-**Decision.** Let a Product mark at most one Organization-scoped role as default. A missing `role_id` on add-member and invitation then means the default. With no default role set, `role_id` stays required.
+**Decision.** Let a Product mark at most one Organization-scoped role as default. Leaving out `role_ids` (D3) when adding a member or creating an invitation then means the default role. With no default role set, `role_ids` stays required. The default is a role the Product chose explicitly, not a scope Anchor picks (C1, D1).
 
 <details>
 <summary>📌 Real example</summary>
