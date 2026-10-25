@@ -20,5 +20,11 @@ func EventRegistration() events.Registration {
 			Name:        "Organization role deleted",
 			Description: "Emitted when an organization deletes one of its custom roles.",
 		},
+		events.Definition{
+			Type:        events.OrganizationRoleCopied,
+			Name:        "Organization role copied",
+			Description: "Emitted inside Anchor when a write copies a role template into an organization.",
+			Undelivered: true,
+		},
 	)
 }

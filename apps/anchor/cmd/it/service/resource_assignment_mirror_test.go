@@ -260,6 +260,51 @@ func TestResourceAssignmentMirror(t *testing.T) {
 		assert.Empty(t, parentsOf(t, w.productID, other), "the other folder was never synced")
 	})
 
+	t.Run("An assignment that copies a template into the organization marks it, and its replay syncs the copy's grants",
+		func(t *testing.T) {
+			w := givenAssignmentWorld(t)
+			permission := givenPermission(t, w.productID)
+			templateID := "role_" + uuid.NewString()
+			_, err := TestDB.ExecContext(
+				t.Context(),
+				`INSERT INTO product_roles (id, product_id, key, name, resource_type_id)
+				VALUES ($1, $2::text, $3, $3,
+					(SELECT id FROM product_resource_types WHERE product_id = $2::text AND slug = 'folder'))`,
+				templateID,
+				w.productID,
+				"late-"+uuid.NewString(),
+			)
+			require.NoError(t, err)
+			givenRolePermission(t, w.productID, templateID, permission)
+
+			ctx, organizations := authzservice.CollectWrites(t.Context())
+			_, err = RoleAssignmentService.Put(ctx, roleassignment.PutInput{
+				Target: w.target(w.folder, w.member), RoleIDs: []string{templateID},
+			})
+			require.NoError(t, err)
+			marked := organizations()
+			for _, ref := range marked {
+				require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), ref.ProductID, ref.OrganizationID))
+			}
+			w.syncResources(t, w.folder)
+
+			assert.Contains(
+				t,
+				marked,
+				authzservice.OrganizationRef{ProductID: w.productID, OrganizationID: w.organizationID},
+			)
+			var copyID string
+			require.NoError(t, TestDB.QueryRowContext(t.Context(),
+				`SELECT id FROM product_roles WHERE organization_id = $1 AND template_id = $2`,
+				w.organizationID, templateID).Scan(&copyID))
+			var grants []string
+			for _, tuple := range tuplesOn(t, w.productID, model.Role(copyID)) {
+				grants = append(grants, tuple.GetKey().GetRelation())
+			}
+			assert.Equal(t, []string{model.GrantsRelation(permission)}, grants)
+			assert.ElementsMatch(t, heldTuples(w.folder, copyID, w.member), w.assignmentTuples(t, w.folder, copyID))
+		})
+
 	t.Run("The reconcile writes the assignment tuples no replay wrote", func(t *testing.T) {
 		w := givenAssignmentWorld(t)
 		w.assign(t, w.folder, w.member, w.editor)

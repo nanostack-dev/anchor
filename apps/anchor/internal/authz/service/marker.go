@@ -61,7 +61,8 @@ func staleScope(event events.Event) (staleTarget, bool, error) {
 	case events.OrganizationCreated, events.OrganizationDeleted,
 		events.MembershipCreated, events.MembershipUpdated, events.MembershipDeleted,
 		events.OrganizationAPIKeyCreated, events.OrganizationAPIKeyUpdated, events.OrganizationAPIKeyDeleted,
-		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted:
+		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted,
+		events.OrganizationRoleCopied:
 		organizationID, err := required(event, events.FieldOrganizationID)
 		return staleTarget{organizationID: organizationID}, err == nil, err
 	case events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted,

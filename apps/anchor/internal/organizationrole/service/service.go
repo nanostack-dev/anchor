@@ -207,13 +207,27 @@ func (s *service) EnsureCopies(txCtx context.Context, productID, organizationID 
 	return err
 }
 
+// copyTemplate copies the template into the Organization for a write that
+// names it. The write may hold the copy on a resource, which marks only that
+// resource, so the copy reports itself and its grants reach the store with the
+// write's replay.
 func (s *service) copyTemplate(txCtx context.Context, productID, organizationID, templateID string) error {
 	pairs, err := s.repo.MissingCopies(txCtx, productID, organizationID, templateID, 1)
 	if err != nil {
 		return err
 	}
-	_, err = s.repo.InsertCopies(txCtx, productID, pairs)
-	return err
+	inserted, err := s.repo.InsertCopies(txCtx, productID, pairs)
+	if err != nil || inserted == 0 {
+		return err
+	}
+	return s.events.Emit(txCtx, events.Event{
+		Type:      events.OrganizationRoleCopied,
+		ProductID: productID,
+		Data: events.Data{
+			events.FieldOrganizationID: organizationID,
+			events.FieldRoleID:         templateID,
+		},
+	})
 }
 
 func (s *service) SyncTemplate(txCtx context.Context, productID, templateID string) error {

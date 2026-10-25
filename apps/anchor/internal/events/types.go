@@ -39,6 +39,9 @@ const (
 	OrganizationRoleCreated Type = "organization.role.created"
 	OrganizationRoleUpdated Type = "organization.role.updated"
 	OrganizationRoleDeleted Type = "organization.role.deleted"
+	// OrganizationRoleCopied is internal: a write copied a role template into
+	// an Organization, so the copy's grants need syncing.
+	OrganizationRoleCopied Type = "organization.role.copied"
 
 	ProductResourcePermissionCreated Type = "product.resource_permission.created"
 	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
