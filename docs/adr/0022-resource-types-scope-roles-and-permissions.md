@@ -5,7 +5,7 @@
 | 🟡 **Pending** | 2026-10-23 | branch `poc/openfga-authz` | [ADR-0021](0021-access-decisions-come-from-openfga.md), access decisions from OpenFGA |
 
 > [!NOTE]
-> A Product declares a tree of **resource types** under the built-in **Organization** type: a document product would declare `project → folder → document`. Every **permission** and every **role** is scoped to one resource type. A role assigned on a resource covers that resource and everything under it. Anchor keeps OpenFGA from ADR-0021 underneath, and products never write model language.
+> A Product declares a tree of **resource types** under the built-in **Organization** type: a document product would declare `project → folder → document`. Every **permission** and every **role** is scoped to one resource type. A role assigned on a resource covers that resource and everything under it. Roles are data each Organization owns: copies of the Product's **role templates**, which the customer may edit, and the customer's own **custom roles**. Anchor keeps OpenFGA from ADR-0021 underneath, and products never write model language.
 
 > [!TIP]
 > **How to answer.** Each decision record is folded: its line shows its state and whether it has questions. Open it to read and fill the `Answer:` lines, or answer in the [open questions table](#open-questions) at the end.
@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 5 to answer
+5. [Open questions](#open-questions) — 8 to answer
 
 ---
 
@@ -130,6 +130,8 @@ flowchart TB
 
 A role scoped to `document` can't bundle `project:manage`. The UI only offers permissions of the role's type and the types below it, so the invalid combination can't even be selected.
 
+These five are **role templates**. Every Organization gets its own copy of each. Its admins may edit a copy, or add a custom role such as `billing-auditor` next to them, and its members then hold whichever role they are given ([DR-D8](#dr-d8)).
+
 </details>
 
 <details>
@@ -207,7 +209,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 | ✅ **Accepted** · ❌ **Rejected** | after review |
 
 <details open>
-<summary><b>Index of all 38 records</b></summary>
+<summary><b>Index of all 41 records</b></summary>
 
 | Theme | Record | State | ❓ |
 | :-- | :-- | :-- | :-: |
@@ -231,13 +233,16 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | ✅ Accepted |  |
 |  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | ✅ Accepted |  |
 |  | [DR-D5](#dr-d5) · A default Organization role | ✅ Accepted |  |
-|  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
+|  | [DR-D6](#dr-d6) · Role priority | ⚪ Deferred |  |
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
+|  | [DR-D8](#dr-d8) · Every role belongs to an Organization: template copies and custom roles | ✅ Accepted |  |
+|  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | 🔵 Proposed | 1 |
+|  | [DR-D10](#dr-d10) · Template changes, deletes, the default role and limits | 🟡 Pending | 4 |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
-|  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | ✅ Accepted (depends on ADR-0021) |  |
+|  | [DR-E3](#dr-e3) · Roles are data; the Product's OpenFGA model holds only types and permissions | ✅ Accepted (depends on ADR-0021) |  |
 |  | [DR-E4](#dr-e4) · Listing what a subject can reach | ⚪ Deferred |  |
-|  | [DR-E5](#dr-e5) · Anchor's tables stay the source of truth; OpenFGA holds a mirror | 🟡 Pending | 1 |
+|  | [DR-E5](#dr-e5) · Anchor's tables stay the source of truth; OpenFGA holds a mirror written after each commit | ✅ Accepted |  |
 | **F. Admin UI** | [DR-F1](#dr-f1) · Three catalog pages | 🔵 Proposed |  |
 |  | [DR-F2](#dr-f2) · The canvas: React Flow with computed layout | 🔵 Proposed |  |
 |  | [DR-F3](#dr-f3) · Canvas interaction and motion | 🟡 Pending | 1 |
@@ -1165,17 +1170,16 @@ A **default** Organization-scoped role (typically `member`, with no permissions)
 
 <a id="dr-d6"></a>
 <details>
-<summary><b>DR-D6</b> · Role priority and per-organization custom roles — <i>⚪ Deferred</i> · ❓ 1 question</summary>
+<summary><b>DR-D6</b> · Role priority — <i>⚪ Deferred</i></summary>
 
-**Decision.** Neither is in this change.
+**Decision.** Not in this change. Enterprise customers often assign roles through groups in their own identity provider (Okta, Microsoft Entra, Google Workspace): each group maps to a role. A person in two groups maps to two roles. With one role per resource (D3, `single`), one must win, and role priority is the ordered list that picks it.
 
-- **Role priority.** Enterprise customers often assign roles through groups in their own identity provider (Okta, Microsoft Entra, Google Workspace): each group maps to a role. A person in two groups maps to two roles. With one role per resource (D3, `single`), one must win, and role priority is the ordered list that picks it. Not needed now: Anchor maps no identity-provider groups to roles, so the conflict can't occur, and a Product using several roles per resource (D3, `multiple`) simply keeps both.
-- **Per-organization custom roles.** One customer defines a role that only it sees, on top of the Product's catalog. It needs a catalog per Organization, which is a separate decision.
+It isn't needed now: Anchor maps no identity-provider groups to roles, so the conflict can't occur, and a Product using several roles per resource (D3, `multiple`) simply keeps both. Per-organization custom roles, which this record used to defer, are decided in [DR-D8](#dr-d8).
 
 <details>
 <summary>📌 Real example</summary>
 
-**Role priority.** Acme Corp connects its Okta and maps groups to roles:
+Acme Corp connects its Okta and maps groups to roles:
 
 | Okta group | Role |
 | :-- | :-- |
@@ -1185,21 +1189,14 @@ A **default** Organization-scoped role (typically `member`, with no permissions)
 
 Maya Chen is in both `Engineering` and `Engineering Leads`, so the mapping yields `editor` and `admin`. With the priority `admin` > `editor` > `member`, she gets `admin`.
 
-**Per-organization custom role.** Acme Corp creates `auditor` (Organization scope, `billing:read`, `members:read`) for its finance team. Globex, another customer of the same Product, never sees it.
-
 </details>
 
 <details>
 <summary>When to revisit</summary>
 
-- **Role priority:** when Anchor adds group-to-role mapping for enterprise sign-in.
-- **Custom roles:** when a customer needs a role the Product's catalog doesn't offer.
+When Anchor adds group-to-role mapping for enterprise sign-in.
 
 </details>
-
-> **Q-D6.1** Do customers already need per-organization custom roles? *(answer only if this should not stay deferred)*
->
-> **Answer:** _pending_
 
 </details>
 
@@ -1232,6 +1229,220 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 > **Q-D7.1** Do you want keys limited to one resource, such as a CI key that only reaches one project? It was discussed earlier as a resource allowlist on the key. *(recommended: defer to its own change; the evaluation already has the resource to compare against)*
 >
 > **Answer:** defer. For now a key works across every resource of its Organization.
+
+</details>
+
+<a id="dr-d8"></a>
+<details>
+<summary><b>DR-D8</b> · Every role belongs to an Organization: template copies and custom roles — <i>✅ Accepted</i></summary>
+
+**Decision.** Roles become data that each Organization owns, with the same template-and-copy split as licenses ([ADR-0004](0004-license-schema-template-and-copy.md), [ADR-0018](0018-license-follows-its-template.md)).
+
+- **The Product's roles become role templates.** A template has a `key` (`admin`, `member`, `project-admin`), a name, a scope (D1) and a permission bundle. A template is never assigned directly.
+- **Every Organization gets its own copy of each template** when it is created. A copy keeps the template's key and points back to it with `template_id`.
+- **The customer may edit a copy.** Editing marks it `customized`, and template changes then stop reaching it (Q-D10.1). "Reset to template" brings it back in step.
+- **The customer may create custom roles** in its Organization: its own key, name, scope and bundle, under the same scope rules as any role (D1). Which scopes allow them is a Product setting (D9).
+- **A member holds a default role or a custom role through the same call.** Assignment (D3, D4), the default role (D5), events, the decision context and the evaluation never tell them apart. Responses add `origin: "template" | "custom"`, for display only.
+- **Products address roles by key.** Each Organization has its own role IDs, so assignment calls also accept `role_keys: ["project-admin"]`, resolved inside the Organization. A key is unique in its Organization, and a custom role can't take a template's key.
+- **Released clients keep working.** A template ID in `role_ids`, which is what today's clients send as a role ID, resolves to that Organization's copy.
+- **A role in use is never deleted.** Deleting an assigned custom role answers `409 ROLE_IN_USE` with the number of assignments; the customer reassigns them first.
+- **The routes** are `…/organizations/{o}/roles`. Anchor doesn't know who the customer's admins are, so the Product calls these routes from its own settings page, behind its own Organization-scoped permission such as `roles:manage`.
+
+<details>
+<summary>📌 Real example</summary>
+
+```mermaid
+erDiagram
+    ROLE_TEMPLATES ||--o{ ORGANIZATION_ROLES : "copied into"
+    ORGANIZATIONS ||--o{ ORGANIZATION_ROLES : "owns"
+    ORGANIZATION_ROLES ||--o{ ORGANIZATION_ROLE_PERMISSIONS : "bundles"
+    ORGANIZATION_ROLES ||--o{ RESOURCE_ROLE_ASSIGNMENTS : "held through"
+    ROLE_TEMPLATES {
+        string id PK
+        string product_id
+        string key
+        string resource_type_id
+        bool is_default
+    }
+    ORGANIZATION_ROLES {
+        string id PK
+        string organization_id
+        string key "unique in the Organization"
+        string name
+        string resource_type_id
+        string template_id "empty for a custom role"
+        bool customized
+    }
+    ORGANIZATION_ROLE_PERMISSIONS {
+        string role_id PK
+        string permission_id PK
+    }
+```
+
+Two customers of the same Product, after Acme Corp edited one copy and added a custom role:
+
+| Organization | Key | Origin | Scope | Bundles |
+| :-- | :-- | :-- | :-- | :-- |
+| Acme Corp | `admin` | template | organization | everything |
+| Acme Corp | `member` | template, default | organization | nothing |
+| Acme Corp | `project-admin` | template, **customized** | project | `project:manage`, `folder:edit`, `document:view`, `document:edit` (removed `document:share`) |
+| Acme Corp | `billing-auditor` | **custom** | organization | `billing:read`, `document:view` |
+| Globex | `admin`, `member`, `project-admin` | template | as the templates | as the templates |
+
+Globex never sees `billing-auditor`, and its `project-admin` still bundles `document:share`.
+
+```http
+POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
+{ "key": "billing-auditor", "name": "Billing auditor", "resource_type": "organization",
+  "permissions": ["billing:read", "document:view"] }
+
+201 Created
+{ "id": "orole_2qLGa7kT3vN8xR1pQ5wZ2m", "key": "billing-auditor", "name": "Billing auditor",
+  "origin": "custom", "resource_type": "organization", "permissions": ["billing:read", "document:view"] }
+
+PUT /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/members/pusr_2qLAp4rN8xK1vT6yQ3cW7jB
+{ "role_keys": ["billing-auditor"] }
+
+200 OK
+{ "product_user_id": "pusr_2qLAp4rN8xK1vT6yQ3cW7jB",
+  "roles": [ { "id": "orole_2qLGa7kT3vN8xR1pQ5wZ2m", "key": "billing-auditor",
+               "name": "Billing auditor", "origin": "custom" } ] }
+```
+
+The life of that role, from creation to a decision:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Acme admin
+    participant P as Product backend
+    participant A as Anchor
+    participant PG as Anchor tables
+    participant F as OpenFGA, in Anchor
+    Admin->>P: create the role Billing auditor
+    P->>A: POST …/organizations/acme/roles
+    A->>A: check the key, the scope and the bundle
+    A->>PG: one transaction: role, permissions, event, sync mark
+    A->>F: after the commit: grants_billing_read and grants_document_view on the role
+    A-->>P: 201
+    Admin->>P: make Priya a billing auditor
+    P->>A: PUT …/members/priya with role_keys billing-auditor
+    A->>PG: one transaction: membership role, event, sync mark
+    A->>F: after the commit: the role assignment tuples
+    A-->>P: 200
+    P->>A: evaluate Priya, billing:read, organization Acme
+    A->>F: check user priya can_billing_read on organization acme
+    F-->>A: allowed: Acme, then the assignment, then the role grants it
+    A-->>P: decision true, roles billing-auditor
+    Note over A,F: A failed tuple write leaves its sync mark, and the sweeper replays it within 5 s (E5)
+```
+
+</details>
+
+<details>
+<summary>Why copies, and not Product roles plus Organization overrides</summary>
+
+| | Product roles, with per-Organization overrides | **Every role belongs to an Organization (chosen)** |
+| :-- | :-- | :-- |
+| What a member holds | a Product role, plus an override to look up | a role of its Organization, always |
+| A custom role | a second kind of role, with its own table and rules | the same row as a copy, with no `template_id` |
+| Evaluation and the model (E3) | two paths | one path |
+| Precedent in Anchor | none | license templates and copies (ADR-0004, ADR-0018) |
+
+The cost is one row per template per Organization: 10,000 Organizations with 8 templates is 80,000 small rows.
+
+</details>
+
+<details>
+<summary>Sources</summary>
+
+- [OpenFGA: custom roles](https://openfga.dev/docs/modeling/custom-roles)
+- [ADR-0004](0004-license-schema-template-and-copy.md) and [ADR-0018](0018-license-follows-its-template.md), the license template and copy
+
+</details>
+
+</details>
+
+<a id="dr-d9"></a>
+<details>
+<summary><b>DR-D9</b> · Custom roles open per resource type: Organization first, then the Product's own types — <i>🔵 Proposed</i> · ❓ 1 question</summary>
+
+**Decision.** Each resource type gets a `custom_roles` switch the Product turns on. It is off by default, so an existing Product changes nothing (G2). A customer may create a custom role only on a type whose switch is on.
+
+| Phase | Customers can create custom roles on | Example in Acme Corp |
+| :-- | :-- | :-- |
+| 1 | Organization | `billing-auditor` |
+| 2 | any of the Product's own types whose switch is on | `release-manager` on `project`, `reviewer` on `folder` |
+
+Phase 2 changes nothing in the engine, the tables or the assignment API: a custom role is a row with a scope, whatever that scope is. It adds the switch on the Product's own types, its validation, and the scope picker in the role editor. Template roles exist on every type from the start, so a Product can offer `project-admin` everywhere before it lets customers write their own project roles.
+
+<details>
+<summary>📌 Real example</summary>
+
+```http
+PATCH /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/resource-types/project
+{ "custom_roles": true }
+
+POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
+{ "key": "release-manager", "name": "Release manager", "resource_type": "project",
+  "permissions": ["project:manage", "document:view"] }
+→ 201
+
+POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
+{ "key": "reviewer", "name": "Reviewer", "resource_type": "folder", "permissions": ["document:view"] }
+→ 400 { "code": "CUSTOM_ROLES_DISABLED",
+        "message": "This product doesn't allow custom roles on folder." }
+```
+
+</details>
+
+> **Q-D9.1** Is Organization behind the same switch, or always open to custom roles? *(recommended: behind the switch, off by default; each Product decides whether its customers write roles at all)*
+>
+> **Answer:** _pending_
+
+</details>
+
+<a id="dr-d10"></a>
+<details>
+<summary><b>DR-D10</b> · Template changes, deletes, the default role and limits — <i>🟡 Pending</i> · ❓ 4 questions</summary>
+
+**Decision.** The recommended behaviour, one question each:
+
+| When | Recommended behaviour |
+| :-- | :-- |
+| The Product edits a template | Copies that aren't customized follow it in the same transaction, as licenses follow their template (ADR-0018). Customized copies keep their bundle, and the role editor shows "template changed" with the difference and a reset. |
+| The Product adds a template | Every Organization gets a copy, through a background job like the license bulk migration ([ADR-0014](0014-organization-licenses-are-migrated-in-bulk.md)). |
+| The Product deletes a template | Its copies are detached: they become custom roles of their Organization, so no member loses access. |
+| An Organization's default role (D5) | Starts as the copy of the Product's default template. The customer may choose any of its Organization-scoped roles instead. |
+| An Organization creates custom roles | At most 50 per Organization. |
+
+<details>
+<summary>📌 Real example</summary>
+
+The Product removes `document:share` from the `project-admin` template:
+
+| Organization | Its `project-admin` | Result |
+| :-- | :-- | :-- |
+| Globex | not customized | loses `document:share` in the same transaction; one tuple deleted per copy |
+| Acme Corp | customized | unchanged; the editor shows "The template removed `document:share`" with **Reset** |
+
+</details>
+
+> **Q-D10.1** When a template changes, do its copies follow? *(recommended: yes, except customized copies)*
+>
+> **Answer:** _pending_
+
+> **Q-D10.2** When a template is deleted, what happens to its copies? *(recommended: they become custom roles of their Organization)*
+>
+> **Answer:** _pending_
+
+> **Q-D10.3** Can an Organization choose its own default role? *(recommended: yes, among its Organization-scoped roles)*
+>
+> **Answer:** _pending_
+
+> **Q-D10.4** A limit on custom roles per Organization? *(recommended: 50)*
+>
+> **Answer:** _pending_
 
 </details>
 
@@ -1343,61 +1554,87 @@ The spec only shows reasons in a non-normative example (`reason_admin`, `reason_
 
 <a id="dr-e3"></a>
 <details>
-<summary><b>DR-E3</b> · Compiled to the Product's OpenFGA model — <i>✅ Accepted (depends on ADR-0021)</i></summary>
+<summary><b>DR-E3</b> · Roles are data; the Product's OpenFGA model holds only types and permissions — <i>✅ Accepted (depends on ADR-0021)</i></summary>
 
-**Decision.** Anchor compiles types, permissions and roles into the Product's model, replacing ADR-0021's two fixed types. For each type *T*:
-- a `parent` relation over its allowed parent types;
-- one role relation per role scoped to *T*;
-- one permission relation per permission scoped to *T* or below, held through *T*'s roles that bundle it, or from the parent.
+**Decision.** Anchor compiles the Product's types and permissions into its OpenFGA model, and writes roles as tuples. The model never names a role, so creating, editing or deleting a role, whether a template copy or a custom role (D8), never changes it.
 
-A role now appears only on its own type, so the model grows with each type's subtree permissions times that type's roles, instead of every permission times every role. A catalog of a few dozen permissions and roles stays far from OpenFGA's 256 KB model limit.
+The model has two fixed types, plus one type per resource type:
+- **`role`**: one `grants_<permission>` relation per permission, of type `[user:*]`. A role's bundle is one tuple per permission.
+- **`role_assignment`**: which role (`role`) is held by whom (`assignee`), and `can_<permission>: assignee and grants_<permission> from role`.
+- **Each resource type *T***: `parent`, `assignment: [role_assignment]`, and, for each permission scoped to *T* or below, `can_<permission>: can_<permission> from assignment or can_<permission> from parent`. Organization also lists `[api_key]` on each permission (D7).
 
-The semantics don't depend on OpenFGA. If ADR-0021 is rejected, a single-parent chain is a short recursive query in Postgres.
+Anchor still enforces the scope rules (D1) when it writes the rows; the model follows the tuples. The proof of concept compiles roles into the model, and moves to this shape.
+
+The semantics don't depend on OpenFGA. If ADR-0021 is rejected, the same walk is a short recursive query in Postgres.
 
 <details>
 <summary>The problem it solves, with numbers</summary>
 
-**What "compile" means.** The Product never writes model language. Anchor reads three lists from the catalog (types with their parents, permissions with their scope, roles with their scope and bundle) and writes one OpenFGA type per resource type:
+**Roles can't live in the model.** OpenFGA refuses models over 256 KB, and the review measured about 58 bytes per role reference. Compiling roles into the model makes its size grow with the number of roles, and per-Organization roles (D8) multiply that by the number of Organizations. Every role edit would also publish a new model version for the whole Product.
+
+Estimated model size for four types (organization, project, folder, document), with roles and permissions spread evenly:
+
+| Catalog | Roles in the model, on every type (ADR-0021 proof of concept) | Roles in the model, on their own type only | **Roles as data (chosen)** |
+| :-- | --: | --: | --: |
+| 10 roles · 35 permissions | ≈ 81 KB | ≈ 18 KB | ≈ 10 KB |
+| 100 roles · 50 permissions | ≈ 1.2 MB ❌ | ≈ 189 KB | ≈ 13 KB |
+| 10,000 Organizations · 3 custom roles each · 35 permissions | ❌ 30,000 roles | ❌ 30,000 roles | ≈ 10 KB, unchanged |
+| What one role edit writes | a new model for the whole Product | a new model for the whole Product | a few tuples |
+
+With roles as data, the model costs about 265 bytes per permission at four types, so the 256 KB limit is near 1,000 permissions, whatever the number of roles or Organizations.
+
+**What moves into tuples.**
+
+| Data | Tuples |
+| :-- | --: |
+| A role bundling *k* permissions | *k* |
+| One role assignment | 3 |
+| 10,000 Organizations × 8 roles × 12 permissions | ≈ 1 million |
+
+Tuples are rows in the `openfga` schema, read by index. A check reads a handful of them, whatever the total.
 
 ```mermaid
 flowchart LR
     subgraph catalog["Catalog (what the Product configures)"]
         direction TB
         t["Types<br/>organization › project › folder › document"]
-        p["Permission document:view<br/>scope document"]
-        r["Role folder-viewer<br/>scope folder, bundles document:view"]
+        p["Permissions with their scope"]
+    end
+    subgraph data["Organization data"]
+        direction TB
+        r["Roles: template copies and custom roles"]
+        a["Role assignments"]
     end
     c{{"Anchor compiler"}}
-    subgraph model["OpenFGA model (generated)"]
-        direction TB
-        mo["organization<br/>can_document_view: [api_key] or role_admin"]
-        mp["project<br/>can_document_view: role_project_admin<br/>or can_document_view from parent"]
-        mf["folder<br/>role_folder_viewer: [user]<br/>can_document_view: role_folder_viewer<br/>or can_document_view from parent"]
-        md["document<br/>can_document_view: role_document_viewer<br/>or can_document_view from parent"]
-    end
-    catalog --> c --> model
+    s{{"Anchor sync"}}
+    m["OpenFGA model<br/>role, role_assignment, one type per resource type"]
+    tu["OpenFGA tuples<br/>grants, assignments, parents"]
+    catalog --> c --> m
+    data --> s --> tu
 ```
-
-**The problem.** ADR-0021's proof of concept writes every permission on every type, and lists on each one **every role** that grants it. A role therefore appears once per type, per permission it bundles. Size grows with *types × permissions × roles*. The review measured about 58 bytes per role reference, and OpenFGA refuses models over 256 KB.
-
-**The fix.** A role appears **only on its own type**. Each type lists only the roles scoped to it, and reaches the others through `from parent`.
-
-Estimated model size for four types (organization, project, folder, document), roles and permissions spread evenly, and every role granting everything it may:
-
-| Catalog | ADR-0021 compiler | E3 compiler |
-| :-- | --: | --: |
-| 10 roles · 35 permissions | ≈ 81 KB | ≈ 18 KB |
-| 50 roles · 35 permissions | ≈ 406 KB ❌ over 256 KB | ≈ 69 KB |
-| 100 roles · 50 permissions | ≈ 1.2 MB ❌ | ≈ 189 KB |
-
-With *T* types, the E3 model is about 2T² ⁄ (T + 1) times smaller: 6× for four types. A role change also only rewrites its own type's relations, so one edit no longer touches the whole model.
 
 </details>
 
 <details>
 <summary>📌 Real example</summary>
 
-The catalog in the walkthrough, five roles and nine permissions, compiles to four types. Only `folder-viewer` appears on `folder`, so adding a `document-commenter` role changes `document` only; the rest of the model stays byte-identical.
+Priya Nair holds Acme Corp's custom `billing-auditor` (D8). Its tuples, with IDs shortened:
+
+```text
+role:acme_billing_auditor   # grants_billing_read   @ user:*
+role:acme_billing_auditor   # grants_document_view  @ user:*
+role_assignment:acme_priya  # role                  @ role:acme_billing_auditor
+role_assignment:acme_priya  # assignee              @ user:priya
+organization:acme           # assignment            @ role_assignment:acme_priya
+```
+
+`check user:priya can_billing_read organization:acme` walks:
+
+1. `organization:acme` → `can_billing_read from assignment` → `role_assignment:acme_priya`;
+2. its `assignee` is Priya ✓, and `grants_billing_read from role` → `role:acme_billing_auditor` grants it to every user ✓;
+3. **allowed**.
+
+Removing `billing:read` from the role deletes the first tuple, and the same check is denied. The model doesn't change.
 
 </details>
 
@@ -1405,17 +1642,29 @@ The catalog in the walkthrough, five roles and nine permissions, compiles to fou
 <summary>Example: the compiled model for a document product</summary>
 
 ```text
+type role
+  relations
+    define grants_billing_read: [user:*]
+    define grants_document_view: [user:*]
+
+type role_assignment
+  relations
+    define role: [role]
+    define assignee: [user]
+    define can_billing_read: assignee and grants_billing_read from role
+    define can_document_view: assignee and grants_document_view from role
+
+type organization
+  relations
+    define assignment: [role_assignment]
+    define can_billing_read: [api_key] or can_billing_read from assignment
+    define can_document_view: [api_key] or can_document_view from assignment
+
 type folder
   relations
     define parent: [project, folder]
-    define role_folder_viewer: [user]
-    define can_document_view: role_folder_viewer or can_document_view from parent
-
-type document
-  relations
-    define parent: [folder, project]
-    define role_document_viewer: [user]
-    define can_document_view: role_document_viewer or can_document_view from parent
+    define assignment: [role_assignment]
+    define can_document_view: can_document_view from assignment or can_document_view from parent
 ```
 
 </details>
@@ -1423,6 +1672,7 @@ type document
 <details>
 <summary>Sources</summary>
 
+- [OpenFGA: custom roles](https://openfga.dev/docs/modeling/custom-roles)
 - [OpenFGA: concepts](https://openfga.dev/docs/concepts)
 - [OpenFGA: parent-child objects](https://openfga.dev/docs/modeling/parent-child)
 - [ADR-0021](0021-access-decisions-come-from-openfga.md), the engine and its sync
@@ -1466,9 +1716,70 @@ The product then lists its own documents whose folder is Design or below.
 
 <a id="dr-e5"></a>
 <details>
-<summary><b>DR-E5</b> · Anchor's tables stay the source of truth; OpenFGA holds a mirror — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-E5</b> · Anchor's tables stay the source of truth; OpenFGA holds a mirror written after each commit — <i>✅ Accepted</i></summary>
 
 **Decision.** Mirror. Anchor's tables remain the only source of truth for Organizations, memberships, resources and role assignments. OpenFGA is a derived index for decisions and inherited lists, and can be rebuilt from the tables at any time. Products follow the same split towards Anchor: their entities stay in their own database, and they send Anchor only the facts that grant access (parent links, role assignments), as DR-B1 describes.
+
+**When a write reaches OpenFGA.** Right after its transaction commits, the request that changed access replays its Organization's sync marks: the same diff the sweeper runs, under the same lock. The next request already sees the change. If the tuple write fails or the process stops, the mark stays, and the sweeper replays it within 5 s; a full reconcile every 15 min catches anything else. Decisions never look for marks.
+
+This replaces the proof of concept's check before each decision (ADR-0021). That check cost every decision one more query to protect writes, which are far rarer.
+
+<details>
+<summary>📌 Who owns what</summary>
+
+```mermaid
+flowchart LR
+    subgraph anchor["Anchor tables · source of truth"]
+        direction TB
+        subgraph cat["Product catalog"]
+            rt["product_resource_types"]
+            pp["product_resource_permissions"]
+            tpl["role_templates"]
+        end
+        subgraph org["Each Organization"]
+            orl["organization_roles<br/>template copies and custom roles"]
+            om["organization_memberships"]
+            res["resources"]
+            ra["resource_role_assignments"]
+            ak["organization_api_keys"]
+        end
+        mk["authz_sync_marks"]
+        tpl -- "copied into" --> orl
+    end
+    subgraph fga["OpenFGA · derived, rebuilt from the tables at any time"]
+        direction TB
+        model["model: types and permissions"]
+        tg["role grants"]
+        tr["role assignments"]
+        tp["parents"]
+        to["members and API keys"]
+    end
+    rt --> model
+    pp --> model
+    orl --> tg
+    ra --> tr
+    om --> tr
+    res --> tp
+    om --> to
+    ak --> to
+    style anchor fill:#eef2ff,stroke:#4f46e5,color:#312e81
+    style fga fill:#ecfdf5,stroke:#059669,color:#064e3b
+```
+
+</details>
+
+<details>
+<summary>When a write reaches OpenFGA: the options</summary>
+
+| | Check marks before each decision (proof of concept) | **Write right after the commit (chosen)** |
+| :-- | :-- | :-- |
+| A write counts on the next request | yes | yes, when the tuple write succeeds |
+| Extra cost on each decision | one query for marks | none |
+| If the tuple write fails | the next decision replays it | the sweeper replays it within 5 s; until then, the previous answer |
+
+OpenFGA leaves keeping the two stores in step to the application, and names the risk the dual-write problem. The sync mark is a transactional outbox: written in the same transaction as the change, and replayed until it succeeds.
+
+</details>
 
 <details>
 <summary>📌 Real example</summary>
@@ -1477,7 +1788,7 @@ The same fact, Dan holds folder-viewer on Design, in both places:
 
 | Anchor table (source of truth) | OpenFGA tuple (mirror) |
 | :-- | :-- |
-| `resource_role_assignments`: Acme Corp · folder · `3b7e91d2…` · Dan Okafor · folder-viewer | `folder:3b7e91d2… # role_folder_viewer @ user:pusr_2qLAd3nO7kF2jY6uM1sB9cV` |
+| `resource_role_assignments`: Acme Corp · folder · `3b7e91d2…` · Dan Okafor · folder-viewer | `role_assignment:… # role @ role:…folder_viewer`<br/>`role_assignment:… # assignee @ user:pusr_2qLAd3nO7kF2jY6uM1sB9cV`<br/>`folder:3b7e91d2… # assignment @ role_assignment:…` |
 
 | Question | Answered by |
 | :-- | :-- |
@@ -1522,7 +1833,11 @@ Every Anchor collection is a cursor search with sort and filters, and every writ
 
 > **Q-E5.1** Mirror, or OpenFGA as the only store of relationships? *(recommended: mirror)*
 >
-> **Answer:** _pending_
+> **Answer:** mirror: Anchor's tables own every fact, and OpenFGA is derived.
+
+> **Q-E5.2** Bring OpenFGA up to date before each decision, or right after each write? *(recommended: after each write, with the sync mark as backup)*
+>
+> **Answer:** right after each write; the mark and the sweeper are the backup.
 
 </details>
 
@@ -1742,7 +2057,8 @@ flowchart LR
 
 **Decision.** One migration:
 - seeds the `organization` type for every Product;
-- sets every existing permission's and role's scope to it.
+- sets every existing permission's and role's scope to it;
+- turns every existing role into a role template, copies it into every Organization of its Product (D8), and points memberships and role assignments to the copies.
 
 After it, every decision is unchanged, because Organization-scoped roles reach every resource below the Organization. The workspace move (A6) is a separate, later migration.
 
@@ -1759,12 +2075,17 @@ FROM product_resource_types t WHERE t.product_id = p.product_id AND t.slug = 'or
 
 UPDATE product_roles r SET resource_type_id = t.id
 FROM product_resource_types t WHERE t.product_id = r.product_id AND t.slug = 'organization';
+
+-- product_roles become role_templates; then one copy per Organization, keyed by the template
+INSERT INTO organization_roles (id, organization_id, key, name, resource_type_id, template_id, customized)
+SELECT gen_ksuid('orole'), o.id, rt.key, rt.name, rt.resource_type_id, rt.id, false
+FROM role_templates rt JOIN organizations o ON o.product_id = rt.product_id;
 ```
 
 | Before | After |
 | :-- | :-- |
 | role `admin`, 34 permissions | role `admin`, scope organization, the same 34 permissions |
-| Maya Chen holds `admin` in Acme Corp | unchanged; every check gives the same answer |
+| Maya Chen holds `admin` in Acme Corp | she holds Acme Corp's copy of `admin`; every check gives the same answer |
 
 </details>
 
@@ -1788,6 +2109,7 @@ FROM product_resource_types t WHERE t.product_id = r.product_id AND t.slug = 'or
 | Script that creates a permission | add `"resource_type": "organization"` (or another type) |
 | Terraform `anchor_product_role` | add `resource_type = data.anchor_product_resource_type.organization.slug` |
 | Code that reads `role` on a member | read `roles[0]` (D3) |
+| Code that assigns a role by its current ID | nothing: a template ID resolves to the Organization's copy (D8) |
 | Released CLI calling `/workspaces` | nothing until the cleanup (G6) |
 
 </details>
@@ -1981,7 +2303,7 @@ GROUP BY route;
 ## 4. Glossary changes
 
 <details>
-<summary><b>5 new terms, 1 changed entry and 1 removed entry for CONTEXT.md</b></summary>
+<summary><b>7 new terms, 1 changed entry and 1 removed entry for CONTEXT.md</b></summary>
 
 To add to [CONTEXT.md](../../CONTEXT.md) once the records they depend on are accepted:
 
@@ -1992,9 +2314,11 @@ To add to [CONTEXT.md](../../CONTEXT.md) once the records they depend on are acc
 | **scope** | The resource type a permission or role belongs to. | Not `scope_modifier`, which is deprecated (C3). |
 | **role assignment** | A member holding a role on one resource. On the Organization itself, it is the membership's role. | Replaces "workspace role" once A6 lands. |
 | **ancestor** | A resource's parent, its parent's parent, and so on up to the Organization. | |
+| **role template** | A role the Product defines once; every Organization gets its own copy. | Never assigned directly. |
+| **custom role** | A role an Organization creates for itself, next to its template copies. | Not visible to other Organizations. |
 
 **Changes to existing entries:**
-- **role**: "A named bundle of permissions, scoped to one resource type and assignable on resources of that type."
+- **role**: "A named bundle of permissions owned by one Organization, scoped to one resource type and assignable on resources of that type: a copy of a role template, or a custom role."
 - **Workspace**: removed as an Anchor term once A6 lands. A Product may declare a resource type of that name.
 
 </details>
@@ -2016,10 +2340,15 @@ Answer here or inline; each line links to its record.
 | [Q-D3.1](#dr-d3) | One or several roles per member per resource? | one | **one** |
 | [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
-| [Q-D6.1](#dr-d6) | Per-organization custom roles needed soon? | stay deferred | |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
+| [Q-D9.1](#dr-d9) | Organization behind the custom-roles switch too? | yes, off by default | |
+| [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | |
+| [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | |
+| [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | |
+| [Q-D10.4](#dr-d10) | Custom roles per Organization? | at most 50 | |
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | **yes**, extension, inside `context` |
-| [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | |
+| [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | **mirror** |
+| [Q-E5.2](#dr-e5) | Sync before each decision, or after each write? | after each write | **after each write**, mark as backup |
 | [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | |
 | [Q-F5.1](#dr-f5) | Access explainer in the first UI delivery? | follow-up | |
 | [Q-G3.1](#dr-g3) | Resource and assignment events to webhooks? | assignments yes, resources internal | |
