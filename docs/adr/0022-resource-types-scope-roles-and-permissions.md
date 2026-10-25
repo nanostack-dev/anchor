@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 9 to answer
+5. [Open questions](#open-questions) — 8 to answer
 
 ---
 
@@ -228,7 +228,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-C4](#dr-c4) · A permission's scope never changes | ✅ Accepted |  |
 | **D. Roles and role assignments** | [DR-D1](#dr-d1) · Every role is scoped to one resource type | ✅ Accepted |  |
 |  | [DR-D2](#dr-d2) · A role's scope never changes | ✅ Accepted |  |
-|  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | 🟡 Pending | 1 |
+|  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | ✅ Accepted |  |
 |  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | 🔵 Proposed |  |
 |  | [DR-D5](#dr-d5) · A default Organization role | 🟡 Pending | 1 |
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
@@ -1028,7 +1028,7 @@ PATCH /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/roles/role_2qLBf0ldV1ew8nT3xK6pR
 
 <a id="dr-d3"></a>
 <details>
-<summary><b>DR-D3</b> · One role per member per resource, several as a Product option — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-D3</b> · One role per member per resource, several as a Product option — <i>✅ Accepted</i></summary>
 
 **Decision.** By default a member holds **one** role per resource, with "replace" semantics, as today. A Product may switch on **several roles per resource** (`editor_x` and `editor_y` on the same project), and the member then holds the union of their permissions. The contract is list-shaped from day one, so switching the option on never changes it.
 
@@ -1071,7 +1071,7 @@ The engine already takes the union: two role assignments are two tuples, and a c
 
 > **Q-D3.2** Add the `roles_per_resource` Product setting now, with the list-shaped contract? *(recommended: yes for the list-shaped contract; the setting itself can ship later, since `single` is the only value at first)*
 >
-> **Answer:** _pending_
+> **Answer:** the list-shaped contract now; the `roles_per_resource` setting later, with `single` as the only value until then.
 
 </details>
 
@@ -1933,7 +1933,7 @@ Answer here or inline; each line links to its record.
 | [Q-C2.1](#dr-c2) | Enforce `{type}:{action}` names? | no | **no**, free-form |
 | [Q-C3.1](#dr-c3) | Deprecate `scope_modifier`? | yes | **yes**, removed in G6 |
 | [Q-D3.1](#dr-d3) | One or several roles per member per resource? | one | **one** |
-| [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | |
+| [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | |
 | [Q-D6.1](#dr-d6) | Per-organization custom roles needed soon? | stay deferred | |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | |
