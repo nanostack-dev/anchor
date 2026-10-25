@@ -171,13 +171,27 @@ function BlockingRoles({
 			path: { product_id: productId },
 			body: { filter: { ids: roleIds }, pagination: { limit: 50 } },
 		}),
-		select: (data) => data.items.map((role) => role.name),
+		select: (data) => ({
+			names: data.items.map((role) => role.name),
+			templates: data.total,
+		}),
 	});
-	if (!roles.data?.length) return null;
+	if (!roles.data) return null;
+	const { names, templates } = roles.data;
+	const organizationRoles = roleIds.length - templates;
 	return (
-		<Box as="span" className="block [overflow-wrap:anywhere]">
-			{`${roles.data.length === 1 ? "Role" : "Roles"} to fix: ${roles.data.join(", ")}.`}
-		</Box>
+		<>
+			{names.length > 0 && (
+				<Box as="span" className="block [overflow-wrap:anywhere]">
+					{`${names.length === 1 ? "Role" : "Roles"} to fix: ${names.join(", ")}.`}
+				</Box>
+			)}
+			{organizationRoles > 0 && (
+				<Box as="span" className="block">
+					{`${plural(organizationRoles, "role", "roles")} that Organizations created or customized also ${organizationRoles === 1 ? "needs" : "need"} changing. Each Organization changes its own roles.`}
+				</Box>
+			)}
+		</>
 	);
 }
 

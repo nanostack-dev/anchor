@@ -42,7 +42,7 @@ Each type has `custom_roles`, off by default. On, it lets Organizations create c
 - **Keyboard.** Arrows move to the closest parent, the leftmost child or the neighbour on the same level; Enter renames; `N` adds a child; Delete asks to delete. Keyboard changes never animate.
 - **Motion.** A node added with the pointer fades and scales in (150 ms); layout changes interpolate node positions for 200 ms in JavaScript so edges follow each frame. Nodes never get a CSS transform transition. With reduced motion, layout changes are instant and the fade stays.
 - **Focus.** Entering edit mode focuses the selected type (or Organization); publishing and discarding focus *Edit resource types*; a delete focuses the parent. The editor is keyed by Product, so switching Product drops the draft, and it is read-only while a publish is in flight.
-- **Refusals.** A refused publish keeps the draft and explains each error code in plain words until the draft changes; for `RESOURCE_TYPE_IN_USE` with `metadata.role_ids` it names the roles to fix.
+- **Refusals.** A refused publish keeps the draft and explains each error code in plain words until the draft changes; for `RESOURCE_TYPE_IN_USE` with `metadata.role_ids` it names the role templates to fix and counts the custom roles and customized copies of Organizations apart, since each Organization changes its own. The inspector's role counts and *Delete* reasons read the role templates only, so a type that only Organizations' custom roles use shows *Delete* enabled, and Anchor answers `409 RESOURCE_TYPE_IN_USE` with `blocked_by.roles`.
 
 ### Roles and permissions pages
 

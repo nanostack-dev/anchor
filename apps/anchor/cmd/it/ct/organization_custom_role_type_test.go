@@ -311,6 +311,45 @@ func TestCustomizeProductTypeCopy(t *testing.T) {
 	})
 }
 
+func TestDeleteProductTypeTemplate(t *testing.T) {
+	t.Parallel()
+	t.Run(
+		"With only the project switch on, a customized project copy becomes a custom role when its template is deleted",
+		func(t *testing.T) {
+			t.Parallel()
+			w := newProjectRoleWorld(t)
+			switchCustomRoles(t, w.product, "project", true)
+			w.roles().Update(w.lead.Id, ct.UpdateOrganizationRoleJSONRequestBody{Name: new("Lead")})
+
+			resp, err := w.product.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(t.Context(),
+				w.product.ProductID, w.lead.Id)
+			require.NoError(t, err)
+
+			require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+			listed := w.roles().Search(ct.SearchOrganizationRolesJSONRequestBody{})
+			require.Len(t, listed.Items, 1)
+			assert.Equal(t, "Lead", listed.Items[0].Name)
+			assert.Equal(t, "project", listed.Items[0].ResourceType)
+			assert.Equal(t, ct.OrganizationRoleOrigin("custom"), listed.Items[0].Origin)
+		},
+	)
+
+	t.Run("With every switch off, deleting a project template removes its customized copy", func(t *testing.T) {
+		t.Parallel()
+		w := newProjectRoleWorld(t)
+		switchCustomRoles(t, w.product, "project", true)
+		w.roles().Update(w.lead.Id, ct.UpdateOrganizationRoleJSONRequestBody{Name: new("Lead")})
+		switchCustomRoles(t, w.product, "project", false)
+
+		resp, err := w.product.OwnerAuthenticatedClient().DeleteProductRoleWithResponse(t.Context(),
+			w.product.ProductID, w.lead.Id)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+		assert.Empty(t, w.roles().Search(ct.SearchOrganizationRolesJSONRequestBody{}).Items)
+	})
+}
+
 // Not parallel: it asserts lock waits within tight timeouts. A row the test
 // holds pauses one write inside its transaction while the other one starts.
 func TestCustomRoleCreateDuringATypeWrite(t *testing.T) {
@@ -372,8 +411,7 @@ func TestCustomRoleCreateDuringATypeWrite(t *testing.T) {
 
 			created := createCustomRoleInBackground(w, scopedCustomRoleBody("Lone keeper", lone.Slug))
 			waitUntilStatementWaitsOnALock(t, "FOR NO KEY UPDATE", "public.organizations")
-			deleted := make(chan *ct.DeleteProductResourceTypeResponse, 1)
-			go func() { deleted <- types.DeleteRaw(lone.Id) }()
+			deleted := deleteResourceTypeInBackground(w.product, lone.Id)
 			waitUntilStatementWaitsOnALock(t, "FOR NO KEY UPDATE", "public.product_resource_types")
 			releaseOrganization()
 
@@ -416,4 +454,19 @@ func updateResourceTypeInBackground(
 		updated <- resp
 	}()
 	return updated
+}
+
+func deleteResourceTypeInBackground(
+	product *itdsl.ProductContext, id string,
+) <-chan *ct.DeleteProductResourceTypeResponse {
+	client := product.AllScopeAPIKeyClient()
+	deleted := make(chan *ct.DeleteProductResourceTypeResponse, 1)
+	go func() {
+		resp, err := client.DeleteProductResourceTypeWithResponse(context.Background(), product.ProductID, id)
+		if err != nil {
+			resp = &ct.DeleteProductResourceTypeResponse{Body: []byte(err.Error())}
+		}
+		deleted <- resp
+	}()
+	return deleted
 }

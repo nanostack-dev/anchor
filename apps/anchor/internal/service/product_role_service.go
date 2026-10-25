@@ -429,7 +429,8 @@ func (s *productRoleService) DeleteProductRole(
 			Msg("failed to find product role for deletion")
 		return fault.ErrUnexpected
 	}
-	if foundRole.IsAbsent() {
+	template, found := foundRole.Get()
+	if !found {
 		return role.ErrProductRoleNotFound
 	}
 
@@ -437,7 +438,9 @@ func (s *productRoleService) DeleteProductRole(
 		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ID); lockErr != nil {
 			return lockErr
 		}
-		if detachErr := s.detachWhenCustomRolesOn(txCtx, input.ProductID, input.ID); detachErr != nil {
+		if detachErr := s.detachWhenCustomRolesOn(
+			txCtx, input.ProductID, input.ID, template.ResourceTypeID,
+		); detachErr != nil {
 			return detachErr
 		}
 		assignmentCount, countErr := s.roleRepo.CountMembershipAssignments(txCtx, input.ID)
@@ -942,16 +945,19 @@ func (s *productRoleService) claimTemplateKey(ctx context.Context, productID, ke
 }
 
 // detachWhenCustomRolesOn keeps every member's access when the Product lets
-// Organizations write their own roles: the copies of the template that are
-// held, named by a pending invitation or customized become custom roles of
-// their Organization (ADR-0022 D10.2). With the switch off, a held template
-// still answers 409 ROLE_IN_USE.
-func (s *productRoleService) detachWhenCustomRolesOn(ctx context.Context, productID, templateID string) error {
+// Organizations write their own roles, on organization or on the template's
+// own type: the copies of the template that are held, named by a pending
+// invitation or customized become custom roles of their Organization
+// (ADR-0022 D10.2). With both switches off, a held template still answers
+// 409 ROLE_IN_USE.
+func (s *productRoleService) detachWhenCustomRolesOn(
+	ctx context.Context, productID, templateID string, scopeID *string,
+) error {
 	tree, err := s.resourceTypes.Tree(ctx, productID)
 	if err != nil {
 		return err
 	}
-	if !customRolesOn(tree, resourcetype.OrganizationSlug) {
+	if !customRolesOn(tree, resourcetype.OrganizationSlug) && !customRolesOn(tree, scopeSlug(tree, scopeID)) {
 		return nil
 	}
 	return s.organizationRoles.DetachCopies(ctx, productID, templateID)
