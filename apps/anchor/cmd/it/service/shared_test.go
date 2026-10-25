@@ -13,9 +13,11 @@ import (
 	orgrolerepository "anchor/internal/organizationrole/repository"
 	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
+	resourcerepository "anchor/internal/resource/repository"
 	resourceservice "anchor/internal/resource/service"
 	rtrepository "anchor/internal/resourcetype/repository"
 	rtservice "anchor/internal/resourcetype/service"
+	assignmentrepository "anchor/internal/roleassignment/repository"
 	assignmentservice "anchor/internal/roleassignment/service"
 	"anchor/internal/service"
 
@@ -43,6 +45,8 @@ var (
 	ResourceTypeRepo        rtrepository.Repository
 	ResourceTypeService     rtservice.Service
 	ResourceService         resourceservice.Service
+	ResourceRepo            resourcerepository.Repository
+	RoleAssignmentRepo      assignmentrepository.Repository
 	RoleAssignmentService   assignmentservice.Service
 	OrganizationRoleRepo    orgrolerepository.Repository
 	OrganizationRoleService orgroleservice.Service
@@ -84,6 +88,8 @@ func TestMain(m *testing.M) {
 				&ResourceTypeRepo,
 				&ResourceTypeService,
 				&ResourceService,
+				&ResourceRepo,
+				&RoleAssignmentRepo,
 				&RoleAssignmentService,
 				&OrganizationRoleRepo,
 				&OrganizationRoleService,

@@ -57,6 +57,11 @@ type Repository interface {
 	// HeldOnResources lists every assignment held on the resources.
 	HeldOnResources(ctx context.Context, organizationID string, resourceRowIDs []string) ([]roleassignment.Held, error)
 	CountOnResource(ctx context.Context, resourceRowID string) (int, error)
+	// Grants lists the member's assignments on the resources whose role
+	// bundles one of the permissions, once per permission.
+	Grants(
+		ctx context.Context, organizationID, productUserID string, resourceRowIDs, permissions []string,
+	) ([]roleassignment.Grant, error)
 	Search(
 		ctx context.Context, resourceRowID string,
 		request search.Request[roleassignment.Filter, roleassignment.SortField],
@@ -301,6 +306,50 @@ func (r *repositoryImpl) CountOnResource(ctx context.Context, resourceRowID stri
 		),
 	).Value()
 	return int(count), err
+}
+
+// grantRow is an assignment and one permission its role bundles.
+type grantRow struct {
+	ResourceRowID string `alias:"grant.resource_row_id"`
+	RoleRowID     string `alias:"grant.role_row_id"`
+	RoleID        string `alias:"grant.role_id"`
+	RoleName      string `alias:"grant.role_name"`
+	Permission    string `alias:"grant.permission"`
+}
+
+func (r *repositoryImpl) Grants(
+	ctx context.Context, organizationID, productUserID string, resourceRowIDs, permissions []string,
+) ([]roleassignment.Grant, error) {
+	if len(resourceRowIDs) == 0 || len(permissions) == 0 {
+		return nil, nil
+	}
+	a := table.ResourceRoleAssignments
+	roles := table.ProductRoles.AS("role")
+	bundled := table.ProductRoleResourcePermissions
+	return transactor.QueryMapSlice(ctx, r.db,
+		postgres.SELECT(
+			a.ResourceID.AS("grant.resource_row_id"),
+			a.RoleID.AS("grant.role_row_id"),
+			postgres.COALESCE(roles.PublicID, roles.ID).AS("grant.role_id"),
+			roles.Name.AS("grant.role_name"),
+			bundled.PermissionName.AS("grant.permission"),
+		).FROM(
+			a.INNER_JOIN(roles, roles.ID.EQ(a.RoleID)).
+				INNER_JOIN(bundled, bundled.ProductRoleID.EQ(a.RoleID)),
+		).WHERE(
+			a.OrganizationID.EQ(postgres.String(organizationID)).
+				AND(a.ProductUserID.EQ(postgres.String(productUserID))).
+				AND(a.ResourceID.IN(jetx.ToStringExpressions(resourceRowIDs)...)).
+				AND(bundled.PermissionName.IN(jetx.ToStringExpressions(permissions)...)),
+		).ORDER_BY(a.ResourceID.ASC(), roles.Name.ASC(), a.RoleID.ASC()),
+		func(row grantRow) roleassignment.Grant {
+			return roleassignment.Grant{
+				ResourceRowID: row.ResourceRowID,
+				Role:          roleassignment.Role{RowID: row.RoleRowID, ID: row.RoleID, Name: row.RoleName},
+				Permission:    row.Permission,
+			}
+		},
+	).Value()
 }
 
 // Search pages the resource's members. Each member is paged by one of their

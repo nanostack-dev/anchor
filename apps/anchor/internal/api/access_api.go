@@ -16,12 +16,19 @@ func (s *AnchorAPI) EvaluateAccess(
 ) (EvaluateAccessResponseObject, error) {
 	body := request.Body
 	question := askAbout(request.ProductId, body.Subject, body.Resource).Can(body.Action.Name)
+	if body.Options != nil && functional.FromPtr(body.Options.Explain).OrElse(false) {
+		question = question.Explaining()
+	}
 
 	decision, err := s.AccessEvaluator.Evaluate(ctx, question)
 	if err != nil {
 		return nil, err
 	}
-	return EvaluateAccess200JSONResponse{Decision: decision.Allowed, Context: decisionContext(decision)}, nil
+	result := decisionContext(decision)
+	if len(decision.Items) > 0 {
+		result.GrantedBy = grantedBy(decision.Items[0])
+	}
+	return EvaluateAccess200JSONResponse{Decision: decision.Allowed, Context: result}, nil
 }
 
 // EvaluateAccessBatch decides several actions for one subject and resource.
@@ -37,6 +44,9 @@ func (s *AnchorAPI) EvaluateAccessBatch(
 	question := askAbout(request.ProductId, body.Subject, body.Resource).
 		Can(actions...).
 		Stopping(batchSemantic(body.Options))
+	if body.Options != nil && functional.FromPtr(body.Options.Explain).OrElse(false) {
+		question = question.Explaining()
+	}
 
 	decision, err := s.AccessEvaluator.Evaluate(ctx, question)
 	if err != nil {
@@ -50,13 +60,17 @@ func (s *AnchorAPI) EvaluateAccessBatch(
 }
 
 func askAbout(productID string, subject AccessSubject, resource AccessResource) accesssvc.Request {
-	organizationID := ""
-	if resource.Properties != nil {
-		organizationID = functional.FromPtr(resource.Properties.OrganizationId).OrElse("")
+	question := accesssvc.Ask(productID).As(accesssvc.SubjectType(subject.Type), subject.Id)
+	properties := functional.FromPtr(resource.Properties).OrElse(AccessResourceProperties{})
+	question = question.On(
+		accesssvc.ResourceType(resource.Type),
+		functional.FromPtr(resource.Id).OrElse(""),
+		functional.FromPtr(properties.OrganizationId).OrElse(""),
+	)
+	if parent := properties.Parent; parent != nil {
+		question = question.Under(parent.Type, parent.Id)
 	}
-	return accesssvc.Ask(productID).
-		As(accesssvc.SubjectType(subject.Type), subject.Id).
-		On(accesssvc.ResourceType(resource.Type), functional.FromPtr(resource.Id).OrElse(""), organizationID)
+	return question
 }
 
 // batchActions applies AuthZEN's batch defaults: a top-level action fills items
@@ -95,10 +109,29 @@ func batchSemantic(options *AccessEvaluationsOptions) accesssvc.Semantic {
 }
 
 func itemDecision(item accesssvc.ItemDecision) AccessItemDecision {
-	if item.Allowed {
-		return AccessItemDecision{Decision: true}
+	if !item.Allowed {
+		return AccessItemDecision{Context: &AccessDecisionContext{Reason: denyReason(item.Reason)}}
 	}
-	return AccessItemDecision{Context: &AccessDecisionContext{Reason: denyReason(item.Reason)}}
+	if granted := grantedBy(item); granted != nil {
+		return AccessItemDecision{Decision: true, Context: &AccessDecisionContext{GrantedBy: granted}}
+	}
+	return AccessItemDecision{Decision: true}
+}
+
+// grantedBy is nil when the request asked for no explanation, so the field is
+// left out, and an empty list when the tables show no grant yet.
+func grantedBy(item accesssvc.ItemDecision) *[]AccessGrant {
+	if item.GrantedBy == nil {
+		return nil
+	}
+	var grants []AccessGrant = functional.Slice(item.GrantedBy).Map(func(grant accesssvc.Grant) AccessGrant {
+		return AccessGrant{
+			Role:     identityRef(grant.RoleID, grant.RoleName),
+			ApiKey:   identityRef(grant.APIKeyID, grant.APIKeyName),
+			Resource: AccessGrantResource{Type: grant.Resource.Type, Id: grant.Resource.ID},
+		}
+	})
+	return &grants
 }
 
 // decisionContext carries the deny reason and, when the subject reached the

@@ -15,13 +15,19 @@ const (
 	SubjectOrganizationAPIKey SubjectType = "organization_api_key"
 )
 
-// ResourceType names what access is asked for.
+// ResourceType names what access is asked for: organization, the built-in
+// workspace, or any resource type slug the Product declares. The built-in
+// workspace wins over a declared type of the same slug until workspaces move
+// into the generic model (ADR-0022 A6, milestone M5).
 type ResourceType string
 
 const (
 	ResourceOrganization ResourceType = "organization"
 	ResourceWorkspace    ResourceType = "workspace"
 )
+
+// builtIn reports whether the type has its own path rather than the registry.
+func (t ResourceType) builtIn() bool { return t == ResourceOrganization || t == ResourceWorkspace }
 
 // DenyReason says why access is denied.
 type DenyReason string
@@ -35,6 +41,10 @@ const (
 	ReasonWorkspaceNotInOrganization DenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
 	ReasonMissingPermission          DenyReason = "MISSING_PERMISSION"
 	ReasonNotEvaluated               DenyReason = "NOT_EVALUATED"
+	ReasonResourceTypeNotFound       DenyReason = "RESOURCE_TYPE_NOT_FOUND"
+	ReasonResourceNotFound           DenyReason = "RESOURCE_NOT_FOUND"
+	ReasonResourceNotInOrganization  DenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
+	ReasonParentTypeNotAllowed       DenyReason = "PARENT_TYPE_NOT_ALLOWED"
 )
 
 // Semantic controls how a batch short-circuits, as AuthZEN's evaluations_semantic does.
@@ -51,9 +61,10 @@ func (s Semantic) stopsAfter(item ItemDecision) bool {
 	return (s == DenyOnFirstDeny && !item.Allowed) || (s == PermitOnFirstPermit && item.Allowed)
 }
 
-// PermissionChecker answers which actions an identity holds in its
-// organization. Decisions come from OpenFGA (ADR-0021, ADR-0022 G4 PR 7);
-// Postgres still resolves who the subject is.
+// PermissionChecker answers which actions an identity holds on an object:
+// its Organization or one of its resources. Decisions come from OpenFGA
+// (ADR-0021, ADR-0022 G4 PR 7); Postgres still resolves who the subject is
+// and which object the resource is.
 type PermissionChecker interface {
 	Holds(ctx context.Context, check PermissionCheck) (map[string]bool, error)
 }
@@ -62,14 +73,30 @@ type PermissionChecker interface {
 // itself: not ready, failing, or too slow. The decision answers 503 for it.
 var ErrPermissionStoreUnavailable = errors.New("permission store unavailable")
 
-// PermissionCheck names the identity and the actions to answer for it.
+// PermissionCheck names the identity, the object and the actions to answer
+// for it.
 type PermissionCheck struct {
-	ProductID      string
-	OrganizationID string
+	ProductID string
 	// ProductUserID is set for a member, APIKeyID for an organization API key.
 	ProductUserID string
 	APIKeyID      string
+	Object        CheckedObject
 	Actions       []string
+}
+
+// CheckedObject is an object of the Product's model: the Organization, by its
+// ID, or a resource, by its type's slug and its row ID.
+type CheckedObject struct {
+	Type string
+	ID   string
+	// Parent is set, and ID left empty, for a resource the registry lacks:
+	// the check is given its parent for that check only (ADR-0022 B1).
+	Parent *CheckedObject
+}
+
+// OrganizationObject is the Organization as a checked object.
+func OrganizationObject(organizationID string) CheckedObject {
+	return CheckedObject{Type: string(ResourceOrganization), ID: organizationID}
 }
 
 // Identity is who the subject resolved to in the organization.
@@ -92,6 +119,28 @@ type Identity struct {
 type ItemDecision struct {
 	Allowed bool
 	Reason  DenyReason
+	// GrantedBy is set only for an allowed item of a request that asked for
+	// an explanation: what granted it, nearest first. It may be empty when
+	// Anchor's tables and the store disagree for a moment.
+	GrantedBy []Grant
+}
+
+// Grant is one role, or an API key's own permission, that grants an action.
+type Grant struct {
+	// RoleID and RoleName name a role a member holds; APIKeyID and
+	// APIKeyName an Organization API key holding the permission itself.
+	RoleID     string
+	RoleName   string
+	APIKeyID   string
+	APIKeyName string
+	// Resource is where it is held: the Organization or a registered resource.
+	Resource GrantResource
+}
+
+// GrantResource names where a grant is held, the way the product does.
+type GrantResource struct {
+	Type string
+	ID   string
 }
 
 type Decision struct {

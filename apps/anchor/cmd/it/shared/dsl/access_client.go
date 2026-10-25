@@ -76,6 +76,38 @@ func (q AccessQuestion) InWorkspace(organizationID, workspaceID string) AccessQu
 	return q
 }
 
+// OnResource targets a resource of the product's own types; organizationID ""
+// leaves the organization out.
+func (q AccessQuestion) OnResource(organizationID, resourceType, id string) AccessQuestion {
+	q.body.Resource = client.AccessResource{Type: resourceType, Id: optional(id)}
+	if organizationID != "" {
+		q.body.Resource.Properties = &client.AccessResourceProperties{OrganizationId: &organizationID}
+	}
+	return q
+}
+
+// Under names the parent of a resource the product has not registered.
+func (q AccessQuestion) Under(parentType, parentID string) AccessQuestion {
+	properties := client.AccessResourceProperties{}
+	if q.body.Resource.Properties != nil {
+		properties = *q.body.Resource.Properties
+	}
+	properties.Parent = &client.ResourceParentRef{Type: parentType, Id: parentID}
+	q.body.Resource.Properties = &properties
+	return q
+}
+
+// Explain asks for what granted each allowed item.
+func (q AccessQuestion) Explain() AccessQuestion {
+	options := client.AccessEvaluationsOptions{}
+	if q.body.Options != nil {
+		options = *q.body.Options
+	}
+	options.Explain = new(true)
+	q.body.Options = &options
+	return q
+}
+
 // Can appends one evaluation item per action.
 func (q AccessQuestion) Can(actions ...string) AccessQuestion {
 	items := append([]client.AccessEvaluationItem{}, *q.body.Evaluations...)
@@ -100,7 +132,12 @@ func (q AccessQuestion) Items(items ...client.AccessEvaluationItem) AccessQuesti
 
 func (q AccessQuestion) DenyOnFirstDeny() AccessQuestion {
 	semantic := client.DenyOnFirstDeny
-	q.body.Options = &client.AccessEvaluationsOptions{EvaluationsSemantic: &semantic}
+	options := client.AccessEvaluationsOptions{}
+	if q.body.Options != nil {
+		options = *q.body.Options
+	}
+	options.EvaluationsSemantic = &semantic
+	q.body.Options = &options
 	return q
 }
 
@@ -128,8 +165,11 @@ func (q AccessQuestion) Single() *client.EvaluateAccessResponse {
 	if items := *q.body.Evaluations; len(items) > 0 && items[0].Action != nil {
 		action = *items[0].Action
 	}
-	resp, err := q.client.client.EvaluateAccessWithResponse(context.Background(), q.client.productID,
-		client.EvaluateAccessJSONRequestBody{Subject: q.body.Subject, Resource: q.body.Resource, Action: action})
+	body := client.EvaluateAccessJSONRequestBody{Subject: q.body.Subject, Resource: q.body.Resource, Action: action}
+	if q.body.Options != nil && q.body.Options.Explain != nil {
+		body.Options = &client.AccessEvaluationOptions{Explain: q.body.Options.Explain}
+	}
+	resp, err := q.client.client.EvaluateAccessWithResponse(context.Background(), q.client.productID, body)
 	require.NoError(q.client.t, err)
 	return resp
 }

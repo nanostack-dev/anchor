@@ -1498,6 +1498,8 @@ flowchart BT
 - **New deny reasons:** `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_NOT_FOUND` (unregistered with no parent given), and `RESOURCE_NOT_IN_ORGANIZATION`.
 - **Explaining a decision** is an **Anchor extension to AuthZEN**. A caller that sends `options.explain: true` gets `granted_by`, the roles and resources that granted the permission. It lives **inside `context`**, which AuthZEN leaves free-form, so the response stays valid for any AuthZEN client, which ignores the key. Without the option, no `granted_by` is computed and a decision costs no more than a plain check.
 
+> **Implementation note (M4, PR 13).** A parent of a type the resource's type can't sit under is denied with a fourth reason, `PARENT_TYPE_NOT_ALLOWED`. A resource registered only in another Organization gives `RESOURCE_NOT_IN_ORGANIZATION` when the request names no parent; with a parent, the parent decides, because IDs are unique per Organization (B2). `granted_by` lists `{ role: { id, name }, resource: { type, id } }`, and an API key's own grant is `{ api_key: { id, name }, resource: { type: "organization", id } }`. An unregistered resource is checked through a contextual parent tuple. Until M5 moves workspaces into the generic model (A6 phase 2), `workspace` keeps naming the built-in workspace even when a Product declares that slug. See [Access evaluation](../technical/access-evaluation.md#resources).
+
 <details>
 <summary>📌 Real example</summary>
 

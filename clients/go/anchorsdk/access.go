@@ -7,12 +7,13 @@ import (
 )
 
 // AccessCheck builds one access evaluation: may this subject perform these
-// permissions on this organization or workspace? Start one from
+// permissions on this organization, workspace or resource? Start one from
 // [Client.AccessForUser] or [Client.AccessForAPIKey]:
 //
 //	decision, err := c.AccessForUser(externalUserID).
-//	    InWorkspace(orgID, workspaceID).
-//	    Permissions("flows:read").
+//	    OnResource(orgID, "document", documentID).
+//	    Under("folder", folderID).
+//	    Permissions("document:view").
 //	    Do(ctx)
 //
 // A denial is not an error: Do returns the decision with Decision false and
@@ -60,6 +61,37 @@ func (a *AccessCheck) InWorkspace(organizationID, workspaceID string) *AccessChe
 	return a
 }
 
+// OnResource targets a resource of one of the product's resource types, named
+// by the product's own ID. organizationID may be empty for an API key subject.
+func (a *AccessCheck) OnResource(organizationID, resourceType, id string) *AccessCheck {
+	resource := nanoclient.AccessResource{Type: resourceType, Id: &id}
+	if organizationID != "" {
+		resource.Properties = &nanoclient.AccessResourceProperties{OrganizationId: &organizationID}
+	}
+	a.body.Resource = resource
+	return a
+}
+
+// Under names the parent of a resource the product has not registered: a
+// registered resource, or the organization ("organization", its ID). A
+// registered resource is checked under its stored parent instead.
+func (a *AccessCheck) Under(parentType, parentID string) *AccessCheck {
+	properties := nanoclient.AccessResourceProperties{}
+	if a.body.Resource.Properties != nil {
+		properties = *a.body.Resource.Properties
+	}
+	properties.Parent = &nanoclient.ResourceParentRef{Type: parentType, Id: parentID}
+	a.body.Resource.Properties = &properties
+	return a
+}
+
+// Explain asks for what granted each allowed permission, in each evaluation's
+// Context.GrantedBy.
+func (a *AccessCheck) Explain() *AccessCheck {
+	a.options().Explain = new(true)
+	return a
+}
+
 // Permissions adds the actions to decide. With none, the check asks only
 // whether the subject can reach the resource.
 func (a *AccessCheck) Permissions(names ...string) *AccessCheck {
@@ -74,8 +106,15 @@ func (a *AccessCheck) Permissions(names ...string) *AccessCheck {
 // DenyOnFirstDeny stops at the first missing permission; later ones report NOT_EVALUATED.
 func (a *AccessCheck) DenyOnFirstDeny() *AccessCheck {
 	semantic := nanoclient.DenyOnFirstDeny
-	a.body.Options = &nanoclient.AccessEvaluationsOptions{EvaluationsSemantic: &semantic}
+	a.options().EvaluationsSemantic = &semantic
 	return a
+}
+
+func (a *AccessCheck) options() *nanoclient.AccessEvaluationsOptions {
+	if a.body.Options == nil {
+		a.body.Options = &nanoclient.AccessEvaluationsOptions{}
+	}
+	return a.body.Options
 }
 
 // Do sends the evaluation. It is retried on transient failures: evaluating has

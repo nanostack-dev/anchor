@@ -37,26 +37,36 @@ var (
 )
 
 // Checker answers access decisions from each Product's OpenFGA store
-// (ADR-0021; ADR-0022 G4, PR 7). It reads the store as it is: the write that
-// changed access already reached it after its commit, and decisions never look
-// for marks (E5).
+// (ADR-0021; ADR-0022 G4, PR 7 and PR 13). It reads the store as it is: the
+// write that changed access already reached it after its commit, and
+// decisions never look for marks (E5).
 type Checker struct {
 	engines engine.Provider
 	repo    repository.Repository
 	syncer  Syncer
 	builds  singleflight.Group
-	// relations holds, per model ID, the relations its organization type
-	// defines; a model never changes once written.
-	relations sync.Map
+	// types holds, per model ID, what each type of the model defines; a
+	// model never changes once written.
+	types sync.Map
+}
+
+// modelType is what one type of a model defines: its relations, and the
+// types its parent relation accepts.
+type modelType struct {
+	relations map[string]bool
+	parents   map[string]bool
 }
 
 func NewChecker(engines engine.Provider, repo repository.Repository, syncer Syncer) accessservice.PermissionChecker {
 	return &Checker{engines: engines, repo: repo, syncer: syncer}
 }
 
-// Holds checks every action on the identity's Organization, in BatchChecks of
-// at most checkBatch items. A permission the model doesn't define is not held,
-// and is not asked.
+// Holds checks every action on the object, in BatchChecks of at most
+// checkBatch items. An unregistered resource is checked as an object of its
+// type that exists for the check only, with its parent given as a contextual
+// tuple. A permission the model doesn't define on the object's type is not
+// held, and is not asked; neither is anything on a type or a parent the model
+// lacks.
 // Anything OpenFGA can't answer, or can't answer in time, fails the decision
 // with accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
@@ -78,26 +88,67 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	}
 	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
 	defer cancel()
-	defined, err := c.organizationRelations(ctx, openfga, stored)
+	types, err := c.modelTypes(ctx, openfga, stored)
 	if err != nil {
 		return nil, unavailable(err)
 	}
+	on, ok := checkTarget(check.Object, types)
+	if !ok {
+		return held, nil
+	}
+	defined := types[model.ResourceType(check.Object.Type)].relations
 	declared := functional.Slice(check.Actions).Filter(func(action string) bool {
 		return defined[model.CanRelation(action)]
 	})
 	for start := 0; start < len(declared); start += checkBatch {
 		actions := declared[start:min(start+checkBatch, len(declared))]
-		if err = c.holdsBatch(ctx, openfga, stored, subject, check.OrganizationID, actions, held); err != nil {
+		if err = c.holdsBatch(ctx, openfga, stored, subject, on, actions, held); err != nil {
 			return nil, unavailable(err)
 		}
 	}
 	return held, nil
 }
 
+// checkedTarget is the object a BatchCheck asks about, and the tuples it holds for
+// that check only.
+type checkedTarget struct {
+	object     string
+	contextual *openfgav1.ContextualTupleKeys
+}
+
+// checkTarget names the checked object in the model. It refuses a type the
+// model lacks and a contextual parent its parent relation would refuse, which
+// OpenFGA would answer with an error rather than a denial.
+func checkTarget(object accessservice.CheckedObject, types map[string]modelType) (checkedTarget, bool) {
+	objectType, defined := types[model.ResourceType(object.Type)]
+	if !defined {
+		return checkedTarget{}, false
+	}
+	if object.Parent == nil {
+		return checkedTarget{object: checkedObject(object)}, true
+	}
+	if !objectType.parents[model.ResourceType(object.Parent.Type)] {
+		return checkedTarget{}, false
+	}
+	unregistered := model.UnregisteredResource(object.Type)
+	return checkedTarget{object: unregistered, contextual: &openfgav1.ContextualTupleKeys{
+		TupleKeys: []*openfgav1.TupleKey{{
+			Object: unregistered, Relation: model.RelationParent, User: checkedObject(*object.Parent),
+		}},
+	}}, true
+}
+
+func checkedObject(object accessservice.CheckedObject) string {
+	if object.Type == model.TypeOrganization {
+		return model.Organization(object.ID)
+	}
+	return model.ResourceObject(object.Type, object.ID)
+}
+
 // holdsBatch answers at most checkBatch actions in one BatchCheck.
 func (c *Checker) holdsBatch(
 	ctx context.Context, openfga engine.Engine, stored repository.Store,
-	subject, organizationID string, actions []string, held map[string]bool,
+	subject string, on checkedTarget, actions []string, held map[string]bool,
 ) error {
 	checks := make([]*openfgav1.BatchCheckItem, len(actions))
 	for i, action := range actions {
@@ -106,8 +157,9 @@ func (c *Checker) holdsBatch(
 			TupleKey: &openfgav1.CheckRequestTupleKey{
 				User:     subject,
 				Relation: model.CanRelation(action),
-				Object:   model.Organization(organizationID),
+				Object:   on.object,
 			},
+			ContextualTuples: on.contextual,
 		}
 	}
 	resp, err := openfga.BatchCheck(ctx, &openfgav1.BatchCheckRequest{
@@ -130,15 +182,15 @@ func (c *Checker) holdsBatch(
 	return nil
 }
 
-// organizationRelations lists the relations the model defines on
-// organization, so a permission the catalog doesn't define is answered not
-// held without asking: OpenFGA reports it with the same code as throttling.
-func (c *Checker) organizationRelations(
+// modelTypes lists what each type of the model defines, so a permission the
+// catalog doesn't define on a type is answered not held without asking:
+// OpenFGA reports it with the same code as throttling.
+func (c *Checker) modelTypes(
 	ctx context.Context, openfga engine.Engine, stored repository.Store,
-) (map[string]bool, error) {
-	if cached, ok := c.relations.Load(stored.ModelID); ok {
-		if defined, isMap := cached.(map[string]bool); isMap {
-			return defined, nil
+) (map[string]modelType, error) {
+	if cached, ok := c.types.Load(stored.ModelID); ok {
+		if types, isMap := cached.(map[string]modelType); isMap {
+			return types, nil
 		}
 	}
 	resp, err := openfga.ReadAuthorizationModel(ctx, &openfgav1.ReadAuthorizationModelRequest{
@@ -147,16 +199,20 @@ func (c *Checker) organizationRelations(
 	if err != nil {
 		return nil, err
 	}
-	defined := map[string]bool{}
+	types := map[string]modelType{}
 	for _, definition := range resp.GetAuthorizationModel().GetTypeDefinitions() {
-		if definition.GetType() == model.TypeOrganization {
-			for relation := range definition.GetRelations() {
-				defined[relation] = true
-			}
+		defined := modelType{relations: map[string]bool{}, parents: map[string]bool{}}
+		for relation := range definition.GetRelations() {
+			defined.relations[relation] = true
 		}
+		parent := definition.GetMetadata().GetRelations()[model.RelationParent]
+		for _, related := range parent.GetDirectlyRelatedUserTypes() {
+			defined.parents[related.GetType()] = true
+		}
+		types[definition.GetType()] = defined
 	}
-	c.relations.Store(stored.ModelID, defined)
-	return defined, nil
+	c.types.Store(stored.ModelID, types)
+	return types, nil
 }
 
 // store returns the Product's store once a full rebuild has filled it. Until

@@ -44,3 +44,11 @@ type Held struct {
 	RoleRowID          string
 	RoleID             string
 }
+
+// Grant is a role a member holds on a resource that bundles one permission,
+// as an access decision explains it.
+type Grant struct {
+	ResourceRowID string
+	Role          Role
+	Permission    string
+}
