@@ -184,7 +184,7 @@ test("access.explainer-allowed: allowed via folder-viewer on folder Design for a
 	await captureReviewCheckpoint(page, testInfo, "all-four-chosen");
 	await check(page, world);
 
-	const decision = panel(page).getByRole("group", { name: "Access decision" });
+	const decision = panel(page).getByRole("region", { name: "Access decision" });
 	await expect(decision).toContainText("Allowed");
 	await expect(decision).toContainText(
 		`${dan.name} has ${view.name} on Pricing page.`,
@@ -233,7 +233,7 @@ test("access.explainer-denied: denied with the reason for a project above the fo
 	await pick(page, "Resource", "Website", "Website redesign");
 	await check(page, world);
 
-	const decision = panel(page).getByRole("group", { name: "Access decision" });
+	const decision = panel(page).getByRole("region", { name: "Access decision" });
 	await expect(decision).toContainText("Denied");
 	await expect(decision).toContainText(
 		`No role ${dan.name} holds on Website redesign or above it bundles ${view.name}.`,

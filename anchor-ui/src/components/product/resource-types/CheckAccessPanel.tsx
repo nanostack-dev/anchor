@@ -182,15 +182,9 @@ export function AccessDecision({
 
 	if (explanation.decision === "allowed")
 		return (
-			<Box className="access-result">
+			<Box as="section" aria-label="Access decision" className="access-result">
 				<Stack space="md">
-					{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; the panel's live region announces the decision once */}
-					<Alert
-						tone="success"
-						icon={CheckCircleIcon}
-						role="group"
-						aria-label="Access decision"
-					>
+					<Alert tone="success" icon={CheckCircleIcon} role="presentation">
 						<AlertTitle>Allowed</AlertTitle>
 						<AlertDescription>
 							<Stack space="sm">
@@ -227,15 +221,9 @@ export function AccessDecision({
 		);
 
 	return (
-		<Box className="access-result">
+		<Box as="section" aria-label="Access decision" className="access-result">
 			<Stack space="md">
-				{/* biome-ignore lint/a11y/useSemanticElements: the shared Alert owns the region; the panel's live region announces the decision once */}
-				<Alert
-					tone="critical"
-					icon={ProhibitIcon}
-					role="group"
-					aria-label="Access decision"
-				>
+				<Alert tone="critical" icon={ProhibitIcon} role="presentation">
 					<AlertTitle>Denied</AlertTitle>
 					<AlertDescription>
 						<Stack space="xs">
