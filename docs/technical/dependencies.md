@@ -13,7 +13,7 @@ A standalone clone contains Anchor's source, agent guides, contract, generators 
 
 Owner-managed reusable workflows under `nanostack-dev/ci-workflows/.github/workflows/` use `@main` to consume the latest merged revision. This is an explicit exception to dependency pinning. Merge a required companion workflow change first, then validate the caller against `@main`; a temporary PR-head reference can become unavailable after a squash merge and branch deletion. Keep the golangci-lint version pinned in `.golangci-lint-version` for both local runs and CI. This exception does not change third-party action or tool version policy.
 
-Frameworks outside Nanostack include Uber FX wiring, go-jet generated SQL, OpenAPI/oapi-codegen and React/TanStack/Vite/Playwright. Exact versions belong in module/package lockfiles, not a second version list in prose.
+Frameworks outside Nanostack include Uber FX wiring, go-jet generated SQL, OpenAPI/oapi-codegen, OpenFGA (embedded as a library, see [authorization engine](authorization-engine.md)) and React/TanStack/Vite/Playwright. Exact versions belong in module/package lockfiles, not a second version list in prose.
 
 A local clone of a dependency is an optional source-inspection shortcut. Without one, read its GitHub guide/source at the relevant ref, or create an isolated checkout wherever convenient; never assume a parent/sibling path. Normal product work uses the published pin. A neutral reusable UI change goes to the design-system repository; Anchor's screens/permissions remain here. Keep each dependency change in its owner's PR and link companion PRs when contracts move together.
 

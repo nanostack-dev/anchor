@@ -5,11 +5,14 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	authzengine "anchor/internal/authz/engine"
+	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
 	rtrepository "anchor/internal/resourcetype/repository"
 	"anchor/internal/service"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/pgkit/queue"
 )
 
@@ -37,6 +40,9 @@ var (
 	OrganizationService    service.OrganizationService
 	ProductRoleService     service.ProductRoleService
 	ResourcePermissionSvc  service.ResourcePermissionService
+	Transactor             transactor.Transactor
+	AuthzStores            authzstore.Stores
+	AuthzEngines           authzengine.Provider
 )
 
 func TestMain(m *testing.M) {
@@ -59,6 +65,9 @@ func TestMain(m *testing.M) {
 				&ResourcePermissionRepo,
 				&ProductRoleRepo,
 				&ResourceTypeRepo,
+				&Transactor,
+				&AuthzStores,
+				&AuthzEngines,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,
