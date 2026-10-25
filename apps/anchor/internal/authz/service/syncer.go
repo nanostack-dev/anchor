@@ -440,12 +440,12 @@ func (s *syncer) SyncResources(ctx context.Context, productID string, objects []
 	if storeErr != nil {
 		return storeErr
 	}
-	return s.locked(ctx, productID, func(txCtx context.Context) error {
+	sync := func(txCtx context.Context) error {
 		marks, err := s.repo.PendingResources(txCtx, productID, objects)
 		if err != nil {
 			return err
 		}
-		current, err := s.ensureModel(txCtx, openfga, storeID, productID)
+		current, err := s.currentModel(txCtx, openfga, storeID, productID)
 		if err != nil {
 			return err
 		}
@@ -458,6 +458,40 @@ func (s *syncer) SyncResources(ctx context.Context, productID string, objects []
 			}
 		}
 		return nil
+	}
+	err := s.lockedObjects(ctx, productID, objects, sync)
+	if !errors.Is(err, errModelStale) {
+		return err
+	}
+	if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+		_, modelErr := s.ensureModel(txCtx, openfga, storeID, productID)
+		return modelErr
+	}); err != nil {
+		return err
+	}
+	return s.lockedObjects(ctx, productID, objects, sync)
+}
+
+// lockedObjects runs fn holding the Product's sync lock in share mode and each
+// resource object's exclusively. A resource sync writes only its objects'
+// tuples, so it runs beside Organization syncs and other resources' syncs.
+func (s *syncer) lockedObjects(
+	ctx context.Context, productID string, objects []string, fn func(context.Context) error,
+) error {
+	keys := slices.Sorted(slices.Values(objects))
+	return s.withLocks(ctx, fn, func(txCtx context.Context, tx *sql.Tx) (bool, error) {
+		var shared bool
+		if err := tx.QueryRowContext(txCtx, `SELECT pg_try_advisory_xact_lock_shared($1)`,
+			pglock.KeyHash(productLockKey(productID))).Scan(&shared); err != nil || !shared {
+			return false, err
+		}
+		for _, object := range keys {
+			acquired, err := pglock.TryAdvisoryXactLock(txCtx, tx, productLockKey(productID)+":"+object)
+			if err != nil || !acquired {
+				return false, err
+			}
+		}
+		return true, nil
 	})
 }
 
