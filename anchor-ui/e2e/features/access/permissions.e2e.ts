@@ -4,6 +4,7 @@ import type {
 	ProductRoleResponse,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
+import { captureReviewCheckpoint } from "../../support/review";
 import { selectProduct } from "../../support/ui";
 import { bulkDelete, facet, paths, permission, role, row } from "./helpers";
 
@@ -94,7 +95,7 @@ test("access.permission-list: sorting, pagination, name facets and empty search 
 test("access.permission-lifecycle: create, view, cancel edit, persist description and delete permission", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	const name = world.name("document:read");
 	await selectProduct(page, world.product);
 	await page.goto(paths.permissions);
@@ -114,6 +115,7 @@ test("access.permission-lifecycle: create, view, cancel edit, persist descriptio
 	await create
 		.getByLabel("Description", { exact: true })
 		.fill("Initial description");
+	await captureReviewCheckpoint(page, testInfo, "permission-resource-type");
 	await create
 		.getByRole("button", { name: "Create Permission", exact: true })
 		.click();
