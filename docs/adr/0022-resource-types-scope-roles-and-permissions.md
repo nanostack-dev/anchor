@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 6 to answer
+5. [Open questions](#open-questions) — 5 to answer
 
 ---
 
@@ -234,7 +234,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
-|  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | 🟡 Pending | 1 |
+|  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
 |  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | 🔵 Proposed (depends on ADR-0021) |  |
 |  | [DR-E4](#dr-e4) · Listing what a subject can reach | ⚪ Deferred |  |
 |  | [DR-E5](#dr-e5) · Anchor's tables stay the source of truth; OpenFGA holds a mirror | 🟡 Pending | 1 |
@@ -1276,12 +1276,13 @@ flowchart BT
 
 <a id="dr-e2"></a>
 <details>
-<summary><b>DR-E2</b> · The evaluation API takes any resource type — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-E2</b> · The evaluation API takes any resource type — <i>✅ Accepted</i></summary>
 
 **Decision.**
 - **Request:** `resource.type` accepts any resource type slug of the Product, and `resource.id` is the product's ID (B2). A user subject still needs `properties.organization_id`. `properties.parent` names the parent of an unregistered resource (B1).
 - **Organization** behaves as today. `workspace` becomes an ordinary type (A6); `WORKSPACE_NOT_IN_ORGANIZATION` stays until the built-in Workspace is deleted, then gives way to `RESOURCE_NOT_IN_ORGANIZATION`.
 - **New deny reasons:** `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_NOT_FOUND` (unregistered with no parent given), and `RESOURCE_NOT_IN_ORGANIZATION`.
+- **Explaining a decision** is an **Anchor extension to AuthZEN**. A caller that sends `options.explain: true` gets `granted_by`, the roles and resources that granted the permission. It lives **inside `context`**, which AuthZEN leaves free-form, so the response stays valid for any AuthZEN client, which ignores the key. Without the option, no `granted_by` is computed and a decision costs no more than a plain check.
 
 <details>
 <summary>📌 Real example</summary>
@@ -1310,9 +1311,33 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 
 </details>
 
+<details>
+<summary>What AuthZEN is, and what it leaves to Anchor</summary>
+
+**AuthZEN** is the OpenID Foundation's standard way to ask an authorization service for a decision: the **Authorization API 1.0**, from the OpenID AuthZEN working group, marked Final on 11 January 2026. It makes "can this subject do this action on this resource?" look the same across products, as OpenID Connect did for sign-in.
+
+| AuthZEN defines | Anchor |
+| :-- | :-- |
+| `POST /access/v1/evaluation` and `/evaluations` with `subject`, `action`, `resource`, `context` | follows it (ADR-0021's evaluation endpoint) |
+| `options.evaluations_semantic`: `execute_all`, `deny_on_first_deny`, `permit_on_first_permit` | follows it |
+| response: required `decision`, optional free-form `context` | `context` carries `reason`, `roles`, `permissions` and, on request, `granted_by` |
+| `/access/v1/search/subject`, `/resource`, `/action` | not yet (E4) |
+| an explain option | **not defined**; `options.explain` is Anchor's extension |
+
+The spec only shows reasons in a non-normative example (`reason_admin`, `reason_user`), so how to explain a decision is left to each implementation.
+
+</details>
+
+<details>
+<summary>Sources</summary>
+
+- [OpenID Authorization API 1.0 (AuthZEN)](https://openid.net/specs/authorization-api-1_0.html)
+
+</details>
+
 > **Q-E2.1** Should the decision context say *where* access came from, e.g. `granted_by: [{ role: "folder-viewer", resource: { type: "folder", id: "…" } }]`? It costs one more walk per allowed decision and powers the explainer (F5). *(recommended: yes, only on request with `options.explain: true`)*
 >
-> **Answer:** _pending_
+> **Answer:** yes, as an Anchor extension: `options.explain: true` adds `granted_by` inside `context`.
 
 </details>
 
@@ -1953,7 +1978,7 @@ Answer here or inline; each line links to its record.
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
 | [Q-D6.1](#dr-d6) | Per-organization custom roles needed soon? | stay deferred | |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
-| [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | |
+| [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | **yes**, extension, inside `context` |
 | [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | |
 | [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | |
 | [Q-F5.1](#dr-f5) | Access explainer in the first UI delivery? | follow-up | |
