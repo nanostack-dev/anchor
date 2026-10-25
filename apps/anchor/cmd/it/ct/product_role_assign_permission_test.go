@@ -25,7 +25,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning permission to product role succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -61,7 +62,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning multiple permissions to product role succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "MultiPermRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "MultiPermRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -119,7 +121,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning duplicate permission to product role succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "DuplicatePermRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "DuplicatePermRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -154,7 +157,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning a permission absent from the product is refused as a bad request", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -217,7 +221,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning permission with empty permission name succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -242,7 +247,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 		"Assigning permission for nonexistent product returns a bad request", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -272,7 +278,8 @@ func TestProductRole_AssignPermission(t *testing.T) {
 			sink := productContext.CaptureEvents()
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "EventsRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "EventsRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

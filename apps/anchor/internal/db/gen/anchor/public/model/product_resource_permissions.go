@@ -12,10 +12,11 @@ import (
 )
 
 type ProductResourcePermissions struct {
-	ProductID     string `sql:"primary_key"`
-	Name          string `sql:"primary_key"`
-	Description   *string
-	ScopeModifier *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ProductID      string `sql:"primary_key"`
+	Name           string `sql:"primary_key"`
+	Description    *string
+	ScopeModifier  *string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ResourceTypeID *string
 }

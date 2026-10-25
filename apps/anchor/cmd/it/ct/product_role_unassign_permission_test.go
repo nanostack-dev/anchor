@@ -28,7 +28,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 		"Unassigning permission from product role succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -71,7 +72,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 		"Unassigning one of multiple permissions succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "MultiPermRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "MultiPermRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -123,7 +125,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 		"Unassigning a permission that does not exist returns not found", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -150,7 +153,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 		"Unassigning permission not assigned to role succeeds", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -194,7 +198,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 		"Unassigning permission for nonexistent product returns a bad request", func(t *testing.T) {
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -218,7 +223,8 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 
 			createRoleResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -261,8 +267,9 @@ func TestProductRole_UnassignPermission(t *testing.T) {
 			permissionName := productContext.DefaultResourcePermissions[0].Name
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "EventsRole_" + ids.MustNew("test"),
-					Permissions: []string{permissionName},
+					ResourceType: "organization",
+					Name:         "EventsRole_" + ids.MustNew("test"),
+					Permissions:  []string{permissionName},
 				},
 			)
 			require.NoError(t, err)

@@ -22,6 +22,7 @@ const PERMISSION: ProductResourcePermissionResponse = {
 	product_id: "prd_test",
 	name: "invoices:read",
 	description: "Read invoices belonging to the organization",
+	resource_type: "organization",
 	created_at: "2026-07-14T09:12:00Z",
 	updated_at: "2026-07-14T09:12:00Z",
 };

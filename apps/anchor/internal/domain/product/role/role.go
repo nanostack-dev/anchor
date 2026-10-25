@@ -11,9 +11,14 @@ type ProductRole struct {
 	ProductID   string
 	Name        string
 	Description string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Permissions []ProductRolePermission
+	// ResourceTypeID is nil only on a row a release before resource types
+	// wrote during a rolling deploy; it counts as organization.
+	ResourceTypeID *string
+	// ResourceType is the slug of the scope, filled by the service.
+	ResourceType string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Permissions  []ProductRolePermission
 }
 
 // GenerateID sets the role's ID to a new prefixed KSUID.

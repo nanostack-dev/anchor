@@ -24,6 +24,7 @@ func TestProductResourcePermissionDeleteSuccess(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
+			ResourceType:  "organization",
 			Name:          "file:read",
 			Description:   new("Read file contents"),
 			ScopeModifier: new("own"),
@@ -73,7 +74,8 @@ func TestProductResourcePermissionDeleteEmitsWebhook(t *testing.T) {
 		sink := productContext.CaptureEvents()
 		createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
 			ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
-				Name: "events:delete",
+				ResourceType: "organization",
+				Name:         "events:delete",
 			},
 		)
 		require.NoError(t, err)
@@ -147,8 +149,9 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 		sink := testProduct.CaptureEvents()
 
 		createPermissionInput := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Read file contents"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Read file contents"),
 		}
 
 		createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -163,9 +166,10 @@ func TestProductResourcePermissionDeleteAssignedToRoleCascades(t *testing.T) {
 		permissionName := createPermissionResp.JSON201.Name
 
 		createRoleInput := ct.ProductRoleCreateRequest{
-			Name:        "Test Role",
-			Description: new("Test role with permission"),
-			Permissions: []string{permissionName},
+			ResourceType: "organization",
+			Name:         "Test Role",
+			Description:  new("Test role with permission"),
+			Permissions:  []string{permissionName},
 		}
 
 		createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
@@ -210,8 +214,9 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createPermissionInput := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Read file contents"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Read file contents"),
 		}
 
 		createPermissionResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -226,9 +231,10 @@ func TestProductResourcePermissionDeleteAfterUnassigningFromRole(t *testing.T) {
 		permissionName := createPermissionResp.JSON201.Name
 
 		createRoleInput := ct.ProductRoleCreateRequest{
-			Name:        "Test Role",
-			Description: new("Test role with permission"),
-			Permissions: []string{permissionName},
+			ResourceType: "organization",
+			Name:         "Test Role",
+			Description:  new("Test role with permission"),
+			Permissions:  []string{permissionName},
 		}
 
 		createRoleResp, err := testOwnerClient(t).CreateProductRoleWithResponse(
@@ -317,14 +323,16 @@ func TestProductResourcePermissionDeleteTellsRoleAssignedConcurrently(t *testing
 			owner := testOwnerClient(t)
 
 			created, err := owner.CreateProductResourcePermissionWithResponse(
-				ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{Name: "doc:share"},
+				ctx,
+				testProduct.ProductID,
+				ct.CreateProductResourcePermissionRequest{ResourceType: "organization", Name: "doc:share"},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, created.StatusCode())
 			permissionName := created.JSON201.Name
 
 			role, err := owner.CreateProductRoleWithResponse(
-				ctx, testProduct.ProductID, ct.ProductRoleCreateRequest{Name: "Reviewer"},
+				ctx, testProduct.ProductID, ct.ProductRoleCreateRequest{ResourceType: "organization", Name: "Reviewer"},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, role.StatusCode())

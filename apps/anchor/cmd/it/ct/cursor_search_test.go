@@ -39,6 +39,7 @@ func TestCursorSearches(t *testing.T) {
 		"searchPlatformInvitations":            platformInvitationsCursorCase,
 		"searchPlatformUsers":                  platformUsersCursorCase,
 		"searchProductRoles":                   rolesCursorCase,
+		"searchProductResourceTypes":           resourceTypesCursorCase,
 		"searchProductAPIKeys":                 productAPIKeysCursorCase,
 		"searchProductUsers":                   productUsersCursorCase,
 		"searchOrganizationAPIKeys":            organizationAPIKeysCursorCase,
@@ -256,6 +257,39 @@ func rolesCursorCase(t *testing.T) cursorCase {
 				body,
 			)
 			return httpCall(response, err, func(r *ct.SearchProductRolesResponse) []byte { return r.Body })
+		},
+	}
+}
+
+func resourceTypesCursorCase(t *testing.T) cursorCase {
+	product := createTestProductContext(t)
+	types := product.ResourceTypes()
+	for i := range cursorFixtureRows {
+		types.CreateUnder(fmt.Sprintf("type_%d", i), "organization")
+	}
+	execSQL(t, "UPDATE product_resource_types SET created_at = $1 WHERE product_id = $2", tiedAt(), product.ProductID)
+
+	client := product.OwnerAuthenticatedClient()
+	return cursorCase{
+		rows: orderedRows{
+			from: "product_resource_types", where: "product_id = $1", args: []any{product.ProductID}, idExpr: "id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "updated_at", expr: "updated_at"},
+				{name: "slug", expr: "slug"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"slugs": []string{"no_such_type"}}},
+		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
+			response, err := client.SearchProductResourceTypesWithBodyWithResponse(
+				ctx,
+				product.ProductID,
+				"application/json",
+				body,
+			)
+			return httpCall(response, err, func(r *ct.SearchProductResourceTypesResponse) []byte { return r.Body })
 		},
 	}
 }

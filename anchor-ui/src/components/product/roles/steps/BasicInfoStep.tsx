@@ -1,5 +1,6 @@
 import type { ProductRoleResponse } from "@/client";
 import { FormValidationError } from "@/components/common/FormValidationError";
+import { ResourceTypeSelect } from "@/components/product/resource-types/ResourceTypeSelect";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
 import { Input } from "@nanostackorg/design-system/components/input";
@@ -13,6 +14,7 @@ import { ChevronRight, Lightbulb, Lock } from "lucide-react";
 import { type BasicInfoFormData, basicInfo } from "../form-type";
 
 interface BasicInfoStepProps {
+	productId: string;
 	initialData: BasicInfoFormData;
 	onFormDataChange: (data: BasicInfoFormData) => void;
 	isEditMode: boolean;
@@ -21,6 +23,7 @@ interface BasicInfoStepProps {
 }
 
 export function BasicInfoStep({
+	productId,
 	initialData,
 	onFormDataChange,
 	isEditMode,
@@ -93,6 +96,27 @@ export function BasicInfoStep({
 										onBlur={field.handleBlur}
 										placeholder="e.g., Content Editor, Admin, Viewer"
 									/>
+									<FormValidationError field={field} />
+								</Box>
+							)}
+						</form.Field>
+
+						<form.Field name="resourceType">
+							{(field) => (
+								<Box className="flex flex-col gap-2">
+									<Label htmlFor="resource-type">Resource type</Label>
+									<ResourceTypeSelect
+										id="resource-type"
+										productId={productId}
+										value={field.state.value}
+										onChange={field.handleChange}
+										disabled={isEditMode}
+									/>
+									<Box as="p" className="text-xs text-muted-foreground">
+										{isEditMode
+											? "A role's resource type never changes."
+											: "The role is held on resources of this type and covers everything below them."}
+									</Box>
 									<FormValidationError field={field} />
 								</Box>
 							)}

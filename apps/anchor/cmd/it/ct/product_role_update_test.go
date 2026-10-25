@@ -26,8 +26,15 @@ func TestProductRole_UpdatePermissionReplacementStates(t *testing.T) {
 			initial := product.DefaultResourcePermissions[0].Name
 			replacement := product.DefaultResourcePermissions[1].Name
 			name := "PermissionStates_" + ids.MustNew("role")
-			created, err := client.CreateProductRoleWithResponse(t.Context(), product.ProductID,
-				ct.CreateProductRoleJSONRequestBody{Name: name, Permissions: []string{initial}})
+			created, err := client.CreateProductRoleWithResponse(
+				t.Context(),
+				product.ProductID,
+				ct.CreateProductRoleJSONRequestBody{
+					ResourceType: "organization",
+					Name:         name,
+					Permissions:  []string{initial},
+				},
+			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, created.StatusCode())
 			require.NotNil(t, created.JSON201)
@@ -66,7 +73,8 @@ func TestProductRole_Update(t *testing.T) {
 			originalName := "OriginalRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: originalName,
+					ResourceType: "organization",
+					Name:         originalName,
 				},
 			)
 			require.NoError(t, err)
@@ -98,8 +106,9 @@ func TestProductRole_Update(t *testing.T) {
 			roleName := "TestRole_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        roleName,
-					Description: &originalDesc,
+					ResourceType: "organization",
+					Name:         roleName,
+					Description:  &originalDesc,
 				},
 			)
 			require.NoError(t, err)
@@ -131,7 +140,8 @@ func TestProductRole_Update(t *testing.T) {
 		"Updating a product role name and description succeeds", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -162,7 +172,8 @@ func TestProductRole_Update(t *testing.T) {
 		"Renaming a role to an empty name is refused", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -190,7 +201,8 @@ func TestProductRole_Update(t *testing.T) {
 		"Renaming a role outside the name-length bounds is refused", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -218,7 +230,8 @@ func TestProductRole_Update(t *testing.T) {
 		"Updating a role with an overlong description is refused", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -255,7 +268,8 @@ func TestProductRole_Update(t *testing.T) {
 
 			createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: role1Name,
+					ResourceType: "organization",
+					Name:         role1Name,
 				},
 			)
 			require.NoError(t, err)
@@ -266,7 +280,8 @@ func TestProductRole_Update(t *testing.T) {
 
 			createResp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: role2Name,
+					ResourceType: "organization",
+					Name:         role2Name,
 				},
 			)
 			require.NoError(t, err)
@@ -298,13 +313,13 @@ func TestProductRole_Update(t *testing.T) {
 			role2Name := "Role2Case_" + ids.MustNew("test")
 
 			createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: role1Name},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: role1Name},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, createResp1.StatusCode())
 
 			createResp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: role2Name},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: role2Name},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, createResp2.StatusCode())
@@ -354,7 +369,8 @@ func TestProductRole_Update(t *testing.T) {
 		"Updating a product role for nonexistent product returns a bad request", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -382,7 +398,8 @@ func TestProductRole_Update(t *testing.T) {
 			sink := productContext.CaptureEvents()
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "EventsRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "EventsRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

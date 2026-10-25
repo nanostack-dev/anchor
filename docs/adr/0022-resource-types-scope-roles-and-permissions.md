@@ -2295,6 +2295,7 @@ resource "anchor_product_role" "folder_viewer" {
 | Remove | From | Replaced by |
 | :-- | :-- | :-- |
 | `scope_modifier`: column, API field, search filter, Terraform attribute | permissions | resource type scope (C1, C3) |
+| nullable `resource_type_id` on `product_roles` and `product_resource_permissions`, and the read that counts a null scope as `organization` | roles and permissions | `NOT NULL`, after a final run of the startup backfill |
 | `workspaces` table, `/workspaces` routes, admin pages, `workspace.*` events | built-in Workspace | a `workspace` resource type a Product declares (A6) |
 | `workspace_memberships` table, workspace member routes, `workspace.membership.*` events | workspace roles | `resource_role_assignments` (D4) |
 | `WORKSPACE_NOT_IN_ORGANIZATION` | access evaluation | `RESOURCE_NOT_IN_ORGANIZATION` (E2) |

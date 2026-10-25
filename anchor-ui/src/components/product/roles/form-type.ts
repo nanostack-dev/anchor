@@ -9,6 +9,7 @@ export const basicInfo = z.object({
 		.string()
 		.max(500, "Description must be less than 500 characters")
 		.optional(),
+	resourceType: z.string().min(1, "Choose the resource type of this role"),
 });
 
 export const selectedPermissions = z.object({

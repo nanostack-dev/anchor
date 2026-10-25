@@ -74,6 +74,9 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 		basicStep.getByRole("button", { name: "Continue", exact: true }),
 	).toBeDisabled();
 	await wizard.getByLabel("Role Name").fill(name);
+	await expect(
+		wizard.getByRole("combobox", { name: "Resource type", exact: true }),
+	).toContainText("Organization");
 	await wizard.getByLabel("Description").fill("Reads documents");
 	await basicStep
 		.getByRole("button", { name: "Continue", exact: true })
@@ -100,6 +103,7 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 	);
 	expect(created.items).toHaveLength(1);
 	const savedRole = created.items[0];
+	expect(savedRole.resource_type).toBe("organization");
 	expect(savedRole.permissions.map((grant) => grant.permission_name)).toEqual([
 		grants[0].name,
 	]);

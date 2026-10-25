@@ -17,6 +17,7 @@ func mapProductResourcePermissionToResponse(
 		Name:          perm.Name,
 		Description:   perm.Description,
 		ScopeModifier: perm.ScopeModifier,
+		ResourceType:  perm.ResourceType,
 		CreatedAt:     perm.CreatedAt,
 		UpdatedAt:     perm.UpdatedAt,
 	}
@@ -30,6 +31,7 @@ func mapToCreateProductResourcePermissionInput(
 		Name:          req.Name,
 		Description:   req.Description,
 		ScopeModifier: req.ScopeModifier,
+		ResourceType:  req.ResourceType,
 	}
 }
 
@@ -37,9 +39,10 @@ func mapToUpdateProductResourcePermissionInput(
 	productID, name string, req *UpdateProductResourcePermissionRequest,
 ) resourcepermission.UpdateProductResourcePermissionInput {
 	return resourcepermission.UpdateProductResourcePermissionInput{
-		ProductID:   productID,
-		Name:        name,
-		Description: req.Description,
+		ProductID:    productID,
+		Name:         name,
+		Description:  req.Description,
+		ResourceType: req.ResourceType,
 	}
 }
 
@@ -49,7 +52,8 @@ func mapToSearchProductResourcePermissionInput(
 	filter := functional.FromPtr(req.Filter).
 		Map(func(f ProductResourcePermissionFilter) resourcepermission.SearchProductResourcePermissionFilter {
 			return resourcepermission.SearchProductResourcePermissionFilter{
-				Names: f.Names,
+				Names:         f.Names,
+				ResourceTypes: f.ResourceTypes,
 			}
 		}).
 		ToPtr()

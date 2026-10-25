@@ -27,22 +27,26 @@ func TestProductResourcePermissionSearchSuccess(t *testing.T) {
 
 		permissions := []ct.CreateProductResourcePermissionRequest{
 			{
+				ResourceType:  "organization",
 				Name:          "file:read",
 				Description:   new("Read file contents"),
 				ScopeModifier: new("own"),
 			},
 			{
+				ResourceType:  "organization",
 				Name:          "file:write",
 				Description:   new("Write file contents"),
 				ScopeModifier: new("team"),
 			},
 			{
-				Name:        "file:delete",
-				Description: new("Delete file contents"),
+				ResourceType: "organization",
+				Name:         "file:delete",
+				Description:  new("Delete file contents"),
 			},
 			{
-				Name:        "document:read",
-				Description: new("Read document contents"),
+				ResourceType: "organization",
+				Name:         "document:read",
+				Description:  new("Read document contents"),
 			},
 		}
 
@@ -95,16 +99,19 @@ func TestProductResourcePermissionSearchByNames(t *testing.T) {
 
 		permissions := []ct.CreateProductResourcePermissionRequest{
 			{
-				Name:        "file:read",
-				Description: new("Read file contents"),
+				ResourceType: "organization",
+				Name:         "file:read",
+				Description:  new("Read file contents"),
 			},
 			{
-				Name:        "file:write",
-				Description: new("Write file contents"),
+				ResourceType: "organization",
+				Name:         "file:write",
+				Description:  new("Write file contents"),
 			},
 			{
-				Name:        "document:read",
-				Description: new("Read document contents"),
+				ResourceType: "organization",
+				Name:         "document:read",
+				Description:  new("Read document contents"),
 			},
 		}
 
@@ -199,8 +206,9 @@ func TestProductResourcePermissionSearchWithPagination(t *testing.T) {
 		permissionCount := 5
 		for range permissionCount {
 			permission := ct.CreateProductResourcePermissionRequest{
-				Name:        itshared.Faker.Lorem().Word() + ":read",
-				Description: new(itshared.Faker.Lorem().Sentence(5)),
+				ResourceType: "organization",
+				Name:         itshared.Faker.Lorem().Word() + ":read",
+				Description:  new(itshared.Faker.Lorem().Sentence(5)),
 			}
 
 			createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -251,8 +259,9 @@ func TestProductResourcePermissionSearchWithSorting(t *testing.T) {
 		permissions := []string{"apple:read", "banana:read", "cherry:read"}
 		for _, name := range permissions {
 			permission := ct.CreateProductResourcePermissionRequest{
-				Name:        name,
-				Description: new("Test permission"),
+				ResourceType: "organization",
+				Name:         name,
+				Description:  new("Test permission"),
 			}
 
 			createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -331,8 +340,9 @@ func TestProductResourcePermissionSearchEmptyFilter(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		permission := ct.CreateProductResourcePermissionRequest{
-			Name:        "test:read",
-			Description: new("Test permission"),
+			ResourceType: "organization",
+			Name:         "test:read",
+			Description:  new("Test permission"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -374,8 +384,9 @@ func TestProductResourcePermissionSearchMixedNamesFilter(t *testing.T) {
 		existingPermissions := []string{"file:read", "file:write", "document:read"}
 		for _, name := range existingPermissions {
 			permission := ct.CreateProductResourcePermissionRequest{
-				Name:        name,
-				Description: new("Test permission"),
+				ResourceType: "organization",
+				Name:         name,
+				Description:  new("Test permission"),
 			}
 
 			createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

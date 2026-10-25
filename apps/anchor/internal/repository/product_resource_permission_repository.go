@@ -185,6 +185,12 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 			expressions := jetx.ToStringExpressions(input.Filter.ScopeModifiers)
 			whereStmt = whereStmt.AND(table.ProductResourcePermissions.ScopeModifier.IN(expressions...))
 		}
+
+		if input.Filter.Scopes.Active() {
+			whereStmt = whereStmt.AND(
+				scopeCondition(table.ProductResourcePermissions.ResourceTypeID, input.Filter.Scopes),
+			)
+		}
 	}
 
 	nameKey := transactor.StringKey(

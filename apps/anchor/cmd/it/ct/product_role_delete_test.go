@@ -24,7 +24,8 @@ func TestProductRole_Delete(t *testing.T) {
 			roleName := "RoleToDelete_" + ids.MustNew("test")
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: roleName,
+					ResourceType: "organization",
+					Name:         roleName,
 				},
 			)
 			require.NoError(t, err)
@@ -57,8 +58,9 @@ func TestProductRole_Delete(t *testing.T) {
 			}
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
-					Permissions: permissions,
+					ResourceType: "organization",
+					Name:         "RoleWithPermissions_" + ids.MustNew("test"),
+					Permissions:  permissions,
 				},
 			)
 			require.NoError(t, err)
@@ -109,7 +111,8 @@ func TestProductRole_Delete(t *testing.T) {
 		"Deleting a product role for nonexistent product returns a bad request", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -135,7 +138,8 @@ func TestProductRole_Delete(t *testing.T) {
 
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -164,7 +168,8 @@ func TestProductRole_Delete(t *testing.T) {
 		"Product role multiple deletion times", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "RoleToDeleteTwice_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "RoleToDeleteTwice_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -195,7 +200,8 @@ func TestProductRole_Delete(t *testing.T) {
 			sink := productContext.CaptureEvents()
 			createResp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "EventsRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "EventsRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
