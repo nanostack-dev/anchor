@@ -70,14 +70,20 @@ Every sync runs under the Product's transaction-scoped advisory lock (`authz-syn
 
 ## Shadow decisions
 
-`service.DecorateEvaluator`, put around the access evaluator at the application's root (`authz.ShadowDecisions`), runs every decision on both evaluators. The decision always comes from the current evaluator. Once that evaluator reaches an identity in the Organization, a member or an Organization API key, OpenFGA answers every action it evaluated in one `BatchCheck` on `organization:<id>`:
+`service.DecorateEvaluator`, put around the access evaluator at the application's root (`authz.ShadowDecisions`), runs every decision on both evaluators. The decision always comes from the current evaluator, and is returned before OpenFGA is asked. Once that evaluator reaches an identity in the Organization, a member or an Organization API key, OpenFGA answers every action it evaluated, in `BatchCheck`s of at most 50 on `organization:<id>`:
 
-- An answer that differs is logged at warn level with `"event": "authz.shadow_mismatch"`, the product, Organization, subject, permission, and both answers, and is counted (`ShadowStats`).
-- A subject the evaluator stops earlier (an unknown user, an invalid or inactive key, a non-member, an unknown Organization) is not compared: it never reaches OpenFGA after the switch either.
+- The comparison runs off the request path, at most 8 at a time, with a 500 ms budget. A decision that finds all 8 busy is not compared and is counted as dropped.
+- An answer that differs is logged at warn level with `"event": "authz.shadow_mismatch"`, the request's log fields, the product, resource, Organization, subject, permission and both answers. Mismatch lines are sampled at 20 a minute; `ShadowStats` counts every one.
+- A permission the model doesn't know answers not held, as after the switch. A failed read or check, or an item OpenFGA fails on, is counted as failed. The engine not being ready, or a Product with no model yet, is counted as skipped.
+- A subject the evaluator stops earlier (an unknown user, an invalid or inactive key, a non-member, an unknown Organization or workspace) is not compared. The switch (PR 7) keeps every one of those steps in Postgres, so OpenFGA never answers for such a subject.
 - A workspace decision is compared on its Organization, since today's workspace permissions are its Organization role's.
-- The engine not being ready, a Product with no model yet, a failed check or an item OpenFGA can't answer skips the comparison. The OpenFGA side has a 2 s budget.
 
-The component suite fails when the shadow counted a single difference (`CheckAfterRun` in `cmd/it/ct/shared_test.go`). Decisions move to OpenFGA (PR 7) only once the suite and dev show none.
+The component suite checks two things once its tests pass (`CheckAfterRun` in `cmd/it/ct/shared_test.go`):
+
+1. **The shadow** compared at least one action and counted no difference, failure or drop.
+2. **The mirror.** After one sweep, every member's role permissions and every active key's permissions in Anchor's tables are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_mirror_test.go`). Most writes in the suite are never followed by a decision, so the shadow alone would not see their drift.
+
+Decisions move to OpenFGA (PR 7) only once the suite and dev show no difference.
 
 ## Known limits
 
@@ -87,4 +93,4 @@ The component suite fails when the shadow counted a single difference (`CheckAft
 
 ## Tests
 
-`TestAuthzShadow` covers an agreeing and a disagreeing decision. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+`TestAuthzShadow` covers an agreeing and a disagreeing decision, and more actions than one `BatchCheck` takes. `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

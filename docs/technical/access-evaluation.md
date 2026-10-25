@@ -73,8 +73,10 @@ needs eviction on each of those writes.
 Evaluating an API key goes through introspection, so it flips an expired key to
 inactive and updates `last_used_at` at most hourly, as introspection does.
 
-Every decision also runs on OpenFGA in shadow, which never changes the answer and
-logs any difference as `authz.shadow_mismatch` ([authorization engine](authorization-engine.md#shadow-decisions)).
+Every decision that reaches a member or an Organization API key also runs on
+OpenFGA in shadow, after the answer is returned. The shadow never changes the
+answer and logs any difference as `authz.shadow_mismatch`
+([authorization engine](authorization-engine.md#shadow-decisions)).
 
 ## Not covered
 

@@ -3,6 +3,8 @@ package service_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,13 +20,16 @@ func TestAuthzShadow(t *testing.T) {
 			w := givenSyncWorld(t)
 			externalID := givenMemberWithExternalID(t, w)
 			require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-			before := ShadowStats.Mismatches()
+			ShadowStats.Settle()
+			compared, mismatches := ShadowStats.Compared(), ShadowStats.Mismatches()
 
 			decision, err := Evaluator.Evaluate(t.Context(), userRequest(w, externalID))
 
 			require.NoError(t, err)
 			assert.True(t, decision.Allowed)
-			assert.Equal(t, before, ShadowStats.Mismatches())
+			ShadowStats.Settle()
+			assert.Equal(t, compared+1, ShadowStats.Compared())
+			assert.Equal(t, mismatches, ShadowStats.Mismatches())
 		},
 	)
 
@@ -32,13 +37,35 @@ func TestAuthzShadow(t *testing.T) {
 		w := givenSyncWorld(t)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		externalID := givenMemberWithExternalID(t, w)
+		ShadowStats.Settle()
 		before := ShadowStats.Mismatches()
 
 		decision, err := Evaluator.Evaluate(t.Context(), userRequest(w, externalID))
 
 		require.NoError(t, err)
 		assert.True(t, decision.Allowed)
+		ShadowStats.Settle()
 		assert.Equal(t, before+1, ShadowStats.Mismatches())
+	})
+
+	t.Run("More actions than one BatchCheck takes are all compared, and an undeclared one agrees", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		externalID := givenMemberWithExternalID(t, w)
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		request := userRequest(w, externalID)
+		for range 55 {
+			request.Actions = append(request.Actions, "unknown:"+uuid.NewString())
+		}
+		ShadowStats.Settle()
+		compared, mismatches, failed := ShadowStats.Compared(), ShadowStats.Mismatches(), ShadowStats.Failed()
+
+		_, err := Evaluator.Evaluate(t.Context(), request)
+
+		require.NoError(t, err)
+		ShadowStats.Settle()
+		assert.Equal(t, compared+56, ShadowStats.Compared())
+		assert.Equal(t, mismatches, ShadowStats.Mismatches())
+		assert.Equal(t, failed, ShadowStats.Failed())
 	})
 }
 
