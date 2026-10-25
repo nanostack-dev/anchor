@@ -228,19 +228,3 @@ and `AnchorDataTable` then remounts every row.
 Repair: read changing values through a ref inside the cell, and keep the
 column definitions' dependencies to stable inputs such as the product ID.
 
-## Check access answers 401
-
-Symptom: `access.explainer-*` fails after *Check* with `Expected: 200, Received:
-401` on `POST /v1/products/{product_id}/access/v1/evaluation`; the panel shows
-*Anchor didn't check access*.
-
-Cause: the contract lists only `productApiKeyAuth` on `evaluateAccess`, and the
-auth middleware reads each operation's schemes from that contract, so the admin
-UI's platform bearer token is never tried.
-
-Repair: the route must also accept the platform token in the contract (backend
-change, tracked separately). Until it does, the spec forwards the browser's call
-with a narrowly scoped product API key that it creates for the test.
-
-Verification: `pnpm test:e2e:app e2e/features/access/access-explainer.e2e.ts`.
-
