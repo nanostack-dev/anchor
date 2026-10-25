@@ -146,10 +146,12 @@ export function AccessDecision({
 	result,
 	explanation,
 	types,
+	label = "Access decision",
 }: {
 	result: CheckResult;
 	explanation: Explanation;
 	types: TreeType[];
+	label?: string;
 }) {
 	const { question, chain } = result;
 	const subject = subjectLink(question);
@@ -182,7 +184,7 @@ export function AccessDecision({
 
 	if (explanation.decision === "allowed")
 		return (
-			<Box as="section" aria-label="Access decision" className="access-result">
+			<Box as="section" aria-label={label} className="access-result">
 				<Stack space="md">
 					<Alert tone="success" icon={CheckCircleIcon} role="presentation">
 						<AlertTitle>Allowed</AlertTitle>
@@ -221,7 +223,7 @@ export function AccessDecision({
 		);
 
 	return (
-		<Box as="section" aria-label="Access decision" className="access-result">
+		<Box as="section" aria-label={label} className="access-result">
 			<Stack space="md">
 				<Alert tone="critical" icon={ProhibitIcon} role="presentation">
 					<AlertTitle>Denied</AlertTitle>

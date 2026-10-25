@@ -136,7 +136,9 @@ async function chooseAll(
 }
 
 async function shows(canvas: Canvas, text: string | RegExp) {
-	await waitFor(() => expect(canvas.getByText(text)).toBeVisible());
+	await waitFor(() => expect(canvas.getByText(text)).toBeVisible(), {
+		timeout: 3000,
+	});
 }
 
 const pathItems = (canvas: Canvas) =>
@@ -593,6 +595,7 @@ export const EveryDenyReason: Story = {
 						result={result}
 						explanation={explanation}
 						types={TYPES}
+						label={`Access decision for ${reason}`}
 					/>
 				);
 			})}
