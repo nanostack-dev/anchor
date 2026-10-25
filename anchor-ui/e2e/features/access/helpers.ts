@@ -1,13 +1,19 @@
 import type { Page } from "playwright/test";
 import type {
 	ProductOrganizationResponse,
+	ProductResourcePermissionListResponse,
 	ProductResourcePermissionResponse,
+	ProductResourceTypeListResponse,
+	ProductResourceTypeTreeItem,
+	ProductResourceTypeTreeResponse,
+	ProductRoleListResponse,
 	ProductRoleResponse,
 	ProductUserResponse,
 } from "../../../src/client";
 import { type World, expect } from "../../support/fixtures";
 
 export const paths = {
+	resourceTypes: "/products/resources/types",
 	permissions: "/products/resources/permissions",
 	roles: "/products/resources/roles",
 };
@@ -90,4 +96,78 @@ export async function bulkDelete(page: Page, names: string[]) {
 		page.getByText(`${names.length} succeeded. 0 failed.`, { exact: true }),
 	).toBeVisible();
 	for (const name of names) await expect(row(page, name)).toHaveCount(0);
+}
+
+export async function resourceTypeTree(
+	world: World,
+	resourceTypes: ProductResourceTypeTreeItem[],
+) {
+	return world.api.put<ProductResourceTypeTreeResponse>(
+		`${world.productPath}/resource-types`,
+		{ resource_types: resourceTypes },
+	);
+}
+
+export async function scopedPermission(
+	world: World,
+	resourceType: string,
+	prefix: string,
+) {
+	return world.api.post<ProductResourcePermissionResponse>(
+		`${world.productPath}/resource-permissions`,
+		{
+			name: world.name(prefix),
+			description: "Browser fixture permission",
+			resource_type: resourceType,
+		},
+	);
+}
+
+export async function scopedRole(
+	world: World,
+	resourceType: string,
+	permissions: string[],
+	prefix: string,
+) {
+	return world.api.post<ProductRoleResponse>(`${world.productPath}/roles`, {
+		name: world.name(prefix),
+		description: "Browser fixture role",
+		resource_type: resourceType,
+		permissions,
+	});
+}
+
+/**
+ * Removes every type but organization, and what is scoped to them, so the
+ * product can be deleted. Deleting a product whose types have parent links
+ * fails until the parent foreign key cascades; see troubleshooting/access.md.
+ */
+export async function clearResourceTypes(world: World) {
+	const types = await world.api.post<ProductResourceTypeListResponse>(
+		`${world.productPath}/resource-types/search`,
+		{ pagination: { limit: 100 } },
+		200,
+	);
+	const slugs = types.items
+		.filter((type) => !type.built_in)
+		.map((type) => type.slug);
+	if (!slugs.length) return;
+	const filter = { resource_types: slugs };
+	const roles = await world.api.post<ProductRoleListResponse>(
+		`${world.productPath}/roles/search`,
+		{ filter, pagination: { limit: 100 } },
+		200,
+	);
+	for (const scoped of roles.items)
+		await world.api.remove(`${world.productPath}/roles/${scoped.id}`);
+	const grants = await world.api.post<ProductResourcePermissionListResponse>(
+		`${world.productPath}/resource-permissions/search`,
+		{ filter, pagination: { limit: 100 } },
+		200,
+	);
+	for (const scoped of grants.items)
+		await world.api.remove(
+			`${world.productPath}/resource-permissions/${encodeURIComponent(scoped.name)}`,
+		);
+	await resourceTypeTree(world, []);
 }

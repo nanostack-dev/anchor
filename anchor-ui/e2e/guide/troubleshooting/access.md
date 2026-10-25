@@ -26,8 +26,33 @@ both the UI and the persisted API resource.
   organization-scoped views. Their fixture APIs create the selected
   organization and related data. Organization invitations expose single/bulk
   deletion; invitation creation/acceptance remain API features.
+- `access.resource-types-*` covers the Resource types canvas: the read-only
+  tree, per-type role and permission counts, disabled delete with reasons, a
+  draft built with the `+` handle and the keyboard, publish, reload, discard
+  and a refused publish that names the blocking role. The API publishes the
+  starting tree and its scoped permissions and roles.
 - `/workspace-memberships` is an implemented placeholder heading. The test
   records that boundary instead of inventing membership controls.
+
+## Product teardown answers 500 after a resource type test
+
+Symptom: every `access.resource-types-*` scenario passed its steps, then failed
+in the `world` teardown: `DELETE /v1/products/{id}` answered `500
+UNEXPECTED_ERROR`. The API log reads `violates foreign key constraint
+"product_resource_type_parents_parent_type_id_fkey"`.
+
+Cause: migration `000054` declares `product_resource_type_parents.parent_type_id`
+without `ON DELETE CASCADE`. Deleting a product cascades to its resource types,
+and the parent link of any type below `organization` still references a type
+being deleted. Any product that declared a resource type can't be deleted.
+
+Repair in the scenarios: `clearResourceTypes` runs in `test.afterEach`, before
+the fixture teardown. It deletes the roles and permissions scoped to the
+product's own types, then publishes an empty tree. Remove it once the backend
+cascades the parent link (a product-delete defect outside the browser suite).
+
+Verify: `pnpm test:e2e:app e2e/features/access/resource-types.e2e.ts` passes,
+including teardown.
 
 ## Worker login fails with an invalid URL
 

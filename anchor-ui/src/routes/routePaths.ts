@@ -21,6 +21,7 @@ export const ROUTE_PATHS = {
 	PRODUCT_API_KEY_NEW: "/products/product-api-keys/new",
 	PRODUCT_API_KEY_EDIT: "/products/product-api-keys/$apiKeyId/edit",
 	PRODUCT_USERS: "/products/users",
+	PRODUCT_RESOURCE_TYPES: "/products/resources/types",
 	PRODUCT_ROLES: "/products/resources/roles",
 	PRODUCT_ROLE_DETAIL: "/products/resources/roles/$roleId",
 	PRODUCT_PERMISSIONS: "/products/permissions",
