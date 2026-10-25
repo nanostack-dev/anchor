@@ -122,22 +122,24 @@ func backfillProduct(
 }
 
 // copyAll copies every missing template into every Organization of the
-// product, a batch per transaction, until none is missing.
+// product, a batch per transaction, until none is missing or a batch copies
+// nothing because every pair left is skipped.
 func copyAll(ctx context.Context, repo repository.Repository, tx transactor.Transactor, productID string) (int, error) {
 	copied := 0
 	for {
-		var pairs int
+		var pairs, inserted int
 		err := tx.InTx(ctx, func(txCtx context.Context) error {
 			missing, missingErr := repo.MissingCopies(txCtx, productID, "", "", copyBatch)
 			if missingErr != nil {
 				return missingErr
 			}
 			pairs = len(missing)
-			inserted, insertErr := repo.InsertCopies(txCtx, productID, missing)
+			var insertErr error
+			inserted, insertErr = repo.InsertCopies(txCtx, productID, missing)
 			copied += inserted
 			return insertErr
 		})
-		if err != nil || pairs == 0 {
+		if err != nil || pairs == 0 || inserted == 0 {
 			return copied, err
 		}
 	}

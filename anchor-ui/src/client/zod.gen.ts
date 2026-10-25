@@ -255,13 +255,14 @@ export const zProductResourceTypeCreateRequest = z.object({
 });
 
 /**
- * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+ * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `custom_roles` and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
  */
 export const zProductResourceTypeUpdateRequest = z.object({
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).nullish(),
     parent_types: z.array(zResourceTypeSlug).min(1).max(10).optional(),
-    nests_in_itself: z.boolean().optional()
+    nests_in_itself: z.boolean().optional(),
+    custom_roles: z.boolean().optional()
 });
 
 export const zProductResourceTypeTreeItem = z.object({
@@ -287,6 +288,7 @@ export const zProductResourceTypeResponse = z.object({
     description: z.string().nullish(),
     parent_types: z.array(zResourceTypeSlug),
     nests_in_itself: z.boolean(),
+    custom_roles: z.boolean(),
     built_in: z.boolean(),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -341,6 +343,7 @@ export const zOrganizationRoleResponse = z.object({
     name: z.string(),
     description: z.string().nullish(),
     origin: zOrganizationRoleOrigin,
+    customized: z.boolean(),
     resource_type: zResourceTypeSlug,
     is_default: z.boolean(),
     permissions: z.array(z.string()),
@@ -348,7 +351,24 @@ export const zOrganizationRoleResponse = z.object({
     updated_at: z.iso.datetime()
 });
 
+/**
+ * A custom role of the Organization. Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED).
+ */
+export const zOrganizationRoleCreateRequest = z.object({
+    key: zRoleKey.optional(),
+    name: z.string().min(2).max(100),
+    description: z.string().max(500).nullish(),
+    resource_type: zResourceTypeSlug,
+    permissions: z.array(z.string()).optional()
+});
+
+/**
+ * Fields to change. An omitted field keeps its value. Changing the name, the description or the permissions of a template's copy customizes it. That, and any change to a custom role, needs `custom_roles` on the role's resource type, or the call answers 400 CUSTOM_ROLES_DISABLED.
+ */
 export const zOrganizationRoleUpdateRequest = z.object({
+    name: z.string().min(2).max(100).optional(),
+    description: z.string().max(500).nullish(),
+    permissions: z.array(z.string()).optional(),
     is_default: z.boolean().optional()
 });
 
@@ -2929,6 +2949,18 @@ export const zSearchOrganizationMembersPath = z.object({
  */
 export const zSearchOrganizationMembersResponse = zOrganizationMemberListResponse;
 
+export const zCreateOrganizationRoleBody = zOrganizationRoleCreateRequest;
+
+export const zCreateOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid
+});
+
+/**
+ * The custom role.
+ */
+export const zCreateOrganizationRoleResponse = zOrganizationRoleResponse;
+
 export const zSearchOrganizationRolesBody = zOrganizationRoleSearchRequest;
 
 export const zSearchOrganizationRolesPath = z.object({
@@ -2940,6 +2972,17 @@ export const zSearchOrganizationRolesPath = z.object({
  * Matching roles.
  */
 export const zSearchOrganizationRolesResponse = zOrganizationRoleListResponse;
+
+export const zDeleteOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The role is deleted.
+ */
+export const zDeleteOrganizationRoleResponse = z.void();
 
 export const zGetOrganizationRolePath = z.object({
     product_id: zKsuid,
@@ -2964,6 +3007,17 @@ export const zUpdateOrganizationRolePath = z.object({
  * The role after the change.
  */
 export const zUpdateOrganizationRoleResponse = zOrganizationRoleResponse;
+
+export const zResetOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The role after the reset.
+ */
+export const zResetOrganizationRoleResponse = zOrganizationRoleResponse;
 
 export const zCreateOrganizationInvitationBody = zOrganizationInvitationCreateRequest;
 

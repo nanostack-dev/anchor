@@ -21,6 +21,7 @@ function resourceType(
 		name,
 		parent_types: parentTypes,
 		nests_in_itself: false,
+		custom_roles: false,
 		built_in: slug === "organization",
 		created_at: "2026-10-24T09:12:31Z",
 		updated_at: "2026-10-24T09:12:31Z",

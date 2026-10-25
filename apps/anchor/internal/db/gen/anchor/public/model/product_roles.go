@@ -24,4 +24,5 @@ type ProductRoles struct {
 	Key            *string
 	IsDefault      bool
 	PublicID       *string
+	Customized     bool
 }

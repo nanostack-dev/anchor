@@ -175,16 +175,22 @@ func (s *service) Update(
 			return resourcetype.ErrNotFound
 		}
 		changed := applyUpdate(current, input)
-		if !differs(current, changed) {
+		if changed.CustomRoles && !current.BuiltIn() {
+			return resourcetype.ErrCustomRolesNotAvailable
+		}
+		reshaped := differs(current, changed)
+		if !reshaped && changed.CustomRoles == current.CustomRoles {
 			result = current
 			return nil
 		}
-		if current.BuiltIn() {
+		if reshaped && current.BuiltIn() {
 			return resourcetype.ErrBuiltIn
 		}
-		next := replaceType(tree, changed)
-		if err = s.checkReshape(txCtx, input.ProductID, next, changed.Slug); err != nil {
-			return err
+		if reshaped {
+			next := replaceType(tree, changed)
+			if err = s.checkReshape(txCtx, input.ProductID, next, changed.Slug); err != nil {
+				return err
+			}
 		}
 		if err = s.repo.Update(txCtx, changed); err != nil {
 			return err
@@ -365,6 +371,7 @@ func planTree(tree resourcetype.Tree, input resourcetype.ReplaceTreeInput) treeP
 
 func withIdentity(desired, current resourcetype.ResourceType) resourcetype.ResourceType {
 	desired.ID = current.ID
+	desired.CustomRoles = current.CustomRoles
 	desired.CreatedAt = current.CreatedAt
 	desired.UpdatedAt = current.UpdatedAt
 	return desired
@@ -384,6 +391,9 @@ func applyUpdate(current resourcetype.ResourceType, input resourcetype.UpdateInp
 	}
 	if input.NestsInItself != nil {
 		changed.NestsInItself = *input.NestsInItself
+	}
+	if input.CustomRoles != nil {
+		changed.CustomRoles = *input.CustomRoles
 	}
 	return changed
 }

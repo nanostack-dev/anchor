@@ -31,6 +31,7 @@ type AnchorAPI struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	OrganizationRoleService       orgroleservice.Service
+	OrganizationCustomRoleService service.OrganizationCustomRoleService
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -65,6 +66,7 @@ type Params struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	OrganizationRoleService       orgroleservice.Service
+	OrganizationCustomRoleService service.OrganizationCustomRoleService
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -99,6 +101,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ResourcePermissionService:     params.ResourcePermissionService,
 		ResourceTypeService:           params.ResourceTypeService,
 		OrganizationRoleService:       params.OrganizationRoleService,
+		OrganizationCustomRoleService: params.OrganizationCustomRoleService,
 		OrganizationService:           params.OrganizationService,
 		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,

@@ -179,6 +179,9 @@ func (s *productRoleService) CreateProductRole(
 			return scopeErr
 		}
 		productRole.ResourceTypeID = &scope.ID
+		if keyErr := s.claimTemplateKey(txCtx, input.ProductID, productRole.Key); keyErr != nil {
+			return keyErr
+		}
 		var cleared []string
 		if productRole.IsDefault {
 			var defaultErr error
@@ -434,6 +437,9 @@ func (s *productRoleService) DeleteProductRole(
 		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ID); lockErr != nil {
 			return lockErr
 		}
+		if detachErr := s.detachWhenCustomRolesOn(txCtx, input.ProductID, input.ID); detachErr != nil {
+			return detachErr
+		}
 		assignmentCount, countErr := s.roleRepo.CountMembershipAssignments(txCtx, input.ID)
 		if countErr != nil {
 			logger.Error().
@@ -479,7 +485,20 @@ func (s *productRoleService) DeleteProductRole(
 func (s *productRoleService) releaseInvitations(
 	ctx context.Context, productID, roleID string, logger zerolog.Logger,
 ) error {
-	pending, err := s.invitationRepo.ExistsPendingForRole(ctx, productID, roleID)
+	return releaseRoleInvitations(ctx, s.invitationRepo, s.events, productID, roleID, logger)
+}
+
+// releaseRoleInvitations refuses while a pending invitation names the role,
+// then deletes the accepted and expired invitations that name it, each with
+// its deleted event.
+func releaseRoleInvitations(
+	ctx context.Context,
+	invitations invitationrepository.Repository,
+	emitter events.Emitter,
+	productID, roleID string,
+	logger zerolog.Logger,
+) error {
+	pending, err := invitations.ExistsPendingForRole(ctx, productID, roleID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -492,7 +511,7 @@ func (s *productRoleService) releaseInvitations(
 		return NewRoleInUseError(roleID)
 	}
 
-	deleted, err := s.invitationRepo.DeleteNonPendingForRole(ctx, productID, roleID)
+	deleted, err := invitations.DeleteNonPendingForRole(ctx, productID, roleID)
 	if err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -502,7 +521,7 @@ func (s *productRoleService) releaseInvitations(
 		return fault.ErrUnexpected
 	}
 	for _, invitation := range deleted {
-		if emitErr := s.events.Emit(ctx, events.Event{
+		if emitErr := emitter.Emit(ctx, events.Event{
 			Type:      events.OrganizationInvitationDeleted,
 			ProductID: productID,
 			Data:      events.InvitationData(invitation.OrganizationID, invitation.ID),
@@ -721,7 +740,36 @@ func (s *productRoleService) resolveRolePermissions(
 	permissionNames := functional.Slice(input).Map(func(p role.ProductRolePermission) string {
 		return p.PermissionName
 	})
+	canonicalNames, err := resolvePermissionNames(
+		ctx,
+		s.productResourcePermissionRepo,
+		productID,
+		permissionNames,
+		logger,
+	)
+	if err != nil {
+		return nil, err
+	}
 
+	resolved := slices.Clone(input)
+	for i, name := range canonicalNames {
+		resolved[i].PermissionName = name
+	}
+	return resolved, nil
+}
+
+// resolvePermissionNames checks that every named permission exists in the
+// product and returns the names as the product spells them.
+func resolvePermissionNames(
+	ctx context.Context,
+	permissions repository.ProductResourcePermissionRepository,
+	productID string,
+	permissionNames []string,
+	logger zerolog.Logger,
+) ([]string, error) {
+	if len(permissionNames) == 0 {
+		return permissionNames, nil
+	}
 	inputValidator := struct {
 		Permissions []string `validate:"max=100"`
 	}{
@@ -740,7 +788,7 @@ func (s *productRoleService) resolveRolePermissions(
 			Limit: int32(len(permissionNames)), //nolint:gosec // Checked by validation
 		})
 
-	result, err := s.productResourcePermissionRepo.SearchByProduct(
+	result, err := permissions.SearchByProduct(
 		ctx, productID, searchReq,
 	)
 	if err != nil {
@@ -758,12 +806,7 @@ func (s *productRoleService) resolveRolePermissions(
 	if len(missing) > 0 {
 		return nil, NewPermissionsNotFoundError(productID, missing)
 	}
-
-	resolved := slices.Clone(input)
-	for i, name := range canonicalNames {
-		resolved[i].PermissionName = name
-	}
-	return resolved, nil
+	return canonicalNames, nil
 }
 
 func (s *productRoleService) withScope(
@@ -787,7 +830,22 @@ func (s *productRoleService) checkBundle(
 		return nil
 	}
 	names := functional.Slice(permissions).Map(func(p role.ProductRolePermission) string { return p.PermissionName })
-	found, err := s.productResourcePermissionRepo.FindByProductIDAndPermissionNames(ctx, productID, names)
+	return checkNamedBundle(ctx, s.productResourcePermissionRepo, tree, productID, roleScope, names)
+}
+
+// checkNamedBundle reads the scopes of the named permissions and refuses one
+// outside the role's scope.
+func checkNamedBundle(
+	ctx context.Context,
+	permissions repository.ProductResourcePermissionRepository,
+	tree resourcetype.Tree,
+	productID, roleScope string,
+	names []string,
+) error {
+	if len(names) == 0 {
+		return nil
+	}
+	found, err := permissions.FindByProductIDAndPermissionNames(ctx, productID, names)
 	if err != nil {
 		return err
 	}
@@ -864,6 +922,39 @@ func (s *productRoleService) keyDuplicationValidation(
 		return s.keyConflict(ctx, productID, name, key, logger)
 	}
 	return nil
+}
+
+// claimTemplateKey holds the key for the transaction and refuses one that a
+// custom role of any Organization holds: every Organization's copy of the
+// template would take it.
+func (s *productRoleService) claimTemplateKey(ctx context.Context, productID, key string) error {
+	if err := s.organizationRoles.LockKey(ctx, productID, key); err != nil {
+		return err
+	}
+	taken, err := s.organizationRoles.CustomKeyTaken(ctx, productID, key)
+	if err != nil {
+		return err
+	}
+	if taken {
+		return role.NewKeyExistsError(key)
+	}
+	return nil
+}
+
+// detachWhenCustomRolesOn keeps every member's access when the Product lets
+// Organizations write their own roles: the copies of the template that are
+// held, named by a pending invitation or customized become custom roles of
+// their Organization (ADR-0022 D10.2). With the switch off, a held template
+// still answers 409 ROLE_IN_USE.
+func (s *productRoleService) detachWhenCustomRolesOn(ctx context.Context, productID, templateID string) error {
+	tree, err := s.resourceTypes.Tree(ctx, productID)
+	if err != nil {
+		return err
+	}
+	if !customRolesOn(tree, resourcetype.OrganizationSlug) {
+		return nil
+	}
+	return s.organizationRoles.DetachCopies(ctx, productID, templateID)
 }
 
 // keyConflict names the conflict of a create whose key is taken. A key

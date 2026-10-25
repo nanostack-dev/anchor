@@ -35,9 +35,12 @@ type Role struct {
 	ResourceTypeID *string
 	ResourceType   string
 	IsDefault      bool
-	Permissions    []string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// Customized marks a copy the Organization changed: it keeps its own
+	// bundle when its template changes, until it is reset (ADR-0022 D10).
+	Customized  bool
+	Permissions []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // PublicID is the ID callers see and send: a copy keeps its template's ID
@@ -89,11 +92,36 @@ func (in SearchInput) Validate() error {
 	return searchx.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldKey, SortFieldName)
 }
 
+// MaxCustomRoles caps the custom roles one Organization holds (ADR-0022 D10).
+const MaxCustomRoles = 50
+
+// CreateInput is a custom role of an Organization (ADR-0022 D9).
+type CreateInput struct {
+	ProductID      string   `validate:"required,notblank"`
+	OrganizationID string   `validate:"required,notblank"`
+	Key            string   `validate:"omitempty,notblank,max=100"`
+	Name           string   `validate:"required,notblank,min=2,max=100"`
+	Description    *string  `validate:"omitempty,max=500"`
+	ResourceType   string   `validate:"max=49"`
+	Permissions    []string `validate:"max=100,unique,dive,notblank"`
+}
+
 type UpdateInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 	RoleID         string `validate:"required,notblank"`
 	IsDefault      *bool
+	Name           *string  `validate:"omitempty,notblank,min=2,max=100"`
+	Description    *string  `validate:"omitempty,max=500"`
+	Permissions    []string `validate:"omitempty,max=100,unique,dive,notblank"`
+	// PermissionsSet tells an empty Permissions from an omitted one.
+	PermissionsSet bool
+}
+
+// ChangesBundle reports whether the update rewrites the role itself, which
+// customizes a copy of a template.
+func (in UpdateInput) ChangesBundle() bool {
+	return in.Name != nil || in.Description != nil || in.PermissionsSet
 }
 
 var (
@@ -116,7 +144,39 @@ var (
 		"ROLE_REQUIRED",
 		"Name a role: this organization has no default role.",
 	)
+
+	ErrCustomRolesDisabled = fault.BadRequest(
+		"CUSTOM_ROLES_DISABLED",
+		"This product doesn't allow custom roles on that resource type.",
+	)
+
+	ErrTemplateCopyNotDeletable = fault.Conflict(
+		"TEMPLATE_COPY_NOT_DELETABLE",
+		"A copy of a role template goes with its template. Reset it or delete the template instead.",
+	)
+
+	ErrNotATemplateCopy = fault.Conflict(
+		"NOT_A_TEMPLATE_COPY",
+		"Only a copy of a role template can be reset.",
+	)
 )
+
+// NewCustomRoleLimitError answers a custom role past the Organization's limit.
+func NewCustomRoleLimitError() *fault.Error {
+	return fault.Conflict(
+		"CUSTOM_ROLE_LIMIT_REACHED",
+		"This organization already has the most custom roles it can hold.",
+	).Metadata(map[string]any{"limit": MaxCustomRoles})
+}
+
+// NewKeyExistsError answers a custom role key that another role of the
+// Organization, or a role template of its Product, already holds.
+func NewKeyExistsError(key string) *fault.Error {
+	return fault.Conflict(
+		"ROLE_KEY_DUPLICATE",
+		"A role of this organization, or a role template of its product, already has that key.",
+	).Metadata(map[string]any{"key": key})
+}
 
 // WithScopes resolves the filter's resource types against the product's tree.
 func (f Filter) WithScopes(tree resourcetype.Tree) Filter {

@@ -52,7 +52,33 @@ Locks keep copies consistent with their templates:
 - An Organization role's `is_default` shows the effective default: the Organization's own choice, or else its copy of the Product's default template. A PATCH compares with that effective default: `true` on the role that already is the default changes nothing, so an Organization that never chose keeps following the Product's default. `false` on the Organization's own choice returns it to the template's copy; on that copy itself it changes nothing.
 - Adding a member, creating an Organization with a founding member, or creating an invitation without `role_id` uses the Organization's default. With none, the call answers `400 ROLE_REQUIRED`.
 
-Routes under `/organizations/{organization_id}/roles` take the `organization_role:read` and `organization_role:update` API key scopes. The list-shaped `role_ids`, `role_keys` and `roles` contract arrives with role assignments (ADR-0022 D3, PR 12).
+Routes under `/organizations/{organization_id}/roles` take the `organization_role:read`, `:create`, `:update` and `:delete` API key scopes. The list-shaped `role_ids`, `role_keys` and `roles` contract arrives with role assignments (ADR-0022 D3, PR 12).
+
+## Custom roles and customized copies
+
+A resource type's `custom_roles` switch lets each Organization shape its own roles (ADR-0022 D9, D10). It is off, so an existing Product changes nothing. For now only `organization` accepts it (phase 1); any other type answers `400 CUSTOM_ROLES_NOT_AVAILABLE`.
+
+| Request | Switch off | Switch on |
+| --- | --- | --- |
+| `POST .../organizations/{organization_id}/roles` | `400 CUSTOM_ROLES_DISABLED` | `201` custom role, `organization.role.created` |
+| `PATCH` name, description or permissions of a copy | `400 CUSTOM_ROLES_DISABLED` | the copy is `customized` and keeps its bundle when the template changes |
+| `PATCH` name, description or permissions of a custom role | `400 CUSTOM_ROLES_DISABLED` | `200`, `organization.role.updated` |
+| `PATCH` `is_default` only | allowed | allowed |
+| `POST .../roles/{role_id}/reset` | allowed | allowed |
+| `DELETE` of a custom role | allowed | allowed |
+| `DELETE` of a template a member holds | `409 ROLE_IN_USE` | its copies that are held, invited or customized become custom roles |
+
+- A custom role names its `resource_type`; Anchor never picks one (`400 RESOURCE_TYPE_REQUIRED`). Its permissions follow the same scope rule as a template's (D1).
+- An Organization holds at most 50 custom roles (`409 CUSTOM_ROLE_LIMIT_REACHED`), counted under a lock on the Organization's row. Copies that become custom roles when their template is deleted count too, and may take it past 50; nobody loses access over a limit.
+- One key names one role in an Organization. A custom role's key may not equal another role of the Organization or any role template of the Product, since each template's copy holds its key. A template's key may not equal any Organization's custom role. Both sides hold an advisory lock on the key while they check, so the two can't race (`409 ROLE_KEY_DUPLICATE`).
+- A customized copy keeps its own name, description and permissions when its template changes; `SyncCopies` skips it. A reset brings back the template's and clears `customized`. A copy can't be deleted (`409 TEMPLATE_COPY_NOT_DELETABLE`), and only a copy can be reset (`409 NOT_A_TEMPLATE_COPY`).
+- A custom role a member holds, or that a pending invitation names, can't be deleted (`409 ROLE_IN_USE`). A delete locks the role's row before it counts, and a write that names a custom role holds it under a key share lock, so a member added during the delete answers `400 ROLE_NOT_FOUND_IN_REQUEST` instead of joining a role the delete removes. Deleting the Organization's chosen default returns it to the template's copy and emits `organization.role.updated` for that copy.
+- A change or reset of a role locks its row first, so it works from the role as a concurrent template change left it.
+- A template whose key one of an Organization's custom roles holds is not copied into that Organization; a write naming it there answers `400 ROLE_NOT_FOUND_IN_REQUEST`. Anchor refuses such a key, so this happens only with a custom role made while a release that didn't check custom keys ran.
+- Deleting a template with the switch on first gives every Organization with a member or a pending invitation on it its copy. Then the copies that are held, invited or customized become custom roles, with their own row ID as their ID; pending invitations move onto them. A copy that was its Organization's default through the Product's default template stays its default. Each emits `organization.role.created`; the members and invitations that now show the new ID emit nothing, so a consumer re-reads the Organization's members after that event. The other copies are deleted with the template.
+- The detach follows the `organization` type's switch, whatever the template's scope. A detached copy scoped to another type can't be changed until that type gets its own switch (phase 2), but it can be reset, deleted and assigned.
+- Turning the switch off keeps every custom role and customized copy working; it only refuses new ones and new changes. A template deleted while the switch is off removes its copies as before, customized ones included, unless a member holds one (`409 ROLE_IN_USE`).
+- The tree reshape check (resource types) reads the bundles of custom roles and customized copies too.
 
 ## Rollback
 
@@ -60,4 +86,4 @@ Migrations `000061` and `000062` replace the product-wide name guard with a guar
 
 ## Tests
 
-`organization_role_test.go` in `apps/anchor/cmd/it/ct` covers the copies, propagation of grants and revokes to every Organization through the access evaluation, the race between a copy and a template change, a member added while its template is deleted, keys, both defaults with every switch state, their races and a default moved while an Organization copies, invitations, founding members, another Organization's role IDs, the search filter limits and deletion. `TestCursorSearches` has the `searchOrganizationRoles` case and `TestConcurrentSameNameWritesReturnConflict` the duplicate-key race. `TestRoleTemplateKeyBackfill`, `TestCopyBackfill`, `TestEnsureCopiesBeyondOneBatch` and `TestOrganizationCopiesWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` cover the backfill, the copy batches and the template routes over copies.
+`organization_custom_role_test.go` covers each switch state, the custom role limit, keys, customize and reset, deletes and template deletes with the switch on. `organization_role_test.go` in `apps/anchor/cmd/it/ct` covers the copies, propagation of grants and revokes to every Organization through the access evaluation, the race between a copy and a template change, a member added while its template is deleted, keys, both defaults with every switch state, their races and a default moved while an Organization copies, invitations, founding members, another Organization's role IDs, the search filter limits and deletion. `TestCursorSearches` has the `searchOrganizationRoles` case and `TestConcurrentSameNameWritesReturnConflict` the duplicate-key race. `TestRoleTemplateKeyBackfill`, `TestCopyBackfill`, `TestEnsureCopiesBeyondOneBatch` and `TestOrganizationCopiesWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` cover the backfill, the copy batches and the template routes over copies.

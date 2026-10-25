@@ -29,6 +29,7 @@ type productRolesTable struct {
 	Key            postgres.ColumnString
 	IsDefault      postgres.ColumnBool
 	PublicID       postgres.ColumnString
+	Customized     postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -82,9 +83,10 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		KeyColumn            = postgres.StringColumn("key")
 		IsDefaultColumn      = postgres.BoolColumn("is_default")
 		PublicIDColumn       = postgres.StringColumn("public_id")
-		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn}
-		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn}
-		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn, PublicIDColumn}
+		CustomizedColumn     = postgres.BoolColumn("customized")
+		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn, CustomizedColumn}
+		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn, CustomizedColumn}
+		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn, PublicIDColumn, CustomizedColumn}
 	)
 
 	return productRolesTable{
@@ -103,6 +105,7 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		Key:            KeyColumn,
 		IsDefault:      IsDefaultColumn,
 		PublicID:       PublicIDColumn,
+		Customized:     CustomizedColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

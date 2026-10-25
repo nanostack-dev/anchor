@@ -17,6 +17,10 @@ A Product declares a tree of **resource types** under the built-in `organization
 
 `PUT /v1/products/{product_id}/resource-types` replaces every type except `organization` in one transaction, matched by slug: it is what the admin UI publishes a draft tree with. It writes only the types that changed, so publishing the same tree twice changes nothing. Every tree write holds the catalog lock, a `FOR NO KEY UPDATE` on the Product's `organization` row; role and permission writes hold it `FOR SHARE`, so no tree write can move a scope boundary while a bundle is being checked. Each type created, updated or deleted emits `product.resource_type.created|updated|deleted` with `resource_type_id` and `resource_type`.
 
+## Custom roles switch
+
+Each type has `custom_roles`, off by default. On, it lets Organizations create custom roles scoped to the type and customize their copies of its role templates ([Organization roles](organization-roles.md)). The built-in `organization` type accepts a change of this switch and nothing else (`409 BUILT_IN_RESOURCE_TYPE`). The Product's own types answer `400 CUSTOM_ROLES_NOT_AVAILABLE` to `true` until ADR-0022 D9 phase 2. A change emits `product.resource_type.updated`.
+
 ## Scopes on roles and permissions
 
 - Creating a permission or a role requires `resource_type`. Anchor never picks one: a missing scope is `400 RESOURCE_TYPE_REQUIRED`, an undeclared one `400 RESOURCE_TYPE_NOT_FOUND`.

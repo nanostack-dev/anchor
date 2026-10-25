@@ -85,3 +85,49 @@ func (c OrganizationRoleClient) Update(
 	require.NotNil(c.t, resp.JSON200)
 	return *resp.JSON200
 }
+
+func (c OrganizationRoleClient) CreateRaw(
+	body nanostackClient.CreateOrganizationRoleJSONRequestBody,
+) *nanostackClient.CreateOrganizationRoleResponse {
+	c.t.Helper()
+	resp, err := c.client.CreateOrganizationRoleWithResponse(context.Background(), c.productID, c.organizationID, body)
+	require.NoError(c.t, err)
+	return resp
+}
+
+func (c OrganizationRoleClient) Create(
+	body nanostackClient.CreateOrganizationRoleJSONRequestBody,
+) nanostackClient.OrganizationRoleResponse {
+	c.t.Helper()
+	resp := c.CreateRaw(body)
+	require.Equal(c.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	require.NotNil(c.t, resp.JSON201)
+	return *resp.JSON201
+}
+
+func (c OrganizationRoleClient) DeleteRaw(roleID string) *nanostackClient.DeleteOrganizationRoleResponse {
+	c.t.Helper()
+	resp, err := c.client.DeleteOrganizationRoleWithResponse(
+		context.Background(),
+		c.productID,
+		c.organizationID,
+		roleID,
+	)
+	require.NoError(c.t, err)
+	return resp
+}
+
+func (c OrganizationRoleClient) ResetRaw(roleID string) *nanostackClient.ResetOrganizationRoleResponse {
+	c.t.Helper()
+	resp, err := c.client.ResetOrganizationRoleWithResponse(context.Background(), c.productID, c.organizationID, roleID)
+	require.NoError(c.t, err)
+	return resp
+}
+
+func (c OrganizationRoleClient) Reset(roleID string) nanostackClient.OrganizationRoleResponse {
+	c.t.Helper()
+	resp := c.ResetRaw(roleID)
+	require.Equal(c.t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+	require.NotNil(c.t, resp.JSON200)
+	return *resp.JSON200
+}

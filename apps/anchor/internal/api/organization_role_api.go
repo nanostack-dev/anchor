@@ -18,6 +18,7 @@ func mapOrganizationRoleToResponse(role organizationrole.Role) OrganizationRoleR
 		Name:           role.Name,
 		Description:    functional.OptionOf(role.Description, role.Description != "").ToPtr(),
 		Origin:         role.Origin(),
+		Customized:     role.Customized,
 		ResourceType:   role.ResourceType,
 		IsDefault:      role.IsDefault,
 		Permissions:    append([]string{}, role.Permissions...),
@@ -67,14 +68,57 @@ func (s *AnchorAPI) GetOrganizationRole(
 func (s *AnchorAPI) UpdateOrganizationRole(
 	ctx context.Context, request UpdateOrganizationRoleRequestObject,
 ) (UpdateOrganizationRoleResponseObject, error) {
-	role, err := s.OrganizationRoleService.Update(ctx, organizationrole.UpdateInput{
+	role, err := s.OrganizationCustomRoleService.Update(ctx, organizationrole.UpdateInput{
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
 		RoleID:         request.RoleId,
 		IsDefault:      request.Body.IsDefault,
+		Name:           request.Body.Name,
+		Description:    request.Body.Description,
+		Permissions:    functional.FromPtr(request.Body.Permissions).OrElse(nil),
+		PermissionsSet: request.Body.Permissions != nil,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return UpdateOrganizationRole200JSONResponse(mapOrganizationRoleToResponse(role)), nil
+}
+
+func (s *AnchorAPI) CreateOrganizationRole(
+	ctx context.Context, request CreateOrganizationRoleRequestObject,
+) (CreateOrganizationRoleResponseObject, error) {
+	role, err := s.OrganizationCustomRoleService.Create(ctx, organizationrole.CreateInput{
+		ProductID:      request.ProductId,
+		OrganizationID: request.OrganizationId,
+		Key:            functional.FromPtr(request.Body.Key).OrElse(""),
+		Name:           request.Body.Name,
+		Description:    request.Body.Description,
+		ResourceType:   request.Body.ResourceType,
+		Permissions:    request.Body.Permissions,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return CreateOrganizationRole201JSONResponse(mapOrganizationRoleToResponse(role)), nil
+}
+
+func (s *AnchorAPI) DeleteOrganizationRole(
+	ctx context.Context, request DeleteOrganizationRoleRequestObject,
+) (DeleteOrganizationRoleResponseObject, error) {
+	if err := s.OrganizationCustomRoleService.Delete(
+		ctx, request.ProductId, request.OrganizationId, request.RoleId,
+	); err != nil {
+		return nil, err
+	}
+	return DeleteOrganizationRole204Response{}, nil
+}
+
+func (s *AnchorAPI) ResetOrganizationRole(
+	ctx context.Context, request ResetOrganizationRoleRequestObject,
+) (ResetOrganizationRoleResponseObject, error) {
+	role, err := s.OrganizationCustomRoleService.Reset(ctx, request.ProductId, request.OrganizationId, request.RoleId)
+	if err != nil {
+		return nil, err
+	}
+	return ResetOrganizationRole200JSONResponse(mapOrganizationRoleToResponse(role)), nil
 }

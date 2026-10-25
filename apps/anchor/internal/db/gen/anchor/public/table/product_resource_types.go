@@ -25,6 +25,7 @@ type productResourceTypesTable struct {
 	NestsInItself postgres.ColumnBool
 	CreatedAt     postgres.ColumnTimestampz
 	UpdatedAt     postgres.ColumnTimestampz
+	CustomRoles   postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -74,9 +75,10 @@ func newProductResourceTypesTableImpl(schemaName, tableName, alias string) produ
 		NestsInItselfColumn = postgres.BoolColumn("nests_in_itself")
 		CreatedAtColumn     = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn     = postgres.TimestampzColumn("updated_at")
-		allColumns          = postgres.ColumnList{IDColumn, ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns      = postgres.ColumnList{ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns      = postgres.ColumnList{NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
+		CustomRolesColumn   = postgres.BoolColumn("custom_roles")
+		allColumns          = postgres.ColumnList{IDColumn, ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn, CustomRolesColumn}
+		mutableColumns      = postgres.ColumnList{ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn, CustomRolesColumn}
+		defaultColumns      = postgres.ColumnList{NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn, CustomRolesColumn}
 	)
 
 	return productResourceTypesTable{
@@ -91,6 +93,7 @@ func newProductResourceTypesTableImpl(schemaName, tableName, alias string) produ
 		NestsInItself: NestsInItselfColumn,
 		CreatedAt:     CreatedAtColumn,
 		UpdatedAt:     UpdatedAtColumn,
+		CustomRoles:   CustomRolesColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

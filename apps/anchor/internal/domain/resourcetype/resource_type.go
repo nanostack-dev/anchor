@@ -29,8 +29,11 @@ type ResourceType struct {
 	Description   *string
 	ParentTypes   []string
 	NestsInItself bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// CustomRoles lets each Organization create roles scoped to this type and
+	// customize its copies of the role templates (ADR-0022 D9).
+	CustomRoles bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // NewOrganization is the root type seeded for a product.

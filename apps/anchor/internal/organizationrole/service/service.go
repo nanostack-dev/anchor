@@ -48,11 +48,26 @@ type Service interface {
 	// SyncTemplate brings every copy of a template in step with it.
 	SyncTemplate(txCtx context.Context, productID, templateID string) error
 
+	// DetachCopies turns the copies of a template being deleted that a member
+	// holds, a pending invitation names, or the Organization customized into
+	// custom roles of their Organization (ADR-0022 D10.2).
+	DetachCopies(txCtx context.Context, productID, templateID string) error
+	// LockKey holds a role key of the product for the transaction.
+	LockKey(txCtx context.Context, productID, key string) error
+	// CustomKeyTaken reports whether a custom role of any Organization of the
+	// product holds the key.
+	CustomKeyTaken(txCtx context.Context, productID, key string) (bool, error)
 	// Read reads an Organization's role with its scope and effective default.
 	Read(txCtx context.Context, productID, organizationID, roleID string) (organizationrole.Role, error)
 	// ApplyDefault applies the update's is_default inside the caller's
 	// transaction.
 	ApplyDefault(txCtx context.Context, input organizationrole.UpdateInput) error
+	// EffectiveDefault names the row of the Organization's default role, or
+	// is empty when it has none.
+	EffectiveDefault(txCtx context.Context, productID, organizationID string) (string, error)
+	// ReportDefaultMove emits organization.role.updated for the role that is
+	// now the Organization's default, when it is not the previous one.
+	ReportDefaultMove(txCtx context.Context, productID, organizationID, previous string) error
 
 	Get(ctx context.Context, productID, organizationID, roleID string) (organizationrole.Role, error)
 	Search(ctx context.Context, input organizationrole.SearchInput) (search.Result[organizationrole.Role], error)
@@ -134,12 +149,17 @@ func (s *service) Resolve(
 		}
 	}
 	role, err := found.ToResult(organizationrole.NewBodyRoleNotFoundError(roleID)).Value()
-	if err != nil || role.TemplateID == nil {
+	if err != nil {
 		return role, err
 	}
-	// The write that follows refers to the copy; holding its template keeps a
-	// delete of the template from removing the copy under it.
-	held, err := s.repo.ShareTemplate(txCtx, productID, *role.TemplateID)
+	// The write that follows refers to the role; holding it, or the template a
+	// copy follows, keeps a delete from removing the role under it.
+	var held bool
+	if role.TemplateID != nil {
+		held, err = s.repo.ShareTemplate(txCtx, productID, *role.TemplateID)
+	} else {
+		held, err = s.repo.ShareRole(txCtx, productID, role.RowID)
+	}
 	if err != nil {
 		return organizationrole.Role{}, err
 	}
@@ -478,4 +498,53 @@ func (s *service) unexpected(err error, productID, operation string) error {
 	s.logger.Error().Err(err).Str("product_id", productID).Str("operation", operation).
 		Msg("organization role operation failed")
 	return fault.ErrUnexpected
+}
+
+func (s *service) DetachCopies(txCtx context.Context, productID, templateID string) error {
+	organizations, err := s.repo.OrganizationsOnTemplate(txCtx, productID, templateID)
+	if err != nil {
+		return err
+	}
+	for _, organizationID := range organizations {
+		if err = s.EnsureCopies(txCtx, productID, organizationID); err != nil {
+			return err
+		}
+	}
+	detached, err := s.repo.DetachCopies(txCtx, productID, templateID)
+	if err != nil {
+		return err
+	}
+	for _, role := range detached {
+		if err = s.events.Emit(txCtx, events.Event{
+			Type:      events.OrganizationRoleCreated,
+			ProductID: productID,
+			Data: events.Data{
+				events.FieldOrganizationID: role.OrganizationID,
+				events.FieldRoleID:         role.PublicID(),
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *service) EffectiveDefault(txCtx context.Context, productID, organizationID string) (string, error) {
+	return s.effectiveDefault(txCtx, productID, organizationID)
+}
+
+func (s *service) ReportDefaultMove(txCtx context.Context, productID, organizationID, previous string) error {
+	next, err := s.effectiveDefault(txCtx, productID, organizationID)
+	if err != nil || next == previous || next == "" {
+		return err
+	}
+	return s.emitDefaultChanges(txCtx, productID, organizationID, "", next)
+}
+
+func (s *service) LockKey(txCtx context.Context, productID, key string) error {
+	return s.repo.LockKey(txCtx, productID, key)
+}
+
+func (s *service) CustomKeyTaken(txCtx context.Context, productID, key string) (bool, error) {
+	return s.repo.KeyTaken(txCtx, productID, "", key, false)
 }

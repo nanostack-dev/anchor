@@ -2939,6 +2939,23 @@ type OrganizationMemberSearchRequest struct {
 // OrganizationMemberSearchRequestSortBy Field to sort by.
 type OrganizationMemberSearchRequestSortBy string
 
+// OrganizationRoleCreateRequest A custom role of the Organization. Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED).
+type OrganizationRoleCreateRequest struct {
+	Description *string `json:"description,omitempty"`
+
+	// Key Unique in the Organization regardless of case, and different from every role template's key, since each template's copy holds its key (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+	Key *RoleKey `json:"key,omitempty"`
+
+	// Name Examples: Billing auditor
+	Name string `json:"name"`
+
+	// Permissions Names of the permissions the role bundles. Each must be scoped to the role's resource type or to a type below it, or the call answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
+	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceType The resource type the role is scoped to. Required: Anchor never picks a scope. It never changes after creation.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+}
+
 // OrganizationRoleFilter defines model for OrganizationRoleFilter.
 type OrganizationRoleFilter struct {
 	Ids           []Ksuid            `json:"ids,omitempty"`
@@ -2964,8 +2981,11 @@ type OrganizationRoleOrigin string
 
 // OrganizationRoleResponse A role an Organization owns. A copy of a role template is addressed by its template's ID inside its Organization, so the IDs released clients hold keep working; a custom role has an ID of its own.
 type OrganizationRoleResponse struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description *string   `json:"description,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// Customized `true` for a copy of a role template that the Organization changed. It keeps its own name, description and permissions when the template changes, until it is reset. Always `false` for a custom role.
+	Customized  bool    `json:"customized"`
+	Description *string `json:"description,omitempty"`
 
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
@@ -3020,10 +3040,16 @@ type OrganizationRoleSearchRequest struct {
 // OrganizationRoleSortField Field to sort by. Every order ends with the role's ID.
 type OrganizationRoleSortField string
 
-// OrganizationRoleUpdateRequest defines model for OrganizationRoleUpdateRequest.
+// OrganizationRoleUpdateRequest Fields to change. An omitted field keeps its value. Changing the name, the description or the permissions of a template's copy customizes it. That, and any change to a custom role, needs `custom_roles` on the role's resource type, or the call answers 400 CUSTOM_ROLES_DISABLED.
 type OrganizationRoleUpdateRequest struct {
+	Description *string `json:"description,omitempty"`
+
 	// IsDefault `true` makes this role the Organization's default role, in place of the previous one. It must be scoped to `organization`, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. `false` on the Organization's own choice returns it to the copy of the Product's default role template; on that copy itself it changes nothing. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
-	IsDefault *bool `json:"is_default,omitempty"`
+	IsDefault *bool   `json:"is_default,omitempty"`
+	Name      *string `json:"name,omitempty"`
+
+	// Permissions Replaces the permissions the role bundles. Each must be scoped to the role's resource type or to a type below it, or the call answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
+	Permissions *[]string `json:"permissions,omitempty"`
 }
 
 // PagedListResponse defines model for PagedListResponse.
@@ -3789,10 +3815,13 @@ type ProductResourceTypeListResponse struct {
 
 // ProductResourceTypeResponse defines model for ProductResourceTypeResponse.
 type ProductResourceTypeResponse struct {
-	// BuiltIn `true` for `organization`, the root type every product has. It can't be changed or deleted.
-	BuiltIn     bool      `json:"built_in"`
-	CreatedAt   time.Time `json:"created_at"`
-	Description *string   `json:"description,omitempty"`
+	// BuiltIn `true` for `organization`, the root type every product has. It can't be deleted, and only its `custom_roles` switch changes.
+	BuiltIn   bool      `json:"built_in"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// CustomRoles `true` when Organizations may create custom roles scoped to this type and customize their copies of its role templates.
+	CustomRoles bool    `json:"custom_roles"`
+	Description *string `json:"description,omitempty"`
 
 	// Id Unique identifier using KSUID format with a resource-specific prefix.
 	//
@@ -3858,8 +3887,10 @@ type ProductResourceTypeTreeResponse struct {
 	ResourceTypes []ProductResourceTypeResponse `json:"resource_types"`
 }
 
-// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `custom_roles` and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
 type ProductResourceTypeUpdateRequest struct {
+	// CustomRoles `true` lets each Organization create its own roles scoped to this type, and customize its copies of the role templates. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and refuses new ones.
+	CustomRoles   *bool   `json:"custom_roles,omitempty"`
 	Description   *string `json:"description,omitempty"`
 	Name          *string `json:"name,omitempty"`
 	NestsInItself *bool   `json:"nests_in_itself,omitempty"`
@@ -4961,6 +4992,9 @@ type SearchOrganizationMembersJSONRequestBody = OrganizationMemberSearchRequest
 
 // UpdateOrganizationMemberRoleJSONRequestBody defines body for UpdateOrganizationMemberRole for application/json ContentType.
 type UpdateOrganizationMemberRoleJSONRequestBody = OrganizationMemberRoleRequest
+
+// CreateOrganizationRoleJSONRequestBody defines body for CreateOrganizationRole for application/json ContentType.
+type CreateOrganizationRoleJSONRequestBody = OrganizationRoleCreateRequest
 
 // SearchOrganizationRolesJSONRequestBody defines body for SearchOrganizationRoles for application/json ContentType.
 type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest

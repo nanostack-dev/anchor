@@ -1401,6 +1401,8 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 >
 > **Answer:** behind the switch, off by default, Organization included.
 
+- **Implementation note (PR 3).** Phase 1 is in: only the `organization` type accepts `custom_roles: true`; any other type answers `400 CUSTOM_ROLES_NOT_AVAILABLE` until phase 2 (PR 14). Creating or changing a role needs the switch; deleting or resetting one does not. When the switch is on, deleting a template keeps the copies that are held, named by a pending invitation or customized, as custom roles, and deletes the others. A copy that is used by nobody and unchanged is not worth keeping. See [Organization roles](../technical/organization-roles.md).
+
 </details>
 
 <a id="dr-d10"></a>

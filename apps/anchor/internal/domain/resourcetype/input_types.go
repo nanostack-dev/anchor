@@ -26,6 +26,7 @@ type UpdateInput struct {
 	Description   *string  `validate:"omitempty,max=500"`
 	ParentTypes   []string `validate:"max=10,unique,dive,required"`
 	NestsInItself *bool
+	CustomRoles   *bool
 }
 
 // TreeItem is one type of a whole-tree replacement, matched by slug.

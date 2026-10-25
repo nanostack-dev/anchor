@@ -18,6 +18,7 @@ func mapResourceTypeToResponse(rt resourcetype.ResourceType) ProductResourceType
 		Description:   rt.Description,
 		ParentTypes:   append([]ResourceTypeSlug{}, rt.ParentTypes...),
 		NestsInItself: rt.NestsInItself,
+		CustomRoles:   rt.CustomRoles,
 		BuiltIn:       rt.BuiltIn(),
 		CreatedAt:     rt.CreatedAt,
 		UpdatedAt:     rt.UpdatedAt,
@@ -112,6 +113,7 @@ func (s *AnchorAPI) UpdateProductResourceType(
 		Description:   request.Body.Description,
 		ParentTypes:   functional.FromPtr(request.Body.ParentTypes).OrElse(nil),
 		NestsInItself: request.Body.NestsInItself,
+		CustomRoles:   request.Body.CustomRoles,
 	})
 	if err != nil {
 		return nil, err

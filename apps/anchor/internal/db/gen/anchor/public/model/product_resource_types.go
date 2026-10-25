@@ -20,4 +20,5 @@ type ProductResourceTypes struct {
 	NestsInItself bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	CustomRoles   bool
 }

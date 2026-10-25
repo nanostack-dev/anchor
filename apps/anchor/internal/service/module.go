@@ -20,6 +20,7 @@ func NewModule() fx.Option {
 			NewWorkspaceService,
 			NewOrganizationAPIKeyService,
 			NewOrganizationMembershipService,
+			NewOrganizationCustomRoleService,
 			NewPermissionService,
 			NewPlatformUserService,
 

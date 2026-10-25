@@ -54,6 +54,12 @@
       "organization_member:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
     "productApiKeyAuth": [
       "workspace:delete"
@@ -480,10 +486,22 @@
       "organization_member:read"
     ]
   },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/roles": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:create"
+    ]
+  },
   "POST /v1/products/{product_id}/organizations/{organization_id}/roles/search": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_role:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}/reset": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:update"
     ]
   },
   "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces": {

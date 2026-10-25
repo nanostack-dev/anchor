@@ -30,9 +30,9 @@ var (
 
 const slugUniqueConstraint = "product_resource_types_product_id_slug_key"
 
-// RoleBundle is one role template or custom role of a product with the scopes
-// of the permissions it bundles, all as resource type IDs. A copy of a
-// template bundles what its template bundles. A NULL scope is a row a release before
+// RoleBundle is one role template, custom role or customized copy of a
+// product with the scopes of the permissions it bundles, all as resource type
+// IDs. A copy that follows its template bundles what its template bundles. A NULL scope is a row a release before
 // resource types wrote during a rolling deploy; it counts as organization.
 type RoleBundle struct {
 	RoleID            string
@@ -125,8 +125,8 @@ func (r *repositoryImpl) Create(ctx context.Context, rt resourcetype.ResourceTyp
 func (r *repositoryImpl) Update(ctx context.Context, rt resourcetype.ResourceType) error {
 	stmt := table.ProductResourceTypes.UPDATE(
 		table.ProductResourceTypes.Name, table.ProductResourceTypes.Description,
-		table.ProductResourceTypes.NestsInItself,
-	).SET(rt.Name, rt.Description, rt.NestsInItself).WHERE(
+		table.ProductResourceTypes.NestsInItself, table.ProductResourceTypes.CustomRoles,
+	).SET(rt.Name, rt.Description, rt.NestsInItself, rt.CustomRoles).WHERE(
 		table.ProductResourceTypes.ID.EQ(postgres.String(rt.ID)).
 			AND(table.ProductResourceTypes.ProductID.EQ(postgres.String(rt.ProductID))),
 	)
@@ -288,6 +288,7 @@ func (r *repositoryImpl) withParents(
 			Name:          row.Name,
 			Description:   row.Description,
 			NestsInItself: row.NestsInItself,
+			CustomRoles:   row.CustomRoles,
 			ParentTypes: functional.Slice(parents[row.ID]).
 				Map(func(edge parentEdge) string { return edge.ParentSlug }),
 			CreatedAt: row.CreatedAt,
@@ -349,7 +350,7 @@ func (r *repositoryImpl) FindRoleBundles(ctx context.Context, productID string) 
 				),
 		).WHERE(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductRoles.TemplateID.IS_NULL()),
+				AND(table.ProductRoles.TemplateID.IS_NULL().OR(table.ProductRoles.Customized.IS_TRUE())),
 		).ORDER_BY(table.ProductRoles.ID.ASC()),
 	).Value()
 	if err != nil {

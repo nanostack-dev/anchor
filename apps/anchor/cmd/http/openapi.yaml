@@ -1004,8 +1004,8 @@ components:
       type: object
       description: >-
         Fields to change. An omitted field keeps its value. The slug never
-        changes. The built-in `organization` type answers 409
-        BUILT_IN_RESOURCE_TYPE to any change.
+        changes. The built-in `organization` type accepts only `custom_roles`
+        and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
       properties:
         name:
           type: string
@@ -1027,6 +1027,14 @@ components:
             $ref: "#/components/schemas/ResourceTypeSlug"
         nests_in_itself:
           type: boolean
+        custom_roles:
+          type: boolean
+          description: >-
+            `true` lets each Organization create its own roles scoped to this
+            type, and customize its copies of the role templates. Only
+            `organization` accepts `true` for now; any other type answers 400
+            CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles
+            that exist and refuses new ones.
 
     ProductResourceTypeTreeItem:
       type: object
@@ -1069,7 +1077,7 @@ components:
 
     ProductResourceTypeResponse:
       type: object
-      required: [id, product_id, slug, name, parent_types, nests_in_itself, built_in, created_at, updated_at]
+      required: [id, product_id, slug, name, parent_types, nests_in_itself, custom_roles, built_in, created_at, updated_at]
       properties:
         id:
           $ref: "#/components/schemas/ksuid"
@@ -1089,9 +1097,14 @@ components:
             $ref: "#/components/schemas/ResourceTypeSlug"
         nests_in_itself:
           type: boolean
+        custom_roles:
+          type: boolean
+          description: >-
+            `true` when Organizations may create custom roles scoped to this
+            type and customize their copies of its role templates.
         built_in:
           type: boolean
-          description: "`true` for `organization`, the root type every product has. It can't be changed or deleted."
+          description: "`true` for `organization`, the root type every product has. It can't be deleted, and only its `custom_roles` switch changes."
         created_at:
           type: string
           format: date-time
@@ -1185,7 +1198,7 @@ components:
         A role an Organization owns. A copy of a role template is addressed by
         its template's ID inside its Organization, so the IDs released clients
         hold keep working; a custom role has an ID of its own.
-      required: [id, organization_id, key, name, origin, resource_type, is_default, permissions, created_at, updated_at]
+      required: [id, organization_id, key, name, origin, customized, resource_type, is_default, permissions, created_at, updated_at]
       properties:
         id:
           $ref: "#/components/schemas/ksuid"
@@ -1203,6 +1216,13 @@ components:
           type: [string, "null"]
         origin:
           $ref: "#/components/schemas/OrganizationRoleOrigin"
+        customized:
+          type: boolean
+          description: >-
+            `true` for a copy of a role template that the Organization changed.
+            It keeps its own name, description and permissions when the
+            template changes, until it is reset. Always `false` for a custom
+            role.
         resource_type:
           $ref: "#/components/schemas/ResourceTypeSlug"
         is_default:
@@ -1224,9 +1244,70 @@ components:
           type: string
           format: date-time
 
+    OrganizationRoleCreateRequest:
+      type: object
+      description: >-
+        A custom role of the Organization. Its resource type must have
+        `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An
+        Organization has at most 50 custom roles (409
+        CUSTOM_ROLE_LIMIT_REACHED).
+      required: [name, resource_type]
+      properties:
+        key:
+          allOf:
+          - $ref: "#/components/schemas/RoleKey"
+          description: >-
+            Unique in the Organization regardless of case, and different from
+            every role template's key, since each template's copy holds its
+            key (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower
+            case. It never changes.
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          examples: ["Billing auditor"]
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: >-
+            The resource type the role is scoped to. Required: Anchor never
+            picks a scope. It never changes after creation.
+        permissions:
+          type: array
+          description: >-
+            Names of the permissions the role bundles. Each must be scoped to
+            the role's resource type or to a type below it, or the call answers
+            400 PERMISSION_OUTSIDE_ROLE_SCOPE.
+          items:
+            type: string
+          x-go-type-skip-optional-pointer: true
+
     OrganizationRoleUpdateRequest:
       type: object
+      description: >-
+        Fields to change. An omitted field keeps its value. Changing the name,
+        the description or the permissions of a template's copy customizes
+        it. That, and any change to a custom role, needs `custom_roles` on the
+        role's resource type, or the call answers 400 CUSTOM_ROLES_DISABLED.
       properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        permissions:
+          type: array
+          description: >-
+            Replaces the permissions the role bundles. Each must be scoped to
+            the role's resource type or to a type below it, or the call answers
+            400 PERMISSION_OUTSIDE_ROLE_SCOPE.
+          items:
+            type: string
         is_default:
           type: boolean
           description: >-
@@ -7907,6 +7988,47 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/organizations/{organization_id}/roles:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Create Organization Custom Role
+      description: >-
+        Creates a custom role of the Organization (ADR-0022 D9). Its resource
+        type must have `custom_roles` on, or the call answers 400
+        CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles,
+        and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits
+        `organization.role.created`. Requires Platform Bearer token or
+        Product API Key with organization_role:create.
+      operationId: createOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:create"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationRoleCreateRequest"
+      responses:
+        "201":
+          description: The custom role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /v1/products/{product_id}/organizations/{organization_id}/roles/search:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"
@@ -7915,7 +8037,7 @@ paths:
       summary: Search Organization Roles
       description: >-
         Searches the roles an Organization owns: a copy of every role template
-        of its Product. A copy the Organization lacks is made first, as on any
+        of its Product, and its custom roles. A copy the Organization lacks is made first, as on any
         other first use. Requires Platform Bearer token or Product API Key with
         organization_role:read.
 
@@ -7978,10 +8100,12 @@ paths:
     patch:
       summary: Update Organization Role
       description: >-
-        Chooses the Organization's default role. Emits
-        `organization.role.updated` for each role whose default flag changed.
-        Requires Platform Bearer token or Product API Key with
-        organization_role:update.
+        Chooses the Organization's default role, or changes a role's name,
+        description or permissions. A change of those on a copy of a role
+        template customizes the copy: it keeps its own bundle when the template
+        changes, until it is reset. Emits `organization.role.updated` for
+        each role that changed. Requires Platform Bearer token or Product API
+        Key with organization_role:update.
       operationId: updateOrganizationRole
       tags: [OrganizationRole]
       security:
@@ -8002,6 +8126,63 @@ paths:
                 $ref: "#/components/schemas/OrganizationRoleResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      summary: Delete Organization Custom Role
+      description: >-
+        Deletes a custom role. A copy of a role template can't be deleted (409
+        TEMPLATE_COPY_NOT_DELETABLE); it goes with its template. A role a
+        member holds, or that a pending invitation names, answers 409
+        ROLE_IN_USE. Emits `organization.role.deleted`. Requires Platform
+        Bearer token or Product API Key with organization_role:delete.
+      operationId: deleteOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:delete"]
+      responses:
+        "204":
+          description: The role is deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}/reset:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/ProductRoleIdParameter"
+    post:
+      summary: Reset Organization Role
+      description: >-
+        Returns a customized copy of a role template to its template's name,
+        description and permissions; it follows the template again. A custom
+        role answers 409 NOT_A_TEMPLATE_COPY. Emits `organization.role.updated`
+        when the copy changed. Requires Platform Bearer token or Product API
+        Key with organization_role:update.
+      operationId: resetOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:update"]
+      responses:
+        "200":
+          description: The role after the reset.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationRoleResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

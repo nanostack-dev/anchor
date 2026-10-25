@@ -15,6 +15,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -26,7 +27,13 @@ import (
 // Organization's default role.
 var ErrDefaultExists = errors.New("organization already has a default role")
 
-const organizationDefaultIndex = "idx_product_roles_organization_default"
+// ErrKeyExists is returned when another role of the Organization holds the key.
+var ErrKeyExists = errors.New("organization already has a role with that key")
+
+const (
+	organizationDefaultIndex = "idx_product_roles_organization_default"
+	organizationKeyIndex     = "idx_product_roles_organization_lower_key"
+)
 
 // TemplatePair names a role template an Organization has no copy of.
 type TemplatePair struct {
@@ -70,8 +77,9 @@ type Repository interface {
 	) ([]TemplatePair, error)
 	// InsertCopies copies each template into its Organization and returns how
 	// many copies it made. It reads the templates under a share lock, so a
-	// template change commits wholly before or after it. A pair another writer
-	// copied at the same moment is skipped.
+	// template change commits wholly before or after it. A pair copied
+	// concurrently, or whose key another role of the Organization holds, is
+	// skipped.
 	InsertCopies(ctx context.Context, productID string, pairs []TemplatePair) (int, error)
 	// SyncCopies makes every copy of the template match it: key, name,
 	// description, scope and permissions.
@@ -82,6 +90,11 @@ type Repository interface {
 	// their Organization's copy, in one Organization, or in every
 	// Organization of the product when organizationID is empty.
 	RepointMemberships(ctx context.Context, productID, organizationID string) (int64, error)
+	// ShareRole holds a key share lock on an Organization's own role for the
+	// transaction and reports whether it still exists.
+	ShareRole(ctx context.Context, productID, rowID string) (bool, error)
+	// LockRole holds an Organization's role row for the transaction.
+	LockRole(ctx context.Context, productID, organizationID, rowID string) error
 	// ShareTemplate holds a share lock on the template for the transaction and
 	// reports whether it still exists.
 	ShareTemplate(ctx context.Context, productID, templateID string) (bool, error)
@@ -91,6 +104,37 @@ type Repository interface {
 	// BackfillTemplateKeysInternal gives a key to every template a release
 	// before keys wrote. Only the startup backfill calls it.
 	BackfillTemplateKeysInternal(ctx context.Context, productID string) (int64, error)
+
+	// LockOrganization holds the Organization's row for the transaction, so
+	// custom roles are counted against the limit one writer at a time.
+	LockOrganization(ctx context.Context, productID, organizationID string) (bool, error)
+	// LockKey holds a role key of the product for the transaction, so a role
+	// template and a custom role can't take the same key at once.
+	LockKey(ctx context.Context, productID, key string) error
+	// KeyTaken reports whether a role template of the product, or a custom
+	// role of any of its Organizations, holds the key. A non-empty
+	// organizationID narrows the custom roles to that Organization.
+	KeyTaken(ctx context.Context, productID, organizationID, key string, templates bool) (bool, error)
+	CountCustom(ctx context.Context, productID, organizationID string) (int64, error)
+	CreateCustom(ctx context.Context, role organizationrole.Role) error
+	// Rewrite sets the role's name, description and customized flag.
+	Rewrite(ctx context.Context, role organizationrole.Role) error
+	// ReplacePermissions makes the role bundle exactly the named permissions.
+	ReplacePermissions(ctx context.Context, productID, rowID string, names []string) error
+	// Reset returns a copy to its template's name, description and
+	// permissions, and clears its customized flag.
+	Reset(ctx context.Context, productID, rowID, templateID string) error
+	DeleteCustom(ctx context.Context, productID, organizationID, rowID string) error
+	// CountHolders counts the memberships that hold the role and the pending
+	// invitations that name it.
+	CountHolders(ctx context.Context, productID, organizationID string, role organizationrole.Role) (int64, error)
+	// DetachCopies turns the template's copies that a member holds, a pending
+	// invitation names, or the Organization customized into custom roles of
+	// their Organization, moves those invitations onto them, and returns them.
+	DetachCopies(ctx context.Context, productID, templateID string) ([]organizationrole.Role, error)
+	// OrganizationsOnTemplate lists the Organizations where a membership holds
+	// the template itself or a pending invitation names it.
+	OrganizationsOnTemplate(ctx context.Context, productID, templateID string) ([]string, error)
 }
 
 type repositoryImpl struct {
@@ -117,6 +161,7 @@ func toDomain(row model.ProductRoles, permissions []model.ProductRoleResourcePer
 		Description:    functional.FromPtr(row.Description).OrElse(""),
 		ResourceTypeID: row.ResourceTypeID,
 		IsDefault:      row.IsDefault,
+		Customized:     row.Customized,
 		Permissions: functional.Slice(permissions).Map(
 			func(p model.ProductRoleResourcePermissions) string { return p.PermissionName },
 		),
@@ -330,6 +375,10 @@ func (r *repositoryImpl) InsertCopies(ctx context.Context, productID string, pai
 		return 0, err
 	}
 
+	held, err := r.heldKeys(ctx, productID, pairs)
+	if err != nil {
+		return 0, err
+	}
 	var copies []model.ProductRoles
 	for _, pair := range pairs {
 		template, ok := byID[pair.TemplateID]
@@ -337,6 +386,9 @@ func (r *repositoryImpl) InsertCopies(ctx context.Context, productID string, pai
 			continue
 		}
 		key := mapper.RoleKey(template)
+		if held[pair.OrganizationID+"\x00"+strings.ToLower(key)] {
+			continue
+		}
 		organizationID, templateID := pair.OrganizationID, template.ID
 		copies = append(copies, model.ProductRoles{
 			ID:             organizationrole.NewRowID(),
@@ -383,6 +435,34 @@ func (r *repositoryImpl) InsertCopies(ctx context.Context, productID string, pai
 	return len(inserted), r.insertPermissions(ctx, rows)
 }
 
+// heldKeys lists the keys the Organizations of the pairs already hold. A
+// custom role made while a release that didn't know custom keys ran may hold a
+// template's key; that template is then not copied into its Organization,
+// rather than failing every write there.
+func (r *repositoryImpl) heldKeys(
+	ctx context.Context,
+	productID string,
+	pairs []TemplatePair,
+) (map[string]bool, error) {
+	organizations := functional.Distinct(
+		functional.Slice(pairs).Map(func(p TemplatePair) string { return p.OrganizationID }),
+	)
+	rows, err := transactor.Query[[]model.ProductRoles](ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.OrganizationID, table.ProductRoles.Key).WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductRoles.OrganizationID.IN(jetx.ToStringExpressions(organizations)...)),
+		),
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	held := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		held[functional.FromPtr(row.OrganizationID).OrElse("")+"\x00"+strings.ToLower(functional.FromPtr(row.Key).OrElse(""))] = true
+	}
+	return held, nil
+}
+
 func (r *repositoryImpl) insertPermissions(ctx context.Context, rows []model.ProductRoleResourcePermissions) error {
 	if len(rows) == 0 {
 		return nil
@@ -414,7 +494,8 @@ func (r *repositoryImpl) SyncCopies(ctx context.Context, productID, templateID s
 	tpl := template.Value()
 	key := mapper.RoleKey(tpl)
 	isCopy := table.ProductRoles.TemplateID.EQ(postgres.String(templateID)).
-		AND(table.ProductRoles.ProductID.EQ(postgres.String(productID)))
+		AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))).
+		AND(table.ProductRoles.Customized.IS_FALSE())
 	synced := model.ProductRoles{
 		Key:            &key,
 		Name:           tpl.Name,
@@ -460,6 +541,7 @@ func (r *repositoryImpl) SyncCopies(ctx context.Context, productID, templateID s
 				table.ProductRoleResourcePermissions.ProductRoleID.EQ(postgres.String(templateID))),
 		).WHERE(
 			copies.TemplateID.EQ(postgres.String(templateID)).
+				AND(copies.Customized.IS_FALSE()).
 				AND(postgres.NOT(postgres.EXISTS(
 					postgres.SELECT(postgres.Int(1)).FROM(held).WHERE(
 						held.ProductRoleID.
@@ -516,6 +598,24 @@ func (r *repositoryImpl) RepointMemberships(ctx context.Context, productID, orga
 	return execRows(ctx, r.db, stmt)
 }
 
+func (r *repositoryImpl) ShareRole(ctx context.Context, productID, rowID string) (bool, error) {
+	found, err := transactor.QueryOptional[model.ProductRoles](ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			table.ProductRoles.ID.EQ(postgres.String(rowID)).
+				AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
+		).FOR(postgres.KEY_SHARE()),
+	)
+	return found.IsPresent(), err
+}
+
+func (r *repositoryImpl) LockRole(ctx context.Context, productID, organizationID, rowID string) error {
+	return transactor.Exec(ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			inOrganization(productID, organizationID).AND(table.ProductRoles.ID.EQ(postgres.String(rowID))),
+		).FOR(postgres.UPDATE()),
+	).Err()
+}
+
 func (r *repositoryImpl) ShareTemplate(ctx context.Context, productID, templateID string) (bool, error) {
 	found, err := transactor.QueryOptional[model.ProductRoles](ctx, r.db,
 		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
@@ -547,7 +647,7 @@ func (r *repositoryImpl) BackfillTemplateKeysInternal(ctx context.Context, produ
 			unkeyed.AND(postgres.NOT(postgres.EXISTS(
 				postgres.SELECT(postgres.Int(1)).FROM(others).WHERE(
 					others.ProductID.EQ(postgres.String(productID)).
-						AND(others.OrganizationID.IS_NULL()).
+						AND(others.OrganizationID.IS_NULL().OR(others.TemplateID.IS_NULL())).
 						AND(postgres.LOWER(others.Key).
 							EQ(postgres.LOWER(table.ProductRoles.Name))),
 				),
@@ -557,8 +657,8 @@ func (r *repositoryImpl) BackfillTemplateKeysInternal(ctx context.Context, produ
 	if err != nil {
 		return byName, err
 	}
-	// A name another template already uses as its key falls back to the
-	// template's own ID, which nothing else can hold.
+	// A name another template or a custom role already uses as its key falls
+	// back to the template's own ID, which nothing else can hold.
 	byID, err := execRows(ctx, r.db,
 		table.ProductRoles.UPDATE(table.ProductRoles.Key).SET(table.ProductRoles.ID).WHERE(unkeyed),
 	)
@@ -599,4 +699,253 @@ func filterCondition(filter organizationrole.Filter) postgres.BoolExpression {
 		condition = condition.AND(scoped)
 	}
 	return condition
+}
+
+func (r *repositoryImpl) LockOrganization(ctx context.Context, productID, organizationID string) (bool, error) {
+	found, err := transactor.QueryOptional[model.Organizations](ctx, r.db,
+		table.Organizations.SELECT(table.Organizations.ID).WHERE(
+			table.Organizations.ID.EQ(postgres.String(organizationID)).
+				AND(table.Organizations.ProductID.EQ(postgres.String(productID))),
+		).FOR(postgres.NO_KEY_UPDATE()),
+	)
+	return found.IsPresent(), err
+}
+
+func (r *repositoryImpl) LockKey(ctx context.Context, productID, key string) error {
+	_, err := transactor.Executor(ctx, r.db).ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`,
+		pglock.KeyHash("role-key:"+productID+":"+strings.ToLower(key)))
+	return err
+}
+
+func (r *repositoryImpl) KeyTaken(
+	ctx context.Context, productID, organizationID, key string, templates bool,
+) (bool, error) {
+	custom := table.ProductRoles.OrganizationID.IS_NOT_NULL().AND(table.ProductRoles.TemplateID.IS_NULL())
+	if organizationID != "" {
+		custom = table.ProductRoles.OrganizationID.EQ(postgres.String(organizationID))
+	}
+	holders := custom
+	if templates {
+		holders = holders.OR(table.ProductRoles.OrganizationID.IS_NULL())
+	}
+	count, err := transactor.QueryCount(ctx, r.db,
+		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(postgres.LOWER(table.ProductRoles.Key).EQ(postgres.String(strings.ToLower(key)))).
+				AND(holders),
+		),
+	).Value()
+	return count > 0, err
+}
+
+func (r *repositoryImpl) CountCustom(ctx context.Context, productID, organizationID string) (int64, error) {
+	return transactor.QueryCount(ctx, r.db,
+		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			inOrganization(productID, organizationID).AND(table.ProductRoles.TemplateID.IS_NULL()),
+		),
+	).Value()
+}
+
+func (r *repositoryImpl) CreateCustom(ctx context.Context, role organizationrole.Role) error {
+	organizationID := role.OrganizationID
+	key := role.Key
+	description := functional.OptionOf(role.Description, role.Description != "").ToPtr()
+	if err := transactor.Exec(ctx, r.db,
+		table.ProductRoles.INSERT(
+			table.ProductRoles.ID, table.ProductRoles.ProductID, table.ProductRoles.OrganizationID,
+			table.ProductRoles.Key, table.ProductRoles.Name, table.ProductRoles.Description,
+			table.ProductRoles.ResourceTypeID,
+		).MODEL(model.ProductRoles{
+			ID: role.RowID, ProductID: role.ProductID, OrganizationID: &organizationID, Key: &key,
+			Name: role.Name, Description: description, ResourceTypeID: role.ResourceTypeID,
+		}),
+	).OnUnique(ErrKeyExists, organizationKeyIndex).Err(); err != nil {
+		return err
+	}
+	return r.ReplacePermissions(ctx, role.ProductID, role.RowID, role.Permissions)
+}
+
+func (r *repositoryImpl) Rewrite(ctx context.Context, role organizationrole.Role) error {
+	description := functional.OptionOf(role.Description, role.Description != "").ToPtr()
+	return transactor.Exec(ctx, r.db,
+		table.ProductRoles.UPDATE(
+			table.ProductRoles.Name, table.ProductRoles.Description, table.ProductRoles.Customized,
+			table.ProductRoles.UpdatedAt,
+		).SET(postgres.String(role.Name), descriptionValue(description), postgres.Bool(role.Customized), postgres.NOW()).
+			WHERE(inOrganization(role.ProductID, role.OrganizationID).
+				AND(table.ProductRoles.ID.EQ(postgres.String(role.RowID)))),
+	).Err()
+}
+
+func descriptionValue(description *string) postgres.Expression {
+	if description == nil {
+		return postgres.Raw("NULL")
+	}
+	return postgres.String(*description)
+}
+
+func (r *repositoryImpl) ReplacePermissions(ctx context.Context, productID, rowID string, names []string) error {
+	remove := table.ProductRoleResourcePermissions.ProductRoleID.EQ(postgres.String(rowID))
+	if len(names) > 0 {
+		remove = remove.AND(
+			table.ProductRoleResourcePermissions.PermissionName.NOT_IN(jetx.ToStringExpressions(names)...),
+		)
+	}
+	if err := transactor.Exec(ctx, r.db, table.ProductRoleResourcePermissions.DELETE().WHERE(remove)).
+		Err(); err != nil {
+		return err
+	}
+	return r.insertPermissions(ctx, functional.Slice(names).Map(func(name string) model.ProductRoleResourcePermissions {
+		return model.ProductRoleResourcePermissions{
+			ID:             ids.MustNew("product_role_resource_permission"),
+			ProductID:      productID,
+			ProductRoleID:  rowID,
+			PermissionName: name,
+		}
+	}))
+}
+
+func (r *repositoryImpl) Reset(ctx context.Context, productID, rowID, templateID string) error {
+	if err := transactor.Exec(ctx, r.db,
+		table.ProductRoles.UPDATE(table.ProductRoles.Customized).SET(postgres.Bool(false)).WHERE(
+			table.ProductRoles.ID.EQ(postgres.String(rowID)).
+				AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
+		),
+	).Err(); err != nil {
+		return err
+	}
+	return r.SyncCopies(ctx, productID, templateID)
+}
+
+func (r *repositoryImpl) DeleteCustom(ctx context.Context, productID, organizationID, rowID string) error {
+	return transactor.Exec(ctx, r.db,
+		table.ProductRoles.DELETE().WHERE(
+			inOrganization(productID, organizationID).
+				AND(table.ProductRoles.ID.EQ(postgres.String(rowID))).
+				AND(table.ProductRoles.TemplateID.IS_NULL()),
+		),
+	).Err()
+}
+
+func (r *repositoryImpl) CountHolders(
+	ctx context.Context, productID, organizationID string, role organizationrole.Role,
+) (int64, error) {
+	members, err := transactor.QueryCount(ctx, r.db,
+		table.OrganizationMemberships.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).
+				AND(table.OrganizationMemberships.ProductRoleID.EQ(postgres.String(role.RowID))),
+		),
+	).Value()
+	if err != nil {
+		return 0, err
+	}
+	invited, err := transactor.QueryCount(ctx, r.db,
+		table.OrganizationInvitations.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
+				AND(table.OrganizationInvitations.OrganizationID.EQ(postgres.String(organizationID))).
+				AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(role.PublicID()))).
+				AND(pendingInvitation()),
+		),
+	).Value()
+	return members + invited, err
+}
+
+func pendingInvitation() postgres.BoolExpression {
+	return table.OrganizationInvitations.AcceptedAt.IS_NULL().
+		AND(table.OrganizationInvitations.ExpiresAt.GT(postgres.TimestampzT(time.Now())))
+}
+
+func (r *repositoryImpl) OrganizationsOnTemplate(ctx context.Context, productID, templateID string) ([]string, error) {
+	held, err := transactor.QueryMapSlice(ctx, r.db,
+		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).DISTINCT().WHERE(
+			table.OrganizationMemberships.ProductRoleID.EQ(postgres.String(templateID)),
+		),
+		func(row model.OrganizationMemberships) string { return row.OrganizationID },
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	invited, err := transactor.QueryMapSlice(ctx, r.db,
+		table.OrganizationInvitations.SELECT(table.OrganizationInvitations.OrganizationID).DISTINCT().WHERE(
+			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
+				AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(templateID))).
+				AND(pendingInvitation()),
+		),
+		func(row model.OrganizationInvitations) string { return row.OrganizationID },
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	return functional.Distinct(append(held, invited...)), nil
+}
+
+func (r *repositoryImpl) DetachCopies(
+	ctx context.Context, productID, templateID string,
+) ([]organizationrole.Role, error) {
+	copies := table.ProductRoles.TemplateID.EQ(postgres.String(templateID)).
+		AND(table.ProductRoles.ProductID.EQ(postgres.String(productID)))
+	held := postgres.EXISTS(
+		postgres.SELECT(postgres.Int(1)).FROM(table.OrganizationMemberships).WHERE(
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		),
+	)
+	invited := postgres.EXISTS(
+		postgres.SELECT(postgres.Int(1)).FROM(table.OrganizationInvitations).WHERE(
+			table.OrganizationInvitations.OrganizationID.EQ(table.ProductRoles.OrganizationID).
+				AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(templateID))).
+				AND(pendingInvitation()),
+		),
+	)
+	kept, err := transactor.Query[[]model.ProductRoles](ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.AllColumns).WHERE(
+			copies.AND(held.OR(invited).OR(table.ProductRoles.Customized.IS_TRUE())),
+		).FOR(postgres.UPDATE()),
+	).Value()
+	if err != nil || len(kept) == 0 {
+		return nil, err
+	}
+	rowIDs := jetx.ToStringExpressions(
+		functional.Slice(kept).Map(func(row model.ProductRoles) string { return row.ID }),
+	)
+	if err = transactor.Exec(ctx, r.db,
+		table.OrganizationInvitations.UPDATE(table.OrganizationInvitations.ProductRoleID).
+			SET(table.ProductRoles.ID).
+			FROM(table.ProductRoles).
+			WHERE(
+				table.ProductRoles.ID.IN(rowIDs...).
+					AND(table.OrganizationInvitations.OrganizationID.EQ(table.ProductRoles.OrganizationID)).
+					AND(table.OrganizationInvitations.ProductRoleID.EQ(postgres.String(templateID))).
+					AND(pendingInvitation()),
+			),
+	).Err(); err != nil {
+		return nil, err
+	}
+	// A copy that was its Organization's default through the Product's default
+	// template stays its default: the Organization chose no other.
+	template := table.ProductRoles.AS("template")
+	chosen := table.ProductRoles.AS("chosen")
+	if err = transactor.Exec(ctx, r.db,
+		table.ProductRoles.UPDATE(table.ProductRoles.IsDefault).SET(postgres.Bool(true)).WHERE(
+			table.ProductRoles.ID.IN(rowIDs...).
+				AND(postgres.EXISTS(postgres.SELECT(postgres.Int(1)).FROM(template).WHERE(
+					template.ID.EQ(postgres.String(templateID)).AND(template.IsDefault.IS_TRUE()),
+				))).
+				AND(postgres.NOT(postgres.EXISTS(postgres.SELECT(postgres.Int(1)).FROM(chosen).WHERE(
+					chosen.OrganizationID.EQ(table.ProductRoles.OrganizationID).AND(chosen.IsDefault.IS_TRUE()),
+				)))),
+		),
+	).OnUnique(ErrDefaultExists, organizationDefaultIndex).Err(); err != nil {
+		return nil, err
+	}
+	if err = transactor.Exec(ctx, r.db,
+		table.ProductRoles.UPDATE(table.ProductRoles.TemplateID, table.ProductRoles.Customized).
+			SET(postgres.Raw("NULL"), postgres.Bool(false)).
+			WHERE(table.ProductRoles.ID.IN(rowIDs...)),
+	).Err(); err != nil {
+		return nil, err
+	}
+	return functional.Slice(kept).Map(func(row model.ProductRoles) organizationrole.Role {
+		row.TemplateID = nil
+		return toDomain(row, nil)
+	}), nil
 }
