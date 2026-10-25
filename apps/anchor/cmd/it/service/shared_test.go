@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	authzengine "anchor/internal/authz/engine"
+	authzstore "anchor/internal/authz/store"
 	orgrolerepository "anchor/internal/organizationrole/repository"
 	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
@@ -38,6 +40,8 @@ var (
 	ProductRoleService      service.ProductRoleService
 	MembershipService       service.OrganizationMembershipService
 	Transactor              transactor.Transactor
+	AuthzStores             authzstore.Stores
+	AuthzEngines            authzengine.Provider
 	TestDB                  *sql.DB
 )
 
@@ -66,6 +70,8 @@ func TestMain(m *testing.M) {
 				&ProductRoleService,
 				&MembershipService,
 				&Transactor,
+				&AuthzStores,
+				&AuthzEngines,
 				&TestDB,
 			},
 		},

@@ -16,6 +16,7 @@ import (
 
 	httpserver "anchor/cmd/http"
 	"anchor/internal/api"
+	"anchor/internal/authz"
 	"anchor/internal/email"
 	"anchor/internal/events"
 	"anchor/internal/integration"
@@ -59,6 +60,7 @@ func startAnchor(target ...any) {
 		repository.NewModule(),
 		resourcetype.NewModule(),
 		organizationrole.NewModule(),
+		authz.NewModule(),
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),
