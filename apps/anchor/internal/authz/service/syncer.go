@@ -7,6 +7,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"slices"
@@ -42,6 +43,9 @@ const (
 // errLockBusy reports that another sync of the Product held the lock for the
 // whole wait; the mark stays, and the sweeper replays it.
 var errLockBusy = errors.New("authz sync lock busy")
+
+// errModelStale reports a catalog that changed since the store's model.
+var errModelStale = errors.New("authz model stale")
 
 type Syncer interface {
 	// SyncOrganization brings the Organization's tuples, and the Product's
@@ -92,12 +96,12 @@ func (s *syncer) SyncOrganization(ctx context.Context, productID, organizationID
 	if storeErr != nil {
 		return storeErr
 	}
-	return s.locked(ctx, productID, func(txCtx context.Context) error {
+	sync := func(txCtx context.Context) error {
 		marks, err := s.repo.Pending(txCtx, productID)
 		if err != nil {
 			return err
 		}
-		current, err := s.ensureModel(txCtx, openfga, storeID, productID)
+		current, err := s.currentModel(txCtx, openfga, storeID, productID)
 		if err != nil {
 			return err
 		}
@@ -110,7 +114,18 @@ func (s *syncer) SyncOrganization(ctx context.Context, productID, organizationID
 			}
 		}
 		return nil
-	})
+	}
+	err := s.lockedOrganization(ctx, productID, organizationID, sync)
+	if !errors.Is(err, errModelStale) {
+		return err
+	}
+	if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+		_, modelErr := s.ensureModel(txCtx, openfga, storeID, productID)
+		return modelErr
+	}); err != nil {
+		return err
+	}
+	return s.lockedOrganization(ctx, productID, organizationID, sync)
 }
 
 func (s *syncer) SyncProduct(ctx context.Context, productID string) error {
@@ -147,7 +162,7 @@ func (s *syncer) syncProduct(ctx context.Context, productID string) (target, err
 		}
 	}
 	for _, organizationID := range organizations {
-		if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+		if err = s.lockedOrganization(ctx, productID, organizationID, func(txCtx context.Context) error {
 			return s.syncOrganization(txCtx, current, productID, organizationID)
 		}); err != nil {
 			return target{}, err
@@ -196,15 +211,44 @@ func (s *syncer) Reconcile(ctx context.Context, productID string) error {
 	})
 }
 
-// locked runs fn in a transaction that holds the Product's sync lock, so one
-// sync of a Product runs at a time across replicas. A busy lock is retried for
-// a short while, outside any transaction.
+// locked runs fn in a transaction that holds the Product's sync lock
+// exclusively: a model write, the template grants and a rebuild wait for every
+// Organization sync of the Product, and hold them off.
 func (s *syncer) locked(ctx context.Context, productID string, fn func(context.Context) error) error {
+	return s.withLocks(ctx, fn, func(txCtx context.Context, tx *sql.Tx) (bool, error) {
+		return pglock.TryAdvisoryXactLock(txCtx, tx, productLockKey(productID))
+	})
+}
+
+// lockedOrganization runs fn holding the Product's sync lock in share mode and
+// the Organization's exclusively, so syncs of different Organizations run side
+// by side and two of one Organization never do.
+func (s *syncer) lockedOrganization(
+	ctx context.Context, productID, organizationID string, fn func(context.Context) error,
+) error {
+	return s.withLocks(ctx, fn, func(txCtx context.Context, tx *sql.Tx) (bool, error) {
+		var shared bool
+		if err := tx.QueryRowContext(txCtx, `SELECT pg_try_advisory_xact_lock_shared($1)`,
+			pglock.KeyHash(productLockKey(productID))).Scan(&shared); err != nil || !shared {
+			return false, err
+		}
+		return pglock.TryAdvisoryXactLock(txCtx, tx, productLockKey(productID)+":"+organizationID)
+	})
+}
+
+func productLockKey(productID string) string { return "authz-sync:" + productID }
+
+// withLocks runs fn in a transaction once acquire got its locks. A busy lock is
+// retried for a short while, outside any transaction.
+func (s *syncer) withLocks(
+	ctx context.Context, fn func(context.Context) error,
+	acquire func(context.Context, *sql.Tx) (bool, error),
+) error {
 	deadline := time.Now().Add(lockWait)
 	backoff := lockRetryMin
 	for {
 		err := s.tx.InTx(ctx, func(txCtx context.Context) error {
-			acquired, err := pglock.TryAdvisoryXactLock(txCtx, transactor.CurrentTx(txCtx), "authz-sync:"+productID)
+			acquired, err := acquire(txCtx, transactor.CurrentTx(txCtx))
 			if err != nil {
 				return fmt.Errorf("lock authz sync: %w", err)
 			}
@@ -236,22 +280,50 @@ func (s *syncer) store(ctx context.Context, productID string) (engine.Engine, st
 	return openfga, storeID, err
 }
 
+// currentModel returns the target an Organization sync writes under, or
+// errModelStale when the catalog changed since the store's model: the model is
+// then written under the exclusive lock first.
+func (s *syncer) currentModel(
+	ctx context.Context, openfga engine.Engine, storeID, productID string,
+) (target, error) {
+	current, _, err := s.modelState(ctx, openfga, storeID, productID)
+	if err != nil {
+		return target{}, err
+	}
+	if current.modelID == "" {
+		return target{}, errModelStale
+	}
+	return current, nil
+}
+
+// modelState reads the catalog and, when the store's model was compiled from
+// it, the target that model gives.
+func (s *syncer) modelState(
+	ctx context.Context, openfga engine.Engine, storeID, productID string,
+) (target, model.Catalog, error) {
+	catalog, err := s.catalog(ctx, productID)
+	if err != nil {
+		return target{}, model.Catalog{}, err
+	}
+	found, err := s.repo.FindStore(ctx, productID)
+	if err != nil {
+		return target{}, model.Catalog{}, err
+	}
+	stored := found.OrElse(repository.Store{})
+	if stored.ModelHash == model.Hash(catalog) && stored.ModelID != "" {
+		return target{openfga: openfga, storeID: storeID, modelID: stored.ModelID, catalog: catalog}, catalog, nil
+	}
+	return target{}, catalog, nil
+}
+
 // ensureModel writes the Product's model when its catalog changed since the
 // model the store follows.
 func (s *syncer) ensureModel(
 	ctx context.Context, openfga engine.Engine, storeID, productID string,
 ) (target, error) {
-	catalog, err := s.catalog(ctx, productID)
-	if err != nil {
-		return target{}, err
-	}
-	found, err := s.repo.FindStore(ctx, productID)
-	if err != nil {
-		return target{}, err
-	}
-	current := found.OrElse(repository.Store{})
-	if current.ModelHash == model.Hash(catalog) && current.ModelID != "" {
-		return target{openfga: openfga, storeID: storeID, modelID: current.ModelID, catalog: catalog}, nil
+	current, catalog, err := s.modelState(ctx, openfga, storeID, productID)
+	if err != nil || current.modelID != "" {
+		return current, err
 	}
 	compiled, err := model.Compile(catalog)
 	if err != nil {

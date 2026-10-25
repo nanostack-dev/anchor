@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nanostack-dev/pgkit/pglock"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -446,3 +447,46 @@ func TestAuthzMarkRevisions(t *testing.T) {
 }
 
 var errRollback = errors.New("roll back")
+
+func TestAuthzSyncLocks(t *testing.T) {
+	openFGA(t)
+
+	t.Run("An Organization syncs while another Organization of the Product holds its lock", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		other := givenOrganization(t, w.productID)
+		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
+		userID := givenMember(t, w, other, w.templateID)
+		release := holdOrganizationSyncLock(t, w.productID, w.organizationID)
+		defer release()
+
+		started := time.Now()
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, other))
+
+		assert.Less(t, time.Since(started), time.Second)
+		assert.True(t, can(t, w.productID, model.User(userID), w.permission, other))
+	})
+
+	t.Run("Two syncs of one Organization never run side by side", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
+		release := holdOrganizationSyncLock(t, w.productID, w.organizationID)
+		defer release()
+
+		assert.Error(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+	})
+}
+
+// holdOrganizationSyncLock takes the locks an Organization sync holds, in a
+// transaction of its own, until release.
+func holdOrganizationSyncLock(t *testing.T, productID, organizationID string) func() {
+	t.Helper()
+	tx, err := TestDB.BeginTx(t.Context(), nil)
+	require.NoError(t, err)
+	_, err = tx.ExecContext(t.Context(), `SELECT pg_advisory_xact_lock_shared($1)`,
+		pglock.KeyHash("authz-sync:"+productID))
+	require.NoError(t, err)
+	_, err = tx.ExecContext(t.Context(), `SELECT pg_advisory_xact_lock($1)`,
+		pglock.KeyHash("authz-sync:"+productID+":"+organizationID))
+	require.NoError(t, err)
+	return func() { _ = tx.Rollback() }
+}
