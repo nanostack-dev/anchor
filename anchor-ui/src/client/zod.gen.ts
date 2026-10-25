@@ -323,6 +323,63 @@ export const zProductResourceTypeListResponse = zPagedListResponse.and(z.object(
 }));
 
 /**
+ * The product's own identifier of a resource, such as its database ID. It is unique in its Organization and resource type, and fixed once registered. It holds 1 to 200 characters from letters, digits, `.`, `_`, `~` and `-`, so it fits a URL path segment as is; `.` and `..` alone are refused. Any other value answers 400 INVALID_RESOURCE_ID.
+ */
+export const zResourceExternalId = z.string().min(1).max(200).regex(/^[A-Za-z0-9._~-]{1,200}$/);
+
+/**
+ * The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+ */
+export const zResourceParentRef = z.object({
+    type: zResourceTypeSlug,
+    id: z.string().min(1).max(255)
+});
+
+/**
+ * The resource's name and its parent. Both are required on every call, whether it creates, renames or moves the resource: Anchor never picks a parent.
+ */
+export const zResourcePutRequest = z.object({
+    name: z.string().min(1).max(200),
+    parent: zResourceParentRef
+});
+
+/**
+ * A registered resource, named by the product's own identifier. Anchor's own row ID is never exposed.
+ */
+export const zResourceResponse = z.object({
+    type: zResourceTypeSlug,
+    id: zResourceExternalId,
+    organization_id: zKsuid,
+    name: z.string(),
+    parent: zResourceParentRef,
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zResourceFilter = z.object({
+    resource_types: z.array(zResourceTypeSlug).max(50).optional(),
+    parent: zResourceParentRef.optional(),
+    ids: z.array(zResourceExternalId).max(100).optional(),
+    name_contains: z.string().min(1).max(200).optional()
+});
+
+/**
+ * Field to sort by. Every order ends with `id`, then with Anchor's row, so ties keep a stable order.
+ */
+export const zResourceSortField = z.enum(['created_at', 'name']).default('created_at');
+
+export const zResourceSearchRequest = z.object({
+    pagination: zPaginationRequest.optional(),
+    filter: zResourceFilter.optional(),
+    sort_by: zResourceSortField.optional(),
+    sort_direction: zSortDirection.optional()
+});
+
+export const zResourceListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zResourceResponse)
+}));
+
+/**
  * A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
  */
 export const zRoleKey = z.string().min(1).max(100);
@@ -1935,6 +1992,16 @@ export const zProductUserIdParameter = zKsuid;
 export const zResourceTypeIdParameter = zKsuid;
 
 /**
+ * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+ */
+export const zResourceTypePathParameter = z.string();
+
+/**
+ * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+ */
+export const zResourceIdParameter = z.string();
+
+/**
  * The KSUID of the product role.
  */
 export const zProductRoleIdParameter = zKsuid;
@@ -3018,6 +3085,60 @@ export const zResetOrganizationRolePath = z.object({
  * The role after the reset.
  */
 export const zResetOrganizationRoleResponse = zOrganizationRoleResponse;
+
+export const zSearchResourcesBody = zResourceSearchRequest;
+
+export const zSearchResourcesPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid
+});
+
+/**
+ * Matching resources.
+ */
+export const zSearchResourcesResponse = zResourceListResponse;
+
+export const zDeleteResourcePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string()
+});
+
+export const zDeleteResourceQuery = z.object({
+    cascade: z.boolean().optional().default(false)
+});
+
+/**
+ * Resource deleted.
+ */
+export const zDeleteResourceResponse = z.void();
+
+export const zGetResourcePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string()
+});
+
+/**
+ * The resource.
+ */
+export const zGetResourceResponse = zResourceResponse;
+
+export const zPutResourceBody = zResourcePutRequest;
+
+export const zPutResourcePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string()
+});
+
+/**
+ * The resource after the call, whether it was created, renamed, moved or left as it was.
+ */
+export const zPutResourceResponse = zResourceResponse;
 
 export const zCreateOrganizationInvitationBody = zOrganizationInvitationCreateRequest;
 

@@ -42,7 +42,8 @@ func staleScope(event events.Event) (string, bool, error) {
 	case events.OrganizationCreated, events.OrganizationDeleted,
 		events.MembershipCreated, events.MembershipUpdated, events.MembershipDeleted,
 		events.OrganizationAPIKeyCreated, events.OrganizationAPIKeyUpdated, events.OrganizationAPIKeyDeleted,
-		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted:
+		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted,
+		events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted:
 		organizationID := event.Data[events.FieldOrganizationID]
 		if organizationID == "" {
 			return "", false, fmt.Errorf("authz: %s event without %s", event.Type, events.FieldOrganizationID)

@@ -96,6 +96,11 @@ func Role(roleRowID string) string { return TypeRole + ":" + roleRowID }
 
 func Organization(organizationID string) string { return TypeOrganization + ":" + organizationID }
 
+// ResourceObject names a registered resource by its row ID. A product's own
+// identifier is unique only in its Organization and type, so two
+// Organizations would share an object in the Product's one store.
+func ResourceObject(slug, rowID string) string { return ResourceType(slug) + ":" + rowID }
+
 // Assignment names the assignment of one role in one Organization; every
 // member holding the role is one of its assignees. A check on the
 // Organization then walks its roles, a handful, not its members. The ID holds

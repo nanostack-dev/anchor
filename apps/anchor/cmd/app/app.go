@@ -26,6 +26,7 @@ import (
 	"anchor/internal/middleware"
 	"anchor/internal/organizationrole"
 	"anchor/internal/repository"
+	"anchor/internal/resource"
 	"anchor/internal/resourcetype"
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
@@ -59,6 +60,7 @@ func startAnchor(target ...any) {
 		mapper.NewModule(),
 		repository.NewModule(),
 		resourcetype.NewModule(),
+		resource.NewModule(),
 		organizationrole.NewModule(),
 		authz.NewModule(),
 		service.NewModule(),

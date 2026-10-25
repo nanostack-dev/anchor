@@ -491,9 +491,12 @@ export type ProductResourceTypeUpdateRequest = {
     name?: string;
     description?: string | null;
     /**
-     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then bundle a permission outside its scope.
+     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then bundle a permission outside its scope. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
      */
     parent_types?: Array<ResourceTypeSlug>;
+    /**
+     * Turning it off while a registered resource of this type sits under another of the same type answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources`.
+     */
     nests_in_itself?: boolean;
     /**
      * `true` lets each Organization create its own roles scoped to this type, and customize its copies of the role templates. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and refuses new ones.
@@ -568,6 +571,81 @@ export type ProductResourceTypeSearchRequest = SearchRequest & {
 
 export type ProductResourceTypeListResponse = PagedListResponse & {
     items: Array<ProductResourceTypeResponse>;
+};
+
+/**
+ * The product's own identifier of a resource, such as its database ID. It is unique in its Organization and resource type, and fixed once registered. It holds 1 to 200 characters from letters, digits, `.`, `_`, `~` and `-`, so it fits a URL path segment as is; `.` and `..` alone are refused. Any other value answers 400 INVALID_RESOURCE_ID.
+ */
+export type ResourceExternalId = string;
+
+/**
+ * The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+ */
+export type ResourceParentRef = {
+    type: ResourceTypeSlug;
+    /**
+     * The parent's `id`, or the Organization's ID when `type` is `organization`.
+     */
+    id: string;
+};
+
+/**
+ * The resource's name and its parent. Both are required on every call, whether it creates, renames or moves the resource: Anchor never picks a parent.
+ */
+export type ResourcePutRequest = {
+    /**
+     * A display name, not unique. Send it again when the resource is renamed in the product; it is shown to people and never decides access.
+     */
+    name: string;
+    parent: ResourceParentRef;
+};
+
+/**
+ * A registered resource, named by the product's own identifier. Anchor's own row ID is never exposed.
+ */
+export type ResourceResponse = {
+    type: ResourceTypeSlug;
+    id: ResourceExternalId;
+    organization_id: Ksuid;
+    name: string;
+    parent: ResourceParentRef;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ResourceFilter = {
+    /**
+     * Keeps resources of these types. A slug the product has not declared matches nothing.
+     */
+    resource_types?: Array<ResourceTypeSlug>;
+    parent?: ResourceParentRef;
+    /**
+     * Keeps resources with these product identifiers, of any type unless `resource_types` narrows it.
+     */
+    ids?: Array<ResourceExternalId>;
+    /**
+     * Keeps resources whose name contains this text, regardless of case. `%` and `_` match themselves.
+     */
+    name_contains?: string;
+};
+
+/**
+ * Field to sort by. Every order ends with `id`, then with Anchor's row, so ties keep a stable order.
+ */
+export enum ResourceSortField {
+    CREATED_AT = 'created_at',
+    NAME = 'name'
+}
+
+export type ResourceSearchRequest = {
+    pagination?: PaginationRequest;
+    filter?: ResourceFilter;
+    sort_by?: ResourceSortField;
+    sort_direction?: SortDirection;
+};
+
+export type ResourceListResponse = PagedListResponse & {
+    items: Array<ResourceResponse>;
 };
 
 /**
@@ -3245,6 +3323,16 @@ export type ProductUserIdParameter = Ksuid;
  * The KSUID of the resource type.
  */
 export type ResourceTypeIdParameter = Ksuid;
+
+/**
+ * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+ */
+export type ResourceTypePathParameter = string;
+
+/**
+ * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+ */
+export type ResourceIdParameter = string;
 
 /**
  * The KSUID of the product role.
@@ -7323,6 +7411,219 @@ export type ResetOrganizationRoleResponses = {
 };
 
 export type ResetOrganizationRoleResponse = ResetOrganizationRoleResponses[keyof ResetOrganizationRoleResponses];
+
+export type SearchResourcesData = {
+    body: ResourceSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/search';
+};
+
+export type SearchResourcesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchResourcesError = SearchResourcesErrors[keyof SearchResourcesErrors];
+
+export type SearchResourcesResponses = {
+    /**
+     * Matching resources.
+     */
+    200: ResourceListResponse;
+};
+
+export type SearchResourcesResponse = SearchResourcesResponses[keyof SearchResourcesResponses];
+
+export type DeleteResourceData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+    };
+    query?: {
+        /**
+         * `true` also deletes every registered descendant. Absent means `false`.
+         */
+        cascade?: boolean;
+    };
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}';
+};
+
+export type DeleteResourceErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * `RESOURCE_IN_USE`: the resource still has registered children or role assignments. `metadata.children` counts its direct children and `metadata.role_assignments` the roles held on it. Send `cascade=true` to delete them too.
+     */
+    409: ApiErrorResponse;
+};
+
+export type DeleteResourceError = DeleteResourceErrors[keyof DeleteResourceErrors];
+
+export type DeleteResourceResponses = {
+    /**
+     * Resource deleted.
+     */
+    204: void;
+};
+
+export type DeleteResourceResponse = DeleteResourceResponses[keyof DeleteResourceResponses];
+
+export type GetResourceData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}';
+};
+
+export type GetResourceErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * `RESOURCE_NOT_FOUND`: no resource of that type and identifier is registered in the Organization. `RESOURCE_TYPE_NOT_FOUND` and `ORGANIZATION_NOT_FOUND` as on the registration.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetResourceError = GetResourceErrors[keyof GetResourceErrors];
+
+export type GetResourceResponses = {
+    /**
+     * The resource.
+     */
+    200: ResourceResponse;
+};
+
+export type GetResourceResponse = GetResourceResponses[keyof GetResourceResponses];
+
+export type PutResourceData = {
+    body: ResourcePutRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         */
+        resource_type: string;
+        /**
+         * The product's own identifier of the resource, unique in its Organization and resource type. Anchor never assigns one. See `ResourceExternalId` for the characters it may hold; any other value answers 400 INVALID_RESOURCE_ID on a registration and 404 RESOURCE_NOT_FOUND on a read or a delete.
+         */
+        resource_id: string;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}';
+};
+
+export type PutResourceErrors = {
+    /**
+     * The body or the identifier is refused. `INVALID_RESOURCE_PARENT`: the parent's type is not one this type may sit under. `BUILT_IN_RESOURCE_TYPE`: `organization` is not a type to register. `INVALID_RESOURCE_ID`: the identifier holds a character outside the allowed set. `VALIDATION_ERROR`: a field is missing or too long.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * `RESOURCE_TYPE_NOT_FOUND`: the product has not declared the type in the path. `ORGANIZATION_NOT_FOUND`: the product has no such Organization.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The registry refuses the change in its current state. `PARENT_NOT_REGISTERED`: register the parent first. `RESOURCE_CYCLE`: the resource would sit under itself. `RESOURCE_TOO_DEEP`: the chain would pass 15 levels, counting the Organization.
+     */
+    409: ApiErrorResponse;
+};
+
+export type PutResourceError = PutResourceErrors[keyof PutResourceErrors];
+
+export type PutResourceResponses = {
+    /**
+     * The resource after the call, whether it was created, renamed, moved or left as it was.
+     */
+    200: ResourceResponse;
+};
+
+export type PutResourceResponse = PutResourceResponses[keyof PutResourceResponses];
 
 export type CreateOrganizationInvitationData = {
     body: OrganizationInvitationCreateRequest;

@@ -84,15 +84,38 @@ func NewSelfParentError(slug string) *fault.Error {
 	).Metadata(map[string]any{metadataSlug: slug})
 }
 
-// Usage counts what keeps a type from being deleted or reshaped.
+// Usage counts what keeps a type from being deleted or reshaped. Resources
+// is left out when none block, so the counts a client read before resources
+// existed keep their shape.
 type Usage struct {
 	ChildTypes  int `json:"child_types"`
 	Roles       int `json:"roles"`
 	Permissions int `json:"permissions"`
+	Resources   int `json:"resources,omitempty"`
 }
 
 func (u Usage) InUse() bool {
-	return u.ChildTypes > 0 || u.Roles > 0 || u.Permissions > 0
+	return u.ChildTypes > 0 || u.Roles > 0 || u.Permissions > 0 || u.Resources > 0
+}
+
+// NewResourcesUnderParentError refuses a change that would leave registered
+// resources under a parent type their type no longer allows: a removed parent
+// type, or its own type once nests_in_itself is off.
+func NewResourcesUnderParentError(slug, parentType string, count int) *fault.Error {
+	change := fmt.Sprintf("removing %s from its parent types", parentType)
+	if parentType == slug {
+		change = "turning nests_in_itself off"
+	}
+	sits := fmt.Sprintf("%d registered resources of type %s sit", count, slug)
+	if count == 1 {
+		sits = fmt.Sprintf("1 registered resource of type %s sits", slug)
+	}
+	return fault.Conflict(
+		"RESOURCE_TYPE_IN_USE",
+		fmt.Sprintf("%s under one of type %s. Move them before %s.", sits, parentType, change),
+	).Metadata(map[string]any{
+		metadataSlug: slug, "parent_type": parentType, metadataBlockedBy: Usage{Resources: count},
+	})
 }
 
 func NewInUseError(slug string, usage Usage) *fault.Error {

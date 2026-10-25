@@ -372,9 +372,12 @@ func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, 
 
 // syncOrganization diffs the tuples an Organization implies with those its
 // store holds. It reads the Organization's object, whose assignment links
-// imply their assignments' tuples, and the roles the Organization owns or its
-// members hold. It never deletes the grants of a role another Organization
-// may hold: a role template a release before copies assigned.
+// imply their assignments' tuples, the roles the Organization owns or its
+// members hold, and the object of every registered resource, so a move drops
+// the old parent. It never deletes the grants of a role another Organization
+// may hold: a role template a release before copies assigned. A deleted
+// resource's object is left to the reconcile: no row names it any more, and
+// row IDs are never reused.
 func (s *syncer) syncOrganization(ctx context.Context, current target, productID, organizationID string) error {
 	state, err := s.repo.OrganizationState(ctx, productID, organizationID, s.now())
 	if err != nil {
@@ -424,6 +427,13 @@ func (s *syncer) syncOrganization(ctx context.Context, current target, productID
 			})
 		}
 		stored = append(stored, grants...)
+	}
+	for _, r := range state.Resources {
+		held, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: r.Object()})
+		if readErr != nil {
+			return readErr
+		}
+		stored = append(stored, held...)
 	}
 	return s.apply(ctx, current, model.Diff(stored, desired))
 }

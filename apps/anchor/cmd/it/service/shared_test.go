@@ -13,7 +13,9 @@ import (
 	orgrolerepository "anchor/internal/organizationrole/repository"
 	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
+	resourceservice "anchor/internal/resource/service"
 	rtrepository "anchor/internal/resourcetype/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	"anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -38,6 +40,8 @@ var (
 	APIKeyEventSvc          service.OrganizationAPIKeyEventService
 	ProductRoleRepo         repository.ProductRoleRepository
 	ResourceTypeRepo        rtrepository.Repository
+	ResourceTypeService     rtservice.Service
+	ResourceService         resourceservice.Service
 	OrganizationRoleRepo    orgrolerepository.Repository
 	OrganizationRoleService orgroleservice.Service
 	ProductRoleService      service.ProductRoleService
@@ -76,6 +80,8 @@ func TestMain(m *testing.M) {
 				&ResourcePermissionRepo,
 				&ProductRoleRepo,
 				&ResourceTypeRepo,
+				&ResourceTypeService,
+				&ResourceService,
 				&OrganizationRoleRepo,
 				&OrganizationRoleService,
 				&ProductRoleService,

@@ -27,6 +27,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, the organization backfill and the admin canvas
+- [Resources](technical/resources.md): the registry of a product's own resources, their parent rules, locks, internal events and parent tuples
 - [Organization roles](technical/organization-roles.md): role templates, each Organization's copies, their IDs, keys and default roles
 - [Authorization engine](technical/authorization-engine.md): OpenFGA running inside Anchor, each Product's store, and the steps that move decisions onto it
 - [engineering best practices](engineering-best-practices.md)

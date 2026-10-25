@@ -85,6 +85,18 @@ func (c Catalog) HasPermission(name string) bool {
 	return slices.ContainsFunc(c.Permissions, func(p Permission) bool { return p.Name == name })
 }
 
+// AllowsParent reports whether the model lets a resource of the type sit under
+// one of the parent type, so a parent tuple never names a type the model's
+// parent relation refuses.
+func (c Catalog) AllowsParent(slug, parentSlug string) bool {
+	for _, t := range c.Types {
+		if t.Slug == slug {
+			return slices.Contains(t.ParentTypes, parentSlug) || (t.NestsInItself && parentSlug == slug)
+		}
+	}
+	return false
+}
+
 // normalized sorts everything, so the same catalog always compiles the same
 // model.
 func (c Catalog) normalized() Catalog {

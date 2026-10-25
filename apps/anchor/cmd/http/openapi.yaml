@@ -161,6 +161,31 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         examples: ["rtype_2qLCf0ld3r2nT8vK5xR1"]
+    ResourceTypePathParameter:
+      name: resource_type
+      in: path
+      required: true
+      description: >-
+        The slug of the resource's type, such as `folder`. A slug the product
+        has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization`
+        can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an
+        Organization is managed through the organization routes.
+      schema:
+        type: string
+        examples: ["folder"]
+    ResourceIdParameter:
+      name: resource_id
+      in: path
+      required: true
+      description: >-
+        The product's own identifier of the resource, unique in its
+        Organization and resource type. Anchor never assigns one. See
+        `ResourceExternalId` for the characters it may hold; any other
+        value answers 400 INVALID_RESOURCE_ID on a registration and 404
+        RESOURCE_NOT_FOUND on a read or a delete.
+      schema:
+        type: string
+        examples: ["3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60"]
     ProductRoleIdParameter:
       name: role_id
       in: path
@@ -1023,10 +1048,18 @@ components:
             Replaces the allowed parent types. Removing a parent type that a
             role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped
             above this type would then bundle a permission outside its scope.
+            Removing a parent type that a registered resource of this type
+            sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in
+            `metadata.blocked_by.resources` and the type in
+            `metadata.parent_type`.
           items:
             $ref: "#/components/schemas/ResourceTypeSlug"
         nests_in_itself:
           type: boolean
+          description: >-
+            Turning it off while a registered resource of this type sits under
+            another of the same type answers 409 RESOURCE_TYPE_IN_USE, with the
+            count in `metadata.blocked_by.resources`.
         custom_roles:
           type: boolean
           description: >-
@@ -1167,6 +1200,138 @@ components:
             type: array
             items:
               $ref: "#/components/schemas/ProductResourceTypeResponse"
+        required:
+        - items
+
+    ResourceExternalId:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^[A-Za-z0-9._~-]{1,200}$'
+      description: >-
+        The product's own identifier of a resource, such as its database ID.
+        It is unique in its Organization and resource type, and fixed once
+        registered. It holds 1 to 200 characters from letters, digits, `.`,
+        `_`, `~` and `-`, so it fits a URL path segment as is; `.` and `..`
+        alone are refused. Any other value answers 400 INVALID_RESOURCE_ID.
+      examples: ["3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60"]
+
+    ResourceParentRef:
+      type: object
+      description: >-
+        The one parent of a resource: another registered resource of the same
+        Organization, or the Organization itself, named
+        `{ "type": "organization", "id": "<organization_id>" }`.
+      required: [type, id]
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        id:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: The parent's `id`, or the Organization's ID when `type` is `organization`.
+          examples: ["9f1c2a4e-6b3d-4c8e-a1f0-2d7e5b9c3a11"]
+
+    ResourcePutRequest:
+      type: object
+      description: >-
+        The resource's name and its parent. Both are required on every call,
+        whether it creates, renames or moves the resource: Anchor never picks a
+        parent.
+      required: [name, parent]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >-
+            A display name, not unique. Send it again when the resource is
+            renamed in the product; it is shown to people and never decides
+            access.
+          examples: ["Design"]
+        parent:
+          $ref: "#/components/schemas/ResourceParentRef"
+
+    ResourceResponse:
+      type: object
+      description: >-
+        A registered resource, named by the product's own identifier. Anchor's
+        own row ID is never exposed.
+      required: [type, id, organization_id, name, parent, created_at, updated_at]
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        id:
+          $ref: "#/components/schemas/ResourceExternalId"
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+          examples: ["org_2qL9aC3mE8xP1rT6vN4bK2sJ"]
+        name:
+          type: string
+        parent:
+          $ref: "#/components/schemas/ResourceParentRef"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ResourceFilter:
+      type: object
+      properties:
+        resource_types:
+          type: array
+          maxItems: 50
+          description: Keeps resources of these types. A slug the product has not declared matches nothing.
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          x-go-type-skip-optional-pointer: true
+        parent:
+          $ref: "#/components/schemas/ResourceParentRef"
+        ids:
+          type: array
+          maxItems: 100
+          description: Keeps resources with these product identifiers, of any type unless `resource_types` narrows it.
+          items:
+            $ref: "#/components/schemas/ResourceExternalId"
+          x-go-type-skip-optional-pointer: true
+        name_contains:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Keeps resources whose name contains this text, regardless of case. `%` and `_` match themselves.
+
+    ResourceSortField:
+      type: string
+      enum: [created_at, name]
+      default: created_at
+      description: Field to sort by. Every order ends with `id`, then with Anchor's row, so ties keep a stable order.
+      x-go-type: resource.SortField
+      x-go-type-import:
+        path: anchor/internal/domain/resource
+
+    ResourceSearchRequest:
+      type: object
+      properties:
+        pagination:
+          $ref: "#/components/schemas/PaginationRequest"
+        filter:
+          $ref: "#/components/schemas/ResourceFilter"
+        sort_by:
+          $ref: "#/components/schemas/ResourceSortField"
+        sort_direction:
+          $ref: "#/components/schemas/SortDirection"
+
+    ResourceListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ResourceResponse"
         required:
         - items
 
@@ -5936,7 +6101,9 @@ paths:
         Replaces every resource type of the product except `organization` in
         one transaction: the admin UI publishes a draft tree with this call.
         A type in the body is created or updated by slug; a type left out is
-        deleted, under the same rules as the delete route. Emits one
+        deleted, under the same rules as the delete route. A type that loses a
+        parent type, or stops nesting in itself, is refused as on the update
+        route while registered resources use it that way. Emits one
         `product.resource_type.*` event per type created, updated or deleted.
         Requires Platform Bearer token or Product API Key with
         resource_type:create, resource_type:update and resource_type:delete.
@@ -6069,8 +6236,10 @@ paths:
       summary: Delete Product Resource Type
       description: >-
         Deletes a resource type that nothing uses. A type that is the parent of
-        another type, or that roles or permissions are scoped to, answers 409
-        RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`.
+        another type, that roles or permissions are scoped to, or that
+        registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the
+        blocking counts in `metadata.blocked_by`; `resources` is present only
+        when resources block it.
         The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE.
         Emits `product.resource_type.deleted`. Requires Platform Bearer token
         or Product API Key with resource_type:delete.
@@ -8204,6 +8373,274 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /v1/products/{product_id}/organizations/{organization_id}/resources/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Search Resources
+      description: >-
+        Searches the resources registered in an Organization. Filter by
+        resource type, by parent, by product identifier, or by part of the
+        name. Requires Platform Bearer token or Product API Key with
+        resource:read.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchResources
+      tags: [Resource]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceSearchRequest"
+      responses:
+        "200":
+          description: Matching resources.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/ResourceTypePathParameter"
+    - $ref: "#/components/parameters/ResourceIdParameter"
+    put:
+      summary: Register Resource
+      description: >-
+        Registers a resource of the product under its parent, renames it or
+        moves it. The call is idempotent: the same body twice leaves one
+        resource and changes nothing the second time. Register a resource only
+        when a role is held on it, together with the ancestors it hangs from;
+        any other item is checked by naming its parent. Parents register before
+        their children.
+
+        The parent must be one of the type's parent types, or the type itself
+        when it nests in itself, and must be registered in the same
+        Organization. A resource can't move under itself or under one of its
+        descendants. A chain is at most 15 levels deep, counting the
+        Organization. A move carries the resource's whole subtree, and the
+        depth rule applies to its deepest descendant.
+
+        Emits `resource.created` or `resource.updated`, which stay inside
+        Anchor and are never delivered to the product's event endpoint.
+        Requires Product API Key with resource:write.
+      operationId: putResource
+      tags: [Resource]
+      security:
+      - productApiKeyAuth: ["resource:write"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourcePutRequest"
+            examples:
+              topLevel:
+                summary: A project directly under its Organization
+                value: { "name": "Website redesign", "parent": { "type": "organization", "id": "org_2qL9aC3mE8xP1rT6vN4bK2sJ" } }
+              nested:
+                summary: A folder inside a project
+                value: { "name": "Design", "parent": { "type": "project", "id": "9f1c2a4e-6b3d-4c8e-a1f0-2d7e5b9c3a11" } }
+      responses:
+        "200":
+          description: The resource after the call, whether it was created, renamed, moved or left as it was.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+              example:
+                type: folder
+                id: 3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60
+                organization_id: org_2qL9aC3mE8xP1rT6vN4bK2sJ
+                name: Design
+                parent: { type: project, id: 9f1c2a4e-6b3d-4c8e-a1f0-2d7e5b9c3a11 }
+                created_at: "2026-10-24T09:20:02Z"
+                updated_at: "2026-10-24T09:20:02Z"
+        "400":
+          description: >-
+            The body or the identifier is refused. `INVALID_RESOURCE_PARENT`:
+            the parent's type is not one this type may sit under.
+            `BUILT_IN_RESOURCE_TYPE`: `organization` is not a type to register.
+            `INVALID_RESOURCE_ID`: the identifier holds a character outside the
+            allowed set. `VALIDATION_ERROR`: a field is missing or too long.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                invalidParent:
+                  summary: A document can't sit directly in the Organization
+                  value:
+                    errors:
+                    - code: INVALID_RESOURCE_PARENT
+                      message: "A resource of type document can't sit under one of type organization. Its parent is of type folder or project."
+                      metadata: { resource_type: document, parent_type: organization, allowed_parent_types: [folder, project] }
+                builtInType:
+                  summary: The Organization is not registered as a resource
+                  value:
+                    errors:
+                    - code: BUILT_IN_RESOURCE_TYPE
+                      message: "Organizations are managed through the organization routes and are never registered as resources."
+                invalidId:
+                  summary: The identifier holds a slash
+                  value:
+                    errors:
+                    - code: INVALID_RESOURCE_ID
+                      message: "A resource ID holds 1 to 200 letters, digits, '.', '_', '~' or '-', and is not '.' or '..'."
+                      metadata: { id: "a b" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >-
+            `RESOURCE_TYPE_NOT_FOUND`: the product has not declared the type in
+            the path. `ORGANIZATION_NOT_FOUND`: the product has no such
+            Organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                unknownType:
+                  summary: The type in the path is not declared
+                  value:
+                    errors:
+                    - code: RESOURCE_TYPE_NOT_FOUND
+                      message: This product has no resource type with that slug.
+                      metadata: { resource_type: spreadsheet }
+        "409":
+          description: >-
+            The registry refuses the change in its current state.
+            `PARENT_NOT_REGISTERED`: register the parent first.
+            `RESOURCE_CYCLE`: the resource would sit under itself.
+            `RESOURCE_TOO_DEEP`: the chain would pass 15 levels, counting the
+            Organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                parentNotRegistered:
+                  summary: The parent is not registered in this Organization
+                  value:
+                    errors:
+                    - code: PARENT_NOT_REGISTERED
+                      message: Register the parent before its children.
+                      metadata: { parent: { type: project, id: 9f1c2a4e-6b3d-4c8e-a1f0-2d7e5b9c3a11 } }
+                cycle:
+                  summary: A folder can't move into its own subfolder
+                  value:
+                    errors:
+                    - code: RESOURCE_CYCLE
+                      message: "The new parent is inside this resource, so the resource can't move under it."
+                      metadata: { chain: ["folder:c41d8e07-52b9-4a3f-bc18-6e0f9d2a7c45", "folder:3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60"] }
+                tooDeep:
+                  summary: A sixteenth level
+                  value:
+                    errors:
+                    - code: RESOURCE_TOO_DEEP
+                      message: "A resource chain may be at most 15 levels deep, counting the organization. This one would be 16."
+                      metadata: { max_depth: 15, depth: 16 }
+    get:
+      summary: Get Resource
+      description: >-
+        Reads a registered resource by its type and the product's identifier.
+        Requires Platform Bearer token or Product API Key with resource:read.
+      operationId: getResource
+      tags: [Resource]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource:read"]
+      responses:
+        "200":
+          description: The resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: >-
+            `RESOURCE_NOT_FOUND`: no resource of that type and identifier is
+            registered in the Organization. `RESOURCE_TYPE_NOT_FOUND` and
+            `ORGANIZATION_NOT_FOUND` as on the registration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                notRegistered:
+                  summary: Nothing registered under that identity
+                  value:
+                    errors:
+                    - code: RESOURCE_NOT_FOUND
+                      message: This organization has no registered resource of that type and identifier.
+    delete:
+      summary: Delete Resource
+      description: >-
+        Deletes a registered resource. A resource with registered children
+        answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`,
+        which deletes the resource and its whole subtree in one transaction.
+        Emits one `resource.deleted` per deleted resource, deepest first; these
+        events stay inside Anchor and are never delivered to the product's
+        event endpoint. Requires Product API Key with resource:delete.
+      operationId: deleteResource
+      tags: [Resource]
+      security:
+      - productApiKeyAuth: ["resource:delete"]
+      parameters:
+      - name: cascade
+        in: query
+        required: false
+        description: "`true` also deletes every registered descendant. Absent means `false`."
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "204":
+          description: Resource deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >-
+            `RESOURCE_IN_USE`: the resource still has registered children or
+            role assignments. `metadata.children` counts its direct children
+            and `metadata.role_assignments` the roles held on it. Send
+            `cascade=true` to delete them too.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                inUse:
+                  summary: A folder that still holds a subfolder
+                  value:
+                    errors:
+                    - code: RESOURCE_IN_USE
+                      message: "This resource still has 1 registered child and 0 role assignments. Send cascade=true to delete them too."
+                      metadata: { children: 1, role_assignments: 0 }
   /v1/products/{product_id}/organizations/{organization_id}/invitations:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

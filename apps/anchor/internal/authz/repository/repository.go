@@ -249,8 +249,47 @@ func (r *repositoryImpl) OrganizationState(
 	if state.Roles, err = r.roleGrants(ctx, productID, organizationID, held); err != nil {
 		return state, err
 	}
-	state.APIKeys, err = r.apiKeyGrants(ctx, productID, organizationID, now)
+	if state.APIKeys, err = r.apiKeyGrants(ctx, productID, organizationID, now); err != nil {
+		return state, err
+	}
+	state.Resources, err = r.resources(ctx, organizationID)
 	return state, err
+}
+
+// resourceRow is a registered resource with its type's slug and its parent's.
+type resourceRow struct {
+	ID               string  `alias:"resource_row.id"`
+	Type             string  `alias:"resource_row.type"`
+	ParentResourceID *string `alias:"resource_row.parent_resource_id"`
+	ParentType       *string `alias:"resource_row.parent_type"`
+}
+
+func (r *repositoryImpl) resources(ctx context.Context, organizationID string) ([]model.Resource, error) {
+	types := table.ProductResourceTypes.AS("resource_type")
+	parents := table.Resources.AS("parent")
+	parentTypes := table.ProductResourceTypes.AS("parent_type")
+	return transactor.QueryMapSlice(ctx, r.db,
+		postgres.SELECT(
+			table.Resources.ID.AS("resource_row.id"),
+			types.Slug.AS("resource_row.type"),
+			table.Resources.ParentResourceID.AS("resource_row.parent_resource_id"),
+			parentTypes.Slug.AS("resource_row.parent_type"),
+		).FROM(
+			table.Resources.
+				INNER_JOIN(types, types.ID.EQ(table.Resources.ResourceTypeID)).
+				LEFT_JOIN(parents, parents.ID.EQ(table.Resources.ParentResourceID)).
+				LEFT_JOIN(parentTypes, parentTypes.ID.EQ(parents.ResourceTypeID)),
+		).WHERE(table.Resources.OrganizationID.EQ(postgres.String(organizationID))).
+			ORDER_BY(table.Resources.ID.ASC()),
+		func(row resourceRow) model.Resource {
+			return model.Resource{
+				RowID:       row.ID,
+				Type:        row.Type,
+				ParentRowID: functional.FromPtr(row.ParentResourceID).OrElse(""),
+				ParentType:  functional.FromPtr(row.ParentType).OrElse(""),
+			}
+		},
+	).Value()
 }
 
 func (r *repositoryImpl) HeldTemplates(ctx context.Context, productID string) ([]model.RoleGrants, error) {

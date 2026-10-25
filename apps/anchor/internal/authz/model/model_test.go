@@ -157,6 +157,32 @@ func TestOrganizationTuples(t *testing.T) {
 		assert.Equal(t, 2, links)
 	})
 
+	t.Run("Each registered resource holds one parent tuple to its parent or its organization", func(t *testing.T) {
+		state := model.OrganizationState{OrganizationID: "org_1", Exists: true, Resources: []model.Resource{
+			{RowID: "res_1", Type: "project"},
+			{RowID: "res_2", Type: "folder", ParentRowID: "res_1", ParentType: "project"},
+			{RowID: "res_3", Type: "folder", ParentRowID: "res_2", ParentType: "folder"},
+		}}
+
+		tuples := state.Tuples(documentCatalog())
+
+		assert.ElementsMatch(t, []model.Tuple{
+			{Object: "rt_project:res_1", Relation: model.RelationParent, User: model.Organization("org_1")},
+			{Object: "rt_folder:res_2", Relation: model.RelationParent, User: "rt_project:res_1"},
+			{Object: "rt_folder:res_3", Relation: model.RelationParent, User: "rt_folder:res_2"},
+		}, tuples)
+	})
+
+	t.Run("A parent tuple the model's parent relation would refuse is left out", func(t *testing.T) {
+		state := model.OrganizationState{OrganizationID: "org_1", Exists: true, Resources: []model.Resource{
+			{RowID: "res_1", Type: "folder"},
+			{RowID: "res_2", Type: "project", ParentRowID: "res_3", ParentType: "project"},
+			{RowID: "res_4", Type: "removed", ParentRowID: "res_1", ParentType: "folder"},
+		}}
+
+		assert.Empty(t, state.Tuples(documentCatalog()))
+	})
+
 	t.Run("A deleted organization implies no tuple", func(t *testing.T) {
 		assert.Empty(t, model.OrganizationState{OrganizationID: "org_1"}.Tuples(documentCatalog()))
 	})
