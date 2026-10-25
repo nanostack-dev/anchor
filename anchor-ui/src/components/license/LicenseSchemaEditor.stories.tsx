@@ -170,6 +170,13 @@ export const ChangingTypeClearsInapplicableRules: Story = {
 		await expect(type).toHaveTextContent("Number");
 		await expect(canvas.getByLabelText("Min")).toHaveValue(null);
 		await expect(canvas.getByLabelText("Max")).toHaveValue(null);
+		// The accessibility check runs after play; a closing popup still holds
+		// focusable aria-hidden focus guards.
+		await waitFor(() =>
+			expect(
+				page.queryByRole("listbox", { name: "Field type options" }),
+			).not.toBeInTheDocument(),
+		);
 	},
 };
 
