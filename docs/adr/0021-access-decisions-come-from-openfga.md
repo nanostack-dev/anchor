@@ -1,6 +1,6 @@
 # ADR-0021: Access decisions come from OpenFGA, run inside Anchor
 
-**Status:** Proposed, 2026-10-23 (proof of concept on `poc/openfga-authz`)
+**Status:** Accepted, 2026-10-25 (proof of concept on `poc/openfga-authz`; roles as data and the write after commit are refined by [ADR-0022](0022-resource-types-scope-roles-and-permissions.md))
 
 ## Context
 
@@ -27,7 +27,7 @@ Every access decision is read from an OpenFGA store, one per product, served by 
 ## Consequences
 
 - The first decision after a write pays for the sync of that organization; after a role or permission change, for a model rebuild only.
-- The model grows as roles × permissions and reaches OpenFGA's 256 KB limit around 60 roles that each grant 35 permissions. Storing role grants as tuples avoids that at the cost of fan-out writes; see [authorization with OpenFGA](../technical/authorization-openfga.md#limits-and-follow-ups).
+- The model grows as roles × permissions and reaches OpenFGA's 256 KB limit around 60 roles that each grant 35 permissions. Storing role grants as tuples avoids that at the cost of fan-out writes; [ADR-0022](0022-resource-types-scope-roles-and-permissions.md#dr-e3) adopts tuples.
 - A decision checks every catalog permission so it can report them all, which costs hundreds of datastore reads for large catalogs.
 - The binary carries OpenFGA and its dependencies, and Anchor owns OpenFGA's migrations in the `openfga` schema.
 - An organization API key that expires without a write keeps its tuples until the next reconcile. Introspection refuses it first, so no decision reaches the store.

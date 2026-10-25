@@ -2,7 +2,7 @@
 
 | Status | Date | Where | Builds on |
 | :-- | :-- | :-- | :-- |
-| 🟡 **Pending** | 2026-10-23 | branch `poc/openfga-authz` | [ADR-0021](0021-access-decisions-come-from-openfga.md), access decisions from OpenFGA |
+| ✅ **Accepted** | 2026-10-25 | delivery [#259](https://github.com/nanostack-dev/anchor/issues/259)–[#266](https://github.com/nanostack-dev/anchor/issues/266); proof of concept on `poc/openfga-authz` | [ADR-0021](0021-access-decisions-come-from-openfga.md), access decisions from OpenFGA |
 
 > [!NOTE]
 > A Product declares a tree of **resource types** under the built-in **Organization** type: a document product would declare `project → folder → document`. Every **permission** and every **role** is scoped to one resource type. A role assigned on a resource covers that resource and everything under it. Roles are data each Organization owns: copies of the Product's **role templates**, which the customer may edit, and the customer's own **custom roles**. Anchor keeps OpenFGA from ADR-0021 underneath, and products never write model language.
@@ -35,10 +35,10 @@
 | Concept | Today | Limit |
 | --- | --- | --- |
 | Permission | A flat catalog per Product (`documents:read`), with an optional free-text `scope_modifier` that nothing evaluates | It says nothing about *what kind of thing* it applies to |
-| Role | A flat bundle of permissions | Assignable on an Organization, and since this branch on a Workspace, with no rule about which |
+| Role | A flat bundle of permissions | Assignable on an Organization, and, on the proof-of-concept branch, on a Workspace, with no rule about which |
 | Organization | Built in; a member holds exactly one role | — |
 | Workspace | Built in, one fixed level under Organization | A Product cannot add its own levels: projects, folders, documents |
-| Workspace role | Added on this branch, hard-coded to workspaces | Every new level would need another hard-coded table, API and evaluator branch |
+| Workspace role | In the schema; its API exists on the proof-of-concept branch, hard-coded to workspaces | Every new level would need another hard-coded table, API and evaluator branch |
 
 Each new kind of thing a product wants to protect (a project, a folder, a document) would currently need its own table, API, UI and evaluator code in Anchor. That doesn't scale across products.
 
@@ -638,7 +638,7 @@ flowchart LR
 <details>
 <summary>Context</summary>
 
-Workspace is built into Anchor today: its own table, API, admin UI, events, and the workspace roles added on this branch. Under A0, Organization is the only resource Anchor stores in full. Anchor has no external customers yet, so no long compatibility layer is needed; the built-in Workspace only has to outlive its last caller.
+Workspace is built into Anchor today: its own table, API, admin UI, events, and the workspace roles in its schema. Under A0, Organization is the only resource Anchor stores in full. Anchor has no external customers yet, so no long compatibility layer is needed; the built-in Workspace only has to outlive its last caller.
 
 </details>
 
