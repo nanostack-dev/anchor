@@ -1,5 +1,6 @@
 import type { Page } from "playwright/test";
 import type {
+	CreatedProductApiKeyResponse,
 	ProductOrganizationResponse,
 	ProductUserResponse,
 	ResourceResponse,
@@ -117,7 +118,30 @@ async function chooseType(page: Page, name: string) {
 		.click();
 }
 
+// evaluateAccess accepts only a product API key while the admin UI sends its
+// platform token; forward the browser's call with a key scoped to evaluation.
+async function forwardEvaluationWithProductKey(page: Page, world: World) {
+	const key = await world.api.post<CreatedProductApiKeyResponse>(
+		`${world.productPath}/api-keys`,
+		{
+			name: world.name("explainer-key"),
+			permissions: ["product_user:read", "organization_api_key:read"],
+		},
+	);
+	await page.route(
+		`**${world.productPath}/access/v1/evaluation`,
+		async (route) => {
+			const { authorization: _, ...headers } = route.request().headers();
+			const response = await route.fetch({
+				headers: { ...headers, "x-product-api-key": key.value },
+			});
+			await route.fulfill({ response });
+		},
+	);
+}
+
 async function openResourceTypes(page: Page, world: World) {
+	await forwardEvaluationWithProductKey(page, world);
 	await selectProduct(page, world.product);
 	await page.goto(paths.resourceTypes);
 	await expect(typeNode(page, "Document")).toBeVisible();
