@@ -13,6 +13,7 @@ import (
 	"anchor/internal/authz/service"
 	"anchor/internal/authz/store"
 	"anchor/internal/events"
+	resourceservice "anchor/internal/resource/service"
 )
 
 func NewModule() fx.Option {
@@ -27,6 +28,7 @@ func NewModule() fx.Option {
 			service.NewReplayer,
 			events.AsTxObserver(service.NewMarker),
 			fx.Annotate(service.NewChecker, fx.As(new(accessservice.PermissionChecker))),
+			func(replayer *service.Replayer) resourceservice.WriteReplay { return replayer },
 		),
 		fx.Invoke(func(sweeper *service.Sweeper, lc fx.Lifecycle) { sweeper.Run(lc) }),
 	)

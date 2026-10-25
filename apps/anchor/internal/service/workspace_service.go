@@ -31,10 +31,11 @@ type WorkspaceService interface {
 		ctx context.Context,
 		input workspace.SearchWorkspacesInput,
 	) (search.Result[workspace.Workspace], error)
-	// DeclareResourceType gives the product its workspace resource type. A
-	// caller that creates a workspace inside its own transaction calls it
-	// before that transaction; Create calls it before its own.
-	DeclareResourceType(ctx context.Context, productID string) error
+	// RegisterResource declares the product's workspace resource type and
+	// registers the workspace as a resource, for a workspace created inside a
+	// caller's transaction, once that transaction committed. Inside a
+	// transaction it does nothing; the next start's backfill registers it.
+	RegisterResource(ctx context.Context, productID, organizationID, workspaceID string) error
 }
 
 func (s *workspaceService) ListByOrganizations(
@@ -129,8 +130,10 @@ func (s *workspaceService) Create(
 		return workspace.Workspace{}, err
 	}
 
-	if err := s.DeclareResourceType(ctx, input.ProductID); err != nil {
-		return workspace.Workspace{}, err
+	if transactor.CurrentTx(ctx) == nil {
+		if _, err := s.resources.DeclareType(ctx, input.ProductID); err != nil {
+			return workspace.Workspace{}, err
+		}
 	}
 
 	newWorkspace := workspace.Workspace{
@@ -317,15 +320,31 @@ func (s *workspaceService) Delete(
 	})
 }
 
-// DeclareResourceType runs outside the create's transaction when it can: a
-// refused type insert would abort it, and the type's catalog lock would be
-// taken after the Organization's row, against the order of resource writes.
-func (s *workspaceService) DeclareResourceType(ctx context.Context, productID string) error {
-	if productID == "" {
+// RegisterResource declares the type outside any transaction: a refused type
+// insert would abort it, and the catalog lock would come after the
+// Organization's row, against the order of resource writes.
+func (s *workspaceService) RegisterResource(ctx context.Context, productID, organizationID, workspaceID string) error {
+	if productID == "" || organizationID == "" || workspaceID == "" {
 		return fault.ErrBadRequest
 	}
-	_, err := s.resources.DeclareType(ctx, productID)
-	return err
+	if transactor.CurrentTx(ctx) != nil {
+		return nil
+	}
+	declared, err := s.resources.DeclareType(ctx, productID)
+	if err != nil || !declared {
+		return err
+	}
+	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		found, findErr := s.workspaceRepo.FindByID(txCtx, productID, organizationID, workspaceID)
+		if findErr != nil {
+			return findErr
+		}
+		ws, exists := found.Get()
+		if !exists {
+			return nil
+		}
+		return s.resources.Put(txCtx, productID, organizationID, ws.ID, ws.Name)
+	})
 }
 
 func (s *workspaceService) Search(

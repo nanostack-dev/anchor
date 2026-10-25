@@ -290,3 +290,14 @@ func (r *Replayer) report(productID, organizationID string, err error) {
 			Msg("authz replay after commit failed; the sweeper retries it")
 	}
 }
+
+// Collect returns a context in which writes collect their marks, and the
+// function that replays them once the writes' transaction has committed: what
+// a request's replay does, for a write made outside a request.
+func (r *Replayer) Collect(ctx context.Context) (context.Context, func(context.Context)) {
+	collectCtx, written := CollectWrites(ctx)
+	return collectCtx, func(after context.Context) {
+		r.Replay(after, written())
+		r.ReplayResources(after, WrittenResources(collectCtx))
+	}
+}

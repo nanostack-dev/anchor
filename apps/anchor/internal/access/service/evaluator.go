@@ -237,6 +237,14 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 	}), nil
 }
 
+// unexpectedOrNil is unexpected for a lookup that may not have failed.
+func (e *evaluator) unexpectedOrNil(err error, request Request, lookup string) error {
+	if err == nil {
+		return nil
+	}
+	return e.unexpected(err, request, lookup)
+}
+
 func (e *evaluator) unexpected(err error, request Request, lookup string) error {
 	e.logger.Error().Err(err).Str("product_id", request.ProductID).Str("lookup", lookup).
 		Msg("access evaluation lookup failed")

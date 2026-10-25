@@ -532,7 +532,7 @@ func TestAccessEvaluationOnResourcesSeesWritesOnTheNextCall(t *testing.T) {
 // A product's own workspace type and the workspaces of the workspace routes
 // are one type (ADR-0022 A6): a workspace registered through the resource
 // routes is decided like one the workspace routes created.
-func TestAccessEvaluationKeepsTheBuiltInWorkspace(t *testing.T) {
+func TestAccessEvaluationDecidesARegisteredWorkspaceLikeABuiltInOne(t *testing.T) {
 	t.Parallel()
 	t.Run(
 		"A workspace registered as a resource is decided like a workspace of the workspace routes",

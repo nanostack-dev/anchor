@@ -42,6 +42,7 @@ var (
 	resourceRepo      resourcerepository.Repository
 	resourceTypeSvc   rtservice.Service
 	roleAssignmentSvc assignmentservice.Service
+	workspaceReplay   resourceservice.WriteReplay
 )
 
 func TestMain(m *testing.M) {
@@ -76,6 +77,7 @@ func TestMain(m *testing.M) {
 				&resourceRepo,
 				&resourceTypeSvc,
 				&roleAssignmentSvc,
+				&workspaceReplay,
 			},
 			AfterRun: mailpit.StopShared,
 			// OpenFGA must hold what Anchor's tables imply once the suite ran

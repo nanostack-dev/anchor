@@ -13,6 +13,7 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,8 +45,9 @@ func (l *backfillLog) Write(p []byte) (int, error) {
 }
 
 // logged reports whether a line of the level carries every field and a
-// message containing the text.
-func (l *backfillLog) logged(t *testing.T, level, text string, fields map[string]string) bool {
+// message containing the text. A number field compares as a float64, as JSON
+// decodes it.
+func (l *backfillLog) logged(t *testing.T, level, text string, fields map[string]any) bool {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -72,10 +74,18 @@ func (l *backfillLog) logged(t *testing.T, level, text string, fields map[string
 func newWorkspaceBackfill() (*resourceservice.WorkspaceBackfill, *backfillLog) {
 	log := &backfillLog{}
 	logger := zerolog.New(log)
-	mirror := resourceservice.NewWorkspaces(resourceSvc, resourceTypeSvc, logger)
-	return resourceservice.NewWorkspaceBackfill(
-		workspaceRepo, mirror, resourceRepo, resourceTypeSvc, roleAssignmentSvc, initialWorkspaceTx, logger,
-	), log
+	mirror := resourceservice.NewWorkspaces(resourceSvc, resourceRepo, resourceTypeSvc, logger)
+	return resourceservice.NewWorkspaceBackfill(resourceservice.WorkspaceBackfillParams{
+		WorkspaceRepo: workspaceRepo,
+		Workspaces:    mirror,
+		Resources:     resourceSvc,
+		Repo:          resourceRepo,
+		ResourceTypes: resourceTypeSvc,
+		Assignments:   roleAssignmentSvc,
+		Replay:        workspaceReplay,
+		Transactor:    initialWorkspaceTx,
+		Logger:        logger,
+	}), log
 }
 
 // insertWorkspace writes a workspace as a release before the resource mirror
@@ -119,8 +129,9 @@ func requireWorkspaceResource(
 	return got
 }
 
-// waitForSweep waits until the sweeper replayed the product's marks: a
-// backfill runs outside a request, so no request replays its writes.
+// waitForSweep waits until the product's marks are replayed: the backfill
+// replays them after each commit, and the sweeper retries one that couldn't
+// run.
 func waitForSweep(t *testing.T, productID string) {
 	t.Helper()
 	require.Eventually(t, func() bool {
@@ -204,7 +215,7 @@ func TestWorkspaceBackfill(t *testing.T) {
 		assert.Equal(t, []string{"project"}, product.ResourceTypes().BySlug(workspaceType).ParentTypes)
 		requireNoWorkspaceResource(t, product, org.Id, workspaceID)
 		assert.True(t, log.logged(t, "error", "can't sit under the organization",
-			map[string]string{"product_id": product.ProductID}))
+			map[string]any{"product_id": product.ProductID}))
 	})
 
 	t.Run("A membership with a workspace role moves to an assignment; one with an organization role stays",
@@ -240,9 +251,8 @@ func TestWorkspaceBackfill(t *testing.T) {
 			resp := members.GetRaw(withOrganizationRole)
 			assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 			assert.True(t, workspaceMembershipExists(t, workspaceID, withOrganizationRole))
-			assert.True(t, log.logged(t, "warn", "left in workspace_memberships", map[string]string{
-				"product_id": product.ProductID, "workspace_id": workspaceID, "product_user_id": withOrganizationRole,
-				"role_id": orgMember.Id,
+			assert.True(t, log.logged(t, "warn", "left in workspace_memberships", map[string]any{
+				"product_id": product.ProductID, "memberships_left": float64(1),
 			}))
 
 			require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
@@ -438,6 +448,22 @@ func TestAccessEvaluationOnWorkspaceResources(t *testing.T) {
 		requireDenied(t, w.ask(w.editorExternalID, w.private).Can(w.viewWorkspace).Decide(), ct.MISSINGPERMISSION)
 	})
 
+	t.Run("An organization API key holds an organization permission on a workspace", func(t *testing.T) {
+		resp, err := w.product.AllScopeAPIKeyClient().CreateOrganizationAPIKeyWithResponse(
+			t.Context(), w.product.ProductID, w.org.Id,
+			ct.CreateOrganizationAPIKeyJSONRequestBody{
+				Name:        "Key-" + ids.MustNew("ct"),
+				Permissions: []string{w.readReports},
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+		key := w.product.Access().APIKey(resp.JSON201.Value)
+
+		requireAllowed(t, key.InWorkspace("", w.shared).Can(w.readReports).Decide())
+		requireDenied(t, key.InWorkspace("", w.shared).Can(w.viewWorkspace).Decide(), ct.MISSINGPERMISSION)
+	})
+
 	t.Run("A workspace of another organization, or an unknown one, is not in the organization", func(t *testing.T) {
 		for _, workspaceID := range []string{w.foreign, ids.MustNew("ws")} {
 			requireDenied(t, w.ask(w.adminExternalID, workspaceID).Can(w.viewWorkspace).Decide(),
@@ -545,72 +571,81 @@ func answered(resp interface{ StatusCode() int }, err error, want int) error {
 	return nil
 }
 
-// The backfill and the workspace routes write the same references. Whatever
-// order their transactions take, every workspace ends registered with its
-// own name, and a deleted one ends unregistered.
-func TestWorkspaceBackfillRacesWorkspaceRoutes(t *testing.T) {
-	t.Parallel()
+// lockWaiters counts the sessions waiting on a lock. Only a serial test reads
+// it, while no other test runs.
+func lockWaiters(t *testing.T) int {
+	t.Helper()
+	var waiting int
+	require.NoError(t, testDB.QueryRowContext(t.Context(),
+		`SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'`).Scan(&waiting))
+	return waiting
+}
 
-	t.Run("Workspace writes during a backfill leave every workspace registered as it is", func(t *testing.T) {
-		t.Parallel()
-		const (
-			writers  = 10
-			backfill = 5
-		)
+// The backfill and the workspace routes write the same resources. The test
+// holds the Organization's resource lock until every write and the backfill
+// wait behind it, the creates with their workspace row written, the renames
+// and deletes with theirs changed, then lets them all go at once. Whatever
+// order they take, every workspace ends registered with its own name, and a
+// deleted one ends unregistered.
+//
+// Not parallel: it holds a lock and counts the sessions waiting on locks.
+func TestWorkspaceBackfillRacesWorkspaceRoutes(t *testing.T) {
+	t.Run("Workspace writes queued with a backfill leave every workspace registered as it is", func(t *testing.T) {
+		const writers = 6
 		product := createTestProductContext(t)
 		product.ResourceTypes().CreateUnder(workspaceType, "organization")
 		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		unregistered := make([]string, writers)
-		for i := range unregistered {
-			unregistered[i] = insertWorkspace(t, org.Id, "Before "+ids.MustNew("ct"))
+		renamed := make([]string, writers)
+		deleted := make([]string, writers/2)
+		for i := range renamed {
+			renamed[i] = insertWorkspace(t, org.Id, "Before "+ids.MustNew("ct"))
+		}
+		for i := range deleted {
+			deleted[i] = insertWorkspace(t, org.Id, "Gone "+ids.MustNew("ct"))
 		}
 		client := product.AllScopeAPIKeyClient()
 		runner, _ := newWorkspaceBackfill()
-		var (
-			mu      sync.Mutex
-			deleted []string
-			group   errgroup.Group
-		)
-		for range backfill {
-			group.Go(func() error { return runner.RunProduct(t.Context(), product.ProductID) })
-		}
-		for i := range writers {
+		held, err := testDB.BeginTx(t.Context(), nil)
+		require.NoError(t, err)
+		_, err = held.ExecContext(t.Context(), `SELECT pg_advisory_xact_lock($1)`,
+			pglock.KeyHash("resources:"+org.Id))
+		require.NoError(t, err)
+		waitingBefore := lockWaiters(t)
+
+		var group errgroup.Group
+		group.Go(func() error { return runner.RunProduct(t.Context(), product.ProductID) })
+		for range writers {
 			group.Go(func() error {
-				created, err := client.CreateOrganizationWorkspaceWithResponse(t.Context(), product.ProductID, org.Id,
-					ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Created " + ids.MustNew("ct")})
-				if err = answered(created, err, http.StatusCreated); err != nil {
-					return err
-				}
-				renamed, err := client.UpdateOrganizationWorkspaceWithResponse(
-					t.Context(),
-					product.ProductID,
-					org.Id,
-					unregistered[i],
-					ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Renamed " + ids.MustNew("ct")},
-				)
-				if err = answered(renamed, err, http.StatusOK); err != nil || i%2 == 0 {
-					return err
-				}
-				for _, id := range []string{created.JSON201.Id, unregistered[i]} {
-					gone, deleteErr := client.DeleteOrganizationWorkspaceWithResponse(
-						t.Context(), product.ProductID, org.Id, id)
-					if deleteErr = answered(gone, deleteErr, http.StatusNoContent); deleteErr != nil {
-						return deleteErr
-					}
-					mu.Lock()
-					deleted = append(deleted, id)
-					mu.Unlock()
-				}
-				return nil
+				created, createErr := client.CreateOrganizationWorkspaceWithResponse(t.Context(), product.ProductID,
+					org.Id, ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Created " + ids.MustNew("ct")})
+				return answered(created, createErr, http.StatusCreated)
 			})
 		}
+		for _, id := range renamed {
+			group.Go(func() error {
+				resp, renameErr := client.UpdateOrganizationWorkspaceWithResponse(t.Context(), product.ProductID,
+					org.Id, id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Renamed " + ids.MustNew("ct")})
+				return answered(resp, renameErr, http.StatusOK)
+			})
+		}
+		for _, id := range deleted {
+			group.Go(func() error {
+				resp, deleteErr := client.DeleteOrganizationWorkspaceWithResponse(
+					t.Context(), product.ProductID, org.Id, id)
+				return answered(resp, deleteErr, http.StatusNoContent)
+			})
+		}
+		queued := writers + len(renamed) + len(deleted) + 1
+		require.Eventually(t, func() bool { return lockWaiters(t)-waitingBefore >= queued },
+			sweepWait, sweepPoll, "every write and the backfill wait behind the held lock")
+		require.NoError(t, held.Rollback())
 		require.NoError(t, group.Wait())
 		require.NoError(t, runner.RunProduct(t.Context(), product.ProductID))
 
 		remaining := product.Workspaces(org.Id).Search(ct.SearchOrganizationWorkspacesJSONRequestBody{
 			Pagination: &ct.PaginationRequest{Limit: new(int32(50))},
 		})
-		assert.Len(t, remaining.Items, writers)
+		assert.Len(t, remaining.Items, writers+len(renamed))
 		for _, ws := range remaining.Items {
 			requireWorkspaceResource(t, product, org.Id, ws.Id, ws.Name)
 		}
@@ -620,7 +655,130 @@ func TestWorkspaceBackfillRacesWorkspaceRoutes(t *testing.T) {
 		registered := product.Resources(org.Id).Search(ct.SearchResourcesJSONRequestBody{
 			Filter: &ct.ResourceFilter{ResourceTypes: []string{workspaceType}},
 		})
-		assert.EqualValues(t, writers, registered.Total)
+		assert.EqualValues(t, writers+len(renamed), registered.Total)
 		waitForSweep(t, product.ProductID)
+	})
+}
+
+func TestWorkspaceDeletedByAnEarlierRelease(t *testing.T) {
+	t.Parallel()
+
+	t.Run("A workspace deleted without its resource is not in the organization, and the backfill removes the resource",
+		func(t *testing.T) {
+			t.Parallel()
+			w := givenWorkspaceAccessWorld(t)
+			sink := w.product.CaptureEvents()
+			_, err := testDB.ExecContext(t.Context(), `DELETE FROM workspaces WHERE id = $1`, w.shared)
+			require.NoError(t, err)
+
+			for _, externalID := range []string{w.adminExternalID, w.editorExternalID} {
+				requireDenied(t, w.ask(externalID, w.shared).Can(w.viewWorkspace).Decide(),
+					ct.WORKSPACENOTINORGANIZATION)
+			}
+
+			backfill, _ := newWorkspaceBackfill()
+			require.NoError(t, backfill.RunProduct(t.Context(), w.product.ProductID))
+
+			requireNoWorkspaceResource(t, w.product, w.org.Id, w.shared)
+			sink.WaitFor("resource.role_assignment.deleted", map[string]string{
+				"resource_type": workspaceType, "resource_id": w.shared,
+			})
+			requireDenied(t, w.ask(w.adminExternalID, w.shared).Can(w.viewWorkspace).Decide(),
+				ct.WORKSPACENOTINORGANIZATION)
+			requireAllowed(t, w.ask(w.adminExternalID, w.private).Can(w.viewWorkspace).Decide())
+			waitForSweep(t, w.product.ProductID)
+		})
+
+	t.Run("A workspace the product registers again through the resource routes is its own resource",
+		func(t *testing.T) {
+			t.Parallel()
+			w := givenWorkspaceAccessWorld(t)
+			w.product.Workspaces(w.org.Id).Delete(w.private)
+			resources := w.product.Resources(w.org.Id)
+
+			resources.Put(workspaceType, w.private, "Registered again", resources.Top())
+
+			requireAllowed(t, w.ask(w.adminExternalID, w.private).Can(w.viewWorkspace).Decide())
+			backfill, _ := newWorkspaceBackfill()
+			require.NoError(t, backfill.RunProduct(t.Context(), w.product.ProductID))
+			assert.Equal(t, "Registered again", resources.Get(workspaceType, w.private).Name)
+		})
+}
+
+func TestOrganizationCreateRegistersItsWorkspace(t *testing.T) {
+	t.Parallel()
+
+	t.Run("An organization created with a founding member and a workspace registers the workspace",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			sink := product.CaptureEvents()
+			role := createRoleTemplate(
+				t,
+				product,
+				ct.CreateProductRoleJSONRequestBody{Name: "Owner " + ids.MustNew("ct")},
+			)
+			founder := createDSLProductUser(t, product)
+
+			org := product.Organizations().Create(ct.CreateProductOrganizationJSONRequestBody{
+				Name:           ids.MustNew("org"),
+				Workspace:      &ct.ProductWorkspaceRequest{Name: "Engineering"},
+				FoundingMember: &ct.FoundingMemberRequest{ProductUserId: founder.ID, RoleId: role.Id},
+			})
+
+			assert.Equal(t, []string{"organization"}, product.ResourceTypes().BySlug(workspaceType).ParentTypes)
+			sink.WaitFor("product.resource_type.created", map[string]string{"resource_type": workspaceType})
+			initial := product.Workspaces(org.Id).Search(ct.SearchOrganizationWorkspacesJSONRequestBody{})
+			require.Len(t, initial.Items, 1)
+			requireWorkspaceResource(t, product, org.Id, initial.Items[0].Id, "Engineering")
+		})
+
+	t.Run("A refused organization create declares no workspace type", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		role := createRoleTemplate(t, product, ct.CreateProductRoleJSONRequestBody{Name: "Owner " + ids.MustNew("ct")})
+
+		resp, err := product.AllScopeAPIKeyClient().
+			CreateProductOrganizationWithResponse(t.Context(), product.ProductID,
+				ct.CreateProductOrganizationJSONRequestBody{
+					Name:           ids.MustNew("org"),
+					Workspace:      &ct.ProductWorkspaceRequest{Name: "Engineering"},
+					FoundingMember: &ct.FoundingMemberRequest{ProductUserId: ids.MustNew("pusr"), RoleId: role.Id},
+				})
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
+		found := product.ResourceTypes().Search(ct.SearchProductResourceTypesJSONRequestBody{
+			Filter: &ct.ProductResourceTypeFilter{Slugs: []string{workspaceType}},
+		})
+		assert.Empty(t, found.Items)
+	})
+}
+
+func TestAccessEvaluationOnUnregisteredWorkspaces(t *testing.T) {
+	t.Parallel()
+
+	t.Run("A workspace whose type can't sit under the organization is decided on its organization", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		product.ResourceTypes().CreateUnder("project", "organization")
+		product.ResourceTypes().CreateUnder(workspaceType, "project")
+		readReports := "report:read"
+		product.CreateScopedPermissions(t, "organization", readReports)
+		reader := createRoleTemplate(t, product, ct.CreateProductRoleJSONRequestBody{
+			Name: "Reader " + ids.MustNew("ct"), Permissions: []string{readReports},
+		})
+		w := workspaceAccessWorld{product: product, org: product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)}
+		externalID := w.member(t, reader.Id)
+		workspaces := product.Workspaces(w.org.Id)
+		unregistered := workspaces.Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Payments"}).Id
+		requireNoWorkspaceResource(t, product, w.org.Id, unregistered)
+
+		requireAllowed(t, w.ask(externalID, unregistered).Can(readReports).Decide())
+		requireDenied(t, w.ask(externalID, ids.MustNew("ws")).Can(readReports).Decide(), ct.WORKSPACENOTINORGANIZATION)
+
+		workspaces.Delete(unregistered)
+
+		requireDenied(t, w.ask(externalID, unregistered).Can(readReports).Decide(), ct.WORKSPACENOTINORGANIZATION)
 	})
 }

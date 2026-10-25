@@ -14,9 +14,10 @@ import (
 )
 
 // A workspace a release before the resource mirror wrote has no resource, and
-// its membership no assignment. Once the backfill registered them, a replay of
-// its marks leaves the relationship store holding the workspace under its
-// Organization and the moved assignment.
+// its membership no assignment. The backfill registers them and replays its
+// marks once its transaction commits, so the relationship store already holds
+// the workspace under its Organization and the moved assignment, with no mark
+// left for the sweeper.
 func TestWorkspaceBackfillMirror(t *testing.T) {
 	openFGA(t)
 
@@ -44,8 +45,6 @@ func TestWorkspaceBackfillMirror(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, WorkspaceBackfill.RunProduct(t.Context(), productID))
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), productID))
-		require.NoError(t, AuthzSyncer.SyncResources(t.Context(), productID, w.pendingResources(t)))
 
 		tree, err := ResourceTypeService.Tree(t.Context(), productID)
 		require.NoError(t, err)
