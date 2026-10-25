@@ -229,7 +229,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 | **D. Roles and role assignments** | [DR-D1](#dr-d1) · Every role is scoped to one resource type | ✅ Accepted |  |
 |  | [DR-D2](#dr-d2) · A role's scope never changes | ✅ Accepted |  |
 |  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | ✅ Accepted |  |
-|  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | 🔵 Proposed |  |
+|  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | ✅ Accepted |  |
 |  | [DR-D5](#dr-d5) · A default Organization role | 🟡 Pending | 1 |
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
 |  | [DR-D7](#dr-d7) · Organization API keys | 🟡 Pending | 1 |
@@ -1077,7 +1077,7 @@ The engine already takes the union: two role assignments are two tuples, and a c
 
 <a id="dr-d4"></a>
 <details>
-<summary><b>DR-D4</b> · Organization membership stays separate; every other assignment is generic — <i>🔵 Proposed</i></summary>
+<summary><b>DR-D4</b> · Organization membership stays separate; every other assignment is generic — <i>✅ Accepted</i></summary>
 
 **Decision.**
 - **Organization membership** keeps its own record. It carries the Organization-scoped role plus everything that is not about access: joined date, invitations, events. Every member must hold one.
