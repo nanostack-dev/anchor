@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 7 to answer
+5. [Open questions](#open-questions) — 6 to answer
 
 ---
 
@@ -232,7 +232,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | ✅ Accepted |  |
 |  | [DR-D5](#dr-d5) · A default Organization role | ✅ Accepted |  |
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
-|  | [DR-D7](#dr-d7) · Organization API keys | 🟡 Pending | 1 |
+|  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | 🔵 Proposed |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | 🟡 Pending | 1 |
 |  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | 🔵 Proposed (depends on ADR-0021) |  |
@@ -1205,9 +1205,11 @@ Maya Chen is in both `Engineering` and `Engineering Leads`, so the mapping yield
 
 <a id="dr-d7"></a>
 <details>
-<summary><b>DR-D7</b> · Organization API keys — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-D7</b> · Organization API keys — <i>✅ Accepted</i></summary>
 
-**Decision.** An Organization API key keeps its explicit permission list. Those permissions may be of any type and apply across the whole Organization tree, as an Organization-scoped role would.
+**Decision.** An Organization API key keeps its explicit permission list. Those permissions may be of any type and apply to **every resource of its Organization, at every level**, as an Organization-scoped role would. One key can therefore act on the Organization and on any project, folder or document in it.
+
+Limiting a key to part of the tree is deferred, with no design chosen. Representing keys as subjects holding roles on resources was explored and set aside for now.
 
 <details>
 <summary>📌 Real example</summary>
@@ -1229,7 +1231,7 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 
 > **Q-D7.1** Do you want keys limited to one resource, such as a CI key that only reaches one project? It was discussed earlier as a resource allowlist on the key. *(recommended: defer to its own change; the evaluation already has the resource to compare against)*
 >
-> **Answer:** _pending_
+> **Answer:** defer. For now a key works across every resource of its Organization.
 
 </details>
 
@@ -1950,7 +1952,7 @@ Answer here or inline; each line links to its record.
 | [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
 | [Q-D6.1](#dr-d6) | Per-organization custom roles needed soon? | stay deferred | |
-| [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | |
+| [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | |
 | [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | |
 | [Q-F3.1](#dr-f3) | Draft-then-publish or immediate saves? | draft then publish | |
