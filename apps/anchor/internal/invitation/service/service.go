@@ -322,6 +322,9 @@ func (s *organizationInvitationService) lockAndFind(
 func (s *organizationInvitationService) resolveRole(
 	txCtx context.Context, productID, organizationID, roleID string,
 ) (organizationrole.Role, error) {
+	if roleID == "" {
+		return s.organizationRoles.ResolveDefault(txCtx, productID, organizationID)
+	}
 	return s.organizationRoles.Resolve(txCtx, productID, organizationID, roleID)
 }
 

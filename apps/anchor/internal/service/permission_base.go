@@ -15,6 +15,7 @@ var domains = []string{
 	"workspace",
 	"resources_permissions",
 	"resource_type",
+	"organization_role",
 	"product_role",
 	"product_user",
 	"email_template",

@@ -5,6 +5,7 @@ import (
 	emailsvc "anchor/internal/email/service"
 	invitationsvc "anchor/internal/invitation/service"
 	licensesvc "anchor/internal/license/service"
+	orgroleservice "anchor/internal/organizationrole/service"
 	rtservice "anchor/internal/resourcetype/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
@@ -29,6 +30,7 @@ type AnchorAPI struct {
 	ProductUserService            service.ProductUserService
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
+	OrganizationRoleService       orgroleservice.Service
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -62,6 +64,7 @@ type Params struct {
 	ProductUserService            service.ProductUserService
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
+	OrganizationRoleService       orgroleservice.Service
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -95,6 +98,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ProductUserService:            params.ProductUserService,
 		ResourcePermissionService:     params.ResourcePermissionService,
 		ResourceTypeService:           params.ResourceTypeService,
+		OrganizationRoleService:       params.OrganizationRoleService,
 		OrganizationService:           params.OrganizationService,
 		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,

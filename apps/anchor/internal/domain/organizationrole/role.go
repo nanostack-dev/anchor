@@ -7,6 +7,19 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+
+	"anchor/internal/domain/resourcetype"
+	"anchor/internal/searchx"
+)
+
+// Origin says where an Organization role comes from, for display only.
+type Origin string
+
+const (
+	OriginTemplate Origin = "template"
+	OriginCustom   Origin = "custom"
 )
 
 type Role struct {
@@ -20,6 +33,8 @@ type Role struct {
 	Name           string
 	Description    string
 	ResourceTypeID *string
+	ResourceType   string
+	IsDefault      bool
 	Permissions    []string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -27,12 +42,86 @@ type Role struct {
 
 // PublicID is the ID callers see and send: a copy keeps its template's ID
 // inside its Organization, so the role IDs released clients hold keep
-// working; a template or a custom role has its own.
+// working; a custom role has its own.
 func (r Role) PublicID() string {
 	if r.TemplateID != nil {
 		return *r.TemplateID
 	}
 	return r.RowID
+}
+
+func (r Role) Origin() Origin {
+	if r.TemplateID != nil {
+		return OriginTemplate
+	}
+	return OriginCustom
+}
+
+// NewRowID returns a new prefixed KSUID for an Organization role's row.
+func NewRowID() string {
+	return ids.MustNew("product_role")
+}
+
+type Filter struct {
+	IDs           []string `validate:"omitempty,max=100,dive,notblank"`
+	Keys          []string `validate:"omitempty,max=100,dive,notblank"`
+	ResourceTypes []string `validate:"omitempty,max=50,dive,notblank"`
+	// Scopes is what the service resolves ResourceTypes to.
+	Scopes resourcetype.ScopeFilter
+}
+
+type SortField string
+
+const (
+	SortFieldCreatedAt SortField = "created_at"
+	SortFieldKey       SortField = "key"
+	SortFieldName      SortField = "name"
+)
+
+type SearchInput struct {
+	ProductID      string                            `validate:"required,notblank"`
+	OrganizationID string                            `validate:"required,notblank"`
+	Request        search.Request[Filter, SortField] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchInput) Validate() error {
+	return searchx.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldKey, SortFieldName)
+}
+
+type UpdateInput struct {
+	ProductID      string `validate:"required,notblank"`
+	OrganizationID string `validate:"required,notblank"`
+	RoleID         string `validate:"required,notblank"`
+	IsDefault      *bool
+}
+
+var (
+	ErrNotFound = fault.NotFound(
+		"ROLE_NOT_FOUND",
+		"This organization has no role with that identifier.",
+	)
+
+	ErrDefaultNotOrganizationScoped = fault.BadRequest(
+		"DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED",
+		"A default role is the role a member gets on joining, so it is scoped to organization.",
+	)
+
+	ErrDefaultConflict = fault.Conflict(
+		"DEFAULT_ROLE_CONFLICT",
+		"Another request changed the default role. Try again.",
+	)
+
+	ErrRoleRequired = fault.BadRequest(
+		"ROLE_REQUIRED",
+		"Name a role: this organization has no default role.",
+	)
+)
+
+// WithScopes resolves the filter's resource types against the product's tree.
+func (f Filter) WithScopes(tree resourcetype.Tree) Filter {
+	f.Scopes = tree.ResolveScopes(f.ResourceTypes)
+	return f
 }
 
 // NewBodyRoleNotFoundError answers a role_id in a request body that names no

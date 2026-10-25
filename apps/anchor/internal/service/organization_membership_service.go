@@ -410,19 +410,24 @@ func (s *organizationMembershipService) validateProductUser(
 
 // validateRole answers a role_id that names no role of the Organization and
 // no role template of its Product before any membership check, as it always
-// has.
+// has. No role_id means the default role, resolved with the write.
 func (s *organizationMembershipService) validateRole(
 	ctx context.Context, productID, organizationID, roleID string,
 ) error {
-	_, err := s.organizationRoles.Resolve(ctx, productID, organizationID, roleID)
-	return err
+	if roleID == "" {
+		return nil
+	}
+	return s.organizationRoles.Validate(ctx, productID, organizationID, roleID)
 }
 
 // resolveRole finds the Organization's role the request named: a template's
-// ID names its copy when the Organization has one.
+// ID names its copy. No role at all means the Organization's default role.
 func (s *organizationMembershipService) resolveRole(
 	txCtx context.Context, productID, organizationID, roleID string,
 ) (organizationrole.Role, error) {
+	if roleID == "" {
+		return s.organizationRoles.ResolveDefault(txCtx, productID, organizationID)
+	}
 	return s.organizationRoles.Resolve(txCtx, productID, organizationID, roleID)
 }
 

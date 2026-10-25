@@ -27,6 +27,7 @@ func (m *ProductRoleMapper) ToDomain(
 		Description:    description,
 		ResourceTypeID: entity.ResourceTypeID,
 		Key:            RoleKey(entity),
+		IsDefault:      entity.IsDefault,
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
 		Permissions:    m.permissionsToDomain(permissions),
@@ -43,6 +44,7 @@ func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles
 		Description:    description,
 		ResourceTypeID: domain.ResourceTypeID,
 		Key:            functional.OptionOf(domain.Key, domain.Key != "").ToPtr(),
+		IsDefault:      domain.IsDefault,
 		CreatedAt:      domain.CreatedAt,
 		UpdatedAt:      domain.UpdatedAt,
 	}

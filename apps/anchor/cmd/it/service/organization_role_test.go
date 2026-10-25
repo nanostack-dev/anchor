@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/organizationrole"
 	"anchor/internal/domain/product/role"
 	orgroleservice "anchor/internal/organizationrole/service"
 )
@@ -25,7 +27,7 @@ func TestRoleTemplateKeyBackfill(t *testing.T) {
 
 		require.NoError(
 			t,
-			orgroleservice.BackfillKeys(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
 		)
 
 		assert.Equal(t, strings.ToLower(template.Name), templateKey(t, template.ID))
@@ -43,7 +45,7 @@ func TestRoleTemplateKeyBackfill(t *testing.T) {
 
 		require.NoError(
 			t,
-			orgroleservice.BackfillKeys(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
 		)
 
 		assert.Equal(t, unkeyed.ID, templateKey(t, unkeyed.ID))
@@ -55,21 +57,21 @@ func TestRoleTemplateKeyBackfill(t *testing.T) {
 		template := givenUnkeyedTemplate(t, productID, "Admin "+uuid.NewString())
 		require.NoError(
 			t,
-			orgroleservice.BackfillKeys(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
 		)
 
 		require.NoError(
 			t,
-			orgroleservice.BackfillKeys(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
 		)
 
 		assert.Equal(t, strings.ToLower(template.Name), templateKey(t, template.ID))
 	})
 }
 
-// The next release copies every role template into each Organization and
-// moves memberships onto the copies. This release runs beside it during that
-// deploy, so it reads and writes those rows correctly before it makes any.
+// Template routes and writes treat an Organization's copy of a template as
+// part of the template. The release before copies were made already did, so
+// it ran beside the release that makes them.
 func TestOrganizationCopiesWrittenByTheNextRelease(t *testing.T) {
 	t.Run("Template searches leave the copies out", func(t *testing.T) {
 		fixture := givenACopyHeldByAMember(t)
@@ -171,6 +173,111 @@ func TestOrganizationCopiesWrittenByTheNextRelease(t *testing.T) {
 	})
 }
 
+// The release before copies were made wrote memberships that hold the
+// template itself and Organizations with no copies. Only the startup backfill
+// moves them, and no route reaches it.
+func TestCopyBackfill(t *testing.T) {
+	t.Run("Every organization gets a copy with the template's permissions", func(t *testing.T) {
+		ctx := t.Context()
+		fixture := givenAMemberOnATemplate(t)
+
+		require.NoError(
+			t,
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+		)
+
+		copied := requireCopy(t, fixture)
+		assert.Equal(t, []string{fixture.permission}, rolePermissions(t, copied.RowID))
+	})
+
+	t.Run("A member on the template moves onto the copy", func(t *testing.T) {
+		ctx := t.Context()
+		fixture := givenAMemberOnATemplate(t)
+
+		require.NoError(
+			t,
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+		)
+
+		var held string
+		require.NoError(t, TestDB.QueryRowContext(ctx, `SELECT product_role_id FROM organization_memberships
+			WHERE organization_id = $1 AND product_user_id = $2`, fixture.organizationID, fixture.userID).Scan(&held))
+		assert.Equal(t, requireCopy(t, fixture).RowID, held)
+	})
+
+	t.Run("A copy left without its permissions gets them back", func(t *testing.T) {
+		ctx := t.Context()
+		fixture := givenACopyHeldByAMember(t)
+		_, err := TestDB.ExecContext(ctx,
+			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, fixture.copyID)
+		require.NoError(t, err)
+
+		require.NoError(
+			t,
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+		)
+
+		assert.Equal(t, []string{fixture.permission}, rolePermissions(t, fixture.copyID))
+	})
+
+	t.Run("Running the backfill again changes nothing", func(t *testing.T) {
+		ctx := t.Context()
+		fixture := givenAMemberOnATemplate(t)
+		require.NoError(
+			t,
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+		)
+		first := requireCopy(t, fixture)
+
+		require.NoError(
+			t,
+			orgroleservice.BackfillCopies(ctx, ProductRepository, OrganizationRoleRepo, Transactor, TestLogger),
+		)
+
+		var copies int
+		require.NoError(t, TestDB.QueryRowContext(ctx, `SELECT count(*) FROM product_roles
+			WHERE organization_id = $1 AND template_id = $2`, fixture.organizationID, fixture.templateID).Scan(&copies))
+		assert.Equal(t, 1, copies)
+		assert.Equal(t, first.RowID, requireCopy(t, fixture).RowID)
+	})
+}
+
+// givenAMemberOnATemplate writes what the release before copies wrote: a
+// template with one permission and an Organization whose member holds the
+// template itself.
+func givenAMemberOnATemplate(t *testing.T) copyFixture {
+	t.Helper()
+	ctx := t.Context()
+	productID := GivenATenantAndProduct(t).Product.ID
+	permission := givenPermission(t, productID)
+	template := role.ProductRole{ProductID: productID, Name: "Legacy Admin " + uuid.NewString()}
+	template.Key = strings.ToLower(template.Name)
+	template.GenerateID()
+	_, err := ProductRoleRepo.Create(ctx, template)
+	require.NoError(t, err)
+	givenRolePermission(t, productID, template.ID, permission)
+	org := organization.Organization{ProductID: productID, Name: "Org " + uuid.NewString()}
+	org.GenerateID()
+	_, err = OrganizationRepo.Create(ctx, org)
+	require.NoError(t, err)
+	userID := givenProductUser(t, productID)
+	_, err = TestDB.ExecContext(ctx, `INSERT INTO organization_memberships
+		(organization_id, product_user_id, product_role_id) VALUES ($1, $2, $3)`, org.ID, userID, template.ID)
+	require.NoError(t, err)
+	return copyFixture{
+		productID: productID, organizationID: org.ID, templateID: template.ID, userID: userID, permission: permission,
+	}
+}
+
+func requireCopy(t *testing.T, fixture copyFixture) organizationrole.Role {
+	t.Helper()
+	copied, err := OrganizationRoleRepo.Find(t.Context(), fixture.productID, fixture.organizationID, fixture.templateID)
+	require.NoError(t, err)
+	require.True(t, copied.IsPresent())
+	require.NotNil(t, copied.Value().TemplateID)
+	return copied.Value()
+}
+
 type copyFixture struct {
 	productID      string
 	organizationID string
@@ -180,9 +287,8 @@ type copyFixture struct {
 	permission     string
 }
 
-// givenACopyHeldByAMember writes what the next release writes: a template
-// with one permission, its copy in an Organization with the same
-// permission, and a member who holds the copy.
+// givenACopyHeldByAMember writes a template with one permission, its copy in
+// an Organization with the same permission, and a member who holds the copy.
 func givenACopyHeldByAMember(t *testing.T) copyFixture {
 	t.Helper()
 	ctx := t.Context()
@@ -281,4 +387,29 @@ func assertFaultCode(t *testing.T, err error, code string) {
 	require.True(t, isFault, "expected a fault, got %v", err)
 	require.NotEmpty(t, failure.Details)
 	assert.Equal(t, code, failure.Details[0].Code)
+}
+
+func TestEnsureCopiesBeyondOneBatch(t *testing.T) {
+	t.Run("An organization gets a copy of every template when there are more than one batch", func(t *testing.T) {
+		ctx := t.Context()
+		productID := GivenATenantAndProduct(t).Product.ID
+		const templates = 501
+		_, err := TestDB.ExecContext(ctx, `INSERT INTO product_roles (id, product_id, key, name)
+			SELECT 'product_role_' || gen_random_uuid(), $1, 'k' || n, 'Role ' || n
+			FROM generate_series(1, $2) AS n`, productID, templates)
+		require.NoError(t, err)
+		org := organization.Organization{ProductID: productID, Name: "Org " + uuid.NewString()}
+		org.GenerateID()
+		_, err = OrganizationRepo.Create(ctx, org)
+		require.NoError(t, err)
+
+		require.NoError(t, Transactor.InTx(ctx, func(txCtx context.Context) error {
+			return OrganizationRoleService.EnsureCopies(txCtx, productID, org.ID)
+		}))
+
+		var copies int
+		require.NoError(t, TestDB.QueryRowContext(ctx,
+			`SELECT count(*) FROM product_roles WHERE organization_id = $1`, org.ID).Scan(&copies))
+		assert.Equal(t, templates, copies)
+	})
 }

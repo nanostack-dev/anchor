@@ -74,6 +74,16 @@ type ProductRoleRepository interface {
 	GetByProductIDAndKey(
 		ctx context.Context, productID, key string,
 	) (functional.Option[role.ProductRole], error)
+	// LockTemplates is LockTemplate for several templates at once, all rows
+	// in ID order, so two writers that move the default never deadlock.
+	LockTemplates(ctx context.Context, productID string, ids []string) error
+	// DefaultTemplateID reads the Product's default role template, if any.
+	DefaultTemplateID(ctx context.Context, productID string) (functional.Option[string], error)
+	// ClearDefault unmarks the Product's default role template and returns
+	// the templates it unmarked.
+	ClearDefault(ctx context.Context, productID string) ([]string, error)
+	// SetDefault marks or unmarks one template as the Product's default.
+	SetDefault(ctx context.Context, productID, id string, isDefault bool) error
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
@@ -145,6 +155,52 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndKey(
 	).AND(isTemplate()))
 }
 
+func (r *productRoleRepositoryImpl) LockTemplates(ctx context.Context, productID string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	named := jetx.ToStringExpressions(ids)
+	stmt := table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoles.ID.IN(named...).AND(isTemplate()).
+				OR(table.ProductRoles.TemplateID.IN(named...))),
+	).ORDER_BY(table.ProductRoles.ID.ASC()).FOR(postgres.UPDATE())
+	return transactor.Exec(ctx, r.db, stmt).Err()
+}
+
+func (r *productRoleRepositoryImpl) DefaultTemplateID(
+	ctx context.Context, productID string,
+) (functional.Option[string], error) {
+	return transactor.QueryOptionalMap(ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(isTemplate()).
+				AND(table.ProductRoles.IsDefault.IS_TRUE()),
+		),
+		func(row model.ProductRoles) string { return row.ID },
+	)
+}
+
+func (r *productRoleRepositoryImpl) ClearDefault(ctx context.Context, productID string) ([]string, error) {
+	stmt := table.ProductRoles.UPDATE(table.ProductRoles.IsDefault).SET(postgres.Bool(false)).WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(isTemplate()).
+			AND(table.ProductRoles.IsDefault.IS_TRUE()),
+	).RETURNING(table.ProductRoles.ID)
+	return transactor.QueryMapSlice(ctx, r.db, stmt, func(row model.ProductRoles) string { return row.ID }).Value()
+}
+
+func (r *productRoleRepositoryImpl) SetDefault(ctx context.Context, productID, id string, isDefault bool) error {
+	stmt := table.ProductRoles.UPDATE(table.ProductRoles.IsDefault).SET(postgres.Bool(isDefault)).WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoles.ID.EQ(postgres.String(id))).
+			AND(isTemplate()),
+	)
+	return transactor.Exec(ctx, r.db, stmt).
+		OnUnique(ErrProductRoleDefaultExists, productRoleTemplateDefaultIndex).
+		Err()
+}
+
 // GetByProductIDAndName looks up a role by its exact name within a product.
 // Used for uniqueness checks — exact match, not the substring match the search
 // filter applies.
@@ -163,11 +219,16 @@ const (
 	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
 	productRoleTemplateNameIndex    = "idx_product_roles_template_lower_name"
 	productRoleTemplateKeyIndex     = "idx_product_roles_template_lower_key"
+	productRoleTemplateDefaultIndex = "idx_product_roles_template_default"
 )
 
 // ErrProductRoleKeyExists is returned when the product already has a template
 // with that key.
 var ErrProductRoleKeyExists = errors.New("product role key already exists in product")
+
+// ErrProductRoleDefaultExists is returned when two writers race to mark a
+// default template.
+var ErrProductRoleDefaultExists = errors.New("product already has a default role template")
 
 // ErrProductRoleNameExists is returned by Create and Update when the product
 // already has a role with that name: the unique guards settle the race the
@@ -184,6 +245,7 @@ func (r *productRoleRepositoryImpl) Create(
 	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
 		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleTemplateNameIndex).
 		OnUnique(ErrProductRoleKeyExists, productRoleTemplateKeyIndex).
+		OnUnique(ErrProductRoleDefaultExists, productRoleTemplateDefaultIndex).
 		Value()
 	if err != nil {
 		return role.ProductRole{}, err
@@ -222,6 +284,7 @@ func (r *productRoleRepositoryImpl) Update(
 	if err := transactor.Exec(ctx, r.db, updateStmt).
 		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleTemplateNameIndex).
 		OnUnique(ErrProductRoleKeyExists, productRoleTemplateKeyIndex).
+		OnUnique(ErrProductRoleDefaultExists, productRoleTemplateDefaultIndex).
 		Err(); err != nil {
 		return role.ProductRole{}, err
 	}

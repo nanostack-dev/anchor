@@ -563,6 +563,77 @@ export type ProductResourceTypeListResponse = PagedListResponse & {
 };
 
 /**
+ * A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+ */
+export type RoleKey = string;
+
+/**
+ * `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+ */
+export enum OrganizationRoleOrigin {
+    TEMPLATE = 'template',
+    CUSTOM = 'custom'
+}
+
+/**
+ * A role an Organization owns. A copy of a role template is addressed by its template's ID inside its Organization, so the IDs released clients hold keep working; a custom role has an ID of its own.
+ */
+export type OrganizationRoleResponse = {
+    id: Ksuid;
+    organization_id: Ksuid;
+    /**
+     * The role template this role is a copy of. Absent for a custom role.
+     */
+    template_id?: Ksuid;
+    key: RoleKey;
+    name: string;
+    description?: string | null;
+    origin: OrganizationRoleOrigin;
+    resource_type: ResourceTypeSlug;
+    /**
+     * `true` for the Organization's default role: the role a member or an invitation gets when the request names none. It is the Organization's own choice, or else the copy of the Product's default role template.
+     */
+    is_default: boolean;
+    /**
+     * Names of the permissions the role bundles.
+     */
+    permissions: Array<string>;
+    created_at: string;
+    updated_at: string;
+};
+
+export type OrganizationRoleUpdateRequest = {
+    /**
+     * `true` makes this role the Organization's default role, in place of the previous one. It must be scoped to `organization`, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. `false` on the Organization's own choice returns it to the copy of the Product's default role template; on that copy itself it changes nothing. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+     */
+    is_default?: boolean;
+};
+
+export type OrganizationRoleFilter = {
+    ids?: Array<Ksuid>;
+    keys?: Array<RoleKey>;
+    resource_types?: Array<ResourceTypeSlug>;
+};
+
+/**
+ * Field to sort by. Every order ends with the role's ID.
+ */
+export enum OrganizationRoleSortField {
+    CREATED_AT = 'created_at',
+    KEY = 'key',
+    NAME = 'name'
+}
+
+export type OrganizationRoleSearchRequest = SearchRequest & {
+    filter?: OrganizationRoleFilter;
+    sort_by?: OrganizationRoleSortField;
+};
+
+export type OrganizationRoleListResponse = PagedListResponse & {
+    items: Array<OrganizationRoleResponse>;
+};
+
+/**
  * Request body for defining a new domain-resource permission for the product's own application resources. For example, if you are building a Google Drive-like product you might define permissions such as "document:read", "document:create", or "file:delete". These permissions are later assigned to ProductRoles, which are attached to end-user organization memberships.
  */
 export type CreateProductResourcePermissionRequest = {
@@ -659,11 +730,6 @@ export type ProductResourcePermissionListResponse = PagedListResponse & {
     items: Array<ProductResourcePermissionResponse>;
 };
 
-/**
- * A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
- */
-export type RoleKey = string;
-
 export type ProductRoleCreateRequest = {
     /**
      * Name of the product role. Must be unique within the Product using case-insensitive matching.
@@ -682,9 +748,13 @@ export type ProductRoleCreateRequest = {
      */
     resource_type: ResourceTypeSlug;
     /**
-     * The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+     * The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Every Organization's copy keeps it. Omitted, it is the name in lower case. It never changes.
      */
     key?: RoleKey;
+    /**
+     * `true` makes this template the Product's default role, in place of the previous one: a member or an invitation that names no role gets its Organization's copy of it. Only an `organization`-scoped template can be the default, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+     */
+    is_default?: boolean;
 };
 
 export type ProductRoleUpdateRequest = {
@@ -704,6 +774,10 @@ export type ProductRoleUpdateRequest = {
      * A role's resource type never changes. Omit it, or send the current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
      */
     resource_type?: ResourceTypeSlug;
+    /**
+     * `true` makes this template the Product's default role, in place of the previous one; `false` leaves the Product with no default role. Omit it to keep the current setting. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+     */
+    is_default?: boolean;
 };
 
 export type ProductRoleResponse = {
@@ -728,6 +802,10 @@ export type ProductRoleResponse = {
      */
     resource_type: ResourceTypeSlug;
     key: RoleKey;
+    /**
+     * `true` for the Product's default role template.
+     */
+    is_default: boolean;
     /**
      * List of permissions assigned to this role.
      */
@@ -1247,9 +1325,9 @@ export type OrganizationMembershipRequest = {
      */
     organization_id: Ksuid;
     /**
-     * The role to assign to the user within the organization.
+     * The role to assign to the user within the organization. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
 };
 
 /**
@@ -1606,9 +1684,9 @@ export type FoundingMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * Role to assign to the founding member.
+     * Role to assign to the founding member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
 };
 
 export type ProductOrganizationResponse = {
@@ -1777,9 +1855,9 @@ export type OrganizationMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * The role to assign to the member.
+     * The role to assign to the member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
 };
 
 /**
@@ -1887,9 +1965,9 @@ export type OrganizationInvitationCreateRequest = {
      */
     email: string;
     /**
-     * The role the invited person receives on accept. It must be a role of the Product.
+     * The role the invited person receives on accept. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
     /**
      * When the invitation expires. It must be in the future. Absent means 7 days from now.
      */
@@ -6900,6 +6978,152 @@ export type SearchOrganizationMembersResponses = {
 };
 
 export type SearchOrganizationMembersResponse = SearchOrganizationMembersResponses[keyof SearchOrganizationMembersResponses];
+
+export type SearchOrganizationRolesData = {
+    body: OrganizationRoleSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/search';
+};
+
+export type SearchOrganizationRolesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchOrganizationRolesError = SearchOrganizationRolesErrors[keyof SearchOrganizationRolesErrors];
+
+export type SearchOrganizationRolesResponses = {
+    /**
+     * Matching roles.
+     */
+    200: OrganizationRoleListResponse;
+};
+
+export type SearchOrganizationRolesResponse = SearchOrganizationRolesResponses[keyof SearchOrganizationRolesResponses];
+
+export type GetOrganizationRoleData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the product role.
+         */
+        role_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}';
+};
+
+export type GetOrganizationRoleErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetOrganizationRoleError = GetOrganizationRoleErrors[keyof GetOrganizationRoleErrors];
+
+export type GetOrganizationRoleResponses = {
+    /**
+     * The role.
+     */
+    200: OrganizationRoleResponse;
+};
+
+export type GetOrganizationRoleResponse = GetOrganizationRoleResponses[keyof GetOrganizationRoleResponses];
+
+export type UpdateOrganizationRoleData = {
+    body: OrganizationRoleUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the product role.
+         */
+        role_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}';
+};
+
+export type UpdateOrganizationRoleErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateOrganizationRoleError = UpdateOrganizationRoleErrors[keyof UpdateOrganizationRoleErrors];
+
+export type UpdateOrganizationRoleResponses = {
+    /**
+     * The role after the change.
+     */
+    200: OrganizationRoleResponse;
+};
+
+export type UpdateOrganizationRoleResponse = UpdateOrganizationRoleResponses[keyof UpdateOrganizationRoleResponses];
 
 export type CreateOrganizationInvitationData = {
     body: OrganizationInvitationCreateRequest;

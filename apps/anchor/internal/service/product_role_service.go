@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
+	"anchor/internal/domain/organizationrole"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
@@ -127,6 +128,7 @@ func (s *productRoleService) CreateProductRole(
 		Name:        input.Name,
 		Description: input.Description,
 		Key:         cmp.Or(input.Key, strings.ToLower(input.Name)),
+		IsDefault:   input.IsDefault,
 	}
 	if err := s.keyDuplicationValidation(ctx, input.ProductID, input.Name, productRole.Key, logger); err != nil {
 		return role.ProductRole{}, err
@@ -177,6 +179,13 @@ func (s *productRoleService) CreateProductRole(
 			return scopeErr
 		}
 		productRole.ResourceTypeID = &scope.ID
+		var cleared []string
+		if productRole.IsDefault {
+			var defaultErr error
+			if cleared, defaultErr = s.takeDefault(txCtx, input.ProductID, "", scope.Slug); defaultErr != nil {
+				return defaultErr
+			}
+		}
 
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
@@ -195,6 +204,9 @@ func (s *productRoleService) CreateProductRole(
 			return fault.ErrUnexpected
 		}
 		created.ResourceType = scope.Slug
+		if emitErr := s.emitRoles(txCtx, input.ProductID, cleared); emitErr != nil {
+			return emitErr
+		}
 		return s.emitRole(txCtx, events.ProductRoleCreated, input.ProductID, created.ID)
 	})
 	if errors.Is(err, repository.ErrProductRoleKeyExists) {
@@ -316,8 +328,9 @@ func (s *productRoleService) UpdateProductRole(
 				return treeErr
 			}
 		}
-		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ID); lockErr != nil {
-			return lockErr
+		cleared, defaultErr := s.applyTemplateDefault(txCtx, input, updatedRole.ResourceType)
+		if defaultErr != nil {
+			return defaultErr
 		}
 		var updateErr error
 		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
@@ -354,6 +367,9 @@ func (s *productRoleService) UpdateProductRole(
 		updated.ResourceType = updatedRole.ResourceType
 		if syncErr := s.organizationRoles.SyncTemplate(txCtx, input.ProductID, input.ID); syncErr != nil {
 			return syncErr
+		}
+		if emitErr := s.emitRoles(txCtx, input.ProductID, cleared); emitErr != nil {
+			return emitErr
 		}
 		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
 	})
@@ -778,6 +794,64 @@ func (s *productRoleService) checkBundle(
 	return checkBundleScope(tree, roleScope, found)
 }
 
+// takeDefault locks the Product's current default template with the template
+// being written, in ID order, and clears it so that the template can take
+// the default. Only an organization-scoped template can. It returns the
+// templates it cleared, other than the one being written.
+func (s *productRoleService) takeDefault(ctx context.Context, productID, id, scope string) ([]string, error) {
+	if scope != resourcetype.OrganizationSlug {
+		return nil, role.ErrDefaultNotOrganizationScoped
+	}
+	current, err := s.roleRepo.DefaultTemplateID(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	locked := current.Map(func(d string) []string { return []string{d} }).OrElse(nil)
+	if id != "" {
+		locked = append(locked, id)
+	}
+	if err = s.roleRepo.LockTemplates(ctx, productID, locked); err != nil {
+		return nil, err
+	}
+	cleared, err := s.roleRepo.ClearDefault(ctx, productID)
+	return functional.Slice(cleared).Filter(func(c string) bool { return c != id }), err
+}
+
+// applyTemplateDefault locks the template, with the current default when the
+// update takes the default, and writes is_default only when the update names
+// it. It returns the templates whose default it cleared.
+func (s *productRoleService) applyTemplateDefault(
+	ctx context.Context, input role.UpdateProductRoleInput, scope string,
+) ([]string, error) {
+	if input.IsDefault == nil || !*input.IsDefault {
+		if err := s.roleRepo.LockTemplate(ctx, input.ProductID, input.ID); err != nil {
+			return nil, err
+		}
+		if input.IsDefault == nil {
+			return nil, nil
+		}
+		return nil, s.roleRepo.SetDefault(ctx, input.ProductID, input.ID, false)
+	}
+	cleared, err := s.takeDefault(ctx, input.ProductID, input.ID, scope)
+	if err != nil {
+		return nil, err
+	}
+	err = s.roleRepo.SetDefault(ctx, input.ProductID, input.ID, true)
+	if errors.Is(err, repository.ErrProductRoleDefaultExists) {
+		return nil, organizationrole.ErrDefaultConflict
+	}
+	return cleared, err
+}
+
+func (s *productRoleService) emitRoles(ctx context.Context, productID string, roleIDs []string) error {
+	for _, roleID := range roleIDs {
+		if err := s.emitRole(ctx, events.ProductRoleUpdated, productID, roleID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *productRoleService) keyDuplicationValidation(
 	ctx context.Context, productID, name, key string, logger zerolog.Logger,
 ) error {
@@ -814,6 +888,8 @@ func mapTemplateWriteError(err error, name, key, productID string) error {
 		return NewRoleWithAlreadyExistingNameError(name, productID)
 	case errors.Is(err, repository.ErrProductRoleKeyExists):
 		return role.NewKeyExistsError(key)
+	case errors.Is(err, repository.ErrProductRoleDefaultExists):
+		return organizationrole.ErrDefaultConflict
 	default:
 		return nil
 	}

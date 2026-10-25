@@ -17,6 +17,7 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Description:  &productRole.Description,
 		ResourceType: productRole.ResourceType,
 		Key:          productRole.Key,
+		IsDefault:    productRole.IsDefault,
 		CreatedAt:    productRole.CreatedAt,
 		UpdatedAt:    productRole.UpdatedAt,
 		Permissions: append([]ProductRolePermissionResponse{}, functional.Slice(productRole.Permissions).Map(
@@ -38,6 +39,7 @@ func (s *AnchorAPI) CreateProductRole(
 		Name:         request.Body.Name,
 		ResourceType: request.Body.ResourceType,
 		Key:          functional.FromPtr(request.Body.Key).OrElse(""),
+		IsDefault:    functional.FromPtr(request.Body.IsDefault).OrElse(false),
 		Permissions:  request.Body.Permissions,
 	}
 	if request.Body.Description != nil {
@@ -103,6 +105,7 @@ func (s *AnchorAPI) UpdateProductRole(
 		ID:           request.RoleId,
 		Name:         &request.Body.Name,
 		ResourceType: request.Body.ResourceType,
+		IsDefault:    request.Body.IsDefault,
 	}
 	if request.Body.Description != nil {
 		input.Description = request.Body.Description

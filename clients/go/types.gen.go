@@ -693,6 +693,45 @@ func (e OrganizationMemberSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for OrganizationRoleOrigin.
+const (
+	Custom   OrganizationRoleOrigin = "custom"
+	Template OrganizationRoleOrigin = "template"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationRoleOrigin enum.
+func (e OrganizationRoleOrigin) Valid() bool {
+	switch e {
+	case Custom:
+		return true
+	case Template:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OrganizationRoleSortField.
+const (
+	OrganizationRoleSortFieldCreatedAt OrganizationRoleSortField = "created_at"
+	OrganizationRoleSortFieldKey       OrganizationRoleSortField = "key"
+	OrganizationRoleSortFieldName      OrganizationRoleSortField = "name"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationRoleSortField enum.
+func (e OrganizationRoleSortField) Valid() bool {
+	switch e {
+	case OrganizationRoleSortFieldCreatedAt:
+		return true
+	case OrganizationRoleSortFieldKey:
+		return true
+	case OrganizationRoleSortFieldName:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlatformInvitationSearchRequestSortBy.
 const (
 	PlatformInvitationSearchRequestSortByCreatedAt PlatformInvitationSearchRequestSortBy = "created_at"
@@ -1783,10 +1822,10 @@ type FoundingMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId Role to assign to the founding member.
+	// RoleId Role to assign to the founding member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // IntegrationAuditLogEntryResponse defines model for IntegrationAuditLogEntryResponse.
@@ -2428,10 +2467,10 @@ type OrganizationInvitationCreateRequest struct {
 	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// RoleId The role the invited person receives on accept. It must be a role of the Product.
+	// RoleId The role the invited person receives on accept. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
+	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationInvitationFilter Filter criteria for searching organization invitations.
@@ -2823,10 +2862,10 @@ type OrganizationMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId The role to assign to the member.
+	// RoleId The role to assign to the member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationMemberResponse Represents a member of an organization with their role details.
@@ -2899,6 +2938,93 @@ type OrganizationMemberSearchRequest struct {
 
 // OrganizationMemberSearchRequestSortBy Field to sort by.
 type OrganizationMemberSearchRequestSortBy string
+
+// OrganizationRoleFilter defines model for OrganizationRoleFilter.
+type OrganizationRoleFilter struct {
+	Ids           []Ksuid            `json:"ids,omitempty"`
+	Keys          []RoleKey          `json:"keys,omitempty"`
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
+}
+
+// OrganizationRoleListResponse defines model for OrganizationRoleListResponse.
+type OrganizationRoleListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []OrganizationRoleResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// OrganizationRoleOrigin `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+type OrganizationRoleOrigin string
+
+// OrganizationRoleResponse A role an Organization owns. A copy of a role template is addressed by its template's ID inside its Organization, so the IDs released clients hold keep working; a custom role has an ID of its own.
+type OrganizationRoleResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// IsDefault `true` for the Organization's default role: the role a member or an invitation gets when the request names none. It is the Organization's own choice, or else the copy of the Product's default role template.
+	IsDefault bool `json:"is_default"`
+
+	// Key A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+	//
+	// Examples: project-admin
+	Key  RoleKey `json:"key"`
+	Name string  `json:"name"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// Origin `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+	Origin OrganizationRoleOrigin `json:"origin"`
+
+	// Permissions Names of the permissions the role bundles.
+	Permissions []string `json:"permissions"`
+
+	// ResourceType The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// TemplateId The role template this role is a copy of. Absent for a custom role.
+	TemplateId *Ksuid    `json:"template_id,omitempty"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// OrganizationRoleSearchRequest defines model for OrganizationRoleSearchRequest.
+type OrganizationRoleSearchRequest struct {
+	Filter *OrganizationRoleFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. Every order ends with the role's ID.
+	SortBy *OrganizationRoleSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationRoleSortField Field to sort by. Every order ends with the role's ID.
+type OrganizationRoleSortField string
+
+// OrganizationRoleUpdateRequest defines model for OrganizationRoleUpdateRequest.
+type OrganizationRoleUpdateRequest struct {
+	// IsDefault `true` makes this role the Organization's default role, in place of the previous one. It must be scoped to `organization`, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. `false` on the Organization's own choice returns it to the copy of the Product's default role template; on that copy itself it changes nothing. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
+}
 
 // PagedListResponse defines model for PagedListResponse.
 type PagedListResponse struct {
@@ -3781,7 +3907,10 @@ type ProductRoleCreateRequest struct {
 	// Examples: Can view and edit resources within assigned organizations/workspaces.
 	Description *string `json:"description,omitempty"`
 
-	// Key The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+	// IsDefault `true` makes this template the Product's default role, in place of the previous one: a member or an invitation that names no role gets its Organization's copy of it. Only an `organization`-scoped template can be the default, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
+
+	// Key The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Every Organization's copy keeps it. Omitted, it is the name in lower case. It never changes.
 	Key *RoleKey `json:"key,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
@@ -3859,7 +3988,10 @@ type ProductRoleResponse struct {
 	// Examples: role_5mNOP...
 	Id Ksuid `json:"id"`
 
-	// Key A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+	// IsDefault `true` for the Product's default role template.
+	IsDefault bool `json:"is_default"`
+
+	// Key A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
 	//
 	// Examples: project-admin
 	Key RoleKey `json:"key"`
@@ -3907,6 +4039,9 @@ type ProductRoleUpdateRequest struct {
 	//
 	// Examples: Can view and edit resources within assigned organizations/workspaces.
 	Description *string `json:"description,omitempty"`
+
+	// IsDefault `true` makes this template the Product's default role, in place of the previous one; `false` leaves the Product with no default role. Omit it to keep the current setting. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
 	//
@@ -4128,7 +4263,7 @@ type RegisterRequest struct {
 // Examples: folder
 type ResourceTypeSlug = string
 
-// RoleKey A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+// RoleKey A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
 //
 // Examples: project-admin
 type RoleKey = string
@@ -4826,6 +4961,12 @@ type SearchOrganizationMembersJSONRequestBody = OrganizationMemberSearchRequest
 
 // UpdateOrganizationMemberRoleJSONRequestBody defines body for UpdateOrganizationMemberRole for application/json ContentType.
 type UpdateOrganizationMemberRoleJSONRequestBody = OrganizationMemberRoleRequest
+
+// SearchOrganizationRolesJSONRequestBody defines body for SearchOrganizationRoles for application/json ContentType.
+type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
+
+// UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
+type UpdateOrganizationRoleJSONRequestBody = OrganizationRoleUpdateRequest
 
 // CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
 type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest

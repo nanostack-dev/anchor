@@ -12,6 +12,11 @@ var (
 		"This product has no role with that identifier",
 	)
 
+	ErrDefaultNotOrganizationScoped = fault.BadRequest(
+		"DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED",
+		"A default role is the role a member gets on joining, so it is scoped to organization.",
+	)
+
 	ErrScopeImmutable = fault.Conflict(
 		"ROLE_SCOPE_IMMUTABLE",
 		"A role's resource type can't change. Create a role with the new scope instead.",

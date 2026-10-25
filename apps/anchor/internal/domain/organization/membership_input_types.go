@@ -6,12 +6,13 @@ import (
 	"anchor/internal/searchx"
 )
 
-// AddMemberInput is the input for adding a product user to an organization with a role.
+// AddMemberInput is the input for adding a product user to an organization
+// with a role. An empty RoleID means the Organization's default role.
 type AddMemberInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 	ProductUserID  string `validate:"required,notblank"`
-	RoleID         string `validate:"required,notblank"`
+	RoleID         string `validate:"omitempty,notblank"`
 }
 
 // UpdateMemberRoleInput is the input for updating a member's role within an organization.

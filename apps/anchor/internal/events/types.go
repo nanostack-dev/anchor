@@ -36,6 +36,8 @@ const (
 	ProductRoleUpdated Type = "product.role.updated"
 	ProductRoleDeleted Type = "product.role.deleted"
 
+	OrganizationRoleUpdated Type = "organization.role.updated"
+
 	ProductResourcePermissionCreated Type = "product.resource_permission.created"
 	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
 	ProductResourcePermissionDeleted Type = "product.resource_permission.deleted"

@@ -14,6 +14,7 @@ type CreateProductRoleInput struct {
 	Description  string `validate:"max=500"`
 	ResourceType string `validate:"max=49"`
 	Key          string `validate:"omitempty,notblank,max=100"`
+	IsDefault    bool
 	Permissions  []string
 }
 
@@ -28,6 +29,7 @@ type UpdateProductRoleInput struct {
 	Name         *string `validate:"required,notblank,max=100"`
 	Description  *string `validate:"omitempty,notblank,max=500"`
 	ResourceType *string `validate:"omitempty,max=49"`
+	IsDefault    *bool
 	Permissions  []ProductRolePermission
 }
 

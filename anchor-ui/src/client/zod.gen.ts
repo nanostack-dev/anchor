@@ -321,6 +321,62 @@ export const zProductResourceTypeListResponse = zPagedListResponse.and(z.object(
 }));
 
 /**
+ * A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+ */
+export const zRoleKey = z.string().min(1).max(100);
+
+/**
+ * `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+ */
+export const zOrganizationRoleOrigin = z.enum(['template', 'custom']);
+
+/**
+ * A role an Organization owns. A copy of a role template is addressed by its template's ID inside its Organization, so the IDs released clients hold keep working; a custom role has an ID of its own.
+ */
+export const zOrganizationRoleResponse = z.object({
+    id: zKsuid,
+    organization_id: zKsuid,
+    template_id: zKsuid.optional(),
+    key: zRoleKey,
+    name: z.string(),
+    description: z.string().nullish(),
+    origin: zOrganizationRoleOrigin,
+    resource_type: zResourceTypeSlug,
+    is_default: z.boolean(),
+    permissions: z.array(z.string()),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zOrganizationRoleUpdateRequest = z.object({
+    is_default: z.boolean().optional()
+});
+
+export const zOrganizationRoleFilter = z.object({
+    ids: z.array(zKsuid).max(100).optional(),
+    keys: z.array(zRoleKey).max(100).optional(),
+    resource_types: z.array(zResourceTypeSlug).max(50).optional()
+});
+
+/**
+ * Field to sort by. Every order ends with the role's ID.
+ */
+export const zOrganizationRoleSortField = z.enum([
+    'created_at',
+    'key',
+    'name'
+]).default('created_at');
+
+export const zOrganizationRoleSearchRequest = zSearchRequest.and(z.object({
+    filter: zOrganizationRoleFilter.optional(),
+    sort_by: zOrganizationRoleSortField.optional()
+}));
+
+export const zOrganizationRoleListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zOrganizationRoleResponse)
+}));
+
+/**
  * Request body for defining a new domain-resource permission for the product's own application resources. For example, if you are building a Google Drive-like product you might define permissions such as "document:read", "document:create", or "file:delete". These permissions are later assigned to ProductRoles, which are attached to end-user organization memberships.
  */
 export const zCreateProductResourcePermissionRequest = z.object({
@@ -369,24 +425,21 @@ export const zProductResourcePermissionListResponse = zPagedListResponse.and(z.o
     items: z.array(zProductResourcePermissionResponse)
 }));
 
-/**
- * A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
- */
-export const zRoleKey = z.string().min(1).max(100);
-
 export const zProductRoleCreateRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
     permissions: z.array(z.string()).optional(),
     resource_type: zResourceTypeSlug,
-    key: zRoleKey.optional()
+    key: zRoleKey.optional(),
+    is_default: z.boolean().optional().default(false)
 });
 
 export const zProductRoleUpdateRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
     permissions: z.array(z.string()).optional(),
-    resource_type: zResourceTypeSlug.optional()
+    resource_type: zResourceTypeSlug.optional(),
+    is_default: z.boolean().optional()
 });
 
 /**
@@ -405,6 +458,7 @@ export const zProductRoleResponse = z.object({
     description: z.string().nullish(),
     resource_type: zResourceTypeSlug,
     key: zRoleKey,
+    is_default: z.boolean(),
     permissions: z.array(zProductRolePermissionResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -639,7 +693,7 @@ export const zUserOrganizationResponse = z.object({
  */
 export const zOrganizationMembershipRequest = z.object({
     organization_id: zKsuid,
-    role_id: zKsuid
+    role_id: zKsuid.optional()
 });
 
 /**
@@ -868,7 +922,7 @@ export const zOrganizationInclude = z.enum(['license', 'workspace']);
 
 export const zFoundingMemberRequest = z.object({
     product_user_id: zKsuid,
-    role_id: zKsuid
+    role_id: zKsuid.optional()
 });
 
 export const zProductOrganizationSearchRequest = zSearchRequest.and(z.object({
@@ -935,7 +989,7 @@ export const zOrganizationMemberListResponse = zPagedListResponse.and(z.object({
  */
 export const zOrganizationMemberRequest = z.object({
     product_user_id: zKsuid,
-    role_id: zKsuid
+    role_id: zKsuid.optional()
 });
 
 /**
@@ -998,7 +1052,7 @@ export const zOrganizationInvitationListResponse = zPagedListResponse.and(z.obje
  */
 export const zOrganizationInvitationCreateRequest = z.object({
     email: z.email(),
-    role_id: zKsuid,
+    role_id: zKsuid.optional(),
     expires_at: z.iso.datetime().optional()
 });
 
@@ -2874,6 +2928,42 @@ export const zSearchOrganizationMembersPath = z.object({
  * Success
  */
 export const zSearchOrganizationMembersResponse = zOrganizationMemberListResponse;
+
+export const zSearchOrganizationRolesBody = zOrganizationRoleSearchRequest;
+
+export const zSearchOrganizationRolesPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid
+});
+
+/**
+ * Matching roles.
+ */
+export const zSearchOrganizationRolesResponse = zOrganizationRoleListResponse;
+
+export const zGetOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The role.
+ */
+export const zGetOrganizationRoleResponse = zOrganizationRoleResponse;
+
+export const zUpdateOrganizationRoleBody = zOrganizationRoleUpdateRequest;
+
+export const zUpdateOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The role after the change.
+ */
+export const zUpdateOrganizationRoleResponse = zOrganizationRoleResponse;
 
 export const zCreateOrganizationInvitationBody = zOrganizationInvitationCreateRequest;
 

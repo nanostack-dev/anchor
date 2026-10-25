@@ -40,6 +40,7 @@ func TestCursorSearches(t *testing.T) {
 		"searchPlatformUsers":                  platformUsersCursorCase,
 		"searchProductRoles":                   rolesCursorCase,
 		"searchProductResourceTypes":           resourceTypesCursorCase,
+		"searchOrganizationRoles":              organizationRolesCursorCase,
 		"searchProductAPIKeys":                 productAPIKeysCursorCase,
 		"searchProductUsers":                   productUsersCursorCase,
 		"searchOrganizationAPIKeys":            organizationAPIKeysCursorCase,
@@ -290,6 +291,41 @@ func resourceTypesCursorCase(t *testing.T) cursorCase {
 				body,
 			)
 			return httpCall(response, err, func(r *ct.SearchProductResourceTypesResponse) []byte { return r.Body })
+		},
+	}
+}
+
+func organizationRolesCursorCase(t *testing.T) cursorCase {
+	product := createTestProductContext(t)
+	for range cursorFixtureRows {
+		createDSLProductRole(t, product, "role-"+ids.MustNew("ct"), nil)
+	}
+	organization := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+	execSQL(t, "UPDATE product_roles SET created_at = $1 WHERE product_id = $2 AND organization_id = $3",
+		tiedAt(), product.ProductID, organization.Id)
+
+	client := product.OwnerAuthenticatedClient()
+	return cursorCase{
+		rows: orderedRows{
+			from: "product_roles", where: "product_id = $1 AND organization_id = $2",
+			args: []any{product.ProductID, organization.Id}, idExpr: "public_id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "key", expr: "key"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"keys": []string{"no-such-key"}}},
+		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
+			response, err := client.SearchOrganizationRolesWithBodyWithResponse(
+				ctx,
+				product.ProductID,
+				organization.Id,
+				"application/json",
+				body,
+			)
+			return httpCall(response, err, func(r *ct.SearchOrganizationRolesResponse) []byte { return r.Body })
 		},
 	}
 }

@@ -204,6 +204,12 @@
       "organization_member:read"
     ]
   },
+  "GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:read"
+    ]
+  },
   "GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -250,6 +256,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_license:update"
+    ]
+  },
+  "PATCH /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:update"
     ]
   },
   "PATCH /v1/products/{product_id}/resource-types/{resource_type_id}": {
@@ -466,6 +478,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_member:read"
+    ]
+  },
+  "POST /v1/products/{product_id}/organizations/{organization_id}/roles/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "organization_role:read"
     ]
   },
   "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces": {

@@ -23,6 +23,7 @@ Each ordering ends with the tiebreak, and the tiebreak follows the direction of 
 | `searchPlatformInvitations` | `created_at` ASC | `id` | email, created_at, updated_at | tenant-scoped, small |
 | `searchPlatformUsers` | `created_at` ASC | `id` | email, created_at, updated_at, role | tenant-scoped, small |
 | `searchProductRoles` | `created_at` ASC | `id` | id, name, created_at, updated_at | product-scoped, small |
+| `searchOrganizationRoles` | `created_at` ASC | `public_id` | created_at, key, name | organization-scoped, one row per template plus custom roles |
 | `searchProductResourceTypes` | `created_at` ASC | `id` | created_at, updated_at, slug, name | `(product_id, created_at, id)`, built with the table in `000054` |
 | `searchProductAPIKeys` | `created_at` ASC | `id` | id, name, created_at, updated_at, status, last_used_at (nullable) | `(product_id, created_at, id)` |
 | `searchProductUsers` | `created_at` ASC | `id` | email, name (nullable), status, created_at, updated_at | `(product_id, created_at, id)` |

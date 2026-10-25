@@ -17,7 +17,9 @@ type ProductRole struct {
 	// ResourceType is the slug of the scope, filled by the service.
 	ResourceType string
 	// Key names the role template in every Organization: each copy keeps it.
-	Key         string
+	Key string
+	// IsDefault marks the Product's default role template (ADR-0022 D5).
+	IsDefault   bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Permissions []ProductRolePermission

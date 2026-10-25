@@ -5,6 +5,7 @@ package organizationrole
 import (
 	"go.uber.org/fx"
 
+	"anchor/internal/events"
 	"anchor/internal/organizationrole/repository"
 	"anchor/internal/organizationrole/service"
 )
@@ -15,7 +16,8 @@ func NewModule() fx.Option {
 		fx.Provide(
 			repository.NewRepository,
 			service.NewService,
+			events.AsRegistration(EventRegistration),
 		),
-		fx.Invoke(service.RegisterKeyBackfill),
+		fx.Invoke(service.RegisterCopyBackfill),
 	)
 }

@@ -19,6 +19,7 @@ import (
 	"anchor/internal/domain/organization"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/domain/organizationinvitation"
+	"anchor/internal/domain/organizationrole"
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/platform"
 	"anchor/internal/domain/product"
@@ -841,10 +842,10 @@ type FoundingMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId Role to assign to the founding member.
+	// RoleId Role to assign to the founding member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // IntegrationAuditLogEntryResponse defines model for IntegrationAuditLogEntryResponse.
@@ -1459,10 +1460,10 @@ type OrganizationInvitationCreateRequest struct {
 	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// RoleId The role the invited person receives on accept. It must be a role of the Product.
+	// RoleId The role the invited person receives on accept. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
+	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationInvitationFilter Filter criteria for searching organization invitations.
@@ -1848,10 +1849,10 @@ type OrganizationMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId The role to assign to the member.
+	// RoleId The role to assign to the member. A role template's ID names the Organization's copy of it. Omit it to use the Organization's default role; with no default role, the call answers 400 ROLE_REQUIRED.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationMemberResponse Represents a member of an organization with their role details.
@@ -1920,6 +1921,93 @@ type OrganizationMemberSearchRequest struct {
 
 	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationRoleFilter defines model for OrganizationRoleFilter.
+type OrganizationRoleFilter struct {
+	Ids           []Ksuid            `json:"ids,omitempty"`
+	Keys          []RoleKey          `json:"keys,omitempty"`
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
+}
+
+// OrganizationRoleListResponse defines model for OrganizationRoleListResponse.
+type OrganizationRoleListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                        `json:"count"`
+	Items []OrganizationRoleResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// OrganizationRoleOrigin `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+type OrganizationRoleOrigin = organizationrole.Origin
+
+// OrganizationRoleResponse A role an Organization owns. A copy of a role template is addressed by its template's ID inside its Organization, so the IDs released clients hold keep working; a custom role has an ID of its own.
+type OrganizationRoleResponse struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// IsDefault `true` for the Organization's default role: the role a member or an invitation gets when the request names none. It is the Organization's own choice, or else the copy of the Product's default role template.
+	IsDefault bool `json:"is_default"`
+
+	// Key A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+	//
+	// Examples: project-admin
+	Key  RoleKey `json:"key"`
+	Name string  `json:"name"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// Origin `template` for an Organization's copy of a role template, `custom` for a role the Organization created. For display only: assignment and access decisions treat both alike.
+	Origin OrganizationRoleOrigin `json:"origin"`
+
+	// Permissions Names of the permissions the role bundles.
+	Permissions []string `json:"permissions"`
+
+	// ResourceType The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// TemplateId The role template this role is a copy of. Absent for a custom role.
+	TemplateId *Ksuid    `json:"template_id,omitempty"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// OrganizationRoleSearchRequest defines model for OrganizationRoleSearchRequest.
+type OrganizationRoleSearchRequest struct {
+	Filter *OrganizationRoleFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. Every order ends with the role's ID.
+	SortBy *OrganizationRoleSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationRoleSortField Field to sort by. Every order ends with the role's ID.
+type OrganizationRoleSortField = organizationrole.SortField
+
+// OrganizationRoleUpdateRequest defines model for OrganizationRoleUpdateRequest.
+type OrganizationRoleUpdateRequest struct {
+	// IsDefault `true` makes this role the Organization's default role, in place of the previous one. It must be scoped to `organization`, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. `false` on the Organization's own choice returns it to the copy of the Product's default role template; on that copy itself it changes nothing. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
 }
 
 // PagedListResponse defines model for PagedListResponse.
@@ -2776,7 +2864,10 @@ type ProductRoleCreateRequest struct {
 	// Examples: Can view and edit resources within assigned organizations/workspaces.
 	Description *string `json:"description,omitempty"`
 
-	// Key The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+	// IsDefault `true` makes this template the Product's default role, in place of the previous one: a member or an invitation that names no role gets its Organization's copy of it. Only an `organization`-scoped template can be the default, or the call answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
+
+	// Key The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Every Organization's copy keeps it. Omitted, it is the name in lower case. It never changes.
 	Key *RoleKey `json:"key,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
@@ -2854,7 +2945,10 @@ type ProductRoleResponse struct {
 	// Examples: role_5mNOP...
 	Id Ksuid `json:"id"`
 
-	// Key A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+	// IsDefault `true` for the Product's default role template.
+	IsDefault bool `json:"is_default"`
+
+	// Key A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
 	//
 	// Examples: project-admin
 	Key RoleKey `json:"key"`
@@ -2899,6 +2993,9 @@ type ProductRoleUpdateRequest struct {
 	//
 	// Examples: Can view and edit resources within assigned organizations/workspaces.
 	Description *string `json:"description,omitempty"`
+
+	// IsDefault `true` makes this template the Product's default role, in place of the previous one; `false` leaves the Product with no default role. Omit it to keep the current setting. A concurrent change of the default answers 409 DEFAULT_ROLE_CONFLICT.
+	IsDefault *bool `json:"is_default,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
 	//
@@ -3111,7 +3208,7 @@ type RegisterRequest struct {
 // Examples: folder
 type ResourceTypeSlug = string
 
-// RoleKey A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+// RoleKey A role's key, unique in its Organization regardless of case. A role template's key is unique in its Product, and every Organization's copy keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
 //
 // Examples: project-admin
 type RoleKey = string
@@ -3807,6 +3904,12 @@ type SearchOrganizationMembersJSONRequestBody = OrganizationMemberSearchRequest
 // UpdateOrganizationMemberRoleJSONRequestBody defines body for UpdateOrganizationMemberRole for application/json ContentType.
 type UpdateOrganizationMemberRoleJSONRequestBody = OrganizationMemberRoleRequest
 
+// SearchOrganizationRolesJSONRequestBody defines body for SearchOrganizationRoles for application/json ContentType.
+type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
+
+// UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
+type UpdateOrganizationRoleJSONRequestBody = OrganizationRoleUpdateRequest
+
 // CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
 type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
@@ -4351,6 +4454,15 @@ type ServerInterface interface {
 	// UpdateOrganizationMemberRole Update Member Role
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id})
 	UpdateOrganizationMemberRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid)
+	// SearchOrganizationRoles Search Organization Roles
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/roles/search)
+	SearchOrganizationRoles(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
+	// GetOrganizationRole Get Organization Role
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+	GetOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter)
+	// UpdateOrganizationRole Update Organization Role
+	// (PATCH /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+	UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter)
 	// CreateOrganizationWorkspace Create Organization Workspace
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
 	CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -5020,6 +5132,24 @@ func (_ Unimplemented) GetOrganizationMember(w http.ResponseWriter, r *http.Requ
 // UpdateOrganizationMemberRole Update Member Role
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id})
 func (_ Unimplemented) UpdateOrganizationMemberRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchOrganizationRoles Search Organization Roles
+// (POST /v1/products/{product_id}/organizations/{organization_id}/roles/search)
+func (_ Unimplemented) SearchOrganizationRoles(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOrganizationRole Get Organization Role
+// (GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+func (_ Unimplemented) GetOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateOrganizationRole Update Organization Role
+// (PATCH /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+func (_ Unimplemented) UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8343,6 +8473,129 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationMemberRole(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
+// SearchOrganizationRoles operation middleware
+func (siw *ServerInterfaceWrapper) SearchOrganizationRoles(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchOrganizationRoles(w, r, productId, organizationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOrganizationRole operation middleware
+func (siw *ServerInterfaceWrapper) GetOrganizationRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "role_id" -------------
+	var roleId ProductRoleIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "role_id", chi.URLParam(r, "role_id"), &roleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOrganizationRole(w, r, productId, organizationId, roleId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOrganizationRole operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOrganizationRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "role_id" -------------
+	var roleId ProductRoleIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "role_id", chi.URLParam(r, "role_id"), &roleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "role_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOrganizationRole(w, r, productId, organizationId, roleId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateOrganizationWorkspace operation middleware
 func (siw *ServerInterfaceWrapper) CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request) {
 
@@ -9824,6 +10077,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/members/search", wrapper.SearchOrganizationMembers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/roles/search", wrapper.SearchOrganizationRoles)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}", wrapper.GetOrganizationRole)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}", wrapper.UpdateOrganizationRole)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations", wrapper.CreateOrganizationInvitation)
@@ -17699,6 +17961,247 @@ func (response UpdateOrganizationMemberRole409JSONResponse) VisitUpdateOrganizat
 	return err
 }
 
+type SearchOrganizationRolesRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	Body           *SearchOrganizationRolesJSONRequestBody
+}
+
+type SearchOrganizationRolesResponseObject interface {
+	VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error
+}
+
+type SearchOrganizationRoles200JSONResponse OrganizationRoleListResponse
+
+func (response SearchOrganizationRoles200JSONResponse) VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationRoles400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchOrganizationRoles400JSONResponse) VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationRoles401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchOrganizationRoles401JSONResponse) VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationRoles403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchOrganizationRoles403JSONResponse) VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchOrganizationRoles404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchOrganizationRoles404JSONResponse) VisitSearchOrganizationRolesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationRoleRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	RoleId         ProductRoleIdParameter  `json:"role_id"`
+}
+
+type GetOrganizationRoleResponseObject interface {
+	VisitGetOrganizationRoleResponse(w http.ResponseWriter) error
+}
+
+type GetOrganizationRole200JSONResponse OrganizationRoleResponse
+
+func (response GetOrganizationRole200JSONResponse) VisitGetOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationRole401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetOrganizationRole401JSONResponse) VisitGetOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationRole403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetOrganizationRole403JSONResponse) VisitGetOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOrganizationRole404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetOrganizationRole404JSONResponse) VisitGetOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRoleRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	OrganizationId OrganizationIdParameter `json:"organization_id"`
+	RoleId         ProductRoleIdParameter  `json:"role_id"`
+	Body           *UpdateOrganizationRoleJSONRequestBody
+}
+
+type UpdateOrganizationRoleResponseObject interface {
+	VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error
+}
+
+type UpdateOrganizationRole200JSONResponse OrganizationRoleResponse
+
+func (response UpdateOrganizationRole200JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRole400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateOrganizationRole400JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRole401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateOrganizationRole401JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRole403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateOrganizationRole403JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRole404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateOrganizationRole404JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOrganizationRole409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateOrganizationRole409JSONResponse) VisitUpdateOrganizationRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateOrganizationWorkspaceRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -20534,6 +21037,15 @@ type StrictServerInterface interface {
 	// UpdateOrganizationMemberRole Update Member Role
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id})
 	UpdateOrganizationMemberRole(ctx context.Context, request UpdateOrganizationMemberRoleRequestObject) (UpdateOrganizationMemberRoleResponseObject, error)
+	// SearchOrganizationRoles Search Organization Roles
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/roles/search)
+	SearchOrganizationRoles(ctx context.Context, request SearchOrganizationRolesRequestObject) (SearchOrganizationRolesResponseObject, error)
+	// GetOrganizationRole Get Organization Role
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+	GetOrganizationRole(ctx context.Context, request GetOrganizationRoleRequestObject) (GetOrganizationRoleResponseObject, error)
+	// UpdateOrganizationRole Update Organization Role
+	// (PATCH /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
+	UpdateOrganizationRole(ctx context.Context, request UpdateOrganizationRoleRequestObject) (UpdateOrganizationRoleResponseObject, error)
 	// CreateOrganizationWorkspace Create Organization Workspace
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
 	CreateOrganizationWorkspace(ctx context.Context, request CreateOrganizationWorkspaceRequestObject) (CreateOrganizationWorkspaceResponseObject, error)
@@ -23498,6 +24010,103 @@ func (sh *strictHandler) UpdateOrganizationMemberRole(w http.ResponseWriter, r *
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationMemberRoleResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationMemberRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchOrganizationRoles operation middleware
+func (sh *strictHandler) SearchOrganizationRoles(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
+	var request SearchOrganizationRolesRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+
+	var body SearchOrganizationRolesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchOrganizationRoles(ctx, request.(SearchOrganizationRolesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchOrganizationRoles")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchOrganizationRolesResponseObject); ok {
+		if err := validResponse.VisitSearchOrganizationRolesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOrganizationRole operation middleware
+func (sh *strictHandler) GetOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) {
+	var request GetOrganizationRoleRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.RoleId = roleId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOrganizationRole(ctx, request.(GetOrganizationRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOrganizationRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOrganizationRoleResponseObject); ok {
+		if err := validResponse.VisitGetOrganizationRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateOrganizationRole operation middleware
+func (sh *strictHandler) UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) {
+	var request UpdateOrganizationRoleRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.RoleId = roleId
+
+	var body UpdateOrganizationRoleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateOrganizationRole(ctx, request.(UpdateOrganizationRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateOrganizationRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateOrganizationRoleResponseObject); ok {
+		if err := validResponse.VisitUpdateOrganizationRoleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

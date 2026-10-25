@@ -316,6 +316,9 @@ func (s *organizationService) Create(
 				Msg("failed to create organization")
 			return createErr
 		}
+		if copyErr := s.organizationRoles.EnsureCopies(txCtx, input.ProductID, created.ID); copyErr != nil {
+			return copyErr
+		}
 
 		instantiated, licenseErr := s.instantiateLicense(
 			txCtx, input.TenantID, input.ProductID, created.ID, template,
@@ -440,6 +443,11 @@ func (s *organizationService) CreateWithMember(
 				Str("organization_id", createdOrg.ID).
 				Str("product_user_id", input.ProductUserID).
 				Msg("failed to create founding membership")
+			return err
+		}
+		// The founder joins on the template, then moves onto the new
+		// Organization's copy with every other template's copy.
+		if err = s.organizationRoles.EnsureCopies(lockCtx, input.ProductID, createdOrg.ID); err != nil {
 			return err
 		}
 
@@ -724,10 +732,10 @@ func (s *organizationService) Search(
 	return result, nil
 }
 
-// resolveFoundingRole finds the role the founding member gets: a new
-// Organization has no copies yet, so this is the role template itself.
+// resolveFoundingRole finds the role template the founding member gets: the
+// one named, or else the Product's default template.
 func (s *organizationService) resolveFoundingRole(
 	txCtx context.Context, productID, roleID string,
 ) (organizationrole.Role, error) {
-	return s.organizationRoles.Resolve(txCtx, productID, "", roleID)
+	return s.organizationRoles.ResolveTemplate(txCtx, productID, roleID)
 }

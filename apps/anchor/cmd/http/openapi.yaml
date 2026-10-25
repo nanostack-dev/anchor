@@ -1157,6 +1157,139 @@ components:
         required:
         - items
 
+    RoleKey:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: >-
+        A role's key, unique in its Organization regardless of case. A role
+        template's key is unique in its Product, and every Organization's copy
+        keeps it, so a Product names the same role in every Organization by
+        key. It never changes after creation.
+      examples: ["project-admin"]
+
+    OrganizationRoleOrigin:
+      type: string
+      enum: [template, custom]
+      description: >-
+        `template` for an Organization's copy of a role template, `custom` for
+        a role the Organization created. For display only: assignment and
+        access decisions treat both alike.
+      x-go-type: organizationrole.Origin
+      x-go-type-import:
+        path: anchor/internal/domain/organizationrole
+
+    OrganizationRoleResponse:
+      type: object
+      description: >-
+        A role an Organization owns. A copy of a role template is addressed by
+        its template's ID inside its Organization, so the IDs released clients
+        hold keep working; a custom role has an ID of its own.
+      required: [id, organization_id, key, name, origin, resource_type, is_default, permissions, created_at, updated_at]
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+        organization_id:
+          $ref: "#/components/schemas/ksuid"
+        template_id:
+          allOf:
+          - $ref: "#/components/schemas/ksuid"
+          description: The role template this role is a copy of. Absent for a custom role.
+        key:
+          $ref: "#/components/schemas/RoleKey"
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        origin:
+          $ref: "#/components/schemas/OrganizationRoleOrigin"
+        resource_type:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        is_default:
+          type: boolean
+          description: >-
+            `true` for the Organization's default role: the role a member or an
+            invitation gets when the request names none. It is the
+            Organization's own choice, or else the copy of the Product's default
+            role template.
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Names of the permissions the role bundles.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrganizationRoleUpdateRequest:
+      type: object
+      properties:
+        is_default:
+          type: boolean
+          description: >-
+            `true` makes this role the Organization's default role, in place of
+            the previous one. It must be scoped to `organization`, or the call
+            answers 400 DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. `false` on the
+            Organization's own choice returns it to the copy of the Product's
+            default role template; on that copy itself it changes nothing. A
+            concurrent change of the default answers 409
+            DEFAULT_ROLE_CONFLICT.
+
+    OrganizationRoleFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ksuid"
+          x-go-type-skip-optional-pointer: true
+        keys:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/RoleKey"
+          x-go-type-skip-optional-pointer: true
+        resource_types:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          x-go-type-skip-optional-pointer: true
+
+    OrganizationRoleSortField:
+      type: string
+      enum: [created_at, key, name]
+      default: created_at
+      description: Field to sort by. Every order ends with the role's ID.
+      x-go-type: organizationrole.SortField
+      x-go-type-import:
+        path: anchor/internal/domain/organizationrole
+
+    OrganizationRoleSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/OrganizationRoleFilter"
+          sort_by:
+            $ref: "#/components/schemas/OrganizationRoleSortField"
+
+    OrganizationRoleListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/OrganizationRoleResponse"
+        required:
+        - items
+
     CreateProductResourcePermissionRequest:
       description: >-
         Request body for defining a new domain-resource permission for the
@@ -1309,16 +1442,6 @@ components:
               $ref: "#/components/schemas/ProductResourcePermissionResponse"
         required:
         - items
-    RoleKey:
-      type: string
-      minLength: 1
-      maxLength: 100
-      description: >-
-        A role template's key, unique in its Product regardless of case. Every
-        Organization's copy of the template keeps it, so a Product names the
-        same role in every Organization by key. It never changes after
-        creation.
-      examples: ["project-admin"]
     ProductRoleCreateRequest:
       type: object
       properties:
@@ -1357,8 +1480,18 @@ components:
           - $ref: "#/components/schemas/RoleKey"
           description: >-
             The template's key, unique in the Product regardless of case (409
-            ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It
-            never changes.
+            ROLE_KEY_DUPLICATE). Every Organization's copy keeps it. Omitted, it
+            is the name in lower case. It never changes.
+        is_default:
+          type: boolean
+          default: false
+          description: >-
+            `true` makes this template the Product's default role, in place of
+            the previous one: a member or an invitation that names no role gets
+            its Organization's copy of it. Only an `organization`-scoped
+            template can be the default, or the call answers 400
+            DEFAULT_ROLE_NOT_ORGANIZATION_SCOPED. A concurrent change of the
+            default answers 409 DEFAULT_ROLE_CONFLICT.
       required:
       - name
       - resource_type
@@ -1392,6 +1525,13 @@ components:
           description: >-
             A role's resource type never changes. Omit it, or send the
             current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
+        is_default:
+          type: boolean
+          description: >-
+            `true` makes this template the Product's default role, in place of
+            the previous one; `false` leaves the Product with no default role.
+            Omit it to keep the current setting. A concurrent change of the
+            default answers 409 DEFAULT_ROLE_CONFLICT.
     ProductRoleResponse:
       type: object
       properties:
@@ -1418,6 +1558,9 @@ components:
           description: The resource type this role is scoped to.
         key:
           $ref: "#/components/schemas/RoleKey"
+        is_default:
+          type: boolean
+          description: "`true` for the Product's default role template."
         permissions:
           type: array
           items:
@@ -1435,6 +1578,7 @@ components:
       - name
       - resource_type
       - key
+      - is_default
       - permissions
       - created_at
       - updated_at
@@ -2179,12 +2323,16 @@ components:
           description: The organization to add the user to.
           examples: ["org_3iXYZ..."]
         role_id:
-          $ref: "#/components/schemas/ksuid"
-          description: The role to assign to the user within the organization.
+          allOf:
+          - $ref: "#/components/schemas/ksuid"
+          description: >-
+            The role to assign to the user within the organization. A role template's ID names the Organization's copy of it.
+            Omit it to use the Organization's default role; with no default
+            role, the call answers 400 ROLE_REQUIRED.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
+          x-go-type-skip-optional-pointer: true
       required:
       - organization_id
-      - role_id
     OrganizationMembershipUpdateRequest:
       type: object
       description: Request body for updating a product user's role within an 
@@ -2700,12 +2848,16 @@ components:
           description: ID of the product user to assign as founding member.
           examples: ["pusr_3iXYZ..."]
         role_id:
-          $ref: "#/components/schemas/ksuid"
-          description: Role to assign to the founding member.
+          allOf:
+          - $ref: "#/components/schemas/ksuid"
+          description: >-
+            Role to assign to the founding member. A role template's ID names the Organization's copy of it.
+            Omit it to use the Organization's default role; with no default
+            role, the call answers 400 ROLE_REQUIRED.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
+          x-go-type-skip-optional-pointer: true
       required:
       - product_user_id
-      - role_id
     ProductOrganizationResponse:
       type: object
       properties:
@@ -2950,12 +3102,16 @@ components:
           description: The product user to add to the organization.
           examples: ["pusr_3iXYZ..."]
         role_id:
-          $ref: "#/components/schemas/ksuid"
-          description: The role to assign to the member.
+          allOf:
+          - $ref: "#/components/schemas/ksuid"
+          description: >-
+            The role to assign to the member. A role template's ID names the Organization's copy of it.
+            Omit it to use the Organization's default role; with no default
+            role, the call answers 400 ROLE_REQUIRED.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
+          x-go-type-skip-optional-pointer: true
       required:
       - product_user_id
-      - role_id
     OrganizationMemberRoleRequest:
       type: object
       description: Request body for updating a member's role within an 
@@ -3093,8 +3249,14 @@ components:
           description: The email address to invite.
           examples: ["alice@example.com"]
         role_id:
-          $ref: "#/components/schemas/ksuid"
-          description: The role the invited person receives on accept. It must be a role of the Product.
+          allOf:
+          - $ref: "#/components/schemas/ksuid"
+          description: >-
+            The role the invited person receives on accept. A role template's ID names the Organization's copy of it.
+            Omit it to use the Organization's default role; with no default
+            role, the call answers 400 ROLE_REQUIRED.
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
+          x-go-type-skip-optional-pointer: true
         expires_at:
           type: string
           format: date-time
@@ -3103,7 +3265,6 @@ components:
             7 days from now.
       required:
       - email
-      - role_id
     OrganizationInvitationUpdateRequest:
       type: object
       description: >-
@@ -6309,9 +6470,12 @@ paths:
 
     post:
       summary: Create ProductRole for Product
-      description: Creates a new product role within a specific product. Can 
-        optionally assign initial permissions. Requires Platform Bearer token
-        or Product API Key with product_role:create scope.
+      description: >-
+        Creates a role template. Every Organization of the Product gets its own
+        copy, which members and invitations then hold; a change to the template
+        reaches every copy in the same transaction. Can optionally assign
+        initial permissions. Requires Platform Bearer token or Product API Key
+        with product_role:create scope.
       operationId: createProductRole
       tags: [ProductRole]
       security:
@@ -7743,6 +7907,109 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/organizations/{organization_id}/roles/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    post:
+      summary: Search Organization Roles
+      description: >-
+        Searches the roles an Organization owns: a copy of every role template
+        of its Product. A copy the Organization lacks is made first, as on any
+        other first use. Requires Platform Bearer token or Product API Key with
+        organization_role:read.
+
+        Default order is `created_at` ascending, then the role's ID. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchOrganizationRoles
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationRoleSearchRequest"
+      responses:
+        "200":
+          description: Matching roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationRoleListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/OrganizationIdParameter"
+    - $ref: "#/components/parameters/ProductRoleIdParameter"
+    get:
+      summary: Get Organization Role
+      description: >-
+        Reads one role of an Organization. A role template's ID names the
+        Organization's copy of it. Requires Platform Bearer token or Product
+        API Key with organization_role:read.
+      operationId: getOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:read"]
+      responses:
+        "200":
+          description: The role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationRoleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update Organization Role
+      description: >-
+        Chooses the Organization's default role. Emits
+        `organization.role.updated` for each role whose default flag changed.
+        Requires Platform Bearer token or Product API Key with
+        organization_role:update.
+      operationId: updateOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:update"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationRoleUpdateRequest"
+      responses:
+        "200":
+          description: The role after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /v1/products/{product_id}/organizations/{organization_id}/invitations:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

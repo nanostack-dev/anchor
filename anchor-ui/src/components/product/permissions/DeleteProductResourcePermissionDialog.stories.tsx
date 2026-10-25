@@ -15,6 +15,7 @@ function role(name: string): ProductRoleResponse {
 		name,
 		resource_type: "organization",
 		key: name.toLowerCase(),
+		is_default: false,
 		permissions: [],
 		created_at: "2026-07-14T09:12:00Z",
 		updated_at: "2026-07-14T09:12:00Z",
