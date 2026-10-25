@@ -26,7 +26,8 @@ subject or resource than the caller named.
   items and no top-level action asks only whether the subject reaches the resource
   (an Anchor extension of AuthZEN).
 - **Caller credential:** a product API key with `product_user:read` and
-  `organization_api_key:read`.
+  `organization_api_key:read`, or the platform session of the Product's tenant, as
+  the admin UI's access explainer uses.
 
 A denial is HTTP 200 with `decision: false` and `context.reason`:
 `SUBJECT_NOT_SYNCED`, `API_KEY_INVALID`, `API_KEY_INACTIVE`, `ORGANIZATION_NOT_FOUND`,
@@ -41,7 +42,7 @@ the organization role, the product user or API key ID and every permission the r
 or key holds in the organization, allowed or not.
 
 Errors are only for the call itself: 400 for an invalid request, 401 and 403 for the
-caller's product API key, 500 for a failure.
+caller's credential, 500 for a failure.
 
 ## Resources
 

@@ -327,12 +327,14 @@
     "platformBearerAuth": []
   },
   "POST /v1/products/{product_id}/access/v1/evaluation": {
+    "platformBearerAuth": [],
     "productApiKeyAuth": [
       "product_user:read",
       "organization_api_key:read"
     ]
   },
   "POST /v1/products/{product_id}/access/v1/evaluations": {
+    "platformBearerAuth": [],
     "productApiKeyAuth": [
       "product_user:read",
       "organization_api_key:read"

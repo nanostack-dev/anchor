@@ -472,3 +472,28 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 		requireDenied(t, response, ct.APIKEYINVALID)
 	})
 }
+
+func TestAccessEvaluationFromThePlatformSession(t *testing.T) {
+	t.Parallel()
+
+	t.Run("The product owner's platform session evaluates access, as the admin UI does", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		owner := w.product.AccessClientWith(w.product.OwnerAuthenticatedClient())
+
+		decision := owner.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Decide()
+
+		assert.True(t, decision.Decision)
+	})
+
+	t.Run("Another tenant's platform session can't evaluate access on the product", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		otherTenant := itdsl.Given(t).Tenant(itdsl.TenantOpts{Alias: "other", Isolated: true}).Build().Tenant("other")
+		foreign := w.product.AccessClientWith(otherTenant.OwnerClient)
+
+		resp := foreign.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Send()
+
+		assert.Contains(t, []int{http.StatusForbidden, http.StatusNotFound}, resp.StatusCode(), string(resp.Body))
+	})
+}
