@@ -235,7 +235,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
-|  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | 🔵 Proposed (depends on ADR-0021) |  |
+|  | [DR-E3](#dr-e3) · Compiled to the Product's OpenFGA model | ✅ Accepted (depends on ADR-0021) |  |
 |  | [DR-E4](#dr-e4) · Listing what a subject can reach | ⚪ Deferred |  |
 |  | [DR-E5](#dr-e5) · Anchor's tables stay the source of truth; OpenFGA holds a mirror | 🟡 Pending | 1 |
 | **F. Admin UI** | [DR-F1](#dr-f1) · Three catalog pages | 🔵 Proposed |  |
@@ -1343,7 +1343,7 @@ The spec only shows reasons in a non-normative example (`reason_admin`, `reason_
 
 <a id="dr-e3"></a>
 <details>
-<summary><b>DR-E3</b> · Compiled to the Product's OpenFGA model — <i>🔵 Proposed (depends on ADR-0021)</i></summary>
+<summary><b>DR-E3</b> · Compiled to the Product's OpenFGA model — <i>✅ Accepted (depends on ADR-0021)</i></summary>
 
 **Decision.** Anchor compiles types, permissions and roles into the Product's model, replacing ADR-0021's two fixed types. For each type *T*:
 - a `parent` relation over its allowed parent types;
