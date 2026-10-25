@@ -37,6 +37,21 @@ type Repository interface {
 	// Reassign moves one assignment to another role and keeps when it was made.
 	Reassign(ctx context.Context, resourceRowID, productUserID, fromRoleRowID, toRoleRowID string) error
 	Delete(ctx context.Context, resourceRowID, productUserID string, roleRowIDs []string) error
+	// LockOrganizationRow holds the Organization's row FOR UPDATE, so every
+	// assignment write in flight, which holds it FOR KEY SHARE, commits first
+	// and no new one starts.
+	LockOrganizationRow(ctx context.Context, productID, organizationID string) error
+	// UserOrganizations lists the Organizations the product user is a member
+	// of, in ID order.
+	UserOrganizations(ctx context.Context, productUserID string) ([]string, error)
+	// LockUserMemberships holds every membership of the product user for the
+	// transaction, in Organization order.
+	LockUserMemberships(ctx context.Context, productUserID string) error
+	// HeldInOrganization lists every assignment held in an Organization.
+	HeldInOrganization(ctx context.Context, organizationID string) ([]roleassignment.Held, error)
+	// HeldByUser lists every assignment the product user holds, in every
+	// Organization.
+	HeldByUser(ctx context.Context, productUserID string) ([]roleassignment.Held, error)
 	// HeldByMember lists every assignment a member holds in an Organization.
 	HeldByMember(ctx context.Context, organizationID, productUserID string) ([]roleassignment.Held, error)
 	// HeldOnResources lists every assignment held on the resources.
@@ -82,6 +97,41 @@ func (r *repositoryImpl) LockMembership(ctx context.Context, organizationID, pro
 			WHERE(membership(organizationID, productUserID)).
 			FOR(postgres.UPDATE()),
 	).Err()
+}
+
+func (r *repositoryImpl) LockOrganizationRow(ctx context.Context, productID, organizationID string) error {
+	return transactor.Exec(ctx, r.db,
+		table.Organizations.SELECT(table.Organizations.ID).WHERE(
+			table.Organizations.ID.EQ(postgres.String(organizationID)).
+				AND(table.Organizations.ProductID.EQ(postgres.String(productID))),
+		).FOR(postgres.UPDATE()),
+	).Err()
+}
+
+func (r *repositoryImpl) UserOrganizations(ctx context.Context, productUserID string) ([]string, error) {
+	return transactor.QueryMapSlice(ctx, r.db,
+		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).
+			WHERE(table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID))).
+			ORDER_BY(table.OrganizationMemberships.OrganizationID.ASC()),
+		func(row model.OrganizationMemberships) string { return row.OrganizationID },
+	).Value()
+}
+
+func (r *repositoryImpl) LockUserMemberships(ctx context.Context, productUserID string) error {
+	return transactor.Exec(ctx, r.db,
+		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).
+			WHERE(table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID))).
+			ORDER_BY(table.OrganizationMemberships.OrganizationID.ASC()).
+			FOR(postgres.UPDATE()),
+	).Err()
+}
+
+func (r *repositoryImpl) HeldInOrganization(ctx context.Context, organizationID string) ([]roleassignment.Held, error) {
+	return r.held(ctx, table.ResourceRoleAssignments.OrganizationID.EQ(postgres.String(organizationID)))
+}
+
+func (r *repositoryImpl) HeldByUser(ctx context.Context, productUserID string) ([]roleassignment.Held, error) {
+	return r.held(ctx, table.ResourceRoleAssignments.ProductUserID.EQ(postgres.String(productUserID)))
 }
 
 // assignmentRow is an assignment with its role's public ID and name.
@@ -256,6 +306,10 @@ func (r *repositoryImpl) CountOnResource(ctx context.Context, resourceRowID stri
 // Search pages the resource's members. Each member is paged by one of their
 // assignments, the one with the lowest role row, so a member holding several
 // roles still shows once; the page's members then read all their roles.
+// While a product allows one role per resource that row is the member's only
+// one. When roles_per_resource: multiple arrives, the created_at key must
+// become the member's earliest assignment, as the response reports it, not
+// the lowest role row's.
 func (r *repositoryImpl) Search(
 	ctx context.Context, resourceRowID string,
 	request search.Request[roleassignment.Filter, roleassignment.SortField],

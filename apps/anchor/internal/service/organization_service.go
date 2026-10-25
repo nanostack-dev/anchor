@@ -23,6 +23,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
+	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 
 	"github.com/rs/zerolog"
@@ -108,6 +109,7 @@ type organizationService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productUserRepo   repository.ProductUserRepository
 	organizationRoles orgroleservice.Service
+	roleAssignments   assignments.Service
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
 	workspaces        WorkspaceService
@@ -122,6 +124,7 @@ func NewOrganizationService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productUserRepo repository.ProductUserRepository,
 	organizationRoles orgroleservice.Service,
+	roleAssignments assignments.Service,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
 	workspaces WorkspaceService,
@@ -135,6 +138,7 @@ func NewOrganizationService(
 		orgMembershipRepo: orgMembershipRepo,
 		productUserRepo:   productUserRepo,
 		organizationRoles: organizationRoles,
+		roleAssignments:   roleAssignments,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
 		workspaces:        workspaces,
@@ -681,6 +685,13 @@ func (s *organizationService) Delete(
 	}
 
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// The role assignments on its resources go through the foreign keys,
+		// each with its event.
+		if releaseErr := s.roleAssignments.ReleaseOrganization(
+			txCtx, input.ProductID, input.OrganizationID,
+		); releaseErr != nil {
+			return releaseErr
+		}
 		if delErr := s.organizationRepo.DeleteByID(txCtx, input.ProductID, input.OrganizationID); delErr != nil {
 			return delErr
 		}

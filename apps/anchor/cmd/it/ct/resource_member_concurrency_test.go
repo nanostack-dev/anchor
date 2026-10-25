@@ -10,6 +10,8 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itdsl "anchor/cmd/it/shared/dsl"
 )
 
 func TestConcurrentResourceMemberWrites(t *testing.T) {
@@ -44,6 +46,7 @@ func TestConcurrentResourceMemberWrites(t *testing.T) {
 		t.Parallel()
 		w := givenMemberWorld(t)
 		client := w.product.AllScopeAPIKeyClient()
+		sink := w.product.CaptureEvents()
 		for range concurrentRounds {
 			member := w.newMember(t)
 			var wg sync.WaitGroup
@@ -61,12 +64,18 @@ func TestConcurrentResourceMemberWrites(t *testing.T) {
 			assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, assigned)
 			assert.Equal(t, http.StatusNoContent, removed)
 			assert.Zero(t, countAssignments(t, w.org.Id, member))
+			if assigned == http.StatusOK {
+				sink.WaitFor("resource.role_assignment.deleted",
+					w.assignmentEvent(member, "folder", w.folder, w.editor.Id))
+			}
 		}
+		requireAssignmentEventsBalance(t, sink)
 	})
 
 	t.Run("An assignment racing its resource's cascade delete never outlives the resource", func(t *testing.T) {
 		t.Parallel()
 		w := givenMemberWorld(t)
+		sink := w.product.CaptureEvents()
 		for range concurrentRounds {
 			folder := resourceID()
 			w.resources.Put("folder", folder, "Design", ct.ResourceParentRef{Type: "project", Id: w.project})
@@ -82,8 +91,41 @@ func TestConcurrentResourceMemberWrites(t *testing.T) {
 
 			assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, assigned)
 			assert.Equal(t, http.StatusNoContent, deleted)
+			if assigned == http.StatusOK {
+				sink.WaitFor(
+					"resource.role_assignment.deleted",
+					w.assignmentEvent(w.member, "folder", folder, w.editor.Id),
+				)
+			}
 		}
 		assert.Zero(t, countAssignments(t, w.org.Id, w.member))
+		requireAssignmentEventsBalance(t, sink)
+	})
+
+	t.Run("Removing a member's role racing the member's removal reports each removed role once", func(t *testing.T) {
+		t.Parallel()
+		w := givenMemberWorld(t)
+		client := w.product.AllScopeAPIKeyClient()
+		sink := w.product.CaptureEvents()
+		for range concurrentRounds {
+			member := w.newMember(t)
+			w.folderMembers().Put(member, w.editor.Id)
+			var wg sync.WaitGroup
+			var unassigned int
+			wg.Go(func() { unassigned = w.folderMembers().DeleteRaw(member).StatusCode() })
+			wg.Go(func() {
+				resp, err := client.RemoveOrganizationMemberWithResponse(
+					context.Background(), w.product.ProductID, w.org.Id, member)
+				if assert.NoError(t, err) {
+					assert.Equal(t, http.StatusNoContent, resp.StatusCode())
+				}
+			})
+			wg.Wait()
+
+			assert.Contains(t, []int{http.StatusNoContent, http.StatusNotFound}, unassigned)
+			sink.WaitFor("resource.role_assignment.deleted", w.assignmentEvent(member, "folder", w.folder, w.editor.Id))
+		}
+		requireAssignmentEventsBalance(t, sink)
 	})
 }
 
@@ -118,4 +160,16 @@ func TestRoleTemplateDeleteDuringAnAssignment(t *testing.T) {
 		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "ROLE_NOT_FOUND_IN_REQUEST")
 		assert.Zero(t, countAssignments(t, w.org.Id, w.member))
 	})
+}
+
+// requireAssignmentEventsBalance waits until the endpoint received one
+// deleted event per created event: every role an assignment gave is reported
+// gone exactly once.
+func requireAssignmentEventsBalance(t *testing.T, sink *itdsl.EventSink) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		return sink.Count("resource.role_assignment.created") ==
+			sink.Count("resource.role_assignment.deleted")
+	}, mirrorWait, mirrorPoll, "created and deleted role assignment events differ")
+	assert.Zero(t, sink.Count("resource.role_assignment.updated"))
 }

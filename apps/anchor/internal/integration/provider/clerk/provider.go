@@ -14,6 +14,7 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 	"anchor/internal/repository"
+	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/security/encryption"
 	"anchor/internal/telemetry"
 
@@ -53,6 +54,7 @@ const (
 type Provider struct {
 	productUserRepo repository.ProductUserRepository
 	auditLogRepo    repository.IntegrationAuditLogRepository
+	roleAssignments assignments.Service
 	configCipher    *secrets.VersionedCipher
 	configCipherErr error
 	httpClient      *http.Client
@@ -67,6 +69,7 @@ type NewProviderParams struct {
 
 	ProductUserRepo   repository.ProductUserRepository
 	AuditLogRepo      repository.IntegrationAuditLogRepository
+	RoleAssignments   assignments.Service
 	EncryptionService *encryption.Service
 	Events            events.Emitter
 	Transactor        transactor.Transactor
@@ -92,6 +95,7 @@ func NewProvider(p NewProviderParams) *Provider {
 	return &Provider{
 		productUserRepo: p.ProductUserRepo,
 		auditLogRepo:    p.AuditLogRepo,
+		roleAssignments: p.RoleAssignments,
 		configCipher:    cipher,
 		configCipherErr: err,
 		events:          p.Events,

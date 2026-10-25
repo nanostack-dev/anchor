@@ -21,7 +21,7 @@ A copy is made when it is first needed:
 | Moment | Where |
 | --- | --- |
 | An Organization is created | `OrganizationService.Create` and `CreateWithMember` call `EnsureCopies`. The founding member joins on the template and moves onto the copy in the same transaction. |
-| A template ID is resolved in an Organization (member add or update, invitation create or update) | `organizationrole.Service.Resolve`, in the write's transaction |
+| A template ID is resolved in an Organization (member add or update, invitation create or update, role assignment on a resource) | `organizationrole.Service.Resolve`, in the write's transaction. It emits the internal `organization.role.copied`, which marks the Organization so the copy's grants are synced |
 | An Organization's roles are read | `Get`, `Search` and `Update` call `EnsureCopies`, so a read under `organization_role:read` may write the copies it lacks |
 | Every start, for every Organization, under the `organization_roles:copy-backfill` lock | `RegisterCopyBackfill` |
 

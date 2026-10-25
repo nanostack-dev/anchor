@@ -43,6 +43,14 @@ type Service interface {
 	// resources, inside the transaction that deletes them under the
 	// Organization's resource lock; the resource foreign key removes the rows.
 	ReleaseResources(txCtx context.Context, productID, organizationID string, resourceRowIDs []string) error
+	// ReleaseOrganization emits a deleted event for every assignment held in
+	// the Organization, inside the transaction that deletes it; the foreign
+	// keys remove the rows.
+	ReleaseOrganization(txCtx context.Context, productID, organizationID string) error
+	// ReleaseUser emits a deleted event for every assignment the product user
+	// holds, inside the transaction that deletes the user; the foreign keys
+	// remove the rows.
+	ReleaseUser(txCtx context.Context, productID, productUserID string) error
 	// CountOnResource counts the assignments held on one resource.
 	CountOnResource(txCtx context.Context, resourceRowID string) (int, error)
 }
@@ -228,6 +236,15 @@ func (s *service) Delete(ctx context.Context, target roleassignment.Target) erro
 		if err = s.repo.LockMember(txCtx, res.RowID, target.ProductUserID); err != nil {
 			return err
 		}
+		// As a PUT does: a member removal then waits for this delete, or this
+		// delete finds the assignments already gone with the membership.
+		member, err := s.repo.ShareMembership(txCtx, target.OrganizationID, target.ProductUserID)
+		if err != nil {
+			return err
+		}
+		if !member {
+			return roleassignment.ErrMemberNotFound
+		}
 		found, err := s.repo.Find(txCtx, res.RowID, target.ProductUserID)
 		if err != nil {
 			return err
@@ -283,6 +300,40 @@ func (s *service) ReleaseMember(txCtx context.Context, productID, organizationID
 		return err
 	}
 	held, err := s.repo.HeldByMember(txCtx, organizationID, productUserID)
+	if err != nil {
+		return err
+	}
+	return s.emitDeleted(txCtx, productID, held)
+}
+
+func (s *service) ReleaseOrganization(txCtx context.Context, productID, organizationID string) error {
+	if err := s.repo.LockOrganizationRow(txCtx, productID, organizationID); err != nil {
+		return err
+	}
+	if err := s.resources.LockOrganization(txCtx, organizationID); err != nil {
+		return err
+	}
+	held, err := s.repo.HeldInOrganization(txCtx, organizationID)
+	if err != nil {
+		return err
+	}
+	return s.emitDeleted(txCtx, productID, held)
+}
+
+func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID string) error {
+	organizations, err := s.repo.UserOrganizations(txCtx, productUserID)
+	if err != nil {
+		return err
+	}
+	for _, organizationID := range organizations {
+		if err = s.resources.ShareOrganization(txCtx, organizationID); err != nil {
+			return err
+		}
+	}
+	if err = s.repo.LockUserMemberships(txCtx, productUserID); err != nil {
+		return err
+	}
+	held, err := s.repo.HeldByUser(txCtx, productUserID)
 	if err != nil {
 		return err
 	}
