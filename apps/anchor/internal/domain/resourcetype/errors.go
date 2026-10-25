@@ -22,11 +22,6 @@ var (
 		"The organization resource type is built in and can't be deleted, renamed or moved.",
 	)
 
-	ErrCustomRolesNotAvailable = fault.BadRequest(
-		"CUSTOM_ROLES_NOT_AVAILABLE",
-		"Custom roles are available on the organization resource type only for now.",
-	)
-
 	ErrRequired = fault.BadRequest(
 		"RESOURCE_TYPE_REQUIRED",
 		"Name the resource type this applies to.",

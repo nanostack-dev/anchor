@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -19,9 +20,7 @@ import (
 // allowCustomRoles turns on the organization type's custom_roles switch.
 func allowCustomRoles(t *testing.T, product *itdsl.ProductContext, on bool) ct.ProductResourceTypeResponse {
 	t.Helper()
-	types := product.ResourceTypes()
-	organization := types.BySlug("organization")
-	return types.Update(organization.Id, ct.UpdateProductResourceTypeJSONRequestBody{CustomRoles: &on})
+	return switchCustomRoles(t, product, "organization", on)
 }
 
 func customRoleBody(name string, permissions ...string) ct.CreateOrganizationRoleJSONRequestBody {
@@ -42,16 +41,25 @@ func TestCustomRolesSwitch(t *testing.T) {
 		sink.WaitFor("product.resource_type.updated", map[string]string{"resource_type": "organization"})
 	})
 
-	t.Run("A product's own type answers 400 to custom_roles", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		tree := declareDocumentTree(t, product)
+	t.Run(
+		"A product's own type's custom_roles switch turns on and off, and emits an update each time",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			declareDocumentTree(t, product)
+			sink := product.CaptureEvents()
 
-		resp := product.ResourceTypes().UpdateRaw(tree.project.Id,
-			ct.UpdateProductResourceTypeJSONRequestBody{CustomRoles: new(true)})
+			on := switchCustomRoles(t, product, "project", true)
+			sink.WaitFor("product.resource_type.updated", map[string]string{"resource_type": "project"})
+			off := switchCustomRoles(t, product, "project", false)
 
-		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "CUSTOM_ROLES_NOT_AVAILABLE")
-	})
+			assert.True(t, on.CustomRoles)
+			assert.False(t, on.BuiltIn)
+			assert.False(t, off.CustomRoles)
+			require.Eventually(t, func() bool { return sink.Count("product.resource_type.updated") == 2 },
+				10*time.Second, 50*time.Millisecond)
+		},
+	)
 
 	t.Run("The organization type still refuses a rename with its switch", func(t *testing.T) {
 		t.Parallel()

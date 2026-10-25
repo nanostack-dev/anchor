@@ -1208,7 +1208,7 @@ export const searchOrganizationMembers = <ThrowOnError extends boolean = false>(
 /**
  * Create Organization Custom Role
  *
- * Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+ * Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
  */
 export const createOrganizationRole = <ThrowOnError extends boolean = false>(options: Options<CreateOrganizationRoleData, ThrowOnError>) => (options.client ?? client).post<CreateOrganizationRoleResponses, CreateOrganizationRoleErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],

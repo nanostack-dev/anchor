@@ -1569,7 +1569,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRoleWithBody Create Organization Custom Role
 	//
-	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1578,7 +1578,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRole Create Organization Custom Role
 	//
-	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5148,7 +5148,7 @@ func (c *Client) PutResourceMember(ctx context.Context, productId ProductIdParam
 
 // CreateOrganizationRoleWithBody Create Organization Custom Role
 //
-// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5167,7 +5167,7 @@ func (c *Client) CreateOrganizationRoleWithBody(ctx context.Context, productId P
 
 // CreateOrganizationRole Create Organization Custom Role
 //
-// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -14844,7 +14844,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 	//
-	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14853,7 +14853,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithResponse Create Organization Custom Role
 	//
-	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+	// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -27592,7 +27592,7 @@ func (c *ClientWithResponses) PutResourceMemberWithResponse(ctx context.Context,
 
 // CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 //
-// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27607,7 +27607,7 @@ func (c *ClientWithResponses) CreateOrganizationRoleWithBodyWithResponse(ctx con
 
 // CreateOrganizationRoleWithResponse Create Organization Custom Role
 //
-// Creates a custom role of the Organization (ADR-0022 D9). Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
+// Creates a custom role of the Organization (ADR-0022 D9). Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together, and the 51st answers 409 CUSTOM_ROLE_LIMIT_REACHED. Emits `organization.role.created`. Requires Platform Bearer token or Product API Key with organization_role:create.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

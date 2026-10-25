@@ -92,7 +92,8 @@ func (in SearchInput) Validate() error {
 	return searchx.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldKey, SortFieldName)
 }
 
-// MaxCustomRoles caps the custom roles one Organization holds (ADR-0022 D10).
+// MaxCustomRoles caps the custom roles one Organization holds, every
+// resource type counted together (ADR-0022 D10).
 const MaxCustomRoles = 50
 
 // CreateInput is a custom role of an Organization (ADR-0022 D9).

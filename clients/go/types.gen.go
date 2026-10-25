@@ -3013,7 +3013,7 @@ type OrganizationMemberSearchRequest struct {
 // OrganizationMemberSearchRequestSortBy Field to sort by.
 type OrganizationMemberSearchRequestSortBy string
 
-// OrganizationRoleCreateRequest A custom role of the Organization. Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED).
+// OrganizationRoleCreateRequest A custom role of the Organization. Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED).
 type OrganizationRoleCreateRequest struct {
 	Description *string `json:"description,omitempty"`
 
@@ -3963,7 +3963,7 @@ type ProductResourceTypeTreeResponse struct {
 
 // ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `custom_roles` and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
 type ProductResourceTypeUpdateRequest struct {
-	// CustomRoles `true` lets each Organization create its own roles scoped to this type, and customize its copies of the role templates. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and refuses new ones.
+	// CustomRoles `true` lets each Organization create its own roles scoped to this type, and customize its copies of the role templates scoped to it. Every type of the product accepts it, `organization` included. Turning it off keeps the custom roles and customized copies that exist and refuses new ones.
 	CustomRoles *bool   `json:"custom_roles,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Name        *string `json:"name,omitempty"`

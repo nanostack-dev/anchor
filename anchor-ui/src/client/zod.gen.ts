@@ -455,7 +455,7 @@ export const zOrganizationRoleResponse = z.object({
 });
 
 /**
- * A custom role of the Organization. Its resource type must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED).
+ * A custom role of the Organization. Its resource type, any type of the product, must have `custom_roles` on, or the call answers 400 CUSTOM_ROLES_DISABLED. An Organization has at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED).
  */
 export const zOrganizationRoleCreateRequest = z.object({
     key: zRoleKey.optional(),

@@ -175,9 +175,6 @@ func (s *service) Update(
 			return resourcetype.ErrNotFound
 		}
 		changed := applyUpdate(current, input)
-		if changed.CustomRoles && !current.BuiltIn() {
-			return resourcetype.ErrCustomRolesNotAvailable
-		}
 		reshaped := differs(current, changed)
 		if !reshaped && changed.CustomRoles == current.CustomRoles {
 			result = current
