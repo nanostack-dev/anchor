@@ -1,6 +1,7 @@
 package ct_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -90,11 +91,15 @@ func TestReplaceResourceTypeTreeDroppingUsedType(t *testing.T) {
 		declareDocumentTree(t, product)
 		product.CreateScopedPermissions(t, "document", "document:view")
 
-		resp := product.ResourceTypes().
-			ReplaceTreeRaw(treeItem("project", "organization"), treeItem("folder", "project"))
+		before := product.ResourceTypes().Search(ct.SearchProductResourceTypesJSONRequestBody{})
+
+		resp := product.ResourceTypes().ReplaceTreeRaw(
+			ct.ProductResourceTypeTreeItem{Slug: "project", Name: "Space", ParentTypes: []string{"organization"}},
+			treeItem("folder", "project"),
+		)
 
 		requireAPIError(t, resp, resp.Body, http.StatusConflict, "RESOURCE_TYPE_IN_USE")
-		product.ResourceTypes().BySlug("document")
+		assert.Equal(t, before, product.ResourceTypes().Search(ct.SearchProductResourceTypesJSONRequestBody{}))
 	})
 }
 
@@ -116,5 +121,74 @@ func TestReplaceResourceTypeTreeEmitsEvents(t *testing.T) {
 		sink.WaitFor("product.resource_type.updated", map[string]string{"resource_type_id": project.Id})
 		sink.WaitFor("product.resource_type.created", map[string]string{"resource_type_id": published[2].Id})
 		sink.WaitFor("product.resource_type.deleted", map[string]string{"resource_type_id": archive.Id})
+	})
+}
+
+func TestReplaceResourceTypeTreeUnchanged(t *testing.T) {
+	t.Parallel()
+	t.Run("Publishing the same tree again leaves every type as it was", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		types := product.ResourceTypes()
+		first := types.ReplaceTree(treeItem("project", "organization"), treeItem("folder", "project"))
+
+		second := types.ReplaceTree(treeItem("project", "organization"), treeItem("folder", "project"))
+
+		assert.Equal(t, first, second)
+	})
+}
+
+func TestReplaceResourceTypeTreeMaxDepth(t *testing.T) {
+	t.Parallel()
+	t.Run("A published tree of six levels answers 400", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+
+		resp := product.ResourceTypes().ReplaceTreeRaw(
+			treeItem("level_2", "organization"), treeItem("level_3", "level_2"), treeItem("level_4", "level_3"),
+			treeItem("level_5", "level_4"), treeItem("level_6", "level_5"),
+		)
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "RESOURCE_TYPE_TOO_DEEP")
+	})
+}
+
+func TestReplaceResourceTypeTreeMaxOwnTypes(t *testing.T) {
+	t.Parallel()
+	t.Run("A published tree holds fifty types and fifty-one answer 400", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		items := make([]ct.ProductResourceTypeTreeItem, 0, 51)
+		for i := range 51 {
+			items = append(items, treeItem(fmt.Sprintf("type_%d", i), "organization"))
+		}
+
+		within := product.ResourceTypes().ReplaceTree(items[:50]...)
+		beyond := product.ResourceTypes().ReplaceTreeRaw(items...)
+
+		assert.Len(t, within, 51)
+		requireAPIError(t, beyond, beyond.Body, http.StatusBadRequest, "VALIDATION_ERROR")
+	})
+}
+
+func TestReplaceResourceTypeTreeLeavingRolesOutOfScope(t *testing.T) {
+	t.Parallel()
+	t.Run("A tree that moves document out from under a project role's permission answers 409", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		declareDocumentTree(t, product)
+		product.CreateScopedPermissions(t, "document", "document:view")
+		role := createScopedRole(t, product, "project", "document:view")
+
+		resp := product.ResourceTypes().ReplaceTreeRaw(
+			treeItem("project", "organization"),
+			ct.ProductResourceTypeTreeItem{
+				Slug: "folder", Name: "Folder", ParentTypes: []string{"project"}, NestsInItself: new(true),
+			},
+			treeItem("document", "organization"),
+		)
+
+		meta := requireAPIError(t, resp, resp.Body, http.StatusConflict, "RESOURCE_TYPE_IN_USE")
+		assert.Equal(t, []any{role.Id}, meta["role_ids"])
 	})
 }

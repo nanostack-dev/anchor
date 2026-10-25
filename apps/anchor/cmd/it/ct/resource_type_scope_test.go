@@ -221,6 +221,11 @@ func TestUpdateRolePermissionsOutsideScope(t *testing.T) {
 		require.NoError(t, err)
 
 		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "PERMISSION_OUTSIDE_ROLE_SCOPE")
+		read, err := product.OwnerAuthenticatedClient().
+			GetProductRoleWithResponse(t.Context(), product.ProductID, viewer.Id)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, read.StatusCode())
+		assert.Empty(t, read.JSON200.Permissions)
 	})
 }
 

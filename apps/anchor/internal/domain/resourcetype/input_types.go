@@ -15,7 +15,7 @@ type CreateInput struct {
 	Slug          string   `validate:"required,max=49"`
 	Name          string   `validate:"required,notblank,max=100"`
 	Description   *string  `validate:"omitempty,max=500"`
-	ParentTypes   []string `validate:"required,min=1,max=10,unique,dive,required"`
+	ParentTypes   []string `validate:"max=10,unique,dive,required"`
 	NestsInItself bool
 }
 
@@ -24,7 +24,7 @@ type UpdateInput struct {
 	ID            string   `validate:"required,notblank"`
 	Name          *string  `validate:"omitempty,notblank,max=100"`
 	Description   *string  `validate:"omitempty,max=500"`
-	ParentTypes   []string `validate:"omitempty,min=1,max=10,unique,dive,required"`
+	ParentTypes   []string `validate:"max=10,unique,dive,required"`
 	NestsInItself *bool
 }
 
@@ -33,7 +33,7 @@ type TreeItem struct {
 	Slug          string   `validate:"required,max=49"`
 	Name          string   `validate:"required,notblank,max=100"`
 	Description   *string  `validate:"omitempty,max=500"`
-	ParentTypes   []string `validate:"required,min=1,max=10,unique,dive,required"`
+	ParentTypes   []string `validate:"max=10,unique,dive,required"`
 	NestsInItself bool
 }
 
@@ -90,7 +90,22 @@ func (in CreateInput) Validate() error {
 	if err := validate.ValidateStruct(in); err != nil {
 		return err
 	}
-	return validateSlugs(append([]string{in.Slug}, in.ParentTypes...)...)
+	return validateItem(in.Slug, in.ParentTypes)
+}
+
+// validateItem checks one declared type: a valid slug that is not the
+// built-in root, and at least one valid parent slug.
+func validateItem(slug string, parentTypes []string) error {
+	if err := validateSlugs(append([]string{slug}, parentTypes...)...); err != nil {
+		return err
+	}
+	if slug == OrganizationSlug {
+		return ErrBuiltIn
+	}
+	if len(parentTypes) == 0 {
+		return ErrParentTypesRequired
+	}
+	return nil
 }
 
 func (in UpdateInput) Validate() error {
@@ -108,11 +123,8 @@ func (in ReplaceTreeInput) Validate() error {
 		return err
 	}
 	for _, item := range in.Types {
-		if err := validateSlugs(append([]string{item.Slug}, item.ParentTypes...)...); err != nil {
+		if err := validateItem(item.Slug, item.ParentTypes); err != nil {
 			return err
-		}
-		if item.Slug == OrganizationSlug {
-			return ErrBuiltIn
 		}
 	}
 	return nil

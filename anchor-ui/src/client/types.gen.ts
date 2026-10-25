@@ -463,7 +463,7 @@ export type ProductPermissionListResponse = PagedListResponse & {
 };
 
 /**
- * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+ * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
  */
 export type ResourceTypeSlug = string;
 
@@ -475,7 +475,7 @@ export type ProductResourceTypeCreateRequest = {
     name: string;
     description?: string | null;
     /**
-     * Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+     * Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. An empty list answers 400 RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
      */
     parent_types: Array<ResourceTypeSlug>;
     /**

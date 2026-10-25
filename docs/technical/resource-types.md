@@ -6,16 +6,16 @@ A Product declares a tree of **resource types** under the built-in `organization
 
 | Rule | Where it is enforced | Refusal |
 | --- | --- | --- |
-| Every Product has exactly one `organization` type, the root. It is created with the Product and can't be renamed, reparented or deleted. | `internal/resourcetype/service` | `409 BUILT_IN_RESOURCE_TYPE` |
+| Every Product has exactly one `organization` type, the root. It is created with the Product and can't be renamed, reparented, deleted or declared again. | `internal/resourcetype/service` | `409 BUILT_IN_RESOURCE_TYPE` |
 | A slug matches `^[a-z][a-z0-9_]{0,48}$`, is unique in its Product and never changes. | `internal/domain/resourcetype` | `400 RESOURCE_TYPE_SLUG_INVALID`, `409 RESOURCE_TYPE_SLUG_DUPLICATE` |
-| Every other type lists one to ten parent types it may sit under. It never lists itself; `nests_in_itself` lets an instance sit under its own type. | `Tree.Validate` | `400 RESOURCE_TYPE_SELF_PARENT`, `400 RESOURCE_TYPE_NOT_FOUND` |
+| Every other type lists one to ten parent types it may sit under. It never lists itself; `nests_in_itself` lets an instance sit under its own type. | `validateItem`, `Tree.Validate` | `400 RESOURCE_TYPE_PARENT_REQUIRED`, `400 VALIDATION_ERROR` past ten, `400 RESOURCE_TYPE_SELF_PARENT`, `400 RESOURCE_TYPE_NOT_FOUND` (also when a published tree leaves out a type another listed type sits under) |
 | No two types are each other's ancestors. | `Tree.Validate` | `400 RESOURCE_TYPE_CYCLE` |
 | The tree is at most 5 levels deep, counting `organization`, through each type's deepest parent. | `Tree.Validate`, `resourcetype.MaxDepth` | `400 RESOURCE_TYPE_TOO_DEEP` |
 | A Product declares at most 50 types besides `organization`. | `resourcetype.MaxOwnTypes` | `409 RESOURCE_TYPE_LIMIT_REACHED` |
-| A type that another type sits under, or that a role or permission is scoped to, can't be deleted. | `CountUsage`, and the foreign keys as the race backstop | `409 RESOURCE_TYPE_IN_USE` with `metadata.blocked_by` |
+| A type that another type sits under, or that a role or permission is scoped to, can't be deleted. | `CountUsage`; a foreign key violation also answers the 409, with zero counts, because it aborts the transaction | `409 RESOURCE_TYPE_IN_USE` with `metadata.blocked_by` |
 | A change that would leave a role bundling a permission no longer at or below its scope is refused. | `checkReshape` | `409 RESOURCE_TYPE_IN_USE` with `metadata.role_ids` |
 
-`PUT /v1/products/{product_id}/resource-types` replaces every type except `organization` in one transaction, matched by slug: it is what the admin UI publishes a draft tree with. Every tree write holds the catalog lock, a `FOR UPDATE` on the Product's `organization` row; role and permission writes hold it `FOR SHARE`, so no tree write can move a scope boundary while a bundle is being checked. Each type created, updated or deleted emits `product.resource_type.created|updated|deleted` with `resource_type_id` and `resource_type`.
+`PUT /v1/products/{product_id}/resource-types` replaces every type except `organization` in one transaction, matched by slug: it is what the admin UI publishes a draft tree with. It writes only the types that changed, so publishing the same tree twice changes nothing. Every tree write holds the catalog lock, a `FOR NO KEY UPDATE` on the Product's `organization` row; role and permission writes hold it `FOR SHARE`, so no tree write can move a scope boundary while a bundle is being checked. Each type created, updated or deleted emits `product.resource_type.created|updated|deleted` with `resource_type_id` and `resource_type`.
 
 ## Scopes on roles and permissions
 
@@ -29,7 +29,7 @@ A Product declares a tree of **resource types** under the built-in `organization
 
 Migration `000054` adds the tables and a nullable `resource_type_id` on `product_roles` and `product_resource_permissions`. Public IDs are KSUIDs, which SQL cannot mint, so the backfill is code: on every start, under the `resource_types:organization-backfill` advisory lock, `RegisterOrganizationBackfill` gives each Product its `organization` type and scopes its unscoped roles and permissions to it (ADR-0022 G1). It is idempotent.
 
-The column stays nullable until the cleanup because a rolling deploy runs the previous release beside this one, and that release still writes unscoped rows. Reads treat a null scope as `organization`, which is what the next start's backfill writes. A Product created by the previous release gets its `organization` type the first time a write or read needs the tree.
+The column stays nullable until the cleanup because a rolling deploy runs the previous release beside this one, and that release still writes unscoped rows. It also checks no bundle against scopes, so for that window an organization permission could be assigned to a role of another type; the next tree change that depends on it is then refused with `role_ids`, which names the role to fix. Reads treat a null scope as `organization`, which is what the next start's backfill writes. A Product created by the previous release gets its `organization` type the first time a write or read needs the tree.
 
 ## Tests
 

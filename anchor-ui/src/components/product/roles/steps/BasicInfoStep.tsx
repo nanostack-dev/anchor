@@ -110,12 +110,11 @@ export function BasicInfoStep({
 										productId={productId}
 										value={field.state.value}
 										onChange={field.handleChange}
-										disabled={isEditMode}
+										disabled
 									/>
 									<Box as="p" className="text-xs text-muted-foreground">
-										{isEditMode
-											? "A role's resource type never changes."
-											: "The role is held on resources of this type and covers everything below them."}
+										Held on an organization, the role covers every resource in
+										it. A role's resource type never changes.
 									</Box>
 									<FormValidationError field={field} />
 								</Box>

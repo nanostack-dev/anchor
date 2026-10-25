@@ -276,10 +276,7 @@ func (s *service) ReplaceTree(
 				return err
 			}
 		}
-		for _, rt := range plan.next {
-			if rt.BuiltIn() {
-				continue
-			}
+		for _, rt := range append(plan.created, plan.updated...) {
 			if err = s.repo.Update(txCtx, rt); err != nil {
 				return err
 			}
@@ -292,22 +289,21 @@ func (s *service) ReplaceTree(
 			return err
 		}
 		storedTree := resourcetype.NewTree(stored)
-		for _, created := range plan.created {
-			if err = s.emit(
-				txCtx,
-				events.ProductResourceTypeCreated,
-				storedTree.BySlug(created.Slug).OrElse(created),
-			); err != nil {
-				return err
-			}
-		}
-		for _, updated := range plan.updated {
-			if err = s.emit(
-				txCtx,
-				events.ProductResourceTypeUpdated,
-				storedTree.BySlug(updated.Slug).OrElse(updated),
-			); err != nil {
-				return err
+		for _, change := range []struct {
+			eventType events.Type
+			types     []resourcetype.ResourceType
+		}{
+			{events.ProductResourceTypeCreated, plan.created},
+			{events.ProductResourceTypeUpdated, plan.updated},
+		} {
+			for _, rt := range change.types {
+				written, found := storedTree.BySlug(rt.Slug).Get()
+				if !found {
+					return errors.New("resource type missing after the tree write")
+				}
+				if err = s.emit(txCtx, change.eventType, written); err != nil {
+					return err
+				}
 			}
 		}
 		for _, removed := range plan.removed {
@@ -443,6 +439,9 @@ func (s *service) checkReshape(
 	}
 	if len(outside) > 0 {
 		slices.Sort(outside)
+		if slug == "" {
+			return resourcetype.NewTreeRolesOutOfScopeError(outside)
+		}
 		return resourcetype.NewRolesOutOfScopeError(slug, outside)
 	}
 	return nil
@@ -469,11 +468,8 @@ func (s *service) deleteTypes(ctx context.Context, productID string, types ...re
 	ids := functional.Slice(types).Map(func(rt resourcetype.ResourceType) string { return rt.ID })
 	err := s.repo.Delete(ctx, productID, ids...)
 	if errors.Is(err, repository.ErrInUse) && len(types) > 0 {
-		usage, countErr := s.repo.CountUsage(ctx, productID, types[0].ID)
-		if countErr != nil {
-			return countErr
-		}
-		return resourcetype.NewInUseError(types[0].Slug, usage)
+		// The foreign key aborted the transaction, so nothing can be counted.
+		return resourcetype.NewInUseError(types[0].Slug, resourcetype.Usage{})
 	}
 	return err
 }

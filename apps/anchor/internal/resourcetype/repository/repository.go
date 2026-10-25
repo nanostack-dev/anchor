@@ -45,8 +45,8 @@ type Repository interface {
 	// EnsureOrganization seeds the built-in root type when the product lacks it.
 	EnsureOrganization(ctx context.Context, productID string) error
 	// LockCatalog locks the product's organization type row until the
-	// transaction ends: FOR UPDATE for a tree write, FOR SHARE for a role or
-	// permission write that checks scopes against the tree.
+	// transaction ends: FOR NO KEY UPDATE for a tree write, FOR SHARE for a
+	// role or permission write that checks scopes against the tree.
 	LockCatalog(ctx context.Context, productID string, exclusive bool) error
 	Create(ctx context.Context, rt resourcetype.ResourceType) error
 	Update(ctx context.Context, rt resourcetype.ResourceType) error
@@ -97,7 +97,7 @@ func (r *repositoryImpl) EnsureOrganization(ctx context.Context, productID strin
 func (r *repositoryImpl) LockCatalog(ctx context.Context, productID string, exclusive bool) error {
 	lock := postgres.SHARE()
 	if exclusive {
-		lock = postgres.UPDATE()
+		lock = postgres.NO_KEY_UPDATE()
 	}
 	_, err := transactor.QueryOptional[model.ProductResourceTypes](
 		transactor.WithRowLock(ctx, lock), r.db,

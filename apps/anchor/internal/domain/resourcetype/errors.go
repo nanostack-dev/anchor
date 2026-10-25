@@ -6,7 +6,10 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 )
 
-const metadataSlug = "slug"
+const (
+	metadataSlug      = "slug"
+	metadataBlockedBy = "blocked_by"
+)
 
 var (
 	ErrNotFound = fault.NotFound(
@@ -91,7 +94,7 @@ func NewInUseError(slug string, usage Usage) *fault.Error {
 	return fault.Conflict(
 		"RESOURCE_TYPE_IN_USE",
 		fmt.Sprintf("%s can't be deleted while other records use it.", slug),
-	).Metadata(map[string]any{metadataSlug: slug, "blocked_by": usage})
+	).Metadata(map[string]any{metadataSlug: slug, metadataBlockedBy: usage})
 }
 
 // NewRolesOutOfScopeError refuses a tree change that would leave roles
@@ -103,5 +106,14 @@ func NewRolesOutOfScopeError(slug string, roleIDs []string) *fault.Error {
 			"Roles would bundle permissions outside their scope if %s changed this way. Remove those permissions from the roles first.",
 			slug,
 		),
-	).Metadata(map[string]any{metadataSlug: slug, "blocked_by": map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
+	).Metadata(map[string]any{metadataSlug: slug, metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
+}
+
+// NewTreeRolesOutOfScopeError is NewRolesOutOfScopeError for a whole-tree
+// replacement, where no single type is to blame.
+func NewTreeRolesOutOfScopeError(roleIDs []string) *fault.Error {
+	return fault.Conflict(
+		"RESOURCE_TYPE_IN_USE",
+		"Roles would bundle permissions outside their scope with this tree. Remove those permissions from the roles first.",
+	).Metadata(map[string]any{metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
 }
