@@ -48,7 +48,7 @@ test("access.role-empty-update: an explicit empty API replacement persists after
 test("access.role-lifecycle: create role wizard, change grants, cancel edit, reload and delete", async ({
 	page,
 	world,
-}) => {
+}, testInfo) => {
 	const grants = await Promise.all([
 		permission(world, "document:read"),
 		permission(world, "document:write"),
@@ -78,6 +78,7 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 		wizard.getByRole("combobox", { name: "Resource type", exact: true }),
 	).toContainText("Organization");
 	await wizard.getByLabel("Description").fill("Reads documents");
+	await captureReviewCheckpoint(page, testInfo, "role-resource-type");
 	await basicStep
 		.getByRole("button", { name: "Continue", exact: true })
 		.click();
