@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 4 to answer
+5. [Open questions](#open-questions) — 3 to answer
 
 ---
 
@@ -236,7 +236,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D6](#dr-d6) · Role priority | ⚪ Deferred |  |
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
 |  | [DR-D8](#dr-d8) · Every role belongs to an Organization: template copies and custom roles | ✅ Accepted |  |
-|  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | 🔵 Proposed | 1 |
+|  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | ✅ Accepted |  |
 |  | [DR-D10](#dr-d10) · Template changes, deletes, the default role and limits | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
@@ -1365,7 +1365,7 @@ The cost is one row per template per Organization: 10,000 Organizations with 8 t
 
 <a id="dr-d9"></a>
 <details>
-<summary><b>DR-D9</b> · Custom roles open per resource type: Organization first, then the Product's own types — <i>🔵 Proposed</i> · ❓ 1 question</summary>
+<summary><b>DR-D9</b> · Custom roles open per resource type: Organization first, then the Product's own types — <i>✅ Accepted</i></summary>
 
 **Decision.** Each resource type gets a `custom_roles` switch the Product turns on. It is off by default, so an existing Product changes nothing (G2). A customer may create a custom role only on a type whose switch is on.
 
@@ -1398,7 +1398,7 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 
 > **Q-D9.1** Is Organization behind the same switch, or always open to custom roles? *(recommended: behind the switch, off by default; each Product decides whether its customers write roles at all)*
 >
-> **Answer:** _pending_
+> **Answer:** behind the switch, off by default, Organization included.
 
 </details>
 
@@ -2341,7 +2341,7 @@ Answer here or inline; each line links to its record.
 | [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
 | [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
-| [Q-D9.1](#dr-d9) | Organization behind the custom-roles switch too? | yes, off by default | |
+| [Q-D9.1](#dr-d9) | Organization behind the custom-roles switch too? | yes, off by default | **yes**, off by default |
 | [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | **yes**, except customized copies |
 | [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | **custom roles** |
 | [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | **yes** |
