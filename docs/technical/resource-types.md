@@ -53,7 +53,7 @@ DR-F5 adds a *Check access* panel below the inspector, in read mode only: a draf
 - **The canvas.** The canvas shows types, not instances, so it lights the types on the chain (accent fill and primary border), draws the edges the chain follows in the primary colour and fades the others, and marks the type where a granting role is held with a success border and the role's name. Each lit node's accessible description says *On the checked path.* or *Grants access: …*. If an ancestor can't be read, the decision still shows and only the resource's own type and the granting types are lit.
 - **Failures.** `503 ACCESS_DECISIONS_UNAVAILABLE` says no decision was made and offers *Try again* with the same question; any other error shows Anchor's message and the same retry. A picker whose search fails offers its own retry.
 - **Motion.** The answer fades and scales in over 150 ms with DR-F3's ease-out; lit nodes and edges change colour over 150 ms. With reduced motion only the fade remains.
-- **Access.** The admin UI calls `evaluateAccess` with the platform session. The contract accepts only a product API key on that route today, so an admin's *Check* answers 401 until the route also accepts the platform token.
+- **Access.** The panel calls `evaluateAccess` with the admin's platform session, which the route accepts for a Product the tenant owns.
 
 ### Roles and permissions pages
 
