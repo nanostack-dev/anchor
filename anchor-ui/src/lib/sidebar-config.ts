@@ -11,6 +11,7 @@ import {
 	Lock,
 	type LucideIcon,
 	Mail,
+	Network,
 	PanelsTopLeft,
 	Plug,
 	ScrollText,
@@ -114,6 +115,11 @@ export const sidebarConfig: SidebarGroup[] = [
 				icon: Shield,
 				submenu: true,
 				subItems: [
+					{
+						title: "Resource types",
+						path: ROUTE_PATHS.PRODUCT_RESOURCE_TYPES,
+						icon: Network,
+					},
 					{
 						title: "Roles",
 						path: ROUTE_PATHS.PRODUCT_ROLES,

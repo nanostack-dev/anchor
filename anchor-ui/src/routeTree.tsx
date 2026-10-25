@@ -43,6 +43,7 @@ import {
 	productRoleDetailRoute,
 } from "@/routes/products/product-resource-details";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
+import { productResourceTypesRoute } from "@/routes/products/product-resource-types";
 import { productRolesRoute } from "@/routes/products/product-roles-route";
 import { productUsersRoute } from "@/routes/products/product-users";
 import { productsRoute } from "@/routes/products/products";
@@ -62,6 +63,7 @@ const routeTree = rootRoute.addChildren([
 	productApiKeyNewRoute,
 	productApiKeyEditRoute,
 	productUsersRoute,
+	productResourceTypesRoute,
 	productRolesRoute,
 	productRoleDetailRoute,
 	productResourcePermissionsRoute,

@@ -31,6 +31,7 @@
  */
 export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/blocks/app-shell",
+	"@nanostackorg/design-system/blocks/confirm-dialog",
 	"@nanostackorg/design-system/blocks/copy-button",
 	"@nanostackorg/design-system/blocks/empty-state",
 	"@nanostackorg/design-system/blocks/page-header",
@@ -102,6 +103,8 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"dayjs/plugin/relativeTime",
 	"lucide-react",
 	"motion/react",
+	"@xyflow/react",
+	"@dagrejs/dagre",
 	"recharts",
 	"@nanostackorg/design-system",
 	"@nanostackorg/design-system/provider",
