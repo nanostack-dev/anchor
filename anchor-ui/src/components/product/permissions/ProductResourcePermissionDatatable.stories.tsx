@@ -60,7 +60,7 @@ export const ScopesAndRoles: Story = {
 			{},
 			{ timeout: 5000 },
 		);
-		await expect(within(bundling).getByText("+1 more")).toBeVisible();
+		await expect(within(bundling).queryByText(/more$/)).toBeNull();
 		await expect(canvas.getAllByText("Document").length).toBeGreaterThan(0);
 		const roleSearches = calls.filter((call) =>
 			call.path.endsWith("/roles/search"),
@@ -106,7 +106,7 @@ export const FilteredByType: Story = {
 	},
 };
 
-/** Many long role names stay inside the column: three are listed, the rest counted. */
+/** Many long role names stay inside the column: five are listed, the rest counted. */
 export const ManyLongRoles: Story = {
 	parameters: {
 		backend: {
@@ -126,7 +126,7 @@ export const ManyLongRoles: Story = {
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		await expect(await canvas.findByText("+22 more")).toBeVisible();
+		await expect(await canvas.findByText("+20 more")).toBeVisible();
 	},
 };
 

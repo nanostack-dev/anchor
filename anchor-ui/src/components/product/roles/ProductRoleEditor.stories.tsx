@@ -4,10 +4,13 @@ import {
 	DOCUMENT_ROLES,
 	DOCUMENT_TREE,
 	FIFTY_ONE_TYPES,
+	LONG_NAME,
 	type RecordedCall,
 	STORY_PRODUCT_ID,
 	mockAccessBackend,
+	storyPermission,
 	storyRole,
+	storyType,
 } from "@/lib/storybook/access-backend";
 import { StoryQuery } from "@/lib/storybook/story-query";
 import { StoryRouter } from "@/lib/storybook/story-router";
@@ -263,5 +266,74 @@ export const NoPermissions: Story = {
 		await expect(
 			canvas.getByText(/None\. Members holding this role/),
 		).toBeVisible();
+	},
+};
+
+/** Long type and permission names stay inside a phone-width review instead of widening the page. */
+export const LongNamesOnPhone: Story = {
+	parameters: {
+		backend: {
+			types: [
+				storyType("organization", "Organization"),
+				storyType("evidence", LONG_NAME),
+			],
+			permissions: [
+				storyPermission(`evidence:${LONG_NAME.toLowerCase()}`, "evidence"),
+			],
+			roles: [],
+		} satisfies AccessBackend,
+	},
+	decorators: [
+		(Story) => (
+			<div style={{ width: 358 }}>
+				<Story />
+			</div>
+		),
+	],
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await chooseScope(canvasElement, LONG_NAME);
+		await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+		await userEvent.type(
+			canvas.getByRole("textbox", { name: "Name" }),
+			"Auditor",
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+		await userEvent.click(
+			await canvas.findByRole("checkbox", {
+				name: `evidence:${LONG_NAME.toLowerCase()}`,
+			}),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+		await expect(
+			canvas.getByRole("button", { name: "Create role" }),
+		).toBeVisible();
+		const frame = canvasElement.firstElementChild as HTMLElement;
+		await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth + 1);
+	},
+};
+
+/** In edit mode, types that fail to load offer a retry instead of loading forever. */
+export const EditTypesFail: Story = {
+	args: { mode: "edit", existingRole: DOCUMENT_ROLES[3] },
+	parameters: {
+		backend: {
+			types: "fail",
+			permissions: DOCUMENT_PERMISSIONS,
+			roles: DOCUMENT_ROLES,
+		} satisfies AccessBackend,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(
+			await canvas.findByRole("button", { name: "Try again" }),
+		).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+		await expect(
+			await canvas.findByText("Couldn't load the resource types"),
+		).toBeVisible();
+		await expect(
+			canvas.getByRole("button", { name: "Continue" }),
+		).toBeDisabled();
 	},
 };

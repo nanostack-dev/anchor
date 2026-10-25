@@ -113,6 +113,32 @@ function fieldErrors(draft: RoleDraft, editing: boolean) {
 	return errors;
 }
 
+function TypesError({ retry }: { retry: () => void }) {
+	return (
+		<Alert tone="critical" icon={WarningCircleIcon}>
+			<AlertTitle>Couldn't load the resource types</AlertTitle>
+			<AlertDescription>
+				<Stack space="sm" align="start">
+					<span>
+						Anchor didn't answer. Check your connection and try again.
+					</span>
+					<Button size="sm" variant="outline" onClick={retry}>
+						Try again
+					</Button>
+				</Stack>
+			</AlertDescription>
+		</Alert>
+	);
+}
+
+function BadgeLabel({ children }: { children: string }) {
+	return (
+		<Box as="span" className="block max-w-[14rem] truncate" title={children}>
+			{children}
+		</Box>
+	);
+}
+
 function StepFooter({
 	onBack,
 	children,
@@ -150,7 +176,7 @@ function ScopeSummary({ types, scope }: { types: ScopeType[]; scope: string }) {
 							key={type.slug}
 							tone={type.slug === scope ? "brand" : "neutral"}
 						>
-							{type.name}
+							<BadgeLabel>{type.name}</BadgeLabel>
 						</Badge>
 					))}
 				</Box>
@@ -362,6 +388,9 @@ export function ProductRoleEditor({
 									: `Name the ${scopeName} role.`}
 							</Text>
 						</Stack>
+						{editing && typesQuery.isError && (
+							<TypesError retry={() => void typesQuery.refetch()} />
+						)}
 						<FieldGroup>
 							<Field invalid={touched && Boolean(errors.name)}>
 								<FieldLabel htmlFor="role-name">Name</FieldLabel>
@@ -479,6 +508,8 @@ export function ProductRoleEditor({
 								onChange={(permissions) => change({ permissions })}
 								newPermissionHref={`${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_NEW}?resource_type=${encodeURIComponent(draft.scope)}`}
 							/>
+						) : typesQuery.isError ? (
+							<TypesError retry={() => void typesQuery.refetch()} />
 						) : (
 							<Text tone="muted">Loading the resource types…</Text>
 						)}
@@ -614,8 +645,9 @@ function RoleReview({
 									<Box className="flex flex-wrap gap-1.5">
 										{group.names.map((name) => (
 											<Badge key={name} variant="outline">
-												{name}
-												{editing && !original.includes(name) ? " · new" : ""}
+												<BadgeLabel>
+													{`${name}${editing && !original.includes(name) ? " · new" : ""}`}
+												</BadgeLabel>
 											</Badge>
 										))}
 									</Box>
@@ -631,7 +663,7 @@ function RoleReview({
 							<Box className="flex flex-wrap gap-1.5">
 								{removed.map((name) => (
 									<Badge key={name} tone="critical" variant="outline">
-										{name}
+										<BadgeLabel>{name}</BadgeLabel>
 									</Badge>
 								))}
 							</Box>

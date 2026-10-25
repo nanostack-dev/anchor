@@ -110,3 +110,19 @@ export const TypesFail: Story = {
 		).toBeVisible();
 	},
 };
+
+/** A type the product doesn't declare, from a stale link, is dropped instead of submitted. */
+export const UnknownType: Story = {
+	args: { initialResourceType: "workspace" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await waitFor(() =>
+			expect(
+				canvas.getByRole("combobox", { name: "Resource type" }),
+			).toHaveTextContent("Choose a resource type"),
+		);
+		await expect(
+			canvas.getByRole("button", { name: "Create permission" }),
+		).toBeDisabled();
+	},
+};

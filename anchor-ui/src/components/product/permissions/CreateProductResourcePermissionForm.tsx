@@ -1,7 +1,10 @@
 import type { ProductResourcePermissionResponse } from "@/client";
 import { createProductResourcePermissionMutation } from "@/client/@tanstack/react-query.gen";
 import { zCreateProductResourcePermissionRequest } from "@/client/zod.gen";
-import { ResourceTypeSelect } from "@/components/product/resource-types/ResourceTypeSelect";
+import {
+	ResourceTypeSelect,
+	useScopeTypes,
+} from "@/components/product/resource-types/ResourceTypeSelect";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
 	Alert,
@@ -41,7 +44,10 @@ export function CreateProductResourcePermissionForm({
 	onCancel,
 }: CreateProductResourcePermissionFormProps) {
 	const queryClient = useQueryClient();
-	const [resourceType, setResourceType] = useState(initialResourceType);
+	const types = useScopeTypes(productId).data;
+	const [chosenType, setResourceType] = useState(initialResourceType);
+	const resourceType =
+		types && !types.some((type) => type.slug === chosenType) ? "" : chosenType;
 	const [name, setName] = useState(prefix(initialResourceType));
 	const [description, setDescription] = useState("");
 	const [submitted, setSubmitted] = useState(false);
@@ -113,7 +119,10 @@ export function CreateProductResourcePermissionForm({
 						value={resourceType}
 						invalid={submitted && Boolean(typeError)}
 						onChange={(slug) => {
-							if (!name.trim() || name === prefix(resourceType))
+							if (
+								!name.trim() ||
+								[prefix(resourceType), prefix(chosenType)].includes(name)
+							)
 								setName(prefix(slug));
 							setResourceType(slug);
 						}}

@@ -27,7 +27,7 @@ import { useMemo, useRef, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 
 const columnHelper = createColumnHelper<ProductResourcePermissionResponse>();
-const LISTED_ROLES = 3;
+const LISTED_ROLES = 5;
 
 type Bundling =
 	| { status: "loading" }

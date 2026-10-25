@@ -84,7 +84,10 @@ export function OrganizationRolesTable({
 				cell: (info) => (
 					<Box className="min-w-0 max-w-[16rem] whitespace-normal">
 						<Box className="flex flex-wrap items-center gap-1.5">
-							<Box as="span" className="font-medium break-words">
+							<Box
+								as="span"
+								className="min-w-0 max-w-full font-medium break-words"
+							>
 								{info.getValue()}
 							</Box>
 							{info.row.original.is_default && (

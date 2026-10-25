@@ -315,6 +315,12 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			} catch {
 				return;
 			}
+			if (changedTree)
+				toast.add({
+					type: "success",
+					title: "Custom roles saved",
+					description: "Publishing the tree next.",
+				});
 		}
 		if (changedTree)
 			publish.mutate({
