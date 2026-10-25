@@ -1,9 +1,11 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -16,6 +18,7 @@ import (
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
 	invitationrepository "anchor/internal/invitation/repository"
+	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
 
@@ -65,6 +68,7 @@ type productRoleService struct {
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository
 	invitationRepo                invitationrepository.Repository
 	resourceTypes                 rtservice.Service
+	organizationRoles             orgroleservice.Service
 	transactor                    transactor.Transactor
 	events                        events.Emitter
 	logger                        zerolog.Logger
@@ -75,6 +79,7 @@ func NewProductRoleService(
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
 	invitationRepo invitationrepository.Repository,
 	resourceTypes rtservice.Service,
+	organizationRoles orgroleservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -84,6 +89,7 @@ func NewProductRoleService(
 		productResourcePermissionRepo: productResourcePermissionRepo,
 		invitationRepo:                invitationRepo,
 		resourceTypes:                 resourceTypes,
+		organizationRoles:             organizationRoles,
 		transactor:                    tx,
 		events:                        eventEmitter,
 		logger: logger.With().Str(
@@ -120,6 +126,10 @@ func (s *productRoleService) CreateProductRole(
 		ProductID:   input.ProductID,
 		Name:        input.Name,
 		Description: input.Description,
+		Key:         cmp.Or(input.Key, strings.ToLower(input.Name)),
+	}
+	if err := s.keyDuplicationValidation(ctx, input.ProductID, input.Name, productRole.Key, logger); err != nil {
+		return role.ProductRole{}, err
 	}
 	productRole.GenerateID()
 	logger.Info().
@@ -170,8 +180,11 @@ func (s *productRoleService) CreateProductRole(
 
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
-		if errors.Is(createErr, repository.ErrProductRoleNameExists) {
-			return NewRoleWithAlreadyExistingNameError(input.Name, input.ProductID)
+		if errors.Is(createErr, repository.ErrProductRoleKeyExists) {
+			return createErr
+		}
+		if mapped := mapTemplateWriteError(createErr, input.Name, productRole.Key, input.ProductID); mapped != nil {
+			return mapped
 		}
 		if createErr != nil {
 			logger.Error().
@@ -184,6 +197,9 @@ func (s *productRoleService) CreateProductRole(
 		created.ResourceType = scope.Slug
 		return s.emitRole(txCtx, events.ProductRoleCreated, input.ProductID, created.ID)
 	})
+	if errors.Is(err, repository.ErrProductRoleKeyExists) {
+		return role.ProductRole{}, s.keyConflict(ctx, input.ProductID, input.Name, productRole.Key, logger)
+	}
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -291,10 +307,27 @@ func (s *productRoleService) UpdateProductRole(
 
 	var updated role.ProductRole
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// The catalog lock comes before the template lock, in the order every
+		// role write takes them.
+		var tree resourcetype.Tree
+		if input.Permissions != nil {
+			var treeErr error
+			if tree, treeErr = s.resourceTypes.LockedTree(txCtx, input.ProductID); treeErr != nil {
+				return treeErr
+			}
+		}
+		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ID); lockErr != nil {
+			return lockErr
+		}
 		var updateErr error
 		updated, updateErr = s.roleRepo.Update(txCtx, updatedRole)
-		if errors.Is(updateErr, repository.ErrProductRoleNameExists) {
-			return NewRoleWithAlreadyExistingNameError(updatedRole.Name, input.ProductID)
+		if mapped := mapTemplateWriteError(
+			updateErr,
+			updatedRole.Name,
+			updatedRole.Key,
+			input.ProductID,
+		); mapped != nil {
+			return mapped
 		}
 		if updateErr != nil {
 			logger.Error().
@@ -305,10 +338,6 @@ func (s *productRoleService) UpdateProductRole(
 			return fault.ErrUnexpected
 		}
 		if input.Permissions != nil {
-			tree, treeErr := s.resourceTypes.LockedTree(txCtx, input.ProductID)
-			if treeErr != nil {
-				return treeErr
-			}
 			if scopeErr := s.checkBundle(
 				txCtx,
 				tree,
@@ -323,6 +352,9 @@ func (s *productRoleService) UpdateProductRole(
 			}
 		}
 		updated.ResourceType = updatedRole.ResourceType
+		if syncErr := s.organizationRoles.SyncTemplate(txCtx, input.ProductID, input.ID); syncErr != nil {
+			return syncErr
+		}
 		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
 	})
 	if err != nil {
@@ -382,20 +414,22 @@ func (s *productRoleService) DeleteProductRole(
 		return role.ErrProductRoleNotFound
 	}
 
-	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
-	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to count role membership assignments")
-		return fault.ErrUnexpected
-	}
-	if assignmentCount > 0 {
-		return NewRoleInUseError(input.ID)
-	}
-
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ID); lockErr != nil {
+			return lockErr
+		}
+		assignmentCount, countErr := s.roleRepo.CountMembershipAssignments(txCtx, input.ID)
+		if countErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("role_id", input.ID).
+				Err(countErr).
+				Msg("failed to count role membership assignments")
+			return fault.ErrUnexpected
+		}
+		if assignmentCount > 0 {
+			return NewRoleInUseError(input.ID)
+		}
 		if invitationErr := s.releaseInvitations(txCtx, input.ProductID, input.ID, logger); invitationErr != nil {
 			return invitationErr
 		}
@@ -500,6 +534,9 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		if treeErr != nil {
 			return treeErr
 		}
+		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ProductRoleID); lockErr != nil {
+			return lockErr
+		}
 		target, findErr := s.roleRepo.FindByProductIDAndRoleID(txCtx, input.ProductID, input.ProductRoleID)
 		if findErr != nil {
 			return findErr
@@ -572,6 +609,9 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 	permissionName := foundPermission.Value().Name
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if lockErr := s.roleRepo.LockTemplate(txCtx, input.ProductID, input.ProductRoleID); lockErr != nil {
+			return lockErr
+		}
 		removed, removeErr := s.roleRepo.RemovePermission(
 			txCtx, input.ProductID, input.ProductRoleID, permissionName,
 		)
@@ -619,6 +659,9 @@ func (s *productRoleService) requireRole(
 func (s *productRoleService) markRoleUpdated(
 	ctx context.Context, productID, roleID string, logger zerolog.Logger,
 ) error {
+	if err := s.organizationRoles.SyncTemplate(ctx, productID, roleID); err != nil {
+		return err
+	}
 	if err := s.roleRepo.TouchUpdatedAt(ctx, productID, roleID); err != nil {
 		logger.Error().
 			Str("product_id", productID).
@@ -733,4 +776,45 @@ func (s *productRoleService) checkBundle(
 		return err
 	}
 	return checkBundleScope(tree, roleScope, found)
+}
+
+func (s *productRoleService) keyDuplicationValidation(
+	ctx context.Context, productID, name, key string, logger zerolog.Logger,
+) error {
+	found, err := s.roleRepo.GetByProductIDAndKey(ctx, productID, key)
+	if err != nil {
+		logger.Error().Str("product_id", productID).Err(err).Msg("failed to look up product role by key")
+		return fault.ErrUnexpected
+	}
+	if found.IsPresent() {
+		return s.keyConflict(ctx, productID, name, key, logger)
+	}
+	return nil
+}
+
+// keyConflict names the conflict of a create whose key is taken. A key
+// defaults to the name in lower case, so a racing create of the same name can
+// meet the key first; it still answers the name conflict.
+func (s *productRoleService) keyConflict(
+	ctx context.Context, productID, name, key string, logger zerolog.Logger,
+) error {
+	if err := s.nameDuplicationValidation(ctx, productID, name, "", logger); err != nil {
+		return err
+	}
+	return role.NewKeyExistsError(key)
+}
+
+// mapTemplateWriteError turns the unique guards a template write can trip
+// into the conflicts their pre-checks answer; any other error passes through.
+func mapTemplateWriteError(err error, name, key, productID string) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, repository.ErrProductRoleNameExists):
+		return NewRoleWithAlreadyExistingNameError(name, productID)
+	case errors.Is(err, repository.ErrProductRoleKeyExists):
+		return role.NewKeyExistsError(key)
+	default:
+		return nil
+	}
 }

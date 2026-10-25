@@ -30,8 +30,9 @@ var (
 
 const slugUniqueConstraint = "product_resource_types_product_id_slug_key"
 
-// RoleBundle is one role of a product with the scopes of the permissions it
-// bundles, all as resource type IDs. A NULL scope is a row a release before
+// RoleBundle is one role template or custom role of a product with the scopes
+// of the permissions it bundles, all as resource type IDs. A copy of a
+// template bundles what its template bundles. A NULL scope is a row a release before
 // resource types wrote during a rolling deploy; it counts as organization.
 type RoleBundle struct {
 	RoleID            string
@@ -307,7 +308,8 @@ func (r *repositoryImpl) CountUsage(ctx context.Context, productID, id string) (
 	roles, err := transactor.QueryCount(ctx, r.db,
 		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductRoles.ResourceTypeID.EQ(postgres.String(id))),
+				AND(table.ProductRoles.ResourceTypeID.EQ(postgres.String(id))).
+				AND(table.ProductRoles.TemplateID.IS_NULL()),
 		),
 	).Value()
 	if err != nil {
@@ -346,7 +348,8 @@ func (r *repositoryImpl) FindRoleBundles(ctx context.Context, productID string) 
 						AND(table.ProductResourcePermissions.Name.EQ(table.ProductRoleResourcePermissions.PermissionName)),
 				),
 		).WHERE(
-			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductRoles.TemplateID.IS_NULL()),
 		).ORDER_BY(table.ProductRoles.ID.ASC()),
 	).Value()
 	if err != nil {

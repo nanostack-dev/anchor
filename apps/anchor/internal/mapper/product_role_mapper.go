@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"strings"
+
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/role"
 
@@ -24,6 +26,7 @@ func (m *ProductRoleMapper) ToDomain(
 		Name:           entity.Name,
 		Description:    description,
 		ResourceTypeID: entity.ResourceTypeID,
+		Key:            RoleKey(entity),
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
 		Permissions:    m.permissionsToDomain(permissions),
@@ -39,6 +42,7 @@ func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles
 		Name:           domain.Name,
 		Description:    description,
 		ResourceTypeID: domain.ResourceTypeID,
+		Key:            functional.OptionOf(domain.Key, domain.Key != "").ToPtr(),
 		CreatedAt:      domain.CreatedAt,
 		UpdatedAt:      domain.UpdatedAt,
 	}
@@ -70,4 +74,10 @@ func (m *ProductRoleMapper) PermissionsToEntities(
 				PermissionName: perm.PermissionName,
 			}
 		})
+}
+
+// RoleKey is the row's key, or its name in lower case for a template a release
+// before keys wrote; the startup backfill writes that same value.
+func RoleKey(entity model.ProductRoles) string {
+	return functional.FromPtr(entity.Key).OrElse(strings.ToLower(entity.Name))
 }

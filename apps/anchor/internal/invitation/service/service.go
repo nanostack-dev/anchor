@@ -12,8 +12,10 @@ import (
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/organizationinvitation"
+	"anchor/internal/domain/organizationrole"
 	"anchor/internal/events"
 	"anchor/internal/invitation/repository"
+	orgroleservice "anchor/internal/organizationrole/service"
 	anchorrepository "anchor/internal/repository"
 	anchorservice "anchor/internal/service"
 )
@@ -39,7 +41,7 @@ type OrganizationInvitationService interface {
 type organizationInvitationService struct {
 	invitationRepo    repository.Repository
 	organizationRepo  anchorrepository.OrganizationRepository
-	productRoleRepo   anchorrepository.ProductRoleRepository
+	organizationRoles orgroleservice.Service
 	membershipService anchorservice.OrganizationMembershipService
 	transactor        transactor.Transactor
 	events            events.Emitter
@@ -49,7 +51,7 @@ type organizationInvitationService struct {
 func NewOrganizationInvitationService(
 	invitationRepo repository.Repository,
 	organizationRepo anchorrepository.OrganizationRepository,
-	productRoleRepo anchorrepository.ProductRoleRepository,
+	organizationRoles orgroleservice.Service,
 	membershipService anchorservice.OrganizationMembershipService,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
@@ -58,7 +60,7 @@ func NewOrganizationInvitationService(
 	return &organizationInvitationService{
 		invitationRepo:    invitationRepo,
 		organizationRepo:  organizationRepo,
-		productRoleRepo:   productRoleRepo,
+		organizationRoles: organizationRoles,
 		membershipService: membershipService,
 		transactor:        tx,
 		events:            eventEmitter,
@@ -96,9 +98,11 @@ func (s *organizationInvitationService) Create(
 		if lockErr := s.lockOrganization(txCtx, input.ProductID, input.OrganizationID); lockErr != nil {
 			return lockErr
 		}
-		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
+		role, roleErr := s.resolveRole(txCtx, input.ProductID, input.OrganizationID, input.RoleID)
+		if roleErr != nil {
 			return roleErr
 		}
+		invitation.RoleID = role.PublicID()
 		if pendingErr := s.ensureNoPendingInvitation(
 			txCtx, input.ProductID, input.OrganizationID, input.Email,
 		); pendingErr != nil {
@@ -188,11 +192,12 @@ func (s *organizationInvitationService) Update(
 		if statusErr := refuseUnlessPending(current); statusErr != nil {
 			return statusErr
 		}
-		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
+		role, roleErr := s.resolveRole(txCtx, input.ProductID, input.OrganizationID, input.RoleID)
+		if roleErr != nil {
 			return roleErr
 		}
 
-		current.RoleID = input.RoleID
+		current.RoleID = role.PublicID()
 		current.ExpiresAt = input.ExpiresAt
 		var updateErr error
 		updated, updateErr = s.invitationRepo.UpdateRoleAndExpiry(txCtx, current)
@@ -311,17 +316,13 @@ func (s *organizationInvitationService) lockAndFind(
 	return found.Value(), nil
 }
 
-func (s *organizationInvitationService) ensureRoleExists(
-	ctx context.Context, productID, roleID string,
-) error {
-	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err != nil {
-		return err
-	}
-	if found.IsAbsent() {
-		return anchorservice.NewBodyRoleNotFoundError(roleID)
-	}
-	return nil
+// resolveRole finds the role an invitation names inside its Organization. The
+// invitation keeps the role's public ID, a template's ID for a copy, and the
+// accept resolves it again.
+func (s *organizationInvitationService) resolveRole(
+	txCtx context.Context, productID, organizationID, roleID string,
+) (organizationrole.Role, error) {
+	return s.organizationRoles.Resolve(txCtx, productID, organizationID, roleID)
 }
 
 // ensureNoPendingInvitation enforces the first integrity rule: at most one

@@ -3781,6 +3781,9 @@ type ProductRoleCreateRequest struct {
 	// Examples: Can view and edit resources within assigned organizations/workspaces.
 	Description *string `json:"description,omitempty"`
 
+	// Key The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+	Key *RoleKey `json:"key,omitempty"`
+
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
 	//
 	// Examples: Editor
@@ -3855,6 +3858,11 @@ type ProductRoleResponse struct {
 	//
 	// Examples: role_5mNOP...
 	Id Ksuid `json:"id"`
+
+	// Key A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+	//
+	// Examples: project-admin
+	Key RoleKey `json:"key"`
 
 	// Name Name of the product role.
 	//
@@ -4119,6 +4127,11 @@ type RegisterRequest struct {
 //
 // Examples: folder
 type ResourceTypeSlug = string
+
+// RoleKey A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+//
+// Examples: project-admin
+type RoleKey = string
 
 // SearchRequest Generic search request template
 type SearchRequest struct {

@@ -30,3 +30,10 @@ func NewPermissionOutsideScopeError(permission, permissionScope, roleScope strin
 		"role_resource_type":       roleScope,
 	})
 }
+
+func NewKeyExistsError(key string) *fault.Error {
+	return fault.Conflict(
+		"ROLE_KEY_DUPLICATE",
+		"This product already has a role template with that key.",
+	).Metadata(map[string]any{"key": key})
+}

@@ -17,9 +17,11 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/organizationrole"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
+	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
 
@@ -105,7 +107,7 @@ type organizationService struct {
 	organizationRepo  repository.OrganizationRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productUserRepo   repository.ProductUserRepository
-	productRoleRepo   repository.ProductRoleRepository
+	organizationRoles orgroleservice.Service
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
 	workspaces        WorkspaceService
@@ -119,7 +121,7 @@ func NewOrganizationService(
 	organizationRepo repository.OrganizationRepository,
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productUserRepo repository.ProductUserRepository,
-	productRoleRepo repository.ProductRoleRepository,
+	organizationRoles orgroleservice.Service,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
 	workspaces WorkspaceService,
@@ -132,7 +134,7 @@ func NewOrganizationService(
 		organizationRepo:  organizationRepo,
 		orgMembershipRepo: orgMembershipRepo,
 		productUserRepo:   productUserRepo,
-		productRoleRepo:   productRoleRepo,
+		organizationRoles: organizationRoles,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
 		workspaces:        workspaces,
@@ -400,20 +402,9 @@ func (s *organizationService) CreateWithMember(
 			return NewBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
-		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
-			lockCtx,
-			input.ProductID,
-			input.RoleID,
-		)
+		foundingRole, roleErr := s.resolveFoundingRole(lockCtx, input.ProductID, input.RoleID)
 		if roleErr != nil {
-			logger.Error().Err(roleErr).
-				Str("product_id", input.ProductID).
-				Str("role_id", input.RoleID).
-				Msg("failed to verify product role")
 			return roleErr
-		}
-		if foundRole.IsAbsent() {
-			return NewBodyRoleNotFoundError(input.RoleID)
 		}
 
 		template, templateErr := s.resolveLicenseTemplate(
@@ -441,7 +432,7 @@ func (s *organizationService) CreateWithMember(
 		}
 
 		createdMembership, err = s.orgMembershipRepo.Create(
-			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID,
+			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, foundingRole.RowID,
 		)
 		if err != nil {
 			logger.Error().Err(err).
@@ -731,4 +722,12 @@ func (s *organizationService) Search(
 	}
 
 	return result, nil
+}
+
+// resolveFoundingRole finds the role the founding member gets: a new
+// Organization has no copies yet, so this is the role template itself.
+func (s *organizationService) resolveFoundingRole(
+	txCtx context.Context, productID, roleID string,
+) (organizationrole.Role, error) {
+	return s.organizationRoles.Resolve(txCtx, productID, "", roleID)
 }

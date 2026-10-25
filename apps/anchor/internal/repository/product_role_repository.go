@@ -61,9 +61,19 @@ type ProductRoleRepository interface {
 	DeleteByProductIDAndRoleID(
 		ctx context.Context, productID string, id string,
 	) error
+	// CountMembershipAssignments counts the memberships that hold the role
+	// template or one of its Organizations' copies.
 	CountMembershipAssignments(
 		ctx context.Context, roleID string,
 	) (int, error)
+	// LockTemplate holds the template's row and its copies' rows for the
+	// transaction, in ID order. A copy being made then reads the template's
+	// permissions before or after a change, never in the middle of one, and a
+	// membership written on a copy waits for a delete of the template.
+	LockTemplate(ctx context.Context, productID, id string) error
+	GetByProductIDAndKey(
+		ctx context.Context, productID, key string,
+	) (functional.Option[role.ProductRole], error)
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
@@ -90,7 +100,7 @@ func NewProductRoleRepository(
 
 func productRolesInsertColumns() postgres.ColumnList {
 	return table.ProductRoles.AllColumns.Except(
-		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt,
+		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt, table.ProductRoles.PublicID,
 	)
 }
 
@@ -99,7 +109,15 @@ func productRolesInsertColumns() postgres.ColumnList {
 func productRolesUpdatableColumns() postgres.ColumnList {
 	return table.ProductRoles.AllColumns.Except(
 		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt, table.ProductRoles.ResourceTypeID,
+		table.ProductRoles.PublicID, table.ProductRoles.OrganizationID, table.ProductRoles.TemplateID,
+		table.ProductRoles.IsDefault,
 	)
+}
+
+// isTemplate keeps the rows that are role templates: an Organization's own
+// roles share the table (ADR-0022 D8).
+func isTemplate() postgres.BoolExpression {
+	return table.ProductRoles.OrganizationID.IS_NULL()
 }
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
@@ -107,7 +125,24 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 ) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-	))
+	).AND(isTemplate()))
+}
+
+func (r *productRoleRepositoryImpl) LockTemplate(ctx context.Context, productID, id string) error {
+	stmt := table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoles.ID.EQ(postgres.String(id)).AND(isTemplate()).
+				OR(table.ProductRoles.TemplateID.EQ(postgres.String(id)))),
+	).ORDER_BY(table.ProductRoles.ID.ASC()).FOR(postgres.UPDATE())
+	return transactor.Exec(ctx, r.db, stmt).Err()
+}
+
+func (r *productRoleRepositoryImpl) GetByProductIDAndKey(
+	ctx context.Context, productID, key string,
+) (functional.Option[role.ProductRole], error) {
+	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Key).EQ(postgres.LOWER(postgres.String(key))).AND(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+	).AND(isTemplate()))
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
@@ -118,15 +153,21 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 ) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-	))
+	).AND(isTemplate()))
 }
 
-// A role name trips the byte-identical constraint from 000001_init or the
-// case-insensitive index from 000019_case_insensitive_names.
+// A template name trips idx_product_roles_template_lower_name (000060); during
+// a rolling deploy the guards it replaced (000001, 000019) may still exist.
 const (
 	productRoleNameUniqueConstraint = "product_roles_product_id_name_key"
 	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
+	productRoleTemplateNameIndex    = "idx_product_roles_template_lower_name"
+	productRoleTemplateKeyIndex     = "idx_product_roles_template_lower_key"
 )
+
+// ErrProductRoleKeyExists is returned when the product already has a template
+// with that key.
+var ErrProductRoleKeyExists = errors.New("product role key already exists in product")
 
 // ErrProductRoleNameExists is returned by Create and Update when the product
 // already has a role with that name: the unique guards settle the race the
@@ -141,7 +182,8 @@ func (r *productRoleRepositoryImpl) Create(
 		productRolesInsertColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
 	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
-		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleTemplateNameIndex).
+		OnUnique(ErrProductRoleKeyExists, productRoleTemplateKeyIndex).
 		Value()
 	if err != nil {
 		return role.ProductRole{}, err
@@ -178,7 +220,8 @@ func (r *productRoleRepositoryImpl) Update(
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(domainRole.ProductID))),
 	)
 	if err := transactor.Exec(ctx, r.db, updateStmt).
-		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleTemplateNameIndex).
+		OnUnique(ErrProductRoleKeyExists, productRoleTemplateKeyIndex).
 		Err(); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -299,9 +342,18 @@ func execAffectsRows(ctx context.Context, db *sql.DB, stmt postgres.Statement) (
 	return affected > 0, nil
 }
 
+// DeleteByProductIDAndRoleID deletes the template and its Organizations'
+// copies. The caller has checked that nothing holds them.
 func (r *productRoleRepositoryImpl) DeleteByProductIDAndRoleID(
 	ctx context.Context, productID string, id string,
 ) error {
+	copies := table.ProductRoles.DELETE().WHERE(
+		table.ProductRoles.TemplateID.EQ(postgres.String(id)).
+			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
+	)
+	if err := transactor.Exec(ctx, r.db, copies).Err(); err != nil {
+		return err
+	}
 	stmt := table.ProductRoles.DELETE().WHERE(
 		table.ProductRoles.ID.EQ(postgres.String(id)).
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
@@ -314,9 +366,14 @@ func (r *productRoleRepositoryImpl) CountMembershipAssignments(
 ) (int, error) {
 	orgCount, err := transactor.QueryCount(
 		ctx, r.db,
-		table.OrganizationMemberships.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
-			table.OrganizationMemberships.ProductRoleID.EQ(postgres.String(roleID)),
-		),
+		table.OrganizationMemberships.SELECT(postgres.COUNT(postgres.STAR)).
+			FROM(table.OrganizationMemberships.INNER_JOIN(
+				table.ProductRoles, table.ProductRoles.ID.EQ(table.OrganizationMemberships.ProductRoleID),
+			)).
+			WHERE(
+				table.ProductRoles.ID.EQ(postgres.String(roleID)).
+					OR(table.ProductRoles.TemplateID.EQ(postgres.String(roleID))),
+			),
 	).Value()
 	if err != nil {
 		return 0, err
@@ -363,7 +420,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 ) (search.Result[role.ProductRole], error) {
-	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID))
+	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID)).AND(isTemplate())
 	if input.FullTextSearch != nil {
 		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
 		whereStmt = whereStmt.AND(

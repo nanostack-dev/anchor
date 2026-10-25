@@ -193,10 +193,8 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 		); ids != nil {
 			whereStmt = whereStmt.AND(ids)
 		}
-		if roleIDs := jetx.BuildIDFilter(
-			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
-		); roleIDs != nil {
-			whereStmt = whereStmt.AND(roleIDs)
+		if len(req.Filter.RoleIDs) > 0 {
+			whereStmt = whereStmt.AND(heldRole(req.Filter.RoleIDs))
 		}
 	}
 
@@ -448,7 +446,7 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 		OrganizationName:         row.Organization.Name,
 		OrganizationDescription:  row.Organization.Description,
 		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.Organization.MetadataJSON),
-		RoleID:                   row.Role.ID,
+		RoleID:                   publicRoleID(row.Role),
 		RoleName:                 row.Role.Name,
 		RolePermissions:          permissions,
 		JoinedAt:                 row.OrganizationMemberships.CreatedAt,
@@ -469,7 +467,7 @@ func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembers
 		UserEmail:       row.ProductUser.Email,
 		UserName:        userName,
 		UserExternalID:  row.ProductUser.ExternalID,
-		RoleID:          row.Role.ID,
+		RoleID:          publicRoleID(row.Role),
 		RoleName:        row.Role.Name,
 		RolePermissions: permissions,
 		JoinedAt:        row.OrganizationMemberships.CreatedAt,
@@ -574,10 +572,8 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		); emails != nil {
 			whereStmt = whereStmt.AND(emails)
 		}
-		if roleIDs := jetx.BuildIDFilter(
-			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
-		); roleIDs != nil {
-			whereStmt = whereStmt.AND(roleIDs)
+		if len(req.Filter.RoleIDs) > 0 {
+			whereStmt = whereStmt.AND(heldRole(req.Filter.RoleIDs))
 		}
 	}
 
@@ -641,4 +637,15 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		Keyset(order).
 		Run(ctx, req.Pagination).
 		Value()
+}
+
+// publicRoleID is the ID a caller sees for the role a membership holds: an
+// Organization's copy of a template keeps the template's ID (ADR-0022 D8).
+func publicRoleID(row model.ProductRoles) string {
+	return functional.FromPtr(row.TemplateID).OrElse(row.ID)
+}
+
+// heldRole matches memberships holding one of the roles by public ID.
+func heldRole(roleIDs []string) postgres.BoolExpression {
+	return table.ProductRoles.PublicID.IN(jetx.ToStringExpressions(roleIDs)...)
 }

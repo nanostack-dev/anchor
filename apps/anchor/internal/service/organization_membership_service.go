@@ -5,7 +5,9 @@ import (
 	"errors"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/organizationrole"
 	"anchor/internal/events"
+	orgroleservice "anchor/internal/organizationrole/service"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
 
@@ -33,15 +35,9 @@ func NewBodyProductUserNotFoundError(productUserID string) *fault.Error {
 // NewBodyRoleNotFoundError answers a role_id supplied in a request body that
 // does not resolve. Distinct from role.ErrProductRoleNotFound (404), which
 // stays correct for product_role_service.go, where role_id is a path
-// parameter. The code differs too: one code at two statuses breaks a client
-// that switches on code alone.
+// parameter.
 func NewBodyRoleNotFoundError(roleID string) *fault.Error {
-	return fault.BadRequest(
-		"ROLE_NOT_FOUND_IN_REQUEST",
-		"This product has no role with that identifier.",
-	).Metadata(map[string]any{
-		"role_id": roleID,
-	})
+	return organizationrole.NewBodyRoleNotFoundError(roleID)
 }
 
 // OrganizationMembershipService manages membership operations from the org perspective.
@@ -59,7 +55,7 @@ type OrganizationMembershipService interface {
 
 type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
-	productRoleRepo   repository.ProductRoleRepository
+	organizationRoles orgroleservice.Service
 	productUserRepo   repository.ProductUserRepository
 	organizationRepo  repository.OrganizationRepository
 	transactor        transactor.Transactor
@@ -69,7 +65,7 @@ type organizationMembershipService struct {
 
 func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
-	productRoleRepo repository.ProductRoleRepository,
+	organizationRoles orgroleservice.Service,
 	productUserRepo repository.ProductUserRepository,
 	organizationRepo repository.OrganizationRepository,
 	tx transactor.Transactor,
@@ -78,7 +74,7 @@ func NewOrganizationMembershipService(
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
-		productRoleRepo:   productRoleRepo,
+		organizationRoles: organizationRoles,
 		productUserRepo:   productUserRepo,
 		organizationRepo:  organizationRepo,
 		transactor:        tx,
@@ -117,7 +113,7 @@ func (s *organizationMembershipService) AddMember(
 		return organization.Membership{}, err
 	}
 
-	if err := s.validateRole(ctx, input.ProductID, input.RoleID, logger); err != nil {
+	if err := s.validateRole(ctx, input.ProductID, input.OrganizationID, input.RoleID); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -150,7 +146,7 @@ func (s *organizationMembershipService) UpdateMemberRole(
 		return organization.Membership{}, err
 	}
 
-	if err := s.validateRole(ctx, input.ProductID, input.RoleID, logger); err != nil {
+	if err := s.validateRole(ctx, input.ProductID, input.OrganizationID, input.RoleID); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -235,8 +231,11 @@ func (s *organizationMembershipService) applyMembership(
 ) (organization.Membership, error) {
 	var membership organization.Membership
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		var err error
-		membership, err = repoFn(txCtx, productID, organizationID, productUserID, roleID)
+		role, err := s.resolveRole(txCtx, productID, organizationID, roleID)
+		if err != nil {
+			return err
+		}
+		membership, err = repoFn(txCtx, productID, organizationID, productUserID, role.RowID)
 		if err != nil {
 			return err
 		}
@@ -244,6 +243,9 @@ func (s *organizationMembershipService) applyMembership(
 	}); txErr != nil {
 		if errors.Is(txErr, repository.ErrOrganizationMembershipExists) {
 			return organization.Membership{}, NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
+		}
+		if _, isFault := fault.As(txErr); isFault {
+			return organization.Membership{}, txErr
 		}
 		logger.Error().Err(txErr).
 			Str("product_id", productID).
@@ -406,25 +408,22 @@ func (s *organizationMembershipService) validateProductUser(
 	return nil
 }
 
+// validateRole answers a role_id that names no role of the Organization and
+// no role template of its Product before any membership check, as it always
+// has.
 func (s *organizationMembershipService) validateRole(
-	ctx context.Context,
-	productID string,
-	roleID string,
-	logger zerolog.Logger,
+	ctx context.Context, productID, organizationID, roleID string,
 ) error {
-	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("role_id", roleID).
-			Msg("failed to verify role exists")
-		return err
-	}
-	if found.IsAbsent() {
-		return NewBodyRoleNotFoundError(roleID)
-	}
+	_, err := s.organizationRoles.Resolve(ctx, productID, organizationID, roleID)
+	return err
+}
 
-	return nil
+// resolveRole finds the Organization's role the request named: a template's
+// ID names its copy when the Organization has one.
+func (s *organizationMembershipService) resolveRole(
+	txCtx context.Context, productID, organizationID, roleID string,
+) (organizationrole.Role, error) {
+	return s.organizationRoles.Resolve(txCtx, productID, organizationID, roleID)
 }
 
 func (s *organizationMembershipService) ensureOrganizationExists(

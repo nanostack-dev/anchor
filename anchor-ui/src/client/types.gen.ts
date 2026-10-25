@@ -659,6 +659,11 @@ export type ProductResourcePermissionListResponse = PagedListResponse & {
     items: Array<ProductResourcePermissionResponse>;
 };
 
+/**
+ * A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+ */
+export type RoleKey = string;
+
 export type ProductRoleCreateRequest = {
     /**
      * Name of the product role. Must be unique within the Product using case-insensitive matching.
@@ -676,6 +681,10 @@ export type ProductRoleCreateRequest = {
      * The resource type this role is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
      */
     resource_type: ResourceTypeSlug;
+    /**
+     * The template's key, unique in the Product regardless of case (409 ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It never changes.
+     */
+    key?: RoleKey;
 };
 
 export type ProductRoleUpdateRequest = {
@@ -718,6 +727,7 @@ export type ProductRoleResponse = {
      * The resource type this role is scoped to.
      */
     resource_type: ResourceTypeSlug;
+    key: RoleKey;
     /**
      * List of permissions assigned to this role.
      */

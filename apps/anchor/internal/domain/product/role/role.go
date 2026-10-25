@@ -16,9 +16,11 @@ type ProductRole struct {
 	ResourceTypeID *string
 	// ResourceType is the slug of the scope, filled by the service.
 	ResourceType string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Permissions  []ProductRolePermission
+	// Key names the role template in every Organization: each copy keeps it.
+	Key         string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Permissions []ProductRolePermission
 }
 
 // GenerateID sets the role's ID to a new prefixed KSUID.

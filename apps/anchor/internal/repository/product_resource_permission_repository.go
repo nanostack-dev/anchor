@@ -265,10 +265,13 @@ func (r *productResourcePermissionRepository) FindAssignedRoleIDs(
 ) ([]string, error) {
 	stmt := table.ProductRoleResourcePermissions.
 		SELECT(table.ProductRoleResourcePermissions.AllColumns).
-		FROM(table.ProductRoleResourcePermissions).
+		FROM(table.ProductRoleResourcePermissions.INNER_JOIN(
+			table.ProductRoles, table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+		)).
 		WHERE(
 			table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName))),
+				AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName))).
+				AND(table.ProductRoles.OrganizationID.IS_NULL()),
 		).
 		ORDER_BY(table.ProductRoleResourcePermissions.ProductRoleID)
 	return transactor.QueryMapSlice(

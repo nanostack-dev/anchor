@@ -508,6 +508,29 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	)
 
 	t.Run(
+		"Concurrent role template create requests with one key produce one success and conflicts for all other writers",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			client := product.OwnerAuthenticatedClient()
+			assertOneWinnerPerName(t, http.StatusCreated, "ROLE_KEY_DUPLICATE",
+				sameNameCreate(func(name string, writer int) nameRaceOutcome {
+					resp, err := client.CreateProductRoleWithResponse(
+						t.Context(), product.ProductID,
+						ct.CreateProductRoleJSONRequestBody{
+							Name: name + "-" + uuid.NewString(), Key: new(mixedCase(name, writer)),
+							ResourceType: "organization",
+						},
+					)
+					if err != nil {
+						return raceOutcome(0, nil, err)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}))
+		},
+	)
+
+	t.Run(
 		"Concurrent integration instance create requests produce one success and conflicts for all other writers",
 		func(t *testing.T) {
 			t.Parallel()

@@ -369,11 +369,17 @@ export const zProductResourcePermissionListResponse = zPagedListResponse.and(z.o
     items: z.array(zProductResourcePermissionResponse)
 }));
 
+/**
+ * A role template's key, unique in its Product regardless of case. Every Organization's copy of the template keeps it, so a Product names the same role in every Organization by key. It never changes after creation.
+ */
+export const zRoleKey = z.string().min(1).max(100);
+
 export const zProductRoleCreateRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
     permissions: z.array(z.string()).optional(),
-    resource_type: zResourceTypeSlug
+    resource_type: zResourceTypeSlug,
+    key: zRoleKey.optional()
 });
 
 export const zProductRoleUpdateRequest = z.object({
@@ -398,6 +404,7 @@ export const zProductRoleResponse = z.object({
     name: z.string(),
     description: z.string().nullish(),
     resource_type: zResourceTypeSlug,
+    key: zRoleKey,
     permissions: z.array(zProductRolePermissionResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()

@@ -1309,6 +1309,16 @@ components:
               $ref: "#/components/schemas/ProductResourcePermissionResponse"
         required:
         - items
+    RoleKey:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: >-
+        A role template's key, unique in its Product regardless of case. Every
+        Organization's copy of the template keeps it, so a Product names the
+        same role in every Organization by key. It never changes after
+        creation.
+      examples: ["project-admin"]
     ProductRoleCreateRequest:
       type: object
       properties:
@@ -1342,6 +1352,13 @@ components:
             picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and
             an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after
             creation.
+        key:
+          allOf:
+          - $ref: "#/components/schemas/RoleKey"
+          description: >-
+            The template's key, unique in the Product regardless of case (409
+            ROLE_KEY_DUPLICATE). Omitted, it is the name in lower case. It
+            never changes.
       required:
       - name
       - resource_type
@@ -1399,6 +1416,8 @@ components:
           allOf:
           - $ref: "#/components/schemas/ResourceTypeSlug"
           description: The resource type this role is scoped to.
+        key:
+          $ref: "#/components/schemas/RoleKey"
         permissions:
           type: array
           items:
@@ -1415,6 +1434,7 @@ components:
       - product_id
       - name
       - resource_type
+      - key
       - permissions
       - created_at
       - updated_at

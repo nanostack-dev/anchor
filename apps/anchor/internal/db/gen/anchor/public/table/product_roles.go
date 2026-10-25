@@ -24,6 +24,11 @@ type productRolesTable struct {
 	CreatedAt      postgres.ColumnTimestampz
 	UpdatedAt      postgres.ColumnTimestampz
 	ResourceTypeID postgres.ColumnString
+	OrganizationID postgres.ColumnString
+	TemplateID     postgres.ColumnString
+	Key            postgres.ColumnString
+	IsDefault      postgres.ColumnBool
+	PublicID       postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -72,9 +77,14 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
 		ResourceTypeIDColumn = postgres.StringColumn("resource_type_id")
-		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
-		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
-		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		OrganizationIDColumn = postgres.StringColumn("organization_id")
+		TemplateIDColumn     = postgres.StringColumn("template_id")
+		KeyColumn            = postgres.StringColumn("key")
+		IsDefaultColumn      = postgres.BoolColumn("is_default")
+		PublicIDColumn       = postgres.StringColumn("public_id")
+		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn}
+		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TemplateIDColumn, KeyColumn, IsDefaultColumn, PublicIDColumn}
+		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, IsDefaultColumn, PublicIDColumn}
 	)
 
 	return productRolesTable{
@@ -88,6 +98,11 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		CreatedAt:      CreatedAtColumn,
 		UpdatedAt:      UpdatedAtColumn,
 		ResourceTypeID: ResourceTypeIDColumn,
+		OrganizationID: OrganizationIDColumn,
+		TemplateID:     TemplateIDColumn,
+		Key:            KeyColumn,
+		IsDefault:      IsDefaultColumn,
+		PublicID:       PublicIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

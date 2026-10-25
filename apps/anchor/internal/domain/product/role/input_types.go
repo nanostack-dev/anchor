@@ -13,6 +13,7 @@ type CreateProductRoleInput struct {
 	Name         string `validate:"required,notblank,max=100"`
 	Description  string `validate:"max=500"`
 	ResourceType string `validate:"max=49"`
+	Key          string `validate:"omitempty,notblank,max=100"`
 	Permissions  []string
 }
 

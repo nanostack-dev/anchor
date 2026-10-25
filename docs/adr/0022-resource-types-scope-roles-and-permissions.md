@@ -1247,6 +1247,7 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 - **Released clients keep working.** A template ID in `role_ids`, which is what today's clients send as a role ID, resolves to that Organization's copy.
 - **A role in use is never deleted.** Deleting an assigned custom role answers `409 ROLE_IN_USE` with the number of assignments; the customer reassigns them first.
 - **The routes** are `…/organizations/{o}/roles`. Anchor doesn't know who the customer's admins are, so the Product calls these routes from its own settings page, behind its own Organization-scoped permission such as `roles:manage`.
+- **Implementation note (PR 2).** Templates and Organization roles share `product_roles`, so the role foreign keys of memberships and invitations survive a rolling deploy, and a copy keeps its template's ID as its public ID inside its Organization, so released clients and their stored role IDs keep working. PR 2 ships only the columns and the reads and template writes that handle copies; the next release makes the copies, on first need instead of by a background job, so that the release before it already reads them correctly during that deploy. See [Organization roles](../technical/organization-roles.md).
 
 <details>
 <summary>📌 Real example</summary>

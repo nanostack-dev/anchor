@@ -149,7 +149,16 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 		},
 		"searchProductRoles": func(err error) error {
 			svc := service.NewProductRoleService(
-				failingRoles{failingSearches: failingSearches{err}}, nil, nil, organizationOnly{}, nil, nil, logger,
+				failingRoles{
+					failingSearches: failingSearches{err},
+				},
+				nil,
+				nil,
+				organizationOnly{},
+				nil,
+				nil,
+				nil,
+				logger,
 			)
 			_, got := svc.SearchProductRoles(ctx, role.SearchProductRolesInput{
 				ProductID: "product",
