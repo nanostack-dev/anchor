@@ -12,7 +12,7 @@ type CreateProductUserInput struct {
 	Email      string            `validate:"required,email"`
 	Name       string            `validate:"required,notblank"`
 	Status     ProductUserStatus `validate:"required"`
-	ExternalID *string           `validate:"omitempty,notblank,max=255"`
+	ExternalID *string           `validate:"omitempty,notblank,max=255,printascii"`
 }
 
 type UpdateProductUserInput struct {

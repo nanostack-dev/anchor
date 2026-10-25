@@ -37,11 +37,8 @@ func requireExternalIDRefused(t *testing.T, resp *ct.CreateProductUserResponse, 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
 	require.NotNil(t, resp.JSON400)
 	require.Len(t, resp.JSON400.Errors, 1)
-	refusal := resp.JSON400.Errors[0]
-	assert.Equal(t, "VALIDATION_ERROR", refusal.Code)
-	require.NotNil(t, refusal.Metadata)
-	assert.Equal(t, "ExternalID", (*refusal.Metadata)["field"])
-	assert.Equal(t, rule, (*refusal.Metadata)["rule"])
+	assertValidationRule(t, resp.JSON400.Errors, rule)
+	assert.Equal(t, "ExternalID", (*resp.JSON400.Errors[0].Metadata)["field"])
 }
 
 // readerMembership gives a fresh organization and a role holding one permission.
@@ -183,6 +180,30 @@ func TestCreateProductUserRefusesAnExternalIDLongerThan255Characters(t *testing.
 	})
 }
 
+func TestCreateProductUserRefusesAnExternalIDWithAControlCharacter(t *testing.T) {
+	t.Parallel()
+	t.Run("An external ID with a NUL byte is a bad request", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+
+		resp := product.ProductUsers().CreateRaw(newProductUserBody(new("usr_\x00_" + uuid.NewString())))
+
+		requireExternalIDRefused(t, resp, "printascii")
+	})
+}
+
+func TestCreateProductUserRefusesANonASCIIExternalID(t *testing.T) {
+	t.Parallel()
+	t.Run("An external ID with a non-ASCII letter is a bad request", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+
+		resp := product.ProductUsers().CreateRaw(newProductUserBody(new("usr_é_" + uuid.NewString())))
+
+		requireExternalIDRefused(t, resp, "printascii")
+	})
+}
+
 func TestCreateProductUserAcceptsAnExternalIDOf255Characters(t *testing.T) {
 	t.Parallel()
 	t.Run("An external ID of exactly 255 characters is stored unchanged", func(t *testing.T) {
@@ -250,6 +271,36 @@ func TestClerkIngestOfAProductCreatedUser(t *testing.T) {
 		require.NotNil(t, synced.Name)
 		assert.Equal(t, "Synced User", *synced.Name)
 	})
+}
+
+func TestClerkDeletionOfAProductCreatedUser(t *testing.T) {
+	t.Parallel()
+	t.Run(
+		"A Clerk deletion of a user the product created with its Clerk user ID deletes that user",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			createActiveClerkIntegrationInstance(t, product)
+			organizationID, role, _ := readerMembership(t, product)
+			clerkUserID := "user_clerk_" + itshared.Faker.UUID().V4()
+			created := product.ProductUsers().Create(newProductUserBody(&clerkUserID))
+			createDSLMembership(t, product, created.Id, organizationID, role.ID)
+
+			resp := sendClerkWebhook(
+				t,
+				product.ProductID,
+				clerkUserDeletedPayload(t, clerkUserID),
+				clerkTestWebhookSecret,
+			)
+			require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+
+			require.Eventually(t, func() bool {
+				return searchProductUsers(t, product).JSON200.Total == 0
+			}, 10*time.Second, 200*time.Millisecond)
+			decision := product.Access().User(clerkUserID).InOrganization(organizationID).Decide()
+			requireDenied(t, decision, ct.SUBJECTNOTSYNCED)
+		},
+	)
 }
 
 func TestAnchorSDKCreatesAProductUserWithAnExternalID(t *testing.T) {

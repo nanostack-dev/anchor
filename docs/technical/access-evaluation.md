@@ -47,14 +47,17 @@ two ways ([ADR-0023](../adr/0023-a-product-can-be-its-own-identity-provider.md))
 
 - The product is its own identity provider. It sends `external_id` on
   `POST /v1/products/{product_id}/product-users`, usually its own account ID. In the
-  Go SDK: `c.Users().Create(email).ExternalID(accountID).Do(ctx)`.
+  Go SDK: `c.Users().Create(email).Name(name).ExternalID(accountID).Do(ctx)`. The ID
+  is printable ASCII, at most 255 characters.
 - A Clerk integration syncs the user. Clerk ingest writes the Clerk user ID.
 
 A user created without an external ID cannot be named here until Clerk syncs it, and
 any ID that no product user holds answers `SUBJECT_NOT_SYNCED`. No route changes an
 external ID after it is set: a changed ID would give one person's access decisions to
 another. The two sources share one set of IDs per product. A user created with a
-Clerk user ID is the user that Clerk ingest then updates and deletes.
+Clerk user ID is the user that Clerk ingest then updates and deletes. Each Clerk event
+replaces that user's email and name with Clerk's values and sets it active, whatever
+the product sent on create.
 
 ## Freshness
 

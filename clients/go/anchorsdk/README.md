@@ -157,8 +157,9 @@ _, err = o.Members().Add(ctx, user.Id, roleID)
 decision, err := c.AccessForUser(accountID).InOrganization(o.ID()).Permissions("flows:read").Do(ctx)
 ```
 
-The external ID is unique within the product (a duplicate matches `ErrConflict`) and cannot change
-after the create. A Clerk integration of the same product uses the same IDs.
+The external ID is printable ASCII of at most 255 characters, unique within the product (a duplicate
+matches `ErrConflict`), and cannot change after the create. A Clerk integration of the same product
+uses the same IDs, and its events overwrite the email and name of a user created with a Clerk user ID.
 
 ### Invitations
 

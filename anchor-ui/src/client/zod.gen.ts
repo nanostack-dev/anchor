@@ -2302,7 +2302,7 @@ export const zCreateProductUserBody = z.object({
     email: z.email(),
     name: z.string().min(1).max(100).nullish(),
     status: zProductUserStatus.optional(),
-    external_id: z.string().min(1).max(255).optional()
+    external_id: z.string().min(1).max(255).regex(/^[ -~]+$/).optional()
 });
 
 export const zCreateProductUserPath = z.object({

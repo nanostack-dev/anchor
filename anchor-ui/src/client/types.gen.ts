@@ -4965,9 +4965,9 @@ export type CreateProductUserData = {
         /**
          * The user's ID in the product's own identity provider. Access evaluation names the user by this ID (`subject.type: user`).
          * Optional. Without it the user has no external ID until an identity provider integration (Clerk) syncs one, and access evaluation cannot name the user.
-         * Unique within the product and compared exactly: letter case and spaces count. A blank value or a value longer than 255 characters is refused with 400 `VALIDATION_ERROR`. An ID that another user of the product holds is refused with 409 `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS`.
+         * Printable ASCII only (space to `~`). Unique within the product and compared exactly: letter case and spaces count. A blank value, a value longer than 255 characters, or a value with another character is refused with 400 `VALIDATION_ERROR`. An ID that another user of the product holds is refused with 409 `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS`.
          * Set on create only. No operation changes it later, because a new ID would point every access decision made for the old ID at another person. To change it, delete the user and create it again.
-         * A Clerk integration of the same product uses the same IDs. A user created with a Clerk user ID is the user that Clerk ingest then updates and deletes.
+         * A Clerk integration of the same product uses the same IDs. A user created with a Clerk user ID is the user that Clerk ingest then updates and deletes: each Clerk event replaces the email and name with Clerk's values (an empty Clerk name clears it) and sets the user active.
          */
         external_id?: string;
     };
