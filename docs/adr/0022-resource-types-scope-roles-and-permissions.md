@@ -23,7 +23,7 @@
    - [F. Admin UI](#f-admin-ui)
    - [G. Migration and rollout](#g-migration-and-rollout)
 4. [Glossary changes](#4-glossary-changes)
-5. [Open questions](#open-questions) — 8 to answer
+5. [Open questions](#open-questions) — 7 to answer
 
 ---
 
@@ -230,7 +230,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D2](#dr-d2) · A role's scope never changes | ✅ Accepted |  |
 |  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | ✅ Accepted |  |
 |  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | ✅ Accepted |  |
-|  | [DR-D5](#dr-d5) · A default Organization role | 🟡 Pending | 1 |
+|  | [DR-D5](#dr-d5) · A default Organization role | ✅ Accepted |  |
 |  | [DR-D6](#dr-d6) · Role priority and per-organization custom roles | ⚪ Deferred | 1 |
 |  | [DR-D7](#dr-d7) · Organization API keys | 🟡 Pending | 1 |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | 🔵 Proposed |  |
@@ -1130,9 +1130,9 @@ erDiagram
 
 <a id="dr-d5"></a>
 <details>
-<summary><b>DR-D5</b> · A default Organization role — <i>🟡 Pending</i> · ❓ 1 question</summary>
+<summary><b>DR-D5</b> · A default Organization role — <i>✅ Accepted</i></summary>
 
-**Recommendation.** Let a Product mark at most one Organization-scoped role as default. A missing `role_id` on add-member and invitation then means the default. With no default role set, `role_id` stays required.
+**Decision.** Let a Product mark at most one Organization-scoped role as default. A missing `role_id` on add-member and invitation then means the default. With no default role set, `role_id` stays required.
 
 <details>
 <summary>📌 Real example</summary>
@@ -1159,7 +1159,7 @@ A **default** Organization-scoped role (typically `member`, with no permissions)
 
 > **Q-D5.1** Add a default role now? *(recommended: yes; it is what makes a `member` role with no permissions useful)*
 >
-> **Answer:** _pending_
+> **Answer:** yes, a Product may mark one Organization-scoped role as its default.
 
 </details>
 
@@ -1934,7 +1934,7 @@ Answer here or inline; each line links to its record.
 | [Q-C3.1](#dr-c3) | Deprecate `scope_modifier`? | yes | **yes**, removed in G6 |
 | [Q-D3.1](#dr-d3) | One or several roles per member per resource? | one | **one** |
 | [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
-| [Q-D5.1](#dr-d5) | Default Organization role now? | yes | |
+| [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
 | [Q-D6.1](#dr-d6) | Per-organization custom roles needed soon? | stay deferred | |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | |
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | |
