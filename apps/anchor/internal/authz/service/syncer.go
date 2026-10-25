@@ -318,15 +318,21 @@ func (s *syncer) syncOrganization(ctx context.Context, current target, productID
 	}
 	roles := map[string]bool{}
 	for _, tuple := range stored {
-		if tuple.Relation == model.RelationAssignment {
-			implied := model.AssignmentTuples(tuple.User)
-			stored = append(stored, implied...)
-			for _, t := range implied {
-				if t.Relation == model.RelationRole {
-					roles[model.ObjectID(t.User)] = true
-				}
-			}
+		if tuple.Relation != model.RelationAssignment {
+			continue
 		}
+		implied := model.AssignmentTuples(tuple.User)
+		stored = append(stored, implied...)
+		for _, t := range implied {
+			roles[model.ObjectID(t.User)] = true
+		}
+		assignees, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{
+			Object: tuple.User, Relation: model.RelationAssignee,
+		})
+		if readErr != nil {
+			return readErr
+		}
+		stored = append(stored, assignees...)
 	}
 	owned := map[string]bool{}
 	for _, role := range state.Roles {

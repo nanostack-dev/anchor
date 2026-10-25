@@ -96,17 +96,17 @@ func Role(roleRowID string) string { return TypeRole + ":" + roleRowID }
 
 func Organization(organizationID string) string { return TypeOrganization + ":" + organizationID }
 
-// Assignment names one role assignment. Its ID holds everything its tuples
-// say, so they never change: a member who changes role gets a new assignment,
-// and a sync only reads the Organization's assignment links.
-func Assignment(organizationID, productUserID, roleRowID string) string {
-	return TypeRoleAssignment + ":" + organizationID + "." + productUserID + "." + roleRowID
+// Assignment names the assignment of one role in one Organization; every
+// member holding the role is one of its assignees. A check on the
+// Organization then walks its roles, a handful, not its members. The ID holds
+// the role, so its role tuple never changes.
+func Assignment(organizationID, roleRowID string) string {
+	return TypeRoleAssignment + ":" + organizationID + "." + roleRowID
 }
 
 // AssignmentParts is what an assignment's ID holds.
 type AssignmentParts struct {
 	OrganizationID string
-	ProductUserID  string
 	RoleRowID      string
 }
 
@@ -116,12 +116,11 @@ func ParseAssignment(object string) (AssignmentParts, bool) {
 	if !found {
 		return AssignmentParts{}, false
 	}
-	parts := strings.Split(id, ".")
-	const assignmentParts = 3
-	if len(parts) != assignmentParts || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+	organizationID, roleRowID, found := strings.Cut(id, ".")
+	if !found || organizationID == "" || roleRowID == "" || strings.Contains(roleRowID, ".") {
 		return AssignmentParts{}, false
 	}
-	return AssignmentParts{OrganizationID: parts[0], ProductUserID: parts[1], RoleRowID: parts[2]}, true
+	return AssignmentParts{OrganizationID: organizationID, RoleRowID: roleRowID}, true
 }
 
 // ObjectID returns the ID part of an object reference.
