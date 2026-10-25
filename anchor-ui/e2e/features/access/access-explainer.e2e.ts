@@ -210,7 +210,10 @@ test("access.explainer-allowed: allowed via folder-viewer on folder Design for a
 		await expect(typeNode(page, name)).toHaveAccessibleDescription(
 			/On the checked path\.$/,
 		);
-	await typeNode(page, "Folder").scrollIntoViewIfNeeded();
+	await panel(page)
+		.getByRole("button", { name: "Show on the canvas", exact: true })
+		.click();
+	await expect(typeNode(page, "Folder")).toBeInViewport();
 	await captureReviewCheckpoint(page, testInfo, "allowed-path-on-canvas");
 	await panel(page)
 		.getByRole("list", { name: "Path from the resource to the Organization" })

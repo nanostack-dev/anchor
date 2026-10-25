@@ -912,6 +912,9 @@ export const ExplainsAccessOnTheCanvas: Story = {
 		await expect(
 			canvasElement.querySelectorAll(".react-flow__edge.trace-dimmed"),
 		).toHaveLength(1);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Show on the canvas" }),
+		);
 	},
 };
 

@@ -20,6 +20,7 @@ import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { PencilSimpleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CheckAccessPanel } from "./CheckAccessPanel";
@@ -210,6 +211,8 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 	);
 	const [state, setState] = useState<EditorState>(INITIAL);
 	const [trace, setTrace] = useState<AccessHighlight | null>(null);
+	const canvasFrame = useRef<HTMLDivElement>(null);
+	const reduceMotion = useReducedMotion();
 	const stateRef = useRef(state);
 	stateRef.current = state;
 	const types = state.draft ?? published;
@@ -689,7 +692,10 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			)}
 
 			<Box className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<Box className="h-[26rem] min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:sticky lg:top-20 lg:h-[36rem]">
+				<Box
+					ref={canvasFrame}
+					className="h-[26rem] min-w-0 scroll-mt-20 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:h-[36rem]"
+				>
 					<ResourceTypeCanvas
 						types={types}
 						layout={layout}
@@ -768,6 +774,12 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 							productId={productId}
 							types={published}
 							onHighlight={setTrace}
+							onShowPath={() =>
+								canvasFrame.current?.scrollIntoView({
+									block: "nearest",
+									behavior: reduceMotion ? "auto" : "smooth",
+								})
+							}
 						/>
 					)}
 				</Stack>

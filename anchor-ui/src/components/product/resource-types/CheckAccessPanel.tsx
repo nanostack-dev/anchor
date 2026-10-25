@@ -147,11 +147,13 @@ export function AccessDecision({
 	explanation,
 	types,
 	label = "Access decision",
+	onShowPath,
 }: {
 	result: CheckResult;
 	explanation: Explanation;
 	types: TreeType[];
 	label?: string;
+	onShowPath?: () => void;
 }) {
 	const { question, chain } = result;
 	const subject = subjectLink(question);
@@ -164,9 +166,16 @@ export function AccessDecision({
 		}
 	const path = (
 		<Stack space="xs">
-			<Text weight="medium" size="sm">
-				Path, highlighted on the canvas
-			</Text>
+			<Box className="flex flex-wrap items-center justify-between gap-2">
+				<Text weight="medium" size="sm">
+					Path, highlighted on the canvas
+				</Text>
+				{onShowPath && (
+					<Button size="sm" variant="ghost" onClick={onShowPath}>
+						Show on the canvas
+					</Button>
+				)}
+			</Box>
 			<PathLine
 				links={links}
 				complete={chain?.complete ?? true}
@@ -251,12 +260,14 @@ export interface CheckAccessPanelProps {
 	productId: string;
 	types: TreeType[];
 	onHighlight: (highlight: AccessHighlight | null) => void;
+	onShowPath?: () => void;
 }
 
 export function CheckAccessPanel({
 	productId,
 	types,
 	onHighlight,
+	onShowPath,
 }: CheckAccessPanelProps) {
 	const [organization, setOrganization] =
 		useState<ProductOrganizationResponse | null>(null);
@@ -673,6 +684,7 @@ export function CheckAccessPanel({
 						result={check.data}
 						explanation={explanation}
 						types={types}
+						onShowPath={onShowPath}
 					/>
 				)}
 			</Stack>
