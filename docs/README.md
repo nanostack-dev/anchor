@@ -24,6 +24,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Clerk reconcile scheduler](technical/clerk-reconcile-scheduler.md): one self-rescheduling chain, duplicate collapse and the per-instance lock
 - [api key prefix config](api-key-prefix-config.md)
 - [case insensitive identifiers](case-insensitive-identifiers.md)
+- [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
