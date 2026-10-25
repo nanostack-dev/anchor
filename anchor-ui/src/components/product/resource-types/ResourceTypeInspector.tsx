@@ -1,4 +1,8 @@
-import { Button } from "@nanostackorg/design-system/components/button";
+import { ROUTE_PATHS } from "@/routes/routePaths";
+import {
+	Button,
+	ButtonLink,
+} from "@nanostackorg/design-system/components/button";
 import { Checkbox } from "@nanostackorg/design-system/components/checkbox";
 import {
 	Field,
@@ -12,8 +16,10 @@ import {
 import { Heading } from "@nanostackorg/design-system/components/heading";
 import { Input } from "@nanostackorg/design-system/components/input";
 import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
+import { Switch } from "@nanostackorg/design-system/components/switch";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { LockIcon } from "lucide-react";
@@ -45,6 +51,7 @@ export interface ResourceTypeInspectorProps {
 	onSlugChange: (slug: string) => void;
 	onToggleParent: (parentKey: string) => void;
 	onNestsChange: (nests: boolean) => void;
+	onCustomRolesChange: (on: boolean) => void;
 	onAddChild: () => void;
 	onDelete: () => void;
 }
@@ -97,6 +104,7 @@ export function ResourceTypeInspector({
 	onSlugChange,
 	onToggleParent,
 	onNestsChange,
+	onCustomRolesChange,
 	onAddChild,
 	onDelete,
 }: ResourceTypeInspectorProps) {
@@ -138,6 +146,10 @@ export function ResourceTypeInspector({
 	const nameId = `resource-type-name-${type.key}`;
 	const slugId = `resource-type-slug-${type.key}`;
 	const nestsId = `resource-type-nests-${type.key}`;
+	const customRolesId = `resource-type-custom-roles-${type.key}`;
+	const filtered = (path: string) =>
+		`${path}?${new URLSearchParams({ resource_type: type.slug }).toString()}`;
+	const switchLocked = !type.builtIn && !type.customRoles;
 	const slugError =
 		editing && !type.builtIn && !naming
 			? slugProblem(types, type, reservedSlugs)
@@ -303,10 +315,64 @@ export function ResourceTypeInspector({
 				)}
 
 				<Section>
-					<Stack space="xs">
-						<Text weight="medium">Scoped to this type</Text>
-						<UsageCounts usage={usage} />
+					<Stack space="sm">
+						<Stack space="xs">
+							<Text weight="medium">Scoped to this type</Text>
+							<UsageCounts usage={usage} />
+						</Stack>
+						{usage.state !== "unpublished" && (
+							<Inline space="sm">
+								<ButtonLink
+									href={filtered(ROUTE_PATHS.PRODUCT_ROLES)}
+									variant="outline"
+									size="sm"
+								>
+									View roles
+								</ButtonLink>
+								<ButtonLink
+									href={filtered(ROUTE_PATHS.PRODUCT_RESOURCES_PERMISSIONS)}
+									variant="outline"
+									size="sm"
+								>
+									View permissions
+								</ButtonLink>
+							</Inline>
+						)}
 					</Stack>
+				</Section>
+
+				<Section key={`custom-roles-${type.key}`}>
+					{editing ? (
+						<Box className="flex items-start justify-between gap-3">
+							<Stack space="xs">
+								<FieldLabel htmlFor={customRolesId}>Custom roles</FieldLabel>
+								<FieldDescription>
+									{switchLocked
+										? "Anchor accepts custom roles on Organization only, for now."
+										: `Organizations can create their own roles scoped to ${type.name || "this type"} and change their copies of its role templates.`}
+								</FieldDescription>
+							</Stack>
+							<Box className="pt-0.5">
+								<Switch
+									id={customRolesId}
+									checked={type.customRoles}
+									disabled={switchLocked}
+									onCheckedChange={(checked) => onCustomRolesChange(checked)}
+								/>
+							</Box>
+						</Box>
+					) : (
+						<Stack space="xs">
+							<Text weight="medium">
+								Custom roles {type.customRoles ? "on" : "off"}
+							</Text>
+							<Text tone="muted">
+								{type.customRoles
+									? `Organizations can create their own roles scoped to ${type.name} and change their copies of its role templates.`
+									: "Organizations use the role templates as they are."}
+							</Text>
+						</Stack>
+					)}
 				</Section>
 
 				{editing && (

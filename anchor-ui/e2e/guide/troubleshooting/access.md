@@ -10,15 +10,15 @@ both the UI and the persisted API resource.
 - `access.catalog` covers the built-in Anchor permission catalog, its search,
   facets, pagination and recovery from no matches. These permissions are
   software-managed; no create/edit/delete controls should appear.
-- `access.permission-*` covers resource permission creation, view/edit/cancel,
+- `access.permission-*` covers resource permission creation on its own route
+  (the resource type is chosen first, never preset to Organization), view/edit/cancel,
   persisted description, protected name, search/facets/sort/pagination,
   single/bulk deletion and the affected role warning. Fixture API calls create
   a role when deletion impact is the behavior under test.
-- `access.role-*` covers the role wizard, resource permission selection,
+- `access.role-*` covers the role wizard on its own route, resource permission selection,
   view/edit/cancel, persisted grant replacement, list controls and single/bulk
   deletion. `access.role-empty-update` replaces grants with an empty array through
-  the public API and verifies the detail view after reload; the current role
-  wizard still requires a permission. An assigned role must retain its row after a `409` deletion error;
+  the public API and verifies the detail view after reload. An assigned role must retain its row after a `409` deletion error;
   bulk deletion must report the failed row while deleting an unrelated role.
 - Product users and organizations are read-only browser lists. Their API
   creation is preparation, not browser coverage of a creation flow.
@@ -31,6 +31,17 @@ both the UI and the persisted API resource.
   draft built with the `+` handle and the keyboard, publish, reload, discard
   and a refused publish that names the blocking role. The API publishes the
   starting tree and its scoped permissions and roles.
+- `access.scoped-*` covers scoped roles (ADR-0022 DR-F4): the wizard refuses to
+  continue without a resource type, offers only permissions at or below it,
+  grouped top down, keeps the scope fixed on edit, and explains an empty scope
+  with a link to a pre-scoped permission. `access.scoped-tables` checks the scope
+  column, the Default chip, permission counts, the roles bundling each
+  permission and the canvas links filtered to a type.
+  `access.custom-roles-switch` publishes Organization's `custom_roles` switch
+  with the draft; other types show it disabled. `access.organization-roles`
+  reads an organization's own roles, read-only, marked template, customized or
+  custom. The API sets the switch, creates the custom role and customizes a
+  copy, because those are the product's own settings calls.
 - `/workspace-memberships` is an implemented placeholder heading. The test
   records that boundary instead of inventing membership controls.
 ## Worker login fails with an invalid URL
@@ -165,3 +176,45 @@ test; clients rely on the declared shape.
 Verification: `access.permission-impact` deletes the granted permission in the
 browser, checks the affected-role warning and polls the persisted role until
 its permissions equal `[]`.
+
+## A row lookup misses a role whose cell shows more than its name
+
+Symptom: `row(page, name)` finds nothing on the roles page although the role is
+visible, for example `getByRole('row').filter({ has: getByRole('cell', { name:
+'member-…', exact: true }) })` times out.
+
+Cause: the Name cell also shows the role's key and, for the default role, a
+*Default* chip, so the cell's accessible name is no longer exactly the role
+name.
+
+Repair: `row` in `features/access/helpers.ts` matches the row that contains an
+element whose text is exactly the name (`getByText(name, { exact: true })`).
+Names are unique per product, so the match stays unambiguous.
+
+Verification: `pnpm test:e2e:app e2e/features/access` passes `access.role-*`,
+`access.permission-*`, `access.scoped-*` and `access.tenancy-*`.
+
+## A long name in a table cell overflows instead of wrapping
+
+Symptom: a long role, permission or resource type name runs past its column in
+the roles, permissions or organization roles table, although its wrapper has a
+maximum width and `[overflow-wrap:anywhere]`.
+
+Cause: the shared table cell sets `white-space: nowrap`, which the wrapper
+inherits, so nothing wraps.
+
+Repair: give the cell content `whitespace-normal` together with its maximum
+width. The `LongNames` stories of `ProductRoleDatatable` and
+`OrganizationRolesTable` measure the name width.
+
+## A row click in a table story does nothing
+
+Symptom: a story clicks a row and the page doesn't navigate; the row was
+replaced while the click happened.
+
+Cause: a column definition that depends on query state (the roles bundling a
+permission, the resource type names) changes identity when that state loads,
+and `AnchorDataTable` then remounts every row.
+
+Repair: read changing values through a ref inside the cell, and keep the
+column definitions' dependencies to stable inputs such as the product ID.

@@ -13,9 +13,12 @@ import {
 	setSlug,
 	slugify,
 	summarizeDraft,
+	switchChanges,
 	toggleParent,
+	treeChanged,
 	treeFromResponse,
 	treeRequest,
+	updateType,
 } from "./resource-type-tree";
 
 function type(
@@ -133,11 +136,32 @@ describe("resource type tree", () => {
 		draft = toggleParent(draft, "rtype_document", "rtype_project");
 		draft = draft.filter((item) => item.slug !== "document");
 		const summary = summarizeDraft(published, draft);
-		expect(summary).toEqual({ added: 2, renamed: 1, changed: 0, deleted: 1 });
+		expect(summary).toEqual({
+			added: 2,
+			renamed: 1,
+			changed: 0,
+			deleted: 1,
+			switched: 0,
+		});
 		expect(describeDraft(summary)).toBe("2 types added, 1 renamed, 1 deleted");
 		expect(describeDraft(summarizeDraft(published, published))).toBe(
 			"No changes yet",
 		);
+	});
+
+	it("counts a custom roles switch apart from the tree, which the tree call doesn't carry", () => {
+		const draft = updateType(published, "rtype_organization", (item) => ({
+			...item,
+			customRoles: true,
+		}));
+		const summary = summarizeDraft(published, draft);
+		expect(summary.switched).toBe(1);
+		expect(treeChanged(summary)).toBe(false);
+		expect(describeDraft(summary)).toBe("custom roles switched on 1 type");
+		expect(switchChanges(published, draft).map((item) => item.slug)).toEqual([
+			"organization",
+		]);
+		expect(treeRequest(draft)).toEqual(treeRequest(published));
 	});
 
 	it("never removes a type's last parent", () => {

@@ -42,6 +42,7 @@ interface Backend {
 	types: ProductResourceTypeResponse[] | "pending" | "fail";
 	usage?: Record<string, { roles: number; permissions: number }>;
 	publish?: { status: number; body: unknown };
+	switchReply?: { status: number; body: unknown };
 	roles?: { id: string; name: string }[];
 }
 
@@ -69,6 +70,23 @@ function mockBackend(backend: Backend) {
 					total: tree.length,
 					count: tree.length,
 				});
+			}
+			const patched = path.match(/\/resource-types\/([^/]+)$/);
+			if (patched && request.method === "PATCH") {
+				published.push({ patch: patched[1], ...body });
+				if (backend.switchReply)
+					return Response.json(backend.switchReply.body, {
+						status: backend.switchReply.status,
+					});
+				if (Array.isArray(tree))
+					tree = tree.map((type) =>
+						type.id === patched[1] ? { ...type, ...body } : type,
+					);
+				return Response.json(
+					Array.isArray(tree)
+						? tree.find((type) => type.id === patched[1])
+						: {},
+				);
 			}
 			if (path.endsWith("/resource-types") && request.method === "PUT") {
 				published.push(body);
@@ -602,5 +620,90 @@ export const MotionContract: Story = {
 		await expect(
 			ruleFor('.resource-type-card[data-entering="true"]')?.animationDuration,
 		).toBe("150ms");
+	},
+};
+
+/** Each type links to the roles and permissions scoped to it. */
+export const LinksToScopedPages: Story = {
+	play: async ({ canvasElement }) => {
+		await userEvent.click(await typeNode(canvasElement, "Folder"));
+		await expect(
+			inspector(canvasElement).getByRole("link", { name: "View roles" }),
+		).toHaveAttribute("href", "/products/resources/roles?resource_type=folder");
+		await expect(
+			inspector(canvasElement).getByRole("link", { name: "View permissions" }),
+		).toHaveAttribute(
+			"href",
+			"/products/resources/permissions?resource_type=folder",
+		);
+		await expect(
+			inspector(canvasElement).getByText("Custom roles off"),
+		).toBeVisible();
+	},
+};
+
+/** Organization's custom roles switch is part of the draft; publishing saves it on its own, without the tree call. */
+export const CustomRolesSwitch: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await startEditing(canvasElement);
+		await userEvent.click(await typeNode(canvasElement, "Folder"));
+		await expect(
+			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
+		).toHaveAttribute("aria-disabled", "true");
+		await userEvent.click(await typeNode(canvasElement, "Organization"));
+		await userEvent.click(
+			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
+		);
+		await expect(
+			canvas.getByText("Draft: custom roles switched on 1 type"),
+		).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
+		await expect(
+			await canvas.findByRole("button", { name: "Edit resource types" }),
+		).toBeVisible();
+		await expect(published).toEqual([
+			{ patch: "rtype_organization", custom_roles: true },
+		]);
+		await waitFor(() =>
+			expect(
+				inspector(canvasElement).getByText("Custom roles on"),
+			).toBeVisible(),
+		);
+	},
+};
+
+/** A refused switch keeps the draft and explains why. */
+export const CustomRolesRefused: Story = {
+	parameters: {
+		backend: {
+			types: DOCUMENT_TREE,
+			switchReply: {
+				status: 409,
+				body: {
+					errors: [
+						{
+							code: "BUILT_IN_RESOURCE_TYPE",
+							message: "Organization is built in.",
+						},
+					],
+				},
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await startEditing(canvasElement);
+		await userEvent.click(await typeNode(canvasElement, "Organization"));
+		await userEvent.click(
+			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
+		await expect(
+			await canvas.findByText("Anchor didn't save the custom roles switch"),
+		).toBeVisible();
+		await expect(
+			canvas.getByText("Draft: custom roles switched on 1 type"),
+		).toBeVisible();
 	},
 };

@@ -58,8 +58,11 @@ function mockResourceTypes(reply: Reply) {
 		});
 }
 
-function Harness({ disabled }: { disabled?: boolean }) {
-	const [value, setValue] = useState("organization");
+function Harness({
+	disabled,
+	initial = "",
+}: { disabled?: boolean; initial?: string }) {
+	const [value, setValue] = useState(initial);
 	return (
 		<div style={{ width: 320 }}>
 			<label htmlFor="resource-type">Resource type</label>
@@ -100,11 +103,11 @@ async function trigger(canvasElement: HTMLElement) {
 	return combobox;
 }
 
-/** A product that declared no types offers only the built-in root. */
+/** Nothing is chosen until the user names a scope; a product that declared no types offers only the built-in root. */
 export const OrganizationOnly: Story = {
 	play: async ({ canvasElement }) => {
 		const combobox = await trigger(canvasElement);
-		await expect(combobox).toHaveTextContent("Organization");
+		await expect(combobox).toHaveTextContent("Choose a resource type");
 		await userEvent.click(combobox);
 		const options = await screen.findAllByRole("option");
 		await expect(options.map((option) => option.textContent)).toEqual([
@@ -129,6 +132,27 @@ export const ChoosesBySlug: Story = {
 		await expect(
 			within(canvasElement).getByRole("status", { name: "Selected type" }),
 		).toHaveTextContent("folder");
+	},
+};
+
+/** Types are offered in tree order: Organization, then each level from the top. */
+export const TreeOrder: Story = {
+	beforeEach: () =>
+		mockResourceTypes([
+			resourceType("document", "Document", ["folder"]),
+			resourceType("folder", "Folder", ["project"]),
+			ORGANIZATION,
+			resourceType("project", "Project"),
+		]),
+	play: async ({ canvasElement }) => {
+		await userEvent.click(await trigger(canvasElement));
+		const options = await screen.findAllByRole("option");
+		await expect(options.map((option) => option.textContent)).toEqual([
+			"Organization",
+			"Project",
+			"Folder",
+			"Document",
+		]);
 	},
 };
 
@@ -181,20 +205,26 @@ export const Loading: Story = {
 	},
 };
 
-/** When the types can't load, Organization stays selectable. */
+/** When the types can't load, nothing is picked for the user: the field stays closed and offers a retry. */
 export const LoadFails: Story = {
 	beforeEach: () => mockResourceTypes("fail"),
 	play: async ({ canvasElement }) => {
-		await userEvent.click(await trigger(canvasElement));
+		const canvas = within(canvasElement);
 		await expect(
-			await screen.findByRole("option", { name: "Organization" }),
-		).toBeInTheDocument();
+			await canvas.findByRole("button", { name: "Try again" }),
+		).toBeVisible();
+		await expect(
+			canvas.getByRole("combobox", { name: "Resource type" }),
+		).toBeDisabled();
+		await expect(
+			canvas.getByRole("status", { name: "Selected type" }),
+		).toHaveTextContent("");
 	},
 };
 
 /** A role's scope never changes, so the edit form shows it read-only. */
 export const Disabled: Story = {
-	args: { disabled: true },
+	args: { disabled: true, initial: "organization" },
 	play: async ({ canvasElement }) => {
 		const combobox = within(canvasElement).getByRole("combobox", {
 			name: "Resource type",

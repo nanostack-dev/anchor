@@ -44,7 +44,7 @@ test("access.role-empty-update: an explicit empty API replacement persists after
 	await captureReviewCheckpoint(page, testInfo, "empty-role-after-reload");
 });
 
-// Covers: PRODUCT_ROLES, PRODUCT_ROLE_DETAIL
+// Covers: PRODUCT_ROLES, PRODUCT_ROLE_NEW, PRODUCT_ROLE_DETAIL
 test("access.role-lifecycle: create role wizard, change grants, cancel edit, reload and delete", async ({
 	page,
 	world,
@@ -56,47 +56,60 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 	const name = world.name("Document reader");
 	await selectProduct(page, world.product);
 	await page.goto(paths.roles);
-	await page.getByRole("button", { name: "Create Role", exact: true }).click();
-	const wizard = page.getByRole("dialog", { name: "Create Role", exact: true });
-	const basicStep = wizard.getByRole("tabpanel", {
-		name: "1. Basic Info",
+	await page.getByRole("link", { name: "Create Role", exact: true }).click();
+	await expect(page).toHaveURL(/\/products\/resources\/roles\/new$/);
+	const scopeStep = page.getByRole("tabpanel", {
+		name: "1. Scope",
 		exact: true,
 	});
-	const grantStep = wizard.getByRole("tabpanel", {
-		name: "2. Permissions",
+	const detailsStep = page.getByRole("tabpanel", {
+		name: "2. Details",
 		exact: true,
 	});
-	const reviewStep = wizard.getByRole("tabpanel", {
-		name: "3. Review",
+	const grantStep = page.getByRole("tabpanel", {
+		name: "3. Permissions",
+		exact: true,
+	});
+	const reviewStep = page.getByRole("tabpanel", {
+		name: "4. Review",
 		exact: true,
 	});
 	await expect(
-		basicStep.getByRole("button", { name: "Continue", exact: true }),
+		scopeStep.getByRole("combobox", { name: "Resource type", exact: true }),
+	).toContainText("Choose a resource type");
+	await expect(
+		scopeStep.getByRole("button", { name: "Continue", exact: true }),
 	).toBeDisabled();
-	await wizard.getByLabel("Role Name").fill(name);
-	await expect(
-		wizard.getByRole("combobox", { name: "Resource type", exact: true }),
-	).toContainText("Organization");
-	await wizard.getByLabel("Description").fill("Reads documents");
+	await scopeStep
+		.getByRole("combobox", { name: "Resource type", exact: true })
+		.click();
+	await page.getByRole("option", { name: "Organization", exact: true }).click();
 	await captureReviewCheckpoint(page, testInfo, "role-resource-type");
-	await basicStep
+	await scopeStep
 		.getByRole("button", { name: "Continue", exact: true })
 		.click();
-	await expect(
-		grantStep.getByRole("button", { name: "Continue", exact: true }),
-	).toBeDisabled();
-	await grantStep.getByRole("textbox").fill(grants[0].name);
-	await grantStep.getByText(grants[0].name, { exact: true }).click();
+	await detailsStep.getByLabel("Name", { exact: true }).fill(name);
+	await detailsStep
+		.getByLabel("Description", { exact: true })
+		.fill("Reads documents");
+	await detailsStep
+		.getByRole("button", { name: "Continue", exact: true })
+		.click();
+	await grantStep
+		.getByRole("textbox", { name: "Search permissions" })
+		.fill(grants[0].name);
+	await grantStep
+		.getByRole("checkbox", { name: grants[0].name, exact: true })
+		.check();
 	await grantStep
 		.getByRole("button", { name: "Continue", exact: true })
 		.click();
 	await expect(reviewStep).toContainText(name);
 	await expect(reviewStep).toContainText(grants[0].name);
 	await reviewStep
-		.getByRole("button", { name: "Create Role", exact: true })
+		.getByRole("button", { name: "Create role", exact: true })
 		.click();
-	await expect(wizard).toHaveCount(0);
-	await expect(row(page, name)).toBeVisible();
+	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 	const created = await world.api.post<ProductRoleListResponse>(
 		`${world.productPath}/roles/search`,
 		{ filter: { names: [name] } },
@@ -108,6 +121,8 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 	expect(savedRole.permissions.map((grant) => grant.permission_name)).toEqual([
 		grants[0].name,
 	]);
+	await page.getByRole("link", { name: "All roles", exact: true }).click();
+	await expect(row(page, name)).toBeVisible();
 	await row(page, name)
 		.getByRole("link", { name: `View ${name}`, exact: true })
 		.click();
@@ -115,17 +130,19 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 		page.getByRole("region", { name: "Role details" }),
 	).toContainText(grants[0].name);
 	await page.getByRole("link", { name: "Edit role", exact: true }).click();
-	await page.getByLabel("Role Name").fill("Unsaved name");
+	await page.getByLabel("Name", { exact: true }).fill("Unsaved name");
 	await page
 		.getByRole("button", { name: "Cancel editing", exact: true })
 		.click();
 	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 	await page.getByRole("link", { name: "Edit role", exact: true }).click();
 	const nextName = world.name("Document editor");
-	await page.getByLabel("Role Name").fill(nextName);
-	await page.getByLabel("Description").fill("Writes documents");
+	await page.getByLabel("Name", { exact: true }).fill(nextName);
 	await page
-		.getByRole("tabpanel", { name: "1. Basic Info", exact: true })
+		.getByLabel("Description", { exact: true })
+		.fill("Writes documents");
+	await page
+		.getByRole("tabpanel", { name: "1. Details", exact: true })
 		.getByRole("button", { name: "Continue", exact: true })
 		.click();
 	const permissionsStep = page.getByRole("tabpanel", {
@@ -133,16 +150,17 @@ test("access.role-lifecycle: create role wizard, change grants, cancel edit, rel
 		exact: true,
 	});
 	await permissionsStep
-		.getByText(grants[0].name, { exact: true })
-		.last()
-		.click();
-	await permissionsStep.getByText(grants[1].name, { exact: true }).click();
+		.getByRole("checkbox", { name: grants[0].name, exact: true })
+		.uncheck();
+	await permissionsStep
+		.getByRole("checkbox", { name: grants[1].name, exact: true })
+		.check();
 	await permissionsStep
 		.getByRole("button", { name: "Continue", exact: true })
 		.click();
 	await page
 		.getByRole("tabpanel", { name: "3. Review", exact: true })
-		.getByRole("button", { name: "Save Changes", exact: true })
+		.getByRole("button", { name: "Save changes", exact: true })
 		.click();
 	await expect(
 		page.getByRole("heading", { name: nextName, exact: true }),

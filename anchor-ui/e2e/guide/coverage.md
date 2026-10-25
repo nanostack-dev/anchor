@@ -9,13 +9,14 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **63 scenarios in 15 spec files**.
+The managed app suite declares **68 scenarios in 16 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
 | [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
 | [access/resource-types.e2e.ts](../features/access/resource-types.e2e.ts) | 3 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 6 |
+| [access/scoped-roles.e2e.ts](../features/access/scoped-roles.e2e.ts) | 5 |
 | [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
@@ -76,6 +77,7 @@ Specs: [bootstrap](../features/auth/bootstrap.e2e.ts),
 Specs: [management keys](../features/platform/api-keys.e2e.ts),
 [permissions](../features/access/permissions.e2e.ts),
 [roles](../features/access/roles.e2e.ts),
+[scoped roles](../features/access/scoped-roles.e2e.ts),
 [tenancy](../features/access/tenancy.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
@@ -85,11 +87,13 @@ Specs: [management keys](../features/platform/api-keys.e2e.ts),
 | `PRODUCT_API_KEY_EDIT` — `/products/product-api-keys/$apiKeyId/edit` | Mutable name/grant update, immutable metadata update with grants locked, missing-key recovery. | API persistence assertions and an API-deleted missing fixture. | management keys |
 | `PRODUCT_USERS` — `/products/users` | Email search, Status facet, pagination, empty recovery and no user mutation buttons. Clerk ingestion also appears here. | Product users are API fixtures or signed Clerk ingestion. Read-only admin list. | tenancy, integrations |
 | `PRODUCT_PERMISSIONS` — `/products/permissions` | Built-in catalog search, Name facet, pagination, clear empty search and no create/delete controls. | Software-managed Anchor permission catalog, distinct from resource permissions. | permissions |
-| `PRODUCT_RESOURCES_PERMISSIONS` — `/products/resources/permissions` | Create, Name facet, sort, pagination, search/empty recovery, single/bulk delete and affected-role warning. | API permissions prepare list/bulk data; a role holds a grant for deletion impact. | permissions |
+| `PRODUCT_RESOURCES_PERMISSIONS` — `/products/resources/permissions` | Create link, Name facet, sort, pagination, search/empty recovery, single/bulk delete and affected-role warning; Resource type column, the roles bundling each permission (one roles search per page) and the `resource_type` filter opened from the canvas. | API permissions prepare list/bulk data; a role holds a grant for deletion impact; API scoped roles fill the Roles column. | permissions, scoped roles |
+| `PRODUCT_RESOURCE_PERMISSION_NEW` — `/products/resources/new-permission` | Resource type chosen first with no preset, `{slug}:` name prefill, create and the detail it opens; opened from an empty scope, the type and prefix are preset. | Outside `/permissions/` because a permission may be named `new`. | permissions, scoped roles |
 | `PRODUCT_RESOURCE_PERMISSION_DETAIL` — `/products/resources/permissions/$permissionName` | View, immutable name, description edit/cancel/save/reload and missing-resource recovery. | API checks persisted description and committed deletion. | permissions, roles |
 | `PRODUCT_RESOURCE_TYPES` — `/products/resources/types` | Read-only tree with the locked Organization, self-nesting badge and per-type role/permission counts; edit mode with `+` handle and keyboard naming (Enter keeps, Escape drops, `N` adds, arrows move, Enter renames), parent and nesting changes, delete confirmation, disabled delete with reasons, discard, publish and reload; a refused publish keeps the draft and names the blocking role. | API publishes the starting tree and scoped permissions and roles; API checks the published tree. | resource types |
-| `PRODUCT_ROLES` — `/products/resources/roles` | Create wizard, permission selection, Name facet, sorting, pagination, search, single/bulk delete, assigned-role error and mixed bulk outcomes. | API permissions/membership prepare grants and an assigned role. Failed deletion retains its row. | roles |
-| `PRODUCT_ROLE_DETAIL` — `/products/resources/roles/$roleId` | View, edit/cancel, renamed role and grant replacement, reload and missing-role recovery. | API checks persisted name/grants; permission deletion must leave `permissions: []`. | roles, permissions |
+| `PRODUCT_ROLES` — `/products/resources/roles` | Create link, Name facet, sorting, pagination, search, single/bulk delete, assigned-role error and mixed bulk outcomes; Resource type column, *Default* chip, permission count, Resource type facet in the URL, and the filter opened from the canvas. | API permissions/membership prepare grants and an assigned role. Failed deletion retains its row. | roles, scoped roles |
+| `PRODUCT_ROLE_NEW` — `/products/resources/roles/new` | Scope first (Continue disabled until chosen), details, permissions grouped by type from the scope down with types above left out, group Select all, review, create; an empty scope explains itself and links to a pre-scoped permission; a role with no permission. | API publishes the tree and scoped permissions. | roles, scoped roles |
+| `PRODUCT_ROLE_DETAIL` — `/products/resources/roles/$roleId` | View with scope and key, edit/cancel with the scope fixed and the same filtered permissions, renamed role and grant replacement, reload and missing-role recovery. | API checks persisted name/grants/scope; permission deletion must leave `permissions: []`. | roles, permissions, scoped roles |
 
 ## Organization and workspace views
 
@@ -119,7 +123,8 @@ Specs: [schema](../features/licensing/schema.e2e.ts),
 | `PRODUCT_LICENSE_TEMPLATE_NEW` — `/products/licensing/templates/new` | Required name/all schema values, out-of-range rejection and create with every field type. | API schema prerequisite. | templates |
 | `PRODUCT_LICENSE_TEMPLATE_DETAIL` — `/products/licensing/templates/$templateId` | View/edit/cancel/save/reload, archived direct edit denied, missing-template recovery and followed value propagation preserving customer adjustments. | API organizations/adjustments prepare propagation; archival itself is API setup. | templates |
 | `ORGANIZATION_LICENSE` — `/organizations/license` | Search, Tier facet, matched/custom/unlicensed states, tier names and facet options for a template beyond the first hundred, Next/Previous pagination, selected/current-page/all-query selection, migration preview, preserve/discard adjustments and changed/unchanged/failed results. | API organizations, tiers and adjustments; deleting one reviewed customer via API triggers partial failure. | schema, organizations, migrations |
-| `ORGANIZATION_LICENSE_DETAIL` — `/organizations/license/$organizationId` | Redirect to Usage, section links, unlicensed/missing states and return link. | API instantiated or unlicensed organization; detail actions appear in the children below. | organizations, templates, migrations |
+| `ORGANIZATION_LICENSE_DETAIL` — `/organizations/license/$organizationId` | Redirect to Usage, License and Roles section links, unlicensed/missing states and return link. | API instantiated or unlicensed organization; detail actions appear in the children below. | organizations, templates, migrations, scoped roles |
+| `ORGANIZATION_ROLES` — `/organizations/license/$organizationId/roles` | The organization's own roles, read-only, marked Template, Customized or Custom, with scope, Default chip, permission count and Resource type facet; no create, edit, delete or selection controls. | API turns on Organization's `custom_roles`, creates a custom role and customizes a copy: those are the product's settings calls, not admin UI. | scoped roles |
 
 The detail route registers these child pages outside `ROUTE_PATHS`:
 

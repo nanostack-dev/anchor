@@ -1,12 +1,15 @@
 import type { ProductRoleResponse } from "@/client";
 import { Page } from "@/components/common/Page";
+import { useScopeTypes } from "@/components/product/resource-types/ResourceTypeSelect";
+import { typeName } from "@/components/product/resource-types/resource-type-scope";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import { Button } from "@nanostackorg/design-system/components/button";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import dayjs from "dayjs";
 import { ArrowLeft, PenLine } from "lucide-react";
-import { ProductRoleEditor } from "./ProductRoleDialog";
+import { ProductRoleEditor } from "./ProductRoleEditor";
 
 interface ProductRoleDetailViewProps {
 	productId: string;
@@ -23,6 +26,10 @@ export function ProductRoleDetailView({
 	onCancel,
 	onSaved,
 }: ProductRoleDetailViewProps) {
+	const scopeName = typeName(
+		useScopeTypes(productId).data ?? [],
+		role.resource_type,
+	);
 	return (
 		<Page
 			variant="default"
@@ -78,14 +85,29 @@ export function ProductRoleDetailView({
 					<dl className="grid gap-6 sm:grid-cols-2">
 						<div>
 							<dt className="text-sm text-muted-foreground">Name</dt>
-							<dd className="mt-1 font-medium">{role.name}</dd>
+							<dd className="mt-1 flex flex-wrap items-center gap-2 font-medium [overflow-wrap:anywhere]">
+								{role.name}
+								{role.is_default && <Badge tone="brand">Default</Badge>}
+							</dd>
+						</div>
+						<div>
+							<dt className="text-sm text-muted-foreground">Resource type</dt>
+							<dd className="mt-1 [overflow-wrap:anywhere]">{scopeName}</dd>
+						</div>
+						<div>
+							<dt className="text-sm text-muted-foreground">Key</dt>
+							<dd className="mt-1 font-mono text-sm [overflow-wrap:anywhere]">
+								{role.key}
+							</dd>
 						</div>
 						<div>
 							<dt className="text-sm text-muted-foreground">Description</dt>
 							<dd className="mt-1">{role.description || "No description"}</dd>
 						</div>
 						<Box className="sm:col-span-2">
-							<dt className="text-sm text-muted-foreground">Permissions</dt>
+							<dt className="text-sm text-muted-foreground">
+								Permissions ({role.permissions.length})
+							</dt>
 							<dd className="mt-2">
 								{role.permissions.length ? (
 									<Box as="ul" className="flex flex-wrap gap-2">

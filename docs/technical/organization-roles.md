@@ -80,6 +80,10 @@ A resource type's `custom_roles` switch lets each Organization shape its own rol
 - Turning the switch off keeps every custom role and customized copy working; it only refuses new ones and new changes. A template deleted while the switch is off removes its copies as before, customized ones included, unless a member holds one (`409 ROLE_IN_USE`).
 - The tree reshape check (resource types) reads the bundles of custom roles and customized copies too.
 
+## Admin UI
+
+An Organization's page in the admin UI has a read-only *Roles* section that lists its roles marked template, customized or custom ([Resource types](resource-types.md#roles-and-permissions-pages)). The admin UI never changes them: the Product calls the routes above from its own settings page.
+
 ## Rollback
 
 Migrations `000061` and `000062` replace the product-wide name guard with a guard on template names. A copy shares its template's name, so their down migrations succeed only after memberships move back to the templates and the copies are deleted.
