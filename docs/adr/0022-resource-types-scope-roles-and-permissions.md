@@ -1167,19 +1167,33 @@ A **default** Organization-scoped role (typically `member`, with no permissions)
 <details>
 <summary><b>DR-D6</b> · Role priority and per-organization custom roles — <i>⚪ Deferred</i> · ❓ 1 question</summary>
 
-**Decision.** Not in this change:
-- **Role priority** orders roles when an identity provider maps several groups onto a single role. Anchor maps no identity provider groups to roles yet.
-- **Per-organization custom roles** (one customer defining a role only it sees) need a catalog per Organization. That is a separate decision.
+**Decision.** Neither is in this change.
+
+- **Role priority.** Enterprise customers often assign roles through groups in their own identity provider (Okta, Microsoft Entra, Google Workspace): each group maps to a role. A person in two groups maps to two roles. With one role per resource (D3, `single`), one must win, and role priority is the ordered list that picks it. Not needed now: Anchor maps no identity-provider groups to roles, so the conflict can't occur, and a Product using several roles per resource (D3, `multiple`) simply keeps both.
+- **Per-organization custom roles.** One customer defines a role that only it sees, on top of the Product's catalog. It needs a catalog per Organization, which is a separate decision.
 
 <details>
 <summary>📌 Real example</summary>
 
-What would come later, for reference only:
+**Role priority.** Acme Corp connects its Okta and maps groups to roles:
 
-| Feature | Example |
+| Okta group | Role |
 | :-- | :-- |
-| Role priority | An identity provider sends groups `eng` and `eng-leads`; priority picks `team-lead` over `member` when only one role may be set |
-| Per-organization custom role | Acme Corp creates `auditor` (Organization scope, `billing:read`, `members:read`); Globex never sees it |
+| `Engineering` | `editor` |
+| `Engineering Leads` | `admin` |
+| everyone else | `member` |
+
+Maya Chen is in both `Engineering` and `Engineering Leads`, so the mapping yields `editor` and `admin`. With the priority `admin` > `editor` > `member`, she gets `admin`.
+
+**Per-organization custom role.** Acme Corp creates `auditor` (Organization scope, `billing:read`, `members:read`) for its finance team. Globex, another customer of the same Product, never sees it.
+
+</details>
+
+<details>
+<summary>When to revisit</summary>
+
+- **Role priority:** when Anchor adds group-to-role mapping for enterprise sign-in.
+- **Custom roles:** when a customer needs a role the Product's catalog doesn't offer.
 
 </details>
 
