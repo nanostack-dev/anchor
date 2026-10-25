@@ -496,7 +496,8 @@ func (s *syncer) lockedObjects(
 }
 
 // syncResources diffs each object's tuples with what its row implies: its
-// parent tuple while the row exists, nothing once it is gone. It reads the
+// parent tuple and its role assignments while the row exists, nothing once it
+// is gone. It reads the
 // marked objects only, so its cost never grows with the registry.
 func (s *syncer) syncResources(ctx context.Context, current target, productID string, objects []string) error {
 	states, err := s.repo.ResourceStates(ctx, productID, objects)
@@ -505,12 +506,23 @@ func (s *syncer) syncResources(ctx context.Context, current target, productID st
 	}
 	var stored, desired []model.Tuple
 	for _, state := range states {
-		desired = append(desired, state.Tuples(current.catalog)...)
+		implied := state.Tuples(current.catalog)
+		desired = append(desired, implied...)
 		held, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: state.Object})
 		if readErr != nil {
 			return readErr
 		}
 		stored = append(stored, held...)
+		// An assignment object belongs to its resource alone, so reading
+		// those the store links and those the tables want covers its stale
+		// role and assignee tuples.
+		for _, assignment := range model.AssignmentObjects(slices.Concat(held, implied)) {
+			tuples, assignmentErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: assignment})
+			if assignmentErr != nil {
+				return assignmentErr
+			}
+			stored = append(stored, tuples...)
+		}
 	}
 	return s.apply(ctx, current, model.Diff(stored, desired))
 }

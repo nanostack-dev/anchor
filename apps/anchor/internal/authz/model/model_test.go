@@ -247,3 +247,78 @@ func TestResourceTuples(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+func TestAssignmentIDs(t *testing.T) {
+	t.Run("An organization's assignment keeps its ID", func(t *testing.T) {
+		assert.Equal(t, "role_assignment:org_1.role_1", model.Assignment("org_1", "role_1"))
+	})
+
+	t.Run("A resource's assignment is named by the resource row and the role row", func(t *testing.T) {
+		assignment := model.Assignment("res_1", "role_1")
+
+		parts, ok := model.ParseAssignment(assignment)
+
+		require.True(t, ok)
+		assert.Equal(t, "role_assignment:res_1.role_1", assignment)
+		assert.Equal(t, model.AssignmentParts{ObjectID: "res_1", RoleRowID: "role_1"}, parts)
+		assert.NotEqual(t, model.Assignment("org_1", "role_1"), assignment)
+	})
+
+	t.Run("A reference that is not an assignment does not parse", func(t *testing.T) {
+		for _, object := range []string{"role:role_1", "role_assignment:res_1", "role_assignment:.role_1",
+			"role_assignment:res_1.", "role_assignment:res_1.role.1"} {
+			_, ok := model.ParseAssignment(object)
+			assert.False(t, ok, object)
+		}
+	})
+}
+
+func TestResourceAssignmentTuples(t *testing.T) {
+	folder := model.Resource{
+		OrganizationID: "org_1", RowID: "res_2", Type: "folder", ParentRowID: "res_1", ParentType: "project",
+	}
+
+	t.Run("Each role held on a resource is one linked assignment with every member as an assignee", func(t *testing.T) {
+		state := model.ResourceState{
+			Object:   folder.Object(),
+			Exists:   true,
+			Resource: folder,
+			Assignments: []model.ResourceAssignment{
+				{ProductUserID: "pusr_1", RoleRowID: "role_1"},
+				{ProductUserID: "pusr_2", RoleRowID: "role_1"},
+				{ProductUserID: "pusr_3", RoleRowID: "role_2"},
+			},
+		}
+
+		tuples := state.Tuples(documentCatalog())
+
+		editors, viewers := model.Assignment("res_2", "role_1"), model.Assignment("res_2", "role_2")
+		assert.ElementsMatch(t, []model.Tuple{
+			{Object: "rt_folder:res_2", Relation: model.RelationParent, User: "rt_project:res_1"},
+			{Object: "rt_folder:res_2", Relation: model.RelationAssignment, User: editors},
+			{Object: editors, Relation: model.RelationRole, User: model.Role("role_1")},
+			{Object: editors, Relation: model.RelationAssignee, User: model.User("pusr_1")},
+			{Object: editors, Relation: model.RelationAssignee, User: model.User("pusr_2")},
+			{Object: "rt_folder:res_2", Relation: model.RelationAssignment, User: viewers},
+			{Object: viewers, Relation: model.RelationRole, User: model.Role("role_2")},
+			{Object: viewers, Relation: model.RelationAssignee, User: model.User("pusr_3")},
+		}, tuples)
+		assert.Equal(t, []string{editors, viewers}, model.AssignmentObjects(tuples))
+	})
+
+	t.Run("A resource whose row is gone implies none of its assignments", func(t *testing.T) {
+		state := model.ResourceState{Object: folder.Object(), Assignments: []model.ResourceAssignment{
+			{ProductUserID: "pusr_1", RoleRowID: "role_1"},
+		}}
+
+		assert.Empty(t, state.Tuples(documentCatalog()))
+	})
+
+	t.Run("A type the model lacks links no assignment", func(t *testing.T) {
+		removed := model.Resource{OrganizationID: "org_1", RowID: "res_4", Type: "removed"}
+		state := model.ResourceState{Object: removed.Object(), Exists: true, Resource: removed,
+			Assignments: []model.ResourceAssignment{{ProductUserID: "pusr_1", RoleRowID: "role_1"}}}
+
+		assert.Empty(t, state.Tuples(documentCatalog()))
+	})
+}

@@ -83,6 +83,83 @@ func checkAuthzMirror(ctx context.Context) error {
 	}
 	fmt.Fprintf(os.Stderr, "authz mirror: %d permissions agree across %d products (%d without a model)\n",
 		compared, len(byProduct)-skipped, skipped)
+	return checkResourceAssignmentMirror(ctx)
+}
+
+// checkResourceAssignmentMirror checks that every role assignment on a
+// resource is in OpenFGA: the resource links its role's assignment, and the
+// member is one of its assignees. Decisions on resources come later, so no
+// permission is compared yet.
+func checkResourceAssignmentMirror(ctx context.Context) error {
+	rows, err := testDB.QueryContext(ctx, `SELECT r.product_id, t.slug, a.resource_id, a.role_id, a.product_user_id
+		FROM resource_role_assignments a
+		JOIN resources r ON r.id = a.resource_id
+		JOIN product_resource_types t ON t.id = r.resource_type_id`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	byProduct := map[string][]*openfgav1.CheckRequestTupleKey{}
+	for rows.Next() {
+		var productID, slug, resourceRowID, roleRowID, productUserID string
+		if err = rows.Scan(&productID, &slug, &resourceRowID, &roleRowID, &productUserID); err != nil {
+			return err
+		}
+		assignment := model.Assignment(resourceRowID, roleRowID)
+		byProduct[productID] = append(byProduct[productID],
+			&openfgav1.CheckRequestTupleKey{
+				User: assignment, Relation: model.RelationAssignment, Object: model.ResourceObject(slug, resourceRowID),
+			},
+			&openfgav1.CheckRequestTupleKey{
+				User: model.User(productUserID), Relation: model.RelationAssignee, Object: assignment,
+			},
+		)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	openfga, err := authzEngines.Get()
+	if err != nil {
+		return err
+	}
+	var missing []string
+	checked := 0
+	for productID, keys := range byProduct {
+		found, findErr := authzRepo.FindStore(ctx, productID)
+		if findErr != nil {
+			return findErr
+		}
+		stored, ok := found.Get()
+		if !ok || stored.ModelID == "" {
+			continue
+		}
+		for start := 0; start < len(keys); start += mirrorCheckBatch {
+			batch := keys[start:min(start+mirrorCheckBatch, len(keys))]
+			checks := make([]*openfgav1.BatchCheckItem, len(batch))
+			for i, key := range batch {
+				checks[i] = &openfgav1.BatchCheckItem{CorrelationId: strconv.Itoa(i), TupleKey: key}
+			}
+			resp, checkErr := openfga.BatchCheck(ctx, &openfgav1.BatchCheckRequest{
+				StoreId: stored.StoreID, AuthorizationModelId: stored.ModelID, Checks: checks,
+			})
+			if checkErr != nil {
+				return fmt.Errorf("assignment mirror check for product %s: %w", productID, checkErr)
+			}
+			for i, key := range batch {
+				checked++
+				if !resp.GetResult()[strconv.Itoa(i)].GetAllowed() {
+					missing = append(missing, fmt.Sprintf("  product %s: %s # %s @ %s",
+						productID, key.GetObject(), key.GetRelation(), key.GetUser()))
+				}
+			}
+		}
+	}
+	if len(missing) > 0 {
+		slices.Sort(missing)
+		return fmt.Errorf("OpenFGA lacks %d resource role assignment tuples, first ones:\n%s",
+			len(missing), strings.Join(missing[:min(len(missing), mirrorShownLimit)], "\n"))
+	}
+	fmt.Fprintf(os.Stderr, "authz mirror: %d resource role assignment tuples present\n", checked)
 	return nil
 }
 

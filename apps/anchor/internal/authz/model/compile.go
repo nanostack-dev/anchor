@@ -85,6 +85,12 @@ func (c Catalog) HasPermission(name string) bool {
 	return slices.ContainsFunc(c.Permissions, func(p Permission) bool { return p.Name == name })
 }
 
+// HasType reports whether the model defines the resource type, so an
+// assignment link never names a type it lacks.
+func (c Catalog) HasType(slug string) bool {
+	return slices.ContainsFunc(c.Types, func(t Type) bool { return t.Slug == slug })
+}
+
 // AllowsParent reports whether the model lets a resource of the type sit under
 // one of the parent type, so a parent tuple never names a type the model's
 // parent relation refuses.

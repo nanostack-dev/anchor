@@ -103,18 +103,21 @@ func Organization(organizationID string) string { return TypeOrganization + ":" 
 // Organizations would share an object in the Product's one store.
 func ResourceObject(slug, rowID string) string { return ResourceType(slug) + ":" + rowID }
 
-// Assignment names the assignment of one role in one Organization; every
-// member holding the role is one of its assignees. A check on the
-// Organization then walks its roles, a handful, not its members. The ID holds
-// the role, so its role tuple never changes.
-func Assignment(organizationID, roleRowID string) string {
-	return TypeRoleAssignment + ":" + organizationID + "." + roleRowID
+// Assignment names the assignment of one role on one object: an
+// Organization, by its ID, or a registered resource, by its row ID. Every
+// member holding the role there is one of its assignees, so a check walks the
+// object's roles, a handful, not its members. The ID holds the role, so its
+// role tuple never changes. Organization and resource row IDs are prefixed
+// KSUIDs, so the two kinds never share an ID.
+func Assignment(objectID, roleRowID string) string {
+	return TypeRoleAssignment + ":" + objectID + "." + roleRowID
 }
 
 // AssignmentParts is what an assignment's ID holds.
 type AssignmentParts struct {
-	OrganizationID string
-	RoleRowID      string
+	// ObjectID is the Organization's ID or the resource's row ID.
+	ObjectID  string
+	RoleRowID string
 }
 
 // ParseAssignment splits an assignment reference back into its parts.
@@ -123,11 +126,11 @@ func ParseAssignment(object string) (AssignmentParts, bool) {
 	if !found {
 		return AssignmentParts{}, false
 	}
-	organizationID, roleRowID, found := strings.Cut(id, ".")
-	if !found || organizationID == "" || roleRowID == "" || strings.Contains(roleRowID, ".") {
+	objectID, roleRowID, found := strings.Cut(id, ".")
+	if !found || objectID == "" || roleRowID == "" || strings.Contains(roleRowID, ".") {
 		return AssignmentParts{}, false
 	}
-	return AssignmentParts{OrganizationID: organizationID, RoleRowID: roleRowID}, true
+	return AssignmentParts{ObjectID: objectID, RoleRowID: roleRowID}, true
 }
 
 // ObjectID returns the ID part of an object reference.

@@ -129,13 +129,53 @@ func (r *repositoryImpl) ResourceStates(
 		return nil, err
 	}
 	byObject := functional.Slice(found).ToMap(model.Resource.Object)
+	assignments, err := r.resourceAssignments(ctx, table.Resources.ProductID.EQ(postgres.String(productID)).
+		AND(table.ResourceRoleAssignments.ResourceID.IN(jetx.ToStringExpressions(rowIDs)...)))
+	if err != nil {
+		return nil, err
+	}
 	for i, state := range states {
 		if row, ok := byObject[state.Object]; ok {
 			states[i].Exists = true
 			states[i].Resource = row
+			states[i].Assignments = assignments[row.RowID]
 		}
 	}
 	return states, nil
+}
+
+// assignmentRow is a role assignment on a resource, read for its tuples.
+type assignmentRow struct {
+	ResourceID    string `alias:"assignment_row.resource_id"`
+	ProductUserID string `alias:"assignment_row.product_user_id"`
+	RoleID        string `alias:"assignment_row.role_id"`
+}
+
+// resourceAssignments reads the role assignments on the resources the
+// condition keeps, by resource row ID.
+func (r *repositoryImpl) resourceAssignments(
+	ctx context.Context, where postgres.BoolExpression,
+) (map[string][]model.ResourceAssignment, error) {
+	a := table.ResourceRoleAssignments
+	rows, err := transactor.Query[[]assignmentRow](ctx, r.db,
+		postgres.SELECT(
+			a.ResourceID.AS("assignment_row.resource_id"),
+			a.ProductUserID.AS("assignment_row.product_user_id"),
+			a.RoleID.AS("assignment_row.role_id"),
+		).FROM(a.INNER_JOIN(table.Resources, table.Resources.ID.EQ(a.ResourceID))).
+			WHERE(where).
+			ORDER_BY(a.ResourceID.ASC(), a.RoleID.ASC(), a.ProductUserID.ASC()),
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	byResource := map[string][]model.ResourceAssignment{}
+	for _, row := range rows {
+		byResource[row.ResourceID] = append(byResource[row.ResourceID], model.ResourceAssignment{
+			ProductUserID: row.ProductUserID, RoleRowID: row.RoleID,
+		})
+	}
+	return byResource, nil
 }
 
 func (r *repositoryImpl) ProductResourceStates(ctx context.Context, productID string) ([]model.ResourceState, error) {
@@ -143,7 +183,13 @@ func (r *repositoryImpl) ProductResourceStates(ctx context.Context, productID st
 	if err != nil {
 		return nil, err
 	}
+	assignments, err := r.resourceAssignments(ctx, table.Resources.ProductID.EQ(postgres.String(productID)))
+	if err != nil {
+		return nil, err
+	}
 	return functional.Slice(found).Map(func(row model.Resource) model.ResourceState {
-		return model.ResourceState{Object: row.Object(), Exists: true, Resource: row}
+		return model.ResourceState{
+			Object: row.Object(), Exists: true, Resource: row, Assignments: assignments[row.RowID],
+		}
 	}), nil
 }

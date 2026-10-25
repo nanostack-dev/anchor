@@ -64,9 +64,13 @@ func staleScope(event events.Event) (staleTarget, bool, error) {
 		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted:
 		organizationID, err := required(event, events.FieldOrganizationID)
 		return staleTarget{organizationID: organizationID}, err == nil, err
-	case events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted:
+	case events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted,
+		events.ResourceRoleAssignmentCreated, events.ResourceRoleAssignmentUpdated,
+		events.ResourceRoleAssignmentDeleted:
 		// A resource write changes its own object only: a move rewrites its
-		// parent tuple, and its children keep theirs.
+		// parent tuple, and its children keep theirs. A role assignment is a
+		// tuple of the resource's object and of an assignment object only it
+		// links.
 		organizationID, err := required(event, events.FieldOrganizationID)
 		if err != nil {
 			return staleTarget{}, false, err
