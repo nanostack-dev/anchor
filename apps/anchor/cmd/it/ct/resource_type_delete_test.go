@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteResourceType(t *testing.T) {
@@ -79,6 +80,22 @@ func TestDeleteResourceTypeWithRole(t *testing.T) {
 		meta := requireAPIError(t, resp, resp.Body, http.StatusConflict, "RESOURCE_TYPE_IN_USE")
 		assert.Equal(t, map[string]any{"child_types": float64(0), "roles": float64(1), "permissions": float64(0)},
 			meta["blocked_by"])
+	})
+}
+
+func TestDeleteProductWithResourceTypes(t *testing.T) {
+	t.Parallel()
+	t.Run("Deleting a product removes its nested types, scoped roles and scoped permissions", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		declareDocumentTree(t, product)
+		product.CreateScopedPermissions(t, "document", "document:view")
+		createScopedRole(t, product, "document")
+
+		resp, err := product.OwnerAuthenticatedClient().DeleteProductWithResponse(t.Context(), product.ProductID)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
 	})
 }
 

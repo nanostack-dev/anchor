@@ -25,7 +25,10 @@ CREATE TRIGGER update_product_resource_types_updated_at
 
 CREATE TABLE product_resource_type_parents (
     resource_type_id VARCHAR(255) NOT NULL REFERENCES product_resource_types(id) ON DELETE CASCADE,
-    parent_type_id VARCHAR(255) NOT NULL REFERENCES product_resource_types(id),
+    -- Cascades so a product's types delete with it: its cascade deletes the
+    -- types one by one, and a type's own edges would still hold its parent.
+    -- Deleting a single type removes its edges first (internal/resourcetype).
+    parent_type_id VARCHAR(255) NOT NULL REFERENCES product_resource_types(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (resource_type_id, parent_type_id)
 );
