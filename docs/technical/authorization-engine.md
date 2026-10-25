@@ -4,8 +4,8 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
-| PR 4 (this) | OpenFGA runs inside Anchor; each Product can get its own store | no |
-| PR 5 | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
+| PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
+| PR 5 (this) | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
 | PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
 | PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
 
@@ -30,6 +30,51 @@ Each replica opens up to 10 OpenFGA connections, beside Anchor's own pool. The p
 
 Each Product gets one OpenFGA store, recorded in `authz_stores` (`product_id` → `store_id`). `store.Stores.StoreID` returns it and creates it on first use. It refuses to run inside a transaction (`ErrInTransaction`), because the OpenFGA store it creates commits on its own and a rollback would leave it unrecorded. When two replicas create one at once, the first insert wins and the others delete the store they made. After an insert that fails in a way that may still have committed, such as a cancelled request, it reads the row again and deletes its store only if that store is not the one recorded. Deleting a Product removes its row; its store is left for the reconcile (PR 5) to remove.
 
+## The model
+
+`internal/authz/model` compiles a Product's catalog, its resource types and its permissions with their scopes, into its model (ADR-0022 E3). Roles are data: the model never names one, so creating, changing or deleting a role writes tuples, never a model.
+
+| Type | Relations |
+| --- | --- |
+| `user`, `api_key` | none |
+| `role` | `grants_<permission>: [user:*]`, one per permission |
+| `role_assignment` | `role: [role]`, `assignee: [user]`, `can_<permission>: assignee and grants_<permission> from role` |
+| each resource type | `parent` (its parent types, itself when it nests in itself), `assignment: [role_assignment]`, and `can_<permission>` for every permission scoped to it or to a type below it: `can_<permission> from assignment or can_<permission> from parent` |
+| `organization` | the same, with `[api_key] or` first, so an Organization API key holds a permission directly |
+
+Relation names keep a readable part of the permission name and a hash of it, because permission names hold characters OpenFGA refuses (`:`, `*`) and relations are at most 50 characters. Every resource type but `organization` is named `rt_<slug>`, so no valid slug can shadow a fixed type, collide with another, or be a word of OpenFGA's language (`define`, `and`, `self`). The model carries no comment, so a permission name never reaches its text. The catalog's hash, recorded in `authz_stores.model_hash`, tells whether the catalog changed without compiling it; an unchanged catalog keeps its model. OpenFGA's model limit is raised to 1 MiB: a model grows by about half a kilobyte per permission and type that holds it.
+
+## Tuples
+
+An Organization implies:
+
+| Fact in Anchor's tables | Tuples |
+| --- | --- |
+| A membership: user *U* holds role row *R* in Organization *O* | `role_assignment:O.U.R # role @ role:R`, `role_assignment:O.U.R # assignee @ user:U`, `organization:O # assignment @ role_assignment:O.U.R` |
+| Role row *R* bundles permission *P* | `role:R # grants_P @ user:*` |
+| Active, unexpired API key *K* holds *P* | `organization:O # can_P @ api_key:K` |
+
+An assignment's ID holds everything its tuples say, so they never change: a member who changes role gets a new assignment. An Organization sync therefore reads the Organization's object, derives each linked assignment's tuples from its ID, and reads the roles the Organization owns or its members hold. It never deletes the grants of a role template a membership still holds itself, as a release before copies wrote, since other Organizations may hold it; a Product sync brings those in step.
+
+## Keeping the store in step
+
+Anchor's tables stay the source of truth (ADR-0022 E5):
+
+1. **Mark.** Every write emits its event inside its transaction. `service.Marker`, an event observer, turns an event that changes access into a row of `authz_sync_marks` in the same transaction: the Organization, or the whole Product (`organization_id = ''`) for a catalog change or a deleted product user. A repeated mark bumps its revision.
+2. **Replay after commit.** The API's strict middleware `NewAuthzReplayMiddleware` collects what a request marked and, once the handler returned and its transaction committed, syncs it before the response is written, so the next request already sees the change: each Organization it marked, or the whole Product after a catalog change. A write outside an API request, such as a background job, is left to the sweeper.
+3. **Sweep.** Every 5 s, `service.Sweeper` replays the oldest marks: a Product sync when one is product-scope, else each Organization.
+4. **Reconcile.** Each pass rebuilds the one Product rebuilt longest ago, when that was more than 15 minutes back (`authz_stores.reconciled_at`). A Product never rebuilt comes first, with or without a store, so every Product gets its first mirror without waiting for a write. A rebuild deletes every tuple no Organization implies, such as the grants of a deleted role, and, one page at a time, the stores of deleted Products. With many Products, each is rebuilt about once every *products × 5 s*.
+
+Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
+
+Nothing reads the store for decisions yet; PR 6 compares its answers with the current evaluator.
+
+## Known limits
+
+- **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so the shadow (PR 6) never compares it, and the switch (PR 7) must keep that resolution.
+- **One lock per Product.** Writes to different Organizations of one Product queue behind each other's replay, each waiting at most 3 s before leaving its mark to the sweeper. A rebuild holds the lock while it reads the whole store.
+- **A catalog change replays its whole Product** before its response, bounded at 30 s; a batch of catalog writes, such as a Terraform apply, repeats it per write.
+
 ## Tests
 
-`TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+`TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

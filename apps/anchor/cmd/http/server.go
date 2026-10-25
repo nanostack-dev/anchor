@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	authzservice "anchor/internal/authz/service"
+
 	"anchor/internal/api"
 	"anchor/internal/buildinfo"
 	"anchor/internal/middleware"
@@ -49,6 +51,7 @@ type ServerParams struct {
 	Queue          *queue.Client
 	AuthMiddleware *middleware.AuthMiddleware
 	ServerConfig   *ServerConfig
+	AuthzReplayer  *authzservice.Replayer
 }
 
 func RegisterServer(params ServerParams) {
@@ -251,7 +254,7 @@ func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 		// The server span wraps everything, continuing an incoming W3C
 		// traceparent, so the request logger and DB queries join it.
 		Handler: tracing.Middleware()(createHandler(
-			router, params.API, errorMiddleware, []api.MiddlewareFunc{
+			router, params.API, errorMiddleware, params.AuthzReplayer, []api.MiddlewareFunc{
 				middleware.NewRequestLoggingMiddleware(params.Logger),
 				authMiddleware.Create,
 			},
@@ -309,13 +312,15 @@ func startServerGoroutines(params ServerParams, server *http.Server) {
 
 func createHandler(
 	router *chi.Mux, anchorAPI *api.AnchorAPI,
-	errorMiddleware *middleware.ErrorMiddleware, middlewares []api.MiddlewareFunc,
+	errorMiddleware *middleware.ErrorMiddleware, replayer *authzservice.Replayer,
+	middlewares []api.MiddlewareFunc,
 ) http.Handler {
 	return api.HandlerWithOptions(
 		api.NewStrictHandlerWithOptions(
 			anchorAPI, []api.StrictMiddlewareFunc{
 				api.NewWebhookHeadersMiddleware(),
 				api.NewLogoutAccessTokenMiddleware(),
+				api.NewAuthzReplayMiddleware(replayer),
 			},
 			api.StrictHTTPServerOptions{
 				RequestErrorHandlerFunc:  errorMiddleware.HandleRequestError,

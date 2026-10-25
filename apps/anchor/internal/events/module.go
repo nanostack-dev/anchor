@@ -14,7 +14,7 @@ func NewModule() fx.Option {
 		fx.Provide(
 			NewCatalog,
 			NewEndpointRepository,
-			NewEmitter,
+			provideEmitter,
 			provideEndpointService,
 		),
 		fx.Invoke(RegisterWorker),

@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
+	"go.uber.org/fx"
 )
 
 const (
@@ -28,18 +29,43 @@ type Emitter interface {
 	Emit(ctx context.Context, event Event) error
 }
 
-type emitter struct {
-	queue   *queue.Client
-	catalog Catalog
-	now     func() time.Time
+// TxObserver sees every emitted event inside the transaction that emits it, so
+// whatever it records commits or rolls back with the write that caused it. An
+// error aborts the write.
+type TxObserver interface {
+	ObserveTx(ctx context.Context, event Event) error
 }
 
-func NewEmitter(queueClient *queue.Client, catalog Catalog) Emitter {
+// AsTxObserver annotates a constructor so the emitter receives its observer.
+func AsTxObserver(constructor any) any {
+	return fx.Annotate(constructor, fx.As(new(TxObserver)), fx.ResultTags(`group:"event_tx_observers"`))
+}
+
+type emitter struct {
+	queue     *queue.Client
+	catalog   Catalog
+	observers []TxObserver
+	now       func() time.Time
+}
+
+func NewEmitter(queueClient *queue.Client, catalog Catalog, observers ...TxObserver) Emitter {
 	return &emitter{
-		queue:   queueClient,
-		catalog: catalog,
-		now:     time.Now,
+		queue:     queueClient,
+		catalog:   catalog,
+		observers: observers,
+		now:       time.Now,
 	}
+}
+
+type emitterParams struct {
+	fx.In
+	Queue     *queue.Client
+	Catalog   Catalog
+	Observers []TxObserver `group:"event_tx_observers"`
+}
+
+func provideEmitter(params emitterParams) Emitter {
+	return NewEmitter(params.Queue, params.Catalog, params.Observers...)
 }
 
 func (e *emitter) Emit(ctx context.Context, event Event) error {
@@ -77,10 +103,17 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 		return err
 	}
 
-	_, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
+	if _, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 		QueueName:   queueName,
 		Payload:     payload,
 		MaxAttempts: eventQueueMaxAttempts,
-	})
-	return err
+	}); err != nil {
+		return err
+	}
+	for _, observer := range e.observers {
+		if err = observer.ObserveTx(ctx, event); err != nil {
+			return err
+		}
+	}
+	return nil
 }

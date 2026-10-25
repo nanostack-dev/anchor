@@ -17,9 +17,12 @@ type authzStoresTable struct {
 	postgres.Table
 
 	// Columns
-	ProductID postgres.ColumnString
-	StoreID   postgres.ColumnString
-	CreatedAt postgres.ColumnTimestampz
+	ProductID    postgres.ColumnString
+	StoreID      postgres.ColumnString
+	CreatedAt    postgres.ColumnTimestampz
+	ModelID      postgres.ColumnString
+	ModelHash    postgres.ColumnString
+	ReconciledAt postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -61,21 +64,27 @@ func newAuthzStoresTable(schemaName, tableName, alias string) *AuthzStoresTable 
 
 func newAuthzStoresTableImpl(schemaName, tableName, alias string) authzStoresTable {
 	var (
-		ProductIDColumn = postgres.StringColumn("product_id")
-		StoreIDColumn   = postgres.StringColumn("store_id")
-		CreatedAtColumn = postgres.TimestampzColumn("created_at")
-		allColumns      = postgres.ColumnList{ProductIDColumn, StoreIDColumn, CreatedAtColumn}
-		mutableColumns  = postgres.ColumnList{StoreIDColumn, CreatedAtColumn}
-		defaultColumns  = postgres.ColumnList{CreatedAtColumn}
+		ProductIDColumn    = postgres.StringColumn("product_id")
+		StoreIDColumn      = postgres.StringColumn("store_id")
+		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
+		ModelIDColumn      = postgres.StringColumn("model_id")
+		ModelHashColumn    = postgres.StringColumn("model_hash")
+		ReconciledAtColumn = postgres.TimestampzColumn("reconciled_at")
+		allColumns         = postgres.ColumnList{ProductIDColumn, StoreIDColumn, CreatedAtColumn, ModelIDColumn, ModelHashColumn, ReconciledAtColumn}
+		mutableColumns     = postgres.ColumnList{StoreIDColumn, CreatedAtColumn, ModelIDColumn, ModelHashColumn, ReconciledAtColumn}
+		defaultColumns     = postgres.ColumnList{CreatedAtColumn}
 	)
 
 	return authzStoresTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ProductID: ProductIDColumn,
-		StoreID:   StoreIDColumn,
-		CreatedAt: CreatedAtColumn,
+		ProductID:    ProductIDColumn,
+		StoreID:      StoreIDColumn,
+		CreatedAt:    CreatedAtColumn,
+		ModelID:      ModelIDColumn,
+		ModelHash:    ModelHashColumn,
+		ReconciledAt: ReconciledAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

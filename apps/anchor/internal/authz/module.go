@@ -1,14 +1,17 @@
-// Package authz will decide access with OpenFGA (ADR-0021, ADR-0022 E3 and
-// E5), running inside Anchor on Anchor's Postgres. Anchor's tables stay the
-// source of truth; each Product's OpenFGA store mirrors them. For now the
-// engine runs and each Product can get its store; nothing reads them yet.
+// Package authz keeps each Product's OpenFGA store, running inside Anchor on
+// Anchor's Postgres, in step with Anchor's tables (ADR-0021; ADR-0022 E3 and
+// E5). The tables stay the source of truth; the store mirrors them. Nothing
+// reads the store for decisions yet.
 package authz
 
 import (
 	"go.uber.org/fx"
 
 	"anchor/internal/authz/engine"
+	"anchor/internal/authz/repository"
+	"anchor/internal/authz/service"
 	"anchor/internal/authz/store"
+	"anchor/internal/events"
 )
 
 func NewModule() fx.Option {
@@ -17,10 +20,12 @@ func NewModule() fx.Option {
 		fx.Provide(
 			engine.New,
 			store.New,
+			repository.New,
+			service.NewSyncer,
+			service.NewSweeper,
+			service.NewReplayer,
+			events.AsTxObserver(service.NewMarker),
 		),
-		// The engine starts with the application, in the background, so its
-		// migrations and datastore are proven in every environment before
-		// anything reads it, and a failure there never stops Anchor serving.
-		fx.Invoke(func(engine.Provider) {}),
+		fx.Invoke(func(sweeper *service.Sweeper, lc fx.Lifecycle) { sweeper.Run(lc) }),
 	)
 }

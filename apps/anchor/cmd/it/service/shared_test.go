@@ -6,6 +6,8 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	authzengine "anchor/internal/authz/engine"
+	authzrepository "anchor/internal/authz/repository"
+	authzservice "anchor/internal/authz/service"
 	authzstore "anchor/internal/authz/store"
 	orgrolerepository "anchor/internal/organizationrole/repository"
 	orgroleservice "anchor/internal/organizationrole/service"
@@ -42,6 +44,10 @@ var (
 	Transactor              transactor.Transactor
 	AuthzStores             authzstore.Stores
 	AuthzEngines            authzengine.Provider
+	AuthzRepo               authzrepository.Repository
+	AuthzSyncer             authzservice.Syncer
+	AuthzSweeper            *authzservice.Sweeper
+	AuthzReplayer           *authzservice.Replayer
 	TestDB                  *sql.DB
 )
 
@@ -72,6 +78,10 @@ func TestMain(m *testing.M) {
 				&Transactor,
 				&AuthzStores,
 				&AuthzEngines,
+				&AuthzRepo,
+				&AuthzSyncer,
+				&AuthzSweeper,
+				&AuthzReplayer,
 				&TestDB,
 			},
 		},
