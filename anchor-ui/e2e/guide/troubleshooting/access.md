@@ -42,6 +42,13 @@ both the UI and the persisted API resource.
   reads an organization's own roles, read-only, marked template, customized or
   custom. The API sets the switch, creates the custom role and customizes a
   copy, because those are the product's own settings calls.
+- `access.explainer-*` covers Check access on the Resource types page (ADR-0022
+  DR-F5): Check stays disabled until all four choices are made, an allowed
+  decision names the folder role and the resource chain, a denial for the project
+  above it gives `MISSING_PERMISSION` in plain words, and the canvas lights the
+  chain's types. The API publishes the tree, registers the project, folders and
+  document, adds the member with an external ID and assigns the folder role. The
+  503 and error states are story-only, because a real outage can't be staged.
 - `/workspace-memberships` is an implemented placeholder heading. The test
   records that boundary instead of inventing membership controls.
 ## Worker login fails with an invalid URL
@@ -220,3 +227,4 @@ and `AnchorDataTable` then remounts every row.
 
 Repair: read changing values through a ref inside the cell, and keep the
 column definitions' dependencies to stable inputs such as the product ID.
+

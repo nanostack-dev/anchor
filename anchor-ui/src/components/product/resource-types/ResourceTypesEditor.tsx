@@ -22,10 +22,12 @@ import { PencilSimpleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CheckAccessPanel } from "./CheckAccessPanel";
 import { ResourceTypeCanvas } from "./ResourceTypeCanvas";
 import { ResourceTypeInspector, type TypeUsage } from "./ResourceTypeInspector";
 import type { ActionSource, CanvasActions } from "./ResourceTypeNode";
 import { resourceTypesQueryKey, useResourceTypes } from "./ResourceTypeSelect";
+import type { AccessHighlight } from "./access-explainer";
 import { publishProblems } from "./publish-errors";
 import { layoutTree, neighbour } from "./resource-type-layout";
 import {
@@ -207,6 +209,7 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 		[query.data],
 	);
 	const [state, setState] = useState<EditorState>(INITIAL);
+	const [trace, setTrace] = useState<AccessHighlight | null>(null);
 	const stateRef = useRef(state);
 	stateRef.current = state;
 	const types = state.draft ?? published;
@@ -686,7 +689,7 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			)}
 
 			<Box className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<Box className="h-[26rem] min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:h-[36rem]">
+				<Box className="h-[26rem] min-w-0 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:sticky lg:top-4 lg:h-[36rem]">
 					<ResourceTypeCanvas
 						types={types}
 						layout={layout}
@@ -697,60 +700,77 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 						instant={state.instant}
 						focusRequest={state.focus}
 						actions={actions}
+						trace={editing ? null : trace}
 					/>
 				</Box>
-				<ResourceTypeInspector
-					type={selected}
-					types={types}
-					editing={editing && !locked}
-					reservedSlugs={reserved}
-					usage={usage}
-					naming={selected?.key === state.naming}
-					deleteBlockers={deleteBlockers}
-					addBlocker={
-						editing && selected
-							? addChildBlocker(types, selected.key)
-							: undefined
-					}
-					onRename={(name) =>
-						selected &&
-						changeDraft((draft) =>
-							rename(draft, selected.key, name, deletedSlugs(published, draft)),
-						)
-					}
-					onSlugChange={(slug) =>
-						selected &&
-						changeDraft((draft) => setSlug(draft, selected.key, slug))
-					}
-					onToggleParent={(parentKey) =>
-						selected &&
-						changeDraft((draft) => toggleParent(draft, selected.key, parentKey))
-					}
-					onNestsChange={(nests) =>
-						selected &&
-						changeDraft((draft) =>
-							updateType(draft, selected.key, (type) => ({
-								...type,
-								nestsInItself: nests,
-							})),
-						)
-					}
-					onCustomRolesChange={(on) =>
-						selected &&
-						changeDraft((draft) =>
-							updateType(draft, selected.key, (type) => ({
-								...type,
-								customRoles: on,
-							})),
-						)
-					}
-					onAddChild={() =>
-						selected && actions.addChild(selected.key, "pointer")
-					}
-					onDelete={() =>
-						selected && actions.requestDelete(selected.key, "pointer")
-					}
-				/>
+				<Stack space="md">
+					<ResourceTypeInspector
+						type={selected}
+						types={types}
+						editing={editing && !locked}
+						reservedSlugs={reserved}
+						usage={usage}
+						naming={selected?.key === state.naming}
+						deleteBlockers={deleteBlockers}
+						addBlocker={
+							editing && selected
+								? addChildBlocker(types, selected.key)
+								: undefined
+						}
+						onRename={(name) =>
+							selected &&
+							changeDraft((draft) =>
+								rename(
+									draft,
+									selected.key,
+									name,
+									deletedSlugs(published, draft),
+								),
+							)
+						}
+						onSlugChange={(slug) =>
+							selected &&
+							changeDraft((draft) => setSlug(draft, selected.key, slug))
+						}
+						onToggleParent={(parentKey) =>
+							selected &&
+							changeDraft((draft) =>
+								toggleParent(draft, selected.key, parentKey),
+							)
+						}
+						onNestsChange={(nests) =>
+							selected &&
+							changeDraft((draft) =>
+								updateType(draft, selected.key, (type) => ({
+									...type,
+									nestsInItself: nests,
+								})),
+							)
+						}
+						onCustomRolesChange={(on) =>
+							selected &&
+							changeDraft((draft) =>
+								updateType(draft, selected.key, (type) => ({
+									...type,
+									customRoles: on,
+								})),
+							)
+						}
+						onAddChild={() =>
+							selected && actions.addChild(selected.key, "pointer")
+						}
+						onDelete={() =>
+							selected && actions.requestDelete(selected.key, "pointer")
+						}
+					/>
+					{!editing && (
+						<CheckAccessPanel
+							productId={productId}
+							types={published}
+							onHighlight={setTrace}
+						/>
+					)}
+				</Stack>
 			</Box>
 
 			<ConfirmDialog

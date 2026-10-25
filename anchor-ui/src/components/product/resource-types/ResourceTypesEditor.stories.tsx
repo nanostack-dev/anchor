@@ -5,6 +5,17 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { ResourceTypesEditor } from "./ResourceTypesEditor";
+import {
+	ACME,
+	type AccessBackend,
+	DAN,
+	DESIGN,
+	PERMISSIONS,
+	RESOURCES,
+	accessRoute,
+	allowed,
+	denied,
+} from "./check-access.fixtures";
 
 const PRODUCT_ID = "prd_2Nq8xKf3pLmR";
 
@@ -44,6 +55,7 @@ interface Backend {
 	publish?: { status: number; body: unknown };
 	switchReply?: { status: number; body: unknown };
 	roles?: { id: string; name: string }[];
+	access?: AccessBackend;
 }
 
 const published: unknown[] = [];
@@ -58,6 +70,13 @@ function mockBackend(backend: Backend) {
 			if (!(request instanceof Request)) throw new Error("Expected Request");
 			const path = new URL(request.url).pathname;
 			const body = request.method === "GET" ? {} : await request.json();
+			const access = accessRoute(
+				backend.access ?? {},
+				request.method,
+				path,
+				body,
+			);
+			if (access) return access;
 			if (path.endsWith("/resource-types/search")) {
 				if (tree === "pending") return new Promise<Response>(() => {});
 				if (tree === "fail")
@@ -683,11 +702,12 @@ export const MotionContract: Story = {
 		const wrapper = node.closest(".react-flow__node") as HTMLElement;
 		await expect(getComputedStyle(wrapper).transitionDuration).toBe("0s");
 		await expect(getComputedStyle(node).transitionProperty).toBe(
-			"border-color",
+			"border-color, background-color, box-shadow",
 		);
 		await expect(ruleFor(".resource-type-card")?.transitionDuration).toBe(
-			"120ms",
+			"120ms, 150ms, 150ms",
 		);
+		await expect(ruleFor(".access-result")?.animationDuration).toBe("150ms");
 		await startEditing(canvasElement);
 		await userEvent.click(node);
 		await userEvent.click(
@@ -820,5 +840,117 @@ export const CustomRolesRefused: Story = {
 		await expect(
 			canvas.getByText("Draft: custom roles switched on 1 type"),
 		).toBeVisible();
+	},
+};
+
+const ACCESS: AccessBackend = {
+	organizations: [ACME],
+	members: [DAN],
+	permissions: PERMISSIONS,
+	resources: RESOURCES,
+	evaluate: () => ({
+		status: 200,
+		body: allowed([{ role: "folder-viewer", type: "folder", id: DESIGN.id }]),
+	}),
+};
+
+async function checkAccess(canvasElement: HTMLElement, resource: RegExp) {
+	const canvas = within(canvasElement);
+	await typeNode(canvasElement, "Document");
+	const pick = async (label: string, option: RegExp | string) => {
+		const input = canvas.getByRole("combobox", { name: label });
+		await waitFor(() => expect(input).toBeEnabled());
+		await userEvent.click(input);
+		await userEvent.click(
+			await screen.findByRole("option", { name: option }, { timeout: 3000 }),
+		);
+		await waitFor(() =>
+			expect(input).toHaveAttribute("aria-expanded", "false"),
+		);
+	};
+	await pick("Organization", "Acme Corp");
+	await pick("Member", /^Dan Okafor/);
+	await pick("Permission", /^document:view/);
+	const typeSelect = canvas.getByRole("combobox", { name: "Resource type" });
+	await waitFor(() => expect(typeSelect).toBeEnabled());
+	await userEvent.click(typeSelect);
+	const typeName = resource.source.includes("Website") ? "Project" : "Document";
+	await userEvent.click(await screen.findByRole("option", { name: typeName }));
+	await pick("Resource", resource);
+	await userEvent.click(canvas.getByRole("button", { name: "Check" }));
+}
+
+const traced = (canvasElement: HTMLElement) =>
+	[...canvasElement.querySelectorAll<HTMLElement>("[data-trace]")].map(
+		(node) => `${node.getAttribute("aria-label")}:${node.dataset.trace}`,
+	);
+
+/** Check access lights up the resource's chain of types and the type where the granting role is held. */
+export const ExplainsAccessOnTheCanvas: Story = {
+	parameters: { backend: { types: DOCUMENT_TREE, access: ACCESS } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(traced(canvasElement)).toEqual([]);
+		await checkAccess(canvasElement, /^Pricing page/);
+		await waitFor(() => expect(canvas.getByText("Allowed")).toBeVisible());
+		await waitFor(() =>
+			expect(traced(canvasElement).sort()).toEqual([
+				"Document:path",
+				"Folder:granted",
+				"Organization:path",
+				"Project:path",
+			]),
+		);
+		await expect(
+			await typeNode(canvasElement, "Folder"),
+		).toHaveAccessibleDescription(
+			"Slug folder. Nests in itself. On the checked path. Grants access: folder-viewer.",
+		);
+		await expect(
+			canvasElement.querySelectorAll(".react-flow__edge.trace-step"),
+		).toHaveLength(3);
+		await expect(
+			canvasElement.querySelectorAll(".react-flow__edge.trace-dimmed"),
+		).toHaveLength(1);
+	},
+};
+
+/** Editing the tree hides Check access and clears the highlight: the draft isn't the published model. */
+export const CheckAccessHidesWhileEditing: Story = {
+	parameters: { backend: { types: DOCUMENT_TREE, access: ACCESS } },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await checkAccess(canvasElement, /^Pricing page/);
+		await waitFor(() => expect(traced(canvasElement)).toHaveLength(4));
+		await startEditing(canvasElement);
+		await expect(traced(canvasElement)).toEqual([]);
+		await expect(
+			canvas.queryByRole("heading", { name: "Check access" }),
+		).not.toBeInTheDocument();
+	},
+};
+
+/** A denial lights up the chain it walked, with no granting type. */
+export const ExplainsADenialOnTheCanvas: Story = {
+	parameters: {
+		backend: {
+			types: DOCUMENT_TREE,
+			access: {
+				...ACCESS,
+				evaluate: () => ({ status: 200, body: denied("MISSING_PERMISSION") }),
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		await checkAccess(canvasElement, /^Website redesign/);
+		await waitFor(() =>
+			expect(within(canvasElement).getByText("Denied")).toBeVisible(),
+		);
+		await waitFor(() =>
+			expect(traced(canvasElement).sort()).toEqual([
+				"Organization:path",
+				"Project:path",
+			]),
+		);
 	},
 };

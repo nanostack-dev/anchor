@@ -11,6 +11,7 @@
 			"anchor-ui/e2e/features/platform/products.e2e.ts"
 		],
 		"access": [
+			"anchor-ui/e2e/features/access/access-explainer.e2e.ts",
 			"anchor-ui/e2e/features/access/permissions.e2e.ts",
 			"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 			"anchor-ui/e2e/features/access/roles.e2e.ts",
@@ -177,6 +178,7 @@
 			"domains": ["access"],
 			"reason": "Feature-local access test helpers and fixtures select their owning suite.",
 			"provenance": [
+				"anchor-ui/e2e/features/access/access-explainer.e2e.ts",
 				"anchor-ui/e2e/features/access/permissions.e2e.ts",
 				"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 				"anchor-ui/e2e/features/access/roles.e2e.ts",
@@ -344,6 +346,25 @@
 				"apps/anchor/internal/integration/provider/clerk/upsert_user_handler.go",
 				"apps/anchor/internal/service/product_api_key_service.go",
 				"anchor-ui/e2e/features/integrations/integrations.e2e.ts"
+			]
+		},
+		{
+			"id": "access-decision-backend",
+			"paths": [
+				"apps/anchor/internal/access/**",
+				"apps/anchor/internal/api/access_api.go",
+				"apps/anchor/internal/api/resource_api.go",
+				"apps/anchor/internal/api/resource_member_api.go",
+				"apps/anchor/internal/authz/**",
+				"apps/anchor/internal/resource/**",
+				"apps/anchor/internal/roleassignment/**"
+			],
+			"domains": ["access"],
+			"reason": "Access decisions, granted_by, registered resources and role assignments feed the Check access panel on the resource types page.",
+			"provenance": [
+				"apps/anchor/internal/api/access_api.go",
+				"anchor-ui/src/components/product/resource-types/CheckAccessPanel.tsx",
+				"anchor-ui/e2e/features/access/access-explainer.e2e.ts"
 			]
 		},
 		{
