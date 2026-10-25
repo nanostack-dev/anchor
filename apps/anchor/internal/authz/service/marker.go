@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"anchor/internal/authz/model"
 	"anchor/internal/authz/repository"
 	"anchor/internal/events"
 )
@@ -12,7 +13,8 @@ import (
 // Marker records which part of the relationship store an event makes stale.
 // It runs inside the emitting transaction, so the mark and the write commit
 // together and no committed change goes unsynced. It also tells the request,
-// when one collects them, which Organizations to replay once it commits.
+// when one collects them, which Organizations and resource objects to replay
+// once it commits.
 type Marker struct {
 	repo repository.Repository
 }
@@ -22,33 +24,62 @@ func NewMarker(repo repository.Repository) *Marker {
 }
 
 func (m *Marker) ObserveTx(ctx context.Context, event events.Event) error {
-	scope, stale, err := staleScope(event)
+	target, stale, err := staleScope(event)
 	if err != nil || !stale {
 		return err
 	}
-	if err = m.repo.Mark(ctx, event.ProductID, scope); err != nil {
+	if target.object != "" {
+		if err = m.repo.MarkResource(ctx, event.ProductID, target.organizationID, target.object); err != nil {
+			return err
+		}
+		if written := writesFrom(ctx); written != nil {
+			written.addResource(event.ProductID, target.object)
+		}
+		return nil
+	}
+	if err = m.repo.Mark(ctx, event.ProductID, target.organizationID); err != nil {
 		return err
 	}
 	if written := writesFrom(ctx); written != nil {
-		written.add(event.ProductID, scope)
+		written.add(event.ProductID, target.organizationID)
 	}
 	return nil
 }
 
+// staleTarget is what an event makes stale: an Organization, the whole
+// Product (repository.ProductScope), or one resource object of an
+// Organization.
+type staleTarget struct {
+	organizationID string
+	object         string
+}
+
 // staleScope lists every event type, so a new one fails the exhaustive lint
 // until someone decides whether it changes access.
-func staleScope(event events.Event) (string, bool, error) {
+func staleScope(event events.Event) (staleTarget, bool, error) {
 	switch event.Type {
 	case events.OrganizationCreated, events.OrganizationDeleted,
 		events.MembershipCreated, events.MembershipUpdated, events.MembershipDeleted,
 		events.OrganizationAPIKeyCreated, events.OrganizationAPIKeyUpdated, events.OrganizationAPIKeyDeleted,
-		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted,
-		events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted:
-		organizationID := event.Data[events.FieldOrganizationID]
-		if organizationID == "" {
-			return "", false, fmt.Errorf("authz: %s event without %s", event.Type, events.FieldOrganizationID)
+		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted:
+		organizationID, err := required(event, events.FieldOrganizationID)
+		return staleTarget{organizationID: organizationID}, err == nil, err
+	case events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted:
+		// A resource write changes its own object only: a move rewrites its
+		// parent tuple, and its children keep theirs.
+		organizationID, err := required(event, events.FieldOrganizationID)
+		if err != nil {
+			return staleTarget{}, false, err
 		}
-		return organizationID, true, nil
+		slug, err := required(event, events.FieldResourceType)
+		if err != nil {
+			return staleTarget{}, false, err
+		}
+		rowID, err := required(event, events.FieldResourceRowID)
+		if err != nil {
+			return staleTarget{}, false, err
+		}
+		return staleTarget{organizationID: organizationID, object: model.ResourceObject(slug, rowID)}, true, nil
 	case events.ProductRoleCreated, events.ProductRoleUpdated, events.ProductRoleDeleted,
 		events.ProductResourcePermissionCreated, events.ProductResourcePermissionUpdated,
 		events.ProductResourcePermissionDeleted,
@@ -56,7 +87,7 @@ func staleScope(event events.Event) (string, bool, error) {
 		events.ProductUserDeleted:
 		// A catalog change reaches every Organization's copies and the model;
 		// a deleted product user leaves memberships cascaded without events.
-		return repository.ProductScope, true, nil
+		return staleTarget{organizationID: repository.ProductScope}, true, nil
 	case events.OrganizationUpdated,
 		events.OrganizationInvitationCreated, events.OrganizationInvitationUpdated,
 		events.OrganizationInvitationDeleted, events.OrganizationInvitationAccepted,
@@ -67,15 +98,26 @@ func staleScope(event events.Event) (string, bool, error) {
 		// Names, invitations, workspaces and licenses hold no access the store
 		// mirrors yet. An accepted invitation adds its member through
 		// MembershipCreated; a deleted Clerk user also emits ProductUserDeleted.
-		return "", false, nil
+		return staleTarget{}, false, nil
 	}
-	return "", false, nil
+	return staleTarget{}, false, nil
 }
 
-// written collects the Organizations a request's writes marked.
+func required(event events.Event, field string) (string, error) {
+	value := event.Data[field]
+	if value == "" {
+		return "", fmt.Errorf("authz: %s event without %s", event.Type, field)
+	}
+	return value, nil
+}
+
+// written collects the Organizations and resource objects a request's
+// writes marked. Resource objects keep the order they were marked in.
 type written struct {
-	mu   sync.Mutex
-	keys map[organizationKey]struct{}
+	mu        sync.Mutex
+	keys      map[organizationKey]struct{}
+	resources []ResourceRef
+	seen      map[ResourceRef]struct{}
 }
 
 type organizationKey struct {
@@ -86,10 +128,24 @@ type organizationKey struct {
 type writtenKey struct{}
 
 // CollectWrites returns a context in which marks are also collected, and the
-// function that lists them once the request's transaction has committed.
+// function that lists the marked Organizations once the request's
+// transaction has committed. WrittenResources lists the marked resource
+// objects.
 func CollectWrites(ctx context.Context) (context.Context, func() []OrganizationRef) {
-	collected := &written{keys: map[organizationKey]struct{}{}}
+	collected := &written{keys: map[organizationKey]struct{}{}, seen: map[ResourceRef]struct{}{}}
 	return context.WithValue(ctx, writtenKey{}, collected), collected.list
+}
+
+// WrittenResources lists the resource objects marked in a context from
+// CollectWrites, in the order they were first marked.
+func WrittenResources(ctx context.Context) []ResourceRef {
+	collected := writesFrom(ctx)
+	if collected == nil {
+		return nil
+	}
+	collected.mu.Lock()
+	defer collected.mu.Unlock()
+	return append([]ResourceRef{}, collected.resources...)
 }
 
 // OrganizationRef names one Organization of one Product, or the whole Product
@@ -97,6 +153,12 @@ func CollectWrites(ctx context.Context) (context.Context, func() []OrganizationR
 type OrganizationRef struct {
 	ProductID      string
 	OrganizationID string
+}
+
+// ResourceRef names one resource object in one Product's store.
+type ResourceRef struct {
+	ProductID string
+	Object    string
 }
 
 func writesFrom(ctx context.Context) *written {
@@ -108,6 +170,16 @@ func (w *written) add(productID, organizationID string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.keys[organizationKey{productID: productID, organizationID: organizationID}] = struct{}{}
+}
+
+func (w *written) addResource(productID, object string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	ref := ResourceRef{ProductID: productID, Object: object}
+	if _, ok := w.seen[ref]; !ok {
+		w.seen[ref] = struct{}{}
+		w.resources = append(w.resources, ref)
+	}
 }
 
 func (w *written) list() []OrganizationRef {

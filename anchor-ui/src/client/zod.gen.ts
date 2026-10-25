@@ -1992,7 +1992,7 @@ export const zProductUserIdParameter = zKsuid;
 export const zResourceTypeIdParameter = zKsuid;
 
 /**
- * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+ * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
  */
 export const zResourceTypePathParameter = z.string();
 

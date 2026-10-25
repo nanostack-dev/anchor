@@ -46,8 +46,10 @@ func ResourceType(slug string) string {
 	if slug == TypeOrganization {
 		return slug
 	}
-	return "rt_" + slug
+	return resourceTypePrefix + slug
 }
+
+const resourceTypePrefix = "rt_"
 
 // CanRelation answers whether a subject holds a permission on an object.
 func CanRelation(permission string) string {

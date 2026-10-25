@@ -102,7 +102,34 @@ func (s *Sweeper) sweepAlone(ctx context.Context) {
 // Sweep runs one pass; tests call it directly.
 func (s *Sweeper) Sweep(ctx context.Context) {
 	s.replayMarks(ctx)
+	s.replayResourceMarks(ctx)
 	s.reconcileOverdue(ctx)
+}
+
+// replayResourceMarks syncs the oldest marked resource objects, one resource
+// sync per Product.
+func (s *Sweeper) replayResourceMarks(ctx context.Context) {
+	marks, err := s.repo.OldestResourceMarksInternal(ctx, sweepBatchSize)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("list authz resource marks")
+		return
+	}
+	byProduct := map[string][]string{}
+	var order []string
+	for _, mark := range marks {
+		if age := s.now().Sub(mark.MarkedAt); age > staleMarkAge {
+			s.logger.Warn().Str("event", "authz.mark_stale").Str("product_id", mark.ProductID).
+				Str("organization_id", mark.OrganizationID).Str("object", mark.Object).Dur("age", age).
+				Msg("authz.mark_stale")
+		}
+		if _, seen := byProduct[mark.ProductID]; !seen {
+			order = append(order, mark.ProductID)
+		}
+		byProduct[mark.ProductID] = append(byProduct[mark.ProductID], mark.Object)
+	}
+	for _, productID := range order {
+		s.report(ctx, productID, "replay resources", s.syncer.SyncResources(ctx, productID, byProduct[productID]))
+	}
 }
 
 func (s *Sweeper) replayMarks(ctx context.Context) {
@@ -233,6 +260,27 @@ func (r *Replayer) Replay(ctx context.Context, marked []OrganizationRef) {
 				r.syncer.SyncOrganization(replayCtx, ref.ProductID, ref.OrganizationID),
 			)
 		}
+	}
+}
+
+// ReplayResources syncs the resource objects a request marked, one resource
+// sync per Product, detached from the request like Replay.
+func (r *Replayer) ReplayResources(ctx context.Context, marked []ResourceRef) {
+	if len(marked) == 0 {
+		return
+	}
+	replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayTimeout)
+	defer cancel()
+	byProduct := map[string][]string{}
+	var order []string
+	for _, ref := range marked {
+		if _, seen := byProduct[ref.ProductID]; !seen {
+			order = append(order, ref.ProductID)
+		}
+		byProduct[ref.ProductID] = append(byProduct[ref.ProductID], ref.Object)
+	}
+	for _, productID := range order {
+		r.report(productID, "", r.syncer.SyncResources(replayCtx, productID, byProduct[productID]))
 	}
 }
 

@@ -65,7 +65,7 @@ func (s *service) Put(ctx context.Context, input resource.PutInput) (resource.Re
 	}
 	var result resource.Resource
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if err := s.requireOrganization(txCtx, input.ProductID, input.OrganizationID); err != nil {
+		if err := s.holdOrganization(txCtx, input.ProductID, input.OrganizationID); err != nil {
 			return err
 		}
 		tree, err := s.resourceTypes.LockedTree(txCtx, input.ProductID)
@@ -123,7 +123,7 @@ func (s *service) Put(ctx context.Context, input resource.PutInput) (resource.Re
 		if result, err = s.reread(txCtx, input.OrganizationID, rt.ID, input.ID); err != nil {
 			return err
 		}
-		return s.emit(txCtx, eventType, result.ProductID, result.OrganizationID, result.Ref())
+		return s.emit(txCtx, eventType, result.ProductID, result.OrganizationID, result.RowID, result.Ref())
 	})
 	if err != nil {
 		return resource.Resource{}, s.unexpected(err, input.ProductID, "put")
@@ -151,12 +151,9 @@ func (s *service) checkChain(
 				func(n repository.Node) resource.Ref { return n.Ref },
 			))
 		}
-		subtree, err := s.repo.Subtree(ctx, organizationID, existing.RowID)
-		if err != nil {
+		var err error
+		if height, err = s.repo.SubtreeHeight(ctx, organizationID, existing.RowID); err != nil {
 			return err
-		}
-		for _, node := range subtree {
-			height = max(height, node.Distance)
 		}
 	}
 	// The Organization, the parent's chain, the resource, and its deepest
@@ -218,7 +215,7 @@ func (s *service) Delete(
 		return resource.ErrNotFound
 	}
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if err := s.requireOrganization(txCtx, productID, organizationID); err != nil {
+		if err := s.holdOrganization(txCtx, productID, organizationID); err != nil {
 			return err
 		}
 		tree, err := s.resourceTypes.LockedTree(txCtx, productID)
@@ -257,7 +254,14 @@ func (s *service) Delete(
 			return err
 		}
 		for _, node := range subtree {
-			if err = s.emit(txCtx, events.ResourceDeleted, productID, organizationID, node.Ref); err != nil {
+			if err = s.emit(
+				txCtx,
+				events.ResourceDeleted,
+				productID,
+				organizationID,
+				node.RowID,
+				node.Ref,
+			); err != nil {
 				return err
 			}
 		}
@@ -290,7 +294,7 @@ func registrableType(tree resourcetype.Tree, slug string) (resourcetype.Resource
 		return resourcetype.ResourceType{}, resource.NewTypeNotFoundError(slug)
 	}
 	if rt.BuiltIn() {
-		return resourcetype.ResourceType{}, resource.ErrBuiltInType
+		return resourcetype.ResourceType{}, resource.ErrTypeNotRegistrable
 	}
 	return rt, nil
 }
@@ -310,6 +314,19 @@ func allowedParentType(
 		return resourcetype.ResourceType{}, resource.NewInvalidParentError(rt.Slug, parentSlug, allowed)
 	}
 	return parent, nil
+}
+
+// holdOrganization keeps the Organization from being deleted until the write
+// commits: a delete racing it would otherwise trip the resource's foreign key.
+func (s *service) holdOrganization(ctx context.Context, productID, organizationID string) error {
+	exists, err := s.repo.HoldOrganization(ctx, productID, organizationID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return organization.ErrOrganizationNotFound
+	}
+	return nil
 }
 
 func (s *service) requireOrganization(ctx context.Context, productID, organizationID string) error {
@@ -336,7 +353,7 @@ func (s *service) reread(ctx context.Context, organizationID, typeID, id string)
 }
 
 func (s *service) emit(
-	ctx context.Context, eventType events.Type, productID, organizationID string, ref resource.Ref,
+	ctx context.Context, eventType events.Type, productID, organizationID, rowID string, ref resource.Ref,
 ) error {
 	return s.events.Emit(ctx, events.Event{
 		Type:      eventType,
@@ -345,6 +362,7 @@ func (s *service) emit(
 			events.FieldOrganizationID: organizationID,
 			events.FieldResourceType:   ref.Type,
 			events.FieldResourceID:     ref.ID,
+			events.FieldResourceRowID:  rowID,
 		},
 	})
 }

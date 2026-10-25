@@ -183,13 +183,31 @@ func TestPutResourceRefusals(t *testing.T) {
 		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "RESOURCE_TYPE_NOT_FOUND")
 	})
 
-	t.Run("The organization type answers 400 BUILT_IN_RESOURCE_TYPE", func(t *testing.T) {
+	t.Run("Registering under the organization type answers 404 RESOURCE_TYPE_NOT_REGISTRABLE", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceWorld(t)
 
 		resp := w.resources.PutRaw("organization", resourceID(), "Acme", w.resources.Top())
 
-		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "BUILT_IN_RESOURCE_TYPE")
+		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "RESOURCE_TYPE_NOT_REGISTRABLE")
+	})
+
+	t.Run("Reading under the organization type answers 404 RESOURCE_TYPE_NOT_REGISTRABLE", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		resp := w.resources.GetRaw("organization", w.org.Id)
+
+		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "RESOURCE_TYPE_NOT_REGISTRABLE")
+	})
+
+	t.Run("Deleting under the organization type answers 404 RESOURCE_TYPE_NOT_REGISTRABLE", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		resp := w.resources.DeleteRaw("organization", w.org.Id, true)
+
+		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "RESOURCE_TYPE_NOT_REGISTRABLE")
 	})
 
 	t.Run("An organization the product does not have answers 404 ORGANIZATION_NOT_FOUND", func(t *testing.T) {
@@ -281,6 +299,21 @@ func TestPutResourceRefusals(t *testing.T) {
 		meta := requireAPIError(t, resp, resp.Body, http.StatusConflict, "RESOURCE_TOO_DEEP")
 		assert.EqualValues(t, 15, meta["max_depth"])
 		assert.EqualValues(t, 16, meta["depth"])
+	})
+
+	t.Run("A move that puts a descendant at the fifteenth level is accepted", func(t *testing.T) {
+		t.Parallel()
+		w := givenNestingWorld(t)
+		chain := chainOf(t, w, 13)
+		branch := resourceID()
+		w.resources.Put("node", branch, "Branch", w.resources.Top())
+		leaf := resourceID()
+		w.resources.Put("node", leaf, "Leaf", itdsl.Ref("node", branch))
+
+		moved := w.resources.Put("node", branch, "Branch", itdsl.Ref("node", chain[11]))
+
+		assert.Equal(t, itdsl.Ref("node", chain[11]), moved.Parent)
+		assert.Equal(t, itdsl.Ref("node", branch), w.resources.Get("node", leaf).Parent)
 	})
 
 	t.Run("A move that puts a descendant at a sixteenth level answers 409 RESOURCE_TOO_DEEP", func(t *testing.T) {

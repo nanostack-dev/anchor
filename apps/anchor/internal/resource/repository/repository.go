@@ -36,6 +36,9 @@ type Repository interface {
 	// Organization run one at a time and each sees the chains the previous
 	// one left.
 	LockOrganization(ctx context.Context, organizationID string) error
+	// HoldOrganization reads the Organization FOR KEY SHARE, so it can't be
+	// deleted before the transaction ends, and reports whether it exists.
+	HoldOrganization(ctx context.Context, productID, organizationID string) (bool, error)
 	Find(ctx context.Context, organizationID, typeID, externalID string) (functional.Option[resource.Resource], error)
 	Create(ctx context.Context, r resource.Resource) error
 	Update(ctx context.Context, organizationID, rowID, name string, parentRowID *string) error
@@ -44,6 +47,8 @@ type Repository interface {
 	Ancestors(ctx context.Context, organizationID, rowID string, limit int) ([]Node, error)
 	// Subtree lists the resource and every descendant, deepest first.
 	Subtree(ctx context.Context, organizationID, rowID string) ([]Node, error)
+	// SubtreeHeight is how many levels sit below the resource: 0 for a leaf.
+	SubtreeHeight(ctx context.Context, organizationID, rowID string) (int, error)
 	CountChildren(ctx context.Context, organizationID, rowID string) (int, error)
 	// Delete removes the resource; its descendants go with it through the
 	// parent foreign key.
@@ -127,6 +132,17 @@ func (r *repositoryImpl) LockOrganization(ctx context.Context, organizationID st
 	return err
 }
 
+func (r *repositoryImpl) HoldOrganization(ctx context.Context, productID, organizationID string) (bool, error) {
+	found, err := transactor.QueryOptional[model.Organizations](
+		transactor.WithRowLock(ctx, postgres.KEY_SHARE()), r.db,
+		table.Organizations.SELECT(table.Organizations.ID).WHERE(
+			table.Organizations.ID.EQ(postgres.String(organizationID)).
+				AND(table.Organizations.ProductID.EQ(postgres.String(productID))),
+		),
+	)
+	return found.IsPresent(), err
+}
+
 func (r *repositoryImpl) Find(
 	ctx context.Context, organizationID, typeID, externalID string,
 ) (functional.Option[resource.Resource], error) {
@@ -208,6 +224,33 @@ ORDER BY subtree.distance DESC, subtree.id`
 
 func (r *repositoryImpl) Subtree(ctx context.Context, organizationID, rowID string) ([]Node, error) {
 	return r.nodes(ctx, subtreeQuery, rowID, organizationID)
+}
+
+const subtreeHeightQuery = `
+WITH RECURSIVE subtree AS (
+    SELECT id, 0 AS distance
+    FROM resources
+    WHERE id = $1 AND organization_id = $2
+    UNION ALL
+    SELECT r.id, subtree.distance + 1
+    FROM resources r
+    JOIN subtree ON r.parent_resource_id = subtree.id
+)
+SELECT COALESCE(max(distance), 0) FROM subtree`
+
+func (r *repositoryImpl) SubtreeHeight(ctx context.Context, organizationID, rowID string) (int, error) {
+	rows, err := transactor.Executor(ctx, r.db).QueryContext(ctx, subtreeHeightQuery, rowID, organizationID)
+	if err != nil {
+		return 0, fmt.Errorf("measure resource subtree: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	height := 0
+	if rows.Next() {
+		if err = rows.Scan(&height); err != nil {
+			return 0, err
+		}
+	}
+	return height, rows.Err()
 }
 
 func (r *repositoryImpl) nodes(ctx context.Context, query string, args ...any) ([]Node, error) {

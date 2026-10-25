@@ -21541,7 +21541,7 @@ type DeleteResourceResponse struct {
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
+	JSON404 *ApiErrorResponse
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiErrorResponse
 }
@@ -21557,7 +21557,7 @@ func (r DeleteResourceResponse) GetJSON403() *Forbidden {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r DeleteResourceResponse) GetJSON404() *NotFound {
+func (r DeleteResourceResponse) GetJSON404() *ApiErrorResponse {
 	return r.JSON404
 }
 
@@ -32974,7 +32974,7 @@ func ParseDeleteResourceResponse(rsp *http.Response) (*DeleteResourceResponse, e
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
+		var dest ApiErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

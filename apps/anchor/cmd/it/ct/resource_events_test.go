@@ -55,6 +55,8 @@ func TestResourceEvents(t *testing.T) {
 		for _, eventType := range []string{"resource.created", "resource.updated", "resource.deleted"} {
 			assert.Zero(t, sink.Count(eventType), eventType)
 		}
+		assert.Positive(t, countQueuedEvents(t, w.product.ProductID, "organization.%"), "delivered events are queued")
+		assert.Zero(t, countQueuedEvents(t, w.product.ProductID, "resource.%"), "resource events are never queued")
 	})
 
 	t.Run("An endpoint can't subscribe to resource events", func(t *testing.T) {
@@ -96,4 +98,19 @@ func TestResourceEvents(t *testing.T) {
 			assert.NotContains(t, []string{"resource.created", "resource.updated", "resource.deleted"}, definition.Type)
 		}
 	})
+}
+
+// countQueuedEvents counts the delivery jobs queued for a product's events of
+// the types a LIKE pattern matches, done ones included.
+func countQueuedEvents(t *testing.T, productID, typePattern string) int {
+	t.Helper()
+	var count int
+	require.NoError(t, testDB.QueryRowContext(t.Context(), `
+		SELECT COUNT(*) FROM pgqueue_jobs
+		WHERE queue_name = 'product-events'
+		  AND convert_from(payload, 'UTF8')::jsonb ->> 'product_id' = $1
+		  AND convert_from(payload, 'UTF8')::jsonb ->> 'type' LIKE $2`,
+		productID, typePattern,
+	).Scan(&count))
+	return count
 }

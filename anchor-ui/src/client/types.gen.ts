@@ -3325,7 +3325,7 @@ export type ProductUserIdParameter = Ksuid;
 export type ResourceTypeIdParameter = Ksuid;
 
 /**
- * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+ * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
  */
 export type ResourceTypePathParameter = string;
 
@@ -7470,7 +7470,7 @@ export type DeleteResourceData = {
          */
         organization_id: Ksuid;
         /**
-         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
          */
         resource_type: string;
         /**
@@ -7497,7 +7497,7 @@ export type DeleteResourceErrors = {
      */
     403: ApiErrorResponse;
     /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     * `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on the read.
      */
     404: ApiErrorResponse;
     /**
@@ -7529,7 +7529,7 @@ export type GetResourceData = {
          */
         organization_id: Ksuid;
         /**
-         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
          */
         resource_type: string;
         /**
@@ -7551,7 +7551,7 @@ export type GetResourceErrors = {
      */
     403: ApiErrorResponse;
     /**
-     * `RESOURCE_NOT_FOUND`: no resource of that type and identifier is registered in the Organization. `RESOURCE_TYPE_NOT_FOUND` and `ORGANIZATION_NOT_FOUND` as on the registration.
+     * `RESOURCE_NOT_FOUND`: no resource of that type and identifier is registered in the Organization. `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on the registration.
      */
     404: ApiErrorResponse;
 };
@@ -7579,7 +7579,7 @@ export type PutResourceData = {
          */
         organization_id: Ksuid;
         /**
-         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an Organization is managed through the organization routes.
+         * The slug of the resource's type, such as `folder`. A slug the product has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization` is the root of every chain, never a registered resource, and answers 404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is managed through the organization routes.
          */
         resource_type: string;
         /**
@@ -7593,7 +7593,7 @@ export type PutResourceData = {
 
 export type PutResourceErrors = {
     /**
-     * The body or the identifier is refused. `INVALID_RESOURCE_PARENT`: the parent's type is not one this type may sit under. `BUILT_IN_RESOURCE_TYPE`: `organization` is not a type to register. `INVALID_RESOURCE_ID`: the identifier holds a character outside the allowed set. `VALIDATION_ERROR`: a field is missing or too long.
+     * The body or the identifier is refused. `INVALID_RESOURCE_PARENT`: the parent's type is not one this type may sit under. `INVALID_RESOURCE_ID`: the identifier holds a character outside the allowed set. `VALIDATION_ERROR`: a field is missing or too long.
      */
     400: ApiErrorResponse;
     /**
@@ -7605,7 +7605,7 @@ export type PutResourceErrors = {
      */
     403: ApiErrorResponse;
     /**
-     * `RESOURCE_TYPE_NOT_FOUND`: the product has not declared the type in the path. `ORGANIZATION_NOT_FOUND`: the product has no such Organization.
+     * `RESOURCE_TYPE_NOT_FOUND`: the product has not declared the type in the path. `RESOURCE_TYPE_NOT_REGISTRABLE`: the path names `organization`. `ORGANIZATION_NOT_FOUND`: the product has no such Organization, or it was deleted while the call ran.
      */
     404: ApiErrorResponse;
     /**

@@ -13,8 +13,11 @@ var (
 		"This organization has no registered resource of that type and identifier.",
 	)
 
-	ErrBuiltInType = fault.BadRequest(
-		"BUILT_IN_RESOURCE_TYPE",
+	// ErrTypeNotRegistrable answers a path naming organization: the root of
+	// every chain is managed by the organization routes, so no resource of
+	// that type exists.
+	ErrTypeNotRegistrable = fault.NotFound(
+		"RESOURCE_TYPE_NOT_REGISTRABLE",
 		"Organizations are managed through the organization routes and are never registered as resources.",
 	)
 )

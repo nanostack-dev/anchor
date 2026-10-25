@@ -18695,7 +18695,7 @@ func (response DeleteResource403JSONResponse) VisitDeleteResourceResponse(w http
 	return err
 }
 
-type DeleteResource404JSONResponse struct{ NotFoundJSONResponse }
+type DeleteResource404JSONResponse ApiErrorResponse
 
 func (response DeleteResource404JSONResponse) VisitDeleteResourceResponse(w http.ResponseWriter) error {
 

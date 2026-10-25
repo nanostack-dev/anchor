@@ -25,8 +25,6 @@ type OrganizationState struct {
 	// Organization owns, with the permissions each bundles.
 	Roles   []RoleGrants
 	APIKeys []APIKeyGrants
-	// Resources holds every resource registered in the Organization.
-	Resources []Resource
 }
 
 type Membership struct {
@@ -46,25 +44,6 @@ type RoleGrants struct {
 type APIKeyGrants struct {
 	ID          string
 	Permissions []string
-}
-
-// Resource is a registered resource and its one parent, both by row ID and
-// type slug. An empty ParentRowID means the Organization is the parent.
-type Resource struct {
-	RowID       string
-	Type        string
-	ParentRowID string
-	ParentType  string
-}
-
-// Object names the resource in the store.
-func (r Resource) Object() string { return ResourceObject(r.Type, r.RowID) }
-
-func (r Resource) parentObject(organizationID string) string {
-	if r.ParentRowID == "" {
-		return Organization(organizationID)
-	}
-	return ResourceObject(r.ParentType, r.ParentRowID)
 }
 
 // Tuples lists the relationships the Organization implies under the catalog.
@@ -104,18 +83,6 @@ func (s OrganizationState) Tuples(catalog Catalog) []Tuple {
 					Tuple{Object: organization, Relation: CanRelation(permission), User: APIKey(key.ID)},
 				)
 			}
-		}
-	}
-	for _, r := range s.Resources {
-		parentType := r.ParentType
-		if r.ParentRowID == "" {
-			parentType = TypeOrganization
-		}
-		if catalog.AllowsParent(r.Type, parentType) {
-			tuples = append(
-				tuples,
-				Tuple{Object: r.Object(), Relation: RelationParent, User: r.parentObject(s.OrganizationID)},
-			)
 		}
 	}
 	return tuples

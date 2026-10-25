@@ -1,7 +1,9 @@
 package ct_test
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -146,5 +148,63 @@ func TestSearchResources(t *testing.T) {
 		resp := s.product.Resources(ids.MustNew("org")).SearchRaw(ct.SearchResourcesJSONRequestBody{})
 
 		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "ORGANIZATION_NOT_FOUND")
+	})
+}
+
+func TestSearchResourcesLimits(t *testing.T) {
+	t.Parallel()
+
+	repeated := func(n int, value func(int) string) []string {
+		values := make([]string, n)
+		for i := range values {
+			values[i] = value(i)
+		}
+		return values
+	}
+
+	t.Run("An ids filter of 101 identifiers answers 400 VALIDATION_ERROR", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		resp := w.resources.SearchRaw(ct.SearchResourcesJSONRequestBody{Filter: &ct.ResourceFilter{
+			Ids: repeated(101, func(int) string { return resourceID() }),
+		}})
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "VALIDATION_ERROR")
+	})
+
+	t.Run("A resource_types filter of 51 slugs answers 400 VALIDATION_ERROR", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		resp := w.resources.SearchRaw(ct.SearchResourcesJSONRequestBody{Filter: &ct.ResourceFilter{
+			ResourceTypes: repeated(51, func(i int) string { return fmt.Sprintf("type_%d", i) }),
+		}})
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "VALIDATION_ERROR")
+	})
+
+	t.Run("A name_contains of 201 characters answers 400 VALIDATION_ERROR", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		resp := w.resources.SearchRaw(ct.SearchResourcesJSONRequestBody{Filter: &ct.ResourceFilter{
+			NameContains: new(strings.Repeat("n", 201)),
+		}})
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "VALIDATION_ERROR")
+	})
+
+	t.Run("The largest filters the limits allow are accepted", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+
+		found := w.resources.Search(ct.SearchResourcesJSONRequestBody{Filter: &ct.ResourceFilter{
+			Ids:           repeated(100, func(int) string { return resourceID() }),
+			ResourceTypes: repeated(50, func(i int) string { return fmt.Sprintf("type_%d", i) }),
+			NameContains:  new(strings.Repeat("n", 200)),
+		}})
+
+		assert.Empty(t, found.Items)
 	})
 }

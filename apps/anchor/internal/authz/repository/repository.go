@@ -48,8 +48,9 @@ type Repository interface {
 	Clear(ctx context.Context, mark Mark) error
 	// OldestInternal lists the oldest marks of every Product, for the sweeper.
 	OldestInternal(ctx context.Context, limit int64) ([]Mark, error)
-	// PostponeInternal moves a Product's marks behind every other's, after a
-	// sync of it failed, so one broken Product never starves the rest.
+	// PostponeInternal moves a Product's marks, resource marks included,
+	// behind every other's, after a sync of it failed, so one broken
+	// Product never starves the rest.
 	PostponeInternal(ctx context.Context, productID string, until time.Time) error
 
 	FindStore(ctx context.Context, productID string) (functional.Option[Store], error)
@@ -76,6 +77,33 @@ type Repository interface {
 		productID, organizationID string,
 		now time.Time,
 	) (model.OrganizationState, error)
+
+	// MarkResource records, in the caller's transaction, that the store may
+	// lag the tables for one resource object.
+	MarkResource(ctx context.Context, productID, organizationID, object string) error
+	// PendingResources lists the marks of the given objects.
+	PendingResources(ctx context.Context, productID string, objects []string) ([]ResourceMark, error)
+	// ClearResource deletes a resource mark only if no write bumped it since
+	// it was read.
+	ClearResource(ctx context.Context, mark ResourceMark) error
+	// OldestResourceMarksInternal lists the oldest resource marks of every
+	// Product, for the sweeper.
+	OldestResourceMarksInternal(ctx context.Context, limit int64) ([]ResourceMark, error)
+	// ResourceStates reads what each object's tuples come from; an object
+	// whose row is gone is a state that implies nothing.
+	ResourceStates(ctx context.Context, productID string, objects []string) ([]model.ResourceState, error)
+	// ProductResourceStates reads every registered resource of the Product,
+	// for a rebuild.
+	ProductResourceStates(ctx context.Context, productID string) ([]model.ResourceState, error)
+}
+
+// ResourceMark says the store may lag the tables for one resource object.
+type ResourceMark struct {
+	ProductID      string
+	OrganizationID string
+	Object         string
+	Revision       int64
+	MarkedAt       time.Time
 }
 
 type PermissionScope struct {
@@ -135,10 +163,17 @@ func (r *repositoryImpl) OldestInternal(ctx context.Context, limit int64) ([]Mar
 }
 
 func (r *repositoryImpl) PostponeInternal(ctx context.Context, productID string, until time.Time) error {
-	return transactor.Exec(ctx, r.db,
+	if err := transactor.Exec(ctx, r.db,
 		table.AuthzSyncMarks.UPDATE(table.AuthzSyncMarks.MarkedAt).
 			SET(postgres.TimestampzT(until)).
 			WHERE(table.AuthzSyncMarks.ProductID.EQ(postgres.String(productID))),
+	).Err(); err != nil {
+		return err
+	}
+	return transactor.Exec(ctx, r.db,
+		table.AuthzResourceMarks.UPDATE(table.AuthzResourceMarks.MarkedAt).
+			SET(postgres.TimestampzT(until)).
+			WHERE(table.AuthzResourceMarks.ProductID.EQ(postgres.String(productID))),
 	).Err()
 }
 
@@ -249,47 +284,8 @@ func (r *repositoryImpl) OrganizationState(
 	if state.Roles, err = r.roleGrants(ctx, productID, organizationID, held); err != nil {
 		return state, err
 	}
-	if state.APIKeys, err = r.apiKeyGrants(ctx, productID, organizationID, now); err != nil {
-		return state, err
-	}
-	state.Resources, err = r.resources(ctx, organizationID)
+	state.APIKeys, err = r.apiKeyGrants(ctx, productID, organizationID, now)
 	return state, err
-}
-
-// resourceRow is a registered resource with its type's slug and its parent's.
-type resourceRow struct {
-	ID               string  `alias:"resource_row.id"`
-	Type             string  `alias:"resource_row.type"`
-	ParentResourceID *string `alias:"resource_row.parent_resource_id"`
-	ParentType       *string `alias:"resource_row.parent_type"`
-}
-
-func (r *repositoryImpl) resources(ctx context.Context, organizationID string) ([]model.Resource, error) {
-	types := table.ProductResourceTypes.AS("resource_type")
-	parents := table.Resources.AS("parent")
-	parentTypes := table.ProductResourceTypes.AS("parent_type")
-	return transactor.QueryMapSlice(ctx, r.db,
-		postgres.SELECT(
-			table.Resources.ID.AS("resource_row.id"),
-			types.Slug.AS("resource_row.type"),
-			table.Resources.ParentResourceID.AS("resource_row.parent_resource_id"),
-			parentTypes.Slug.AS("resource_row.parent_type"),
-		).FROM(
-			table.Resources.
-				INNER_JOIN(types, types.ID.EQ(table.Resources.ResourceTypeID)).
-				LEFT_JOIN(parents, parents.ID.EQ(table.Resources.ParentResourceID)).
-				LEFT_JOIN(parentTypes, parentTypes.ID.EQ(parents.ResourceTypeID)),
-		).WHERE(table.Resources.OrganizationID.EQ(postgres.String(organizationID))).
-			ORDER_BY(table.Resources.ID.ASC()),
-		func(row resourceRow) model.Resource {
-			return model.Resource{
-				RowID:       row.ID,
-				Type:        row.Type,
-				ParentRowID: functional.FromPtr(row.ParentResourceID).OrElse(""),
-				ParentType:  functional.FromPtr(row.ParentType).OrElse(""),
-			}
-		},
-	).Value()
 }
 
 func (r *repositoryImpl) HeldTemplates(ctx context.Context, productID string) ([]model.RoleGrants, error) {

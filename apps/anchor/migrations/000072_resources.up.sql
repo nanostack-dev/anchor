@@ -24,6 +24,7 @@ CREATE TABLE resources (
 );
 
 CREATE INDEX idx_resources_organization_created_external_id ON resources (organization_id, created_at, external_id, id);
+CREATE INDEX idx_resources_organization_name_external_id ON resources (organization_id, name, external_id, id);
 CREATE INDEX idx_resources_parent_resource_id ON resources (parent_resource_id);
 CREATE INDEX idx_resources_resource_type_id ON resources (resource_type_id);
 CREATE INDEX idx_resources_product_id ON resources (product_id);
@@ -31,3 +32,19 @@ CREATE INDEX idx_resources_product_id ON resources (product_id);
 CREATE TRIGGER update_resources_updated_at
     BEFORE UPDATE ON resources
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- A resource write marks only its own object in the relationship store, so a
+-- replay reads that object rather than every resource of its Organization.
+-- authz_sync_marks keeps its shape: the previous release upserts it on
+-- (product_id, organization_id) during a rolling deploy. Revisions share its
+-- sequence, so a sync clears a mark only if no write bumped it since.
+CREATE TABLE authz_resource_marks (
+    product_id VARCHAR(255) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    organization_id VARCHAR(255) NOT NULL,
+    object VARCHAR(255) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT nextval('authz_sync_mark_revisions'),
+    marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (product_id, object)
+);
+
+CREATE INDEX idx_authz_resource_marks_marked_at ON authz_resource_marks (marked_at);

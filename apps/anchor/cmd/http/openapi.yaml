@@ -168,8 +168,9 @@ components:
       description: >-
         The slug of the resource's type, such as `folder`. A slug the product
         has not declared answers 404 RESOURCE_TYPE_NOT_FOUND. `organization`
-        can't be registered here and answers 400 BUILT_IN_RESOURCE_TYPE: an
-        Organization is managed through the organization routes.
+        is the root of every chain, never a registered resource, and answers
+        404 RESOURCE_TYPE_NOT_REGISTRABLE on every method: an Organization is
+        managed through the organization routes.
       schema:
         type: string
         examples: ["folder"]
@@ -8474,7 +8475,6 @@ paths:
           description: >-
             The body or the identifier is refused. `INVALID_RESOURCE_PARENT`:
             the parent's type is not one this type may sit under.
-            `BUILT_IN_RESOURCE_TYPE`: `organization` is not a type to register.
             `INVALID_RESOURCE_ID`: the identifier holds a character outside the
             allowed set. `VALIDATION_ERROR`: a field is missing or too long.
           content:
@@ -8489,12 +8489,6 @@ paths:
                     - code: INVALID_RESOURCE_PARENT
                       message: "A resource of type document can't sit under one of type organization. Its parent is of type folder or project."
                       metadata: { resource_type: document, parent_type: organization, allowed_parent_types: [folder, project] }
-                builtInType:
-                  summary: The Organization is not registered as a resource
-                  value:
-                    errors:
-                    - code: BUILT_IN_RESOURCE_TYPE
-                      message: "Organizations are managed through the organization routes and are never registered as resources."
                 invalidId:
                   summary: The identifier holds a slash
                   value:
@@ -8509,8 +8503,9 @@ paths:
         "404":
           description: >-
             `RESOURCE_TYPE_NOT_FOUND`: the product has not declared the type in
-            the path. `ORGANIZATION_NOT_FOUND`: the product has no such
-            Organization.
+            the path. `RESOURCE_TYPE_NOT_REGISTRABLE`: the path names
+            `organization`. `ORGANIZATION_NOT_FOUND`: the product has no such
+            Organization, or it was deleted while the call ran.
           content:
             application/json:
               schema:
@@ -8523,6 +8518,12 @@ paths:
                     - code: RESOURCE_TYPE_NOT_FOUND
                       message: This product has no resource type with that slug.
                       metadata: { resource_type: spreadsheet }
+                notRegistrable:
+                  summary: The path names the organization type
+                  value:
+                    errors:
+                    - code: RESOURCE_TYPE_NOT_REGISTRABLE
+                      message: "Organizations are managed through the organization routes and are never registered as resources."
         "409":
           description: >-
             The registry refuses the change in its current state.
@@ -8580,8 +8581,9 @@ paths:
         "404":
           description: >-
             `RESOURCE_NOT_FOUND`: no resource of that type and identifier is
-            registered in the Organization. `RESOURCE_TYPE_NOT_FOUND` and
-            `ORGANIZATION_NOT_FOUND` as on the registration.
+            registered in the Organization. `RESOURCE_TYPE_NOT_FOUND`,
+            `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on
+            the registration.
           content:
             application/json:
               schema:
@@ -8593,6 +8595,12 @@ paths:
                     errors:
                     - code: RESOURCE_NOT_FOUND
                       message: This organization has no registered resource of that type and identifier.
+                notRegistrable:
+                  summary: The path names the organization type
+                  value:
+                    errors:
+                    - code: RESOURCE_TYPE_NOT_REGISTRABLE
+                      message: "Organizations are managed through the organization routes and are never registered as resources."
     delete:
       summary: Delete Resource
       description: >-
@@ -8622,7 +8630,14 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: >-
+            `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND`,
+            `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on
+            the read.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
         "409":
           description: >-
             `RESOURCE_IN_USE`: the resource still has registered children or

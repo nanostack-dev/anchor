@@ -1,10 +1,13 @@
 package ct_test
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"testing"
 
+	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,6 +66,65 @@ func TestConcurrentResourceWrites(t *testing.T) {
 				require.Equal(t, http.StatusOK, status)
 			}
 			assert.Equal(t, 1, countResources(t, "external_id", id))
+		}
+	})
+
+	t.Run(
+		"A registration racing the removal of its parent type never leaves the resource under it",
+		func(t *testing.T) {
+			t.Parallel()
+			for range concurrentRounds {
+				w := givenProject(t)
+				var wg sync.WaitGroup
+				var putStatus, patchStatus int
+				wg.Go(func() {
+					putStatus = w.resources.PutRaw("document", resourceID(), "Readme",
+						itdsl.Ref("project", w.project)).StatusCode()
+				})
+				wg.Go(func() {
+					patchStatus = w.product.ResourceTypes().UpdateRaw(w.tree.document.Id,
+						ct.UpdateProductResourceTypeJSONRequestBody{ParentTypes: &[]string{"folder"}}).StatusCode()
+				})
+				wg.Wait()
+
+				assert.Contains(t, [][2]int{
+					{http.StatusOK, http.StatusConflict},
+					{http.StatusBadRequest, http.StatusOK},
+				}, [2]int{putStatus, patchStatus}, "registration then removal, or removal then registration")
+			}
+		},
+	)
+
+	t.Run("Registrations racing their organization's delete answer 200 or 404, never 500", func(t *testing.T) {
+		t.Parallel()
+		w := givenResourceWorld(t)
+		for range concurrentRounds {
+			org := w.product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+			resources := w.product.Resources(org.Id)
+			project := resourceID()
+			resources.Put("project", project, "Project", resources.Top())
+
+			var wg sync.WaitGroup
+			statuses := make([]int, concurrentWriters)
+			for i := range concurrentWriters {
+				wg.Go(func() {
+					statuses[i] = resources.PutRaw("folder", resourceID(), "Folder",
+						itdsl.Ref("project", project)).StatusCode()
+				})
+			}
+			wg.Go(func() {
+				resp, err := w.product.AllScopeAPIKeyClient().DeleteProductOrganizationWithResponse(
+					context.Background(), w.product.ProductID, org.Id)
+				if assert.NoError(t, err) {
+					assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
+				}
+			})
+			wg.Wait()
+
+			for _, status := range statuses {
+				assert.Contains(t, []int{http.StatusOK, http.StatusNotFound}, status)
+			}
+			assert.Zero(t, countResources(t, "organization_id", org.Id))
 		}
 	})
 }

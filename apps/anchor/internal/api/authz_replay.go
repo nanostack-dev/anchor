@@ -8,7 +8,7 @@ import (
 )
 
 // NewAuthzReplayMiddleware returns a StrictMiddlewareFunc that collects the
-// Organizations a request's writes marked and, once the handler has returned
+// Organizations and resource objects a request's writes marked and, once the handler has returned
 // and its transaction committed, replays them into the relationship store
 // before the response is written, so the next request already sees the change
 // (ADR-0022 E5).
@@ -19,6 +19,7 @@ func NewAuthzReplayMiddleware(replayer *authzservice.Replayer) StrictMiddlewareF
 			response, err := f(collectCtx, w, r, request)
 			if err == nil {
 				replayer.Replay(ctx, written())
+				replayer.ReplayResources(ctx, authzservice.WrittenResources(collectCtx))
 			}
 			return response, err
 		}

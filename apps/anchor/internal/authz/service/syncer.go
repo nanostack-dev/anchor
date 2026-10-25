@@ -53,6 +53,9 @@ type Syncer interface {
 	SyncOrganization(ctx context.Context, productID, organizationID string) error
 	// SyncProduct does it for the model and every Organization of the Product.
 	SyncProduct(ctx context.Context, productID string) error
+	// SyncResources brings the given resource objects' tuples in step with
+	// the tables, and clears their resource marks.
+	SyncResources(ctx context.Context, productID string, objects []string) error
 	// Reconcile is SyncProduct plus the removal of every tuple no
 	// Organization implies, such as the grants of a deleted role.
 	Reconcile(ctx context.Context, productID string) error
@@ -372,12 +375,10 @@ func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, 
 
 // syncOrganization diffs the tuples an Organization implies with those its
 // store holds. It reads the Organization's object, whose assignment links
-// imply their assignments' tuples, the roles the Organization owns or its
-// members hold, and the object of every registered resource, so a move drops
-// the old parent. It never deletes the grants of a role another Organization
-// may hold: a role template a release before copies assigned. A deleted
-// resource's object is left to the reconcile: no row names it any more, and
-// row IDs are never reused.
+// imply their assignments' tuples, and the roles the Organization owns or its
+// members hold. It never deletes the grants of a role another Organization
+// may hold: a role template a release before copies assigned. It neither
+// reads nor implies resource tuples: those follow resource marks.
 func (s *syncer) syncOrganization(ctx context.Context, current target, productID, organizationID string) error {
 	state, err := s.repo.OrganizationState(ctx, productID, organizationID, s.now())
 	if err != nil {
@@ -428,8 +429,50 @@ func (s *syncer) syncOrganization(ctx context.Context, current target, productID
 		}
 		stored = append(stored, grants...)
 	}
-	for _, r := range state.Resources {
-		held, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: r.Object()})
+	return s.apply(ctx, current, model.Diff(stored, desired))
+}
+
+func (s *syncer) SyncResources(ctx context.Context, productID string, objects []string) error {
+	if len(objects) == 0 {
+		return nil
+	}
+	openfga, storeID, storeErr := s.store(ctx, productID)
+	if storeErr != nil {
+		return storeErr
+	}
+	return s.locked(ctx, productID, func(txCtx context.Context) error {
+		marks, err := s.repo.PendingResources(txCtx, productID, objects)
+		if err != nil {
+			return err
+		}
+		current, err := s.ensureModel(txCtx, openfga, storeID, productID)
+		if err != nil {
+			return err
+		}
+		if err = s.syncResources(txCtx, current, productID, objects); err != nil {
+			return err
+		}
+		for _, mark := range marks {
+			if err = s.repo.ClearResource(txCtx, mark); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// syncResources diffs each object's tuples with what its row implies: its
+// parent tuple while the row exists, nothing once it is gone. It reads the
+// marked objects only, so its cost never grows with the registry.
+func (s *syncer) syncResources(ctx context.Context, current target, productID string, objects []string) error {
+	states, err := s.repo.ResourceStates(ctx, productID, objects)
+	if err != nil {
+		return err
+	}
+	var stored, desired []model.Tuple
+	for _, state := range states {
+		desired = append(desired, state.Tuples(current.catalog)...)
+		held, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: state.Object})
 		if readErr != nil {
 			return readErr
 		}
@@ -459,7 +502,8 @@ func (s *syncer) syncHeldTemplates(ctx context.Context, current target, productI
 	return nil
 }
 
-// productTuples is every tuple the Product's Organizations imply.
+// productTuples is every tuple the Product's Organizations and registered
+// resources imply.
 func (s *syncer) productTuples(ctx context.Context, current target, productID string) ([]model.Tuple, error) {
 	organizations, err := s.repo.OrganizationIDs(ctx, productID)
 	if err != nil {
@@ -471,6 +515,13 @@ func (s *syncer) productTuples(ctx context.Context, current target, productID st
 		if stateErr != nil {
 			return nil, stateErr
 		}
+		desired = append(desired, state.Tuples(current.catalog)...)
+	}
+	resources, err := s.repo.ProductResourceStates(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	for _, state := range resources {
 		desired = append(desired, state.Tuples(current.catalog)...)
 	}
 	return desired, nil

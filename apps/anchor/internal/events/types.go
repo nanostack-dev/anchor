@@ -68,6 +68,9 @@ const (
 	FieldResourceTypeID = "resource_type_id"
 	FieldResourceType   = "resource_type"
 	FieldResourceID     = "resource_id"
+	// FieldResourceRowID is Anchor's row ID of a resource. It names the
+	// resource in the relationship store, and only undelivered events carry it.
+	FieldResourceRowID = "resource_row_id"
 )
 
 type Data map[string]string
