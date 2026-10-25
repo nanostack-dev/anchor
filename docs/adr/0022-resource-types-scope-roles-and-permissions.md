@@ -1355,6 +1355,46 @@ A role now appears only on its own type, so the model grows with each type's sub
 The semantics don't depend on OpenFGA. If ADR-0021 is rejected, a single-parent chain is a short recursive query in Postgres.
 
 <details>
+<summary>The problem it solves, with numbers</summary>
+
+**What "compile" means.** The Product never writes model language. Anchor reads three lists from the catalog (types with their parents, permissions with their scope, roles with their scope and bundle) and writes one OpenFGA type per resource type:
+
+```mermaid
+flowchart LR
+    subgraph catalog["Catalog (what the Product configures)"]
+        direction TB
+        t["Types<br/>organization › project › folder › document"]
+        p["Permission document:view<br/>scope document"]
+        r["Role folder-viewer<br/>scope folder, bundles document:view"]
+    end
+    c{{"Anchor compiler"}}
+    subgraph model["OpenFGA model (generated)"]
+        direction TB
+        mo["organization<br/>can_document_view: [api_key] or role_admin"]
+        mp["project<br/>can_document_view: role_project_admin<br/>or can_document_view from parent"]
+        mf["folder<br/>role_folder_viewer: [user]<br/>can_document_view: role_folder_viewer<br/>or can_document_view from parent"]
+        md["document<br/>can_document_view: role_document_viewer<br/>or can_document_view from parent"]
+    end
+    catalog --> c --> model
+```
+
+**The problem.** ADR-0021's proof of concept writes every permission on every type, and lists on each one **every role** that grants it. A role therefore appears once per type, per permission it bundles. Size grows with *types × permissions × roles*. The review measured about 58 bytes per role reference, and OpenFGA refuses models over 256 KB.
+
+**The fix.** A role appears **only on its own type**. Each type lists only the roles scoped to it, and reaches the others through `from parent`.
+
+Estimated model size for four types (organization, project, folder, document), roles and permissions spread evenly, and every role granting everything it may:
+
+| Catalog | ADR-0021 compiler | E3 compiler |
+| :-- | --: | --: |
+| 10 roles · 35 permissions | ≈ 81 KB | ≈ 18 KB |
+| 50 roles · 35 permissions | ≈ 406 KB ❌ over 256 KB | ≈ 69 KB |
+| 100 roles · 50 permissions | ≈ 1.2 MB ❌ | ≈ 189 KB |
+
+With *T* types, the E3 model is about 2T² ⁄ (T + 1) times smaller: 6× for four types. A role change also only rewrites its own type's relations, so one edit no longer touches the whole model.
+
+</details>
+
+<details>
 <summary>📌 Real example</summary>
 
 The catalog in the walkthrough, five roles and nine permissions, compiles to four types. Only `folder-viewer` appears on `folder`, so adding a `document-commenter` role changes `document` only; the rest of the model stays byte-identical.
