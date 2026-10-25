@@ -251,7 +251,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 | **G. Migration and rollout** | [DR-G1](#dr-g1) · Backfill everything to Organization | ✅ Accepted |  |
 |  | [DR-G2](#dr-g2) · Compatibility | ✅ Accepted |  |
 |  | [DR-G3](#dr-g3) · Events | ✅ Accepted |  |
-|  | [DR-G4](#dr-g4) · Delivery order | ✅ Accepted |  |
+|  | [DR-G4](#dr-g4) · Delivery order: milestones of small PRs | ✅ Accepted |  |
 |  | [DR-G5](#dr-g5) · The catalog is managed through the Terraform provider | ✅ Accepted |  |
 |  | [DR-G6](#dr-g6) · Cleanup once every Product runs on the new model | ✅ Accepted |  |
 
@@ -2155,21 +2155,45 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 
 <a id="dr-g4"></a>
 <details>
-<summary><b>DR-G4</b> · Delivery order — <i>✅ Accepted</i></summary>
+<summary><b>DR-G4</b> · Delivery order: milestones of small PRs — <i>✅ Accepted</i></summary>
 
-1. **Types and scopes:** the resource types API, scope fields on roles and permissions, the backfill (G1), and model compilation (E3). No visible change for existing products.
-2. **Canvas:** the Resource types page and the scoped Roles and Permissions pages (F1–F4).
-3. **Resources and generic assignments:** the registry (B1–B4) and `resource_role_assignments` (D4).
-4. **Evaluation:** any resource type (E2).
-5. **Workspace:** migrate its data into the generic model and deprecate the built-in Workspace (A6, phases 1–2). Deletion (phase 4) waits until no Product depends on it, after step 6.
-6. **First adopting product:** planned in its own change, against the generic API above.
+**Decision.** The change ships as milestones. Each milestone has one GitHub issue and is made of small PRs.
+
+**Rules for every PR:**
+- It is cut from `main`. The POC branch (`poc/openfga-authz`) stays a draft reference that PRs take code from; it is never merged.
+- It is one of three kinds: **invisible** (no change for products), **new behind a switch**, or **a switch-over** of behaviour a previous PR proved.
+- It ships its migration and its tests. Tests that existed before it pass unchanged.
+
+| Milestone | PRs | Kind | Done when |
+| :-- | :-- | :-- | :-- |
+| **M0 · Decisions on `main`** | 0. ADR-0021 and ADR-0022, docs only | invisible | merged |
+| **M1 · Catalog scopes** | 1. Resource types table and API (A1–A5), `organization` seeded, every role and permission scoped to it (G1), `resource_type` required on create (G2), `product.resource_type.*` events (G3)<br/>2. Role templates and Organization copies (D8): memberships move to the copies, template IDs resolve to the copy, default Organization role (D5, D10), `409 ROLE_IN_USE`<br/>3. Organization custom roles behind `custom_roles` (D9 phase 1), template propagation and `customized` (D10), at most 50<br/>3b. Terraform provider (G5), in its own repository | invisible, then behind a switch | every existing check gives the same answer before and after the migrations; one test per limit and switch state |
+| **M2 · Decisions from OpenFGA** | 4. Embedded engine and relationship store, not read yet<br/>5. Catalog compiler (E3) and the write after commit with mark, sweeper and reconcile (E5)<br/>6. **Shadow:** each decision runs on both evaluators and logs any difference<br/>7. **Switch:** decisions come from OpenFGA; the old evaluator is deleted | invisible, then switch-over | zero differences on the CT suite and in dev before PR 7; a reconcile repairs a deleted tuple |
+| **M3 · Admin UI** (parallel to M2, after M1) | 8. Resource types canvas: React Flow, computed layout, draft then publish (F1–F3)<br/>9. Scoped Roles and Permissions pages, templates, `custom_roles` switch, an Organization's roles read-only (F4)<br/>10. Access explainer (F5) | new | stories and E2E on mobile, tablet and desktop |
+| **M4 · Product resources** (after M2) | 11. Resource registry (B1–B4); `resource.*` events internal<br/>12. `resource_role_assignments` (D3, D4) with the `roles[]` contract; `resource.role_assignment.*` events to webhooks<br/>13. Evaluation on any resource type (E2), `RESOURCE_NOT_IN_ORGANIZATION`, `granted_by`<br/>14. Custom roles on the Product's own types (D9 phase 2) | new | a role on a folder grants its documents and nothing above it |
+| **M5 · Workspace becomes generic** | 15. Workspaces migrate into a `workspace` resource type and assignments; the old routes are deprecated (A6 phases 1–2)<br/>16. Nanostack's own product moves to the generic API, under the cross-repo rollout rule in `AGENTS.md` | switch-over | released clients still pass against the deprecated routes |
+| **M6 · First adopting product** | planned in its own change | new | — |
+| **M7 · Cleanup** | the G6 checklist | removal | request logs show no remaining caller over the agreed period |
 
 <details>
 <summary>📌 Real example</summary>
 
 ```mermaid
 flowchart LR
-    s1["1 · Types and scopes"] --> s2["2 · Canvas"] --> s3["3 · Resources and<br/>assignments"] --> s4["4 · Evaluation"] --> s5["5 · Workspace<br/>phases 1–2"] --> s6["6 · First product"]
+    m0["M0 · ADRs"] --> m1["M1 · Catalog scopes"]
+    m1 --> m2["M2 · OpenFGA<br/>shadow, then switch"]
+    m1 --> m3["M3 · Admin UI"]
+    m2 --> m4["M4 · Product resources"]
+    m4 --> m5["M5 · Workspace generic"]
+    m5 --> m6["M6 · First product"]
+    m6 --> m7["M7 · Cleanup"]
+```
+
+PR 6 in practice: one decision, both answers, one log line when they differ.
+
+```text
+authz.shadow_mismatch product=prod_2qL9 org=org_2qL9aC3m subject=pusr_2qLAb0bL
+  permission=documents:read resource=organization:org_2qL9aC3m legacy=allow openfga=deny
 ```
 
 </details>
