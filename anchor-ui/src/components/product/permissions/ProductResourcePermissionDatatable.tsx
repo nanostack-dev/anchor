@@ -184,7 +184,7 @@ export function ProductResourcePermissionDatatable({
 				cell: (info) => (
 					<Box
 						as="span"
-						className="block max-w-[16rem] whitespace-normal font-mono text-sm [overflow-wrap:anywhere]"
+						className="block max-w-[16rem] whitespace-normal font-mono text-sm break-words"
 					>
 						{info.getValue()}
 					</Box>
@@ -196,7 +196,7 @@ export function ProductResourcePermissionDatatable({
 				cell: (info) => (
 					<Box
 						as="span"
-						className="block max-w-[12rem] whitespace-normal [overflow-wrap:anywhere]"
+						className="block max-w-[12rem] whitespace-normal break-words"
 					>
 						{typeName(typesRef.current, info.getValue())}
 					</Box>

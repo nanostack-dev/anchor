@@ -198,13 +198,15 @@ Verification: `pnpm test:e2e:app e2e/features/access` passes `access.role-*`,
 
 Symptom: a long role, permission or resource type name runs past its column in
 the roles, permissions or organization roles table, although its wrapper has a
-maximum width and `[overflow-wrap:anywhere]`.
+maximum width and allows breaking.
 
 Cause: the shared table cell sets `white-space: nowrap`, which the wrapper
 inherits, so nothing wraps.
 
 Repair: give the cell content `whitespace-normal` together with its maximum
-width. The `LongNames` stories of `ProductRoleDatatable` and
+width, and `break-words` rather than `[overflow-wrap:anywhere]`: `anywhere`
+shrinks the column's minimum width, so on a phone an ordinary name such as
+`folder-viewer` breaks mid-word. The `LongNames` stories of `ProductRoleDatatable` and
 `OrganizationRolesTable` measure the name width.
 
 ## A row click in a table story does nothing

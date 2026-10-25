@@ -320,7 +320,7 @@ export function ResourceTypeInspector({
 							<Text weight="medium">Scoped to this type</Text>
 							<UsageCounts usage={usage} />
 						</Stack>
-						{usage.state !== "unpublished" && (
+						{usage.state !== "unpublished" && !editing && (
 							<Inline space="sm">
 								<ButtonLink
 									href={filtered(ROUTE_PATHS.PRODUCT_ROLES)}

@@ -109,7 +109,7 @@ export function ProductRoleDatatable({
 				cell: (info) => (
 					<Box className="min-w-0 max-w-[16rem] whitespace-normal">
 						<Box className="flex flex-wrap items-center gap-1.5">
-							<Box as="span" className="font-medium [overflow-wrap:anywhere]">
+							<Box as="span" className="font-medium break-words">
 								{info.getValue()}
 							</Box>
 							{info.row.original.is_default && (
@@ -118,7 +118,7 @@ export function ProductRoleDatatable({
 						</Box>
 						<Box
 							as="span"
-							className="block font-mono text-muted-foreground text-xs [overflow-wrap:anywhere]"
+							className="block font-mono text-muted-foreground text-xs break-words"
 						>
 							{info.row.original.key}
 						</Box>
@@ -131,7 +131,7 @@ export function ProductRoleDatatable({
 				cell: (info) => (
 					<Box
 						as="span"
-						className="block max-w-[12rem] whitespace-normal [overflow-wrap:anywhere]"
+						className="block max-w-[12rem] whitespace-normal break-words"
 					>
 						{typeName(typesRef.current, info.getValue())}
 					</Box>
