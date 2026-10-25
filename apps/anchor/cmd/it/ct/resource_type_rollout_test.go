@@ -84,58 +84,71 @@ func TestProductWithoutOrganizationTypeGetsOne(t *testing.T) {
 // that is no longer below project.
 func TestConcurrentRoleBundleAndTreeChange(t *testing.T) {
 	t.Parallel()
-	t.Run("A project role bundling a document permission and cutting document off from project never both succeed", func(t *testing.T) {
-		t.Parallel()
-		const rounds = 20
-		for range rounds {
-			product := createTestProductContext(t)
-			tree := declareDocumentTree(t, product)
-			types := product.ResourceTypes()
-			types.Update(tree.document.Id, ct.UpdateProductResourceTypeJSONRequestBody{ParentTypes: &[]string{"folder"}})
-			product.CreateScopedPermissions(t, "document", "document:view")
-			client := product.AllScopeAPIKeyClient()
+	t.Run(
+		"A project role bundling a document permission and cutting document off from project never both succeed",
+		func(t *testing.T) {
+			t.Parallel()
+			const rounds = 20
+			for range rounds {
+				product := createTestProductContext(t)
+				tree := declareDocumentTree(t, product)
+				types := product.ResourceTypes()
+				types.Update(
+					tree.document.Id,
+					ct.UpdateProductResourceTypeJSONRequestBody{ParentTypes: &[]string{"folder"}},
+				)
+				product.CreateScopedPermissions(t, "document", "document:view")
+				client := product.AllScopeAPIKeyClient()
 
-			var roleStatus, treeStatus int
-			var wg sync.WaitGroup
-			start := make(chan struct{})
-			wg.Go(func() {
-				<-start
-				resp, err := client.CreateProductRoleWithResponse(t.Context(), product.ProductID,
-					ct.CreateProductRoleJSONRequestBody{
-						Name: "project-reader", ResourceType: "project", Permissions: []string{"document:view"},
-					})
-				if assert.NoError(t, err) {
-					roleStatus = resp.StatusCode()
-				}
-			})
-			wg.Go(func() {
-				<-start
-				resp, err := client.UpdateProductResourceTypeWithResponse(t.Context(), product.ProductID, tree.folder.Id,
-					ct.UpdateProductResourceTypeJSONRequestBody{ParentTypes: &[]string{"organization"}})
-				if assert.NoError(t, err) {
-					treeStatus = resp.StatusCode()
-				}
-			})
-			close(start)
-			wg.Wait()
+				var roleStatus, treeStatus int
+				var wg sync.WaitGroup
+				start := make(chan struct{})
+				wg.Go(func() {
+					<-start
+					resp, err := client.CreateProductRoleWithResponse(t.Context(), product.ProductID,
+						ct.CreateProductRoleJSONRequestBody{
+							Name: "project-reader", ResourceType: "project", Permissions: []string{"document:view"},
+						})
+					if assert.NoError(t, err) {
+						roleStatus = resp.StatusCode()
+					}
+				})
+				wg.Go(func() {
+					<-start
+					resp, err := client.UpdateProductResourceTypeWithResponse(
+						t.Context(),
+						product.ProductID,
+						tree.folder.Id,
+						ct.UpdateProductResourceTypeJSONRequestBody{ParentTypes: &[]string{"organization"}},
+					)
+					if assert.NoError(t, err) {
+						treeStatus = resp.StatusCode()
+					}
+				})
+				close(start)
+				wg.Wait()
 
-			assert.False(t, roleStatus == http.StatusCreated && treeStatus == http.StatusOK,
-				"role create %d and tree change %d both succeeded", roleStatus, treeStatus)
-			assert.Contains(t, []int{http.StatusCreated, http.StatusBadRequest}, roleStatus)
-			assert.Contains(t, []int{http.StatusOK, http.StatusConflict}, treeStatus)
-		}
-	})
+				assert.False(t, roleStatus == http.StatusCreated && treeStatus == http.StatusOK,
+					"role create %d and tree change %d both succeeded", roleStatus, treeStatus)
+				assert.Contains(t, []int{http.StatusCreated, http.StatusBadRequest}, roleStatus)
+				assert.Contains(t, []int{http.StatusOK, http.StatusConflict}, treeStatus)
+			}
+		},
+	)
 }
 
 func TestProductWithoutOrganizationTypeAcceptsAWrite(t *testing.T) {
 	t.Parallel()
-	t.Run("A product the previous release created gets its organization type on its first permission", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		execSQL(t, "DELETE FROM product_resource_types WHERE product_id = $1", product.ProductID)
+	t.Run(
+		"A product the previous release created gets its organization type on its first permission",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			execSQL(t, "DELETE FROM product_resource_types WHERE product_id = $1", product.ProductID)
 
-		created := product.CreateProductResourcePermissions(t, "legacy:write")[0]
+			created := product.CreateProductResourcePermissions(t, "legacy:write")[0]
 
-		assert.Equal(t, "organization", created.ResourceType)
-	})
+			assert.Equal(t, "organization", created.ResourceType)
+		},
+	)
 }
