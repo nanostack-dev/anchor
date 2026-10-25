@@ -27,9 +27,10 @@ func TestProductRole_Get(t *testing.T) {
 			roleDesc := "Test role description"
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        roleName,
-					Description: &roleDesc,
-					Permissions: []string{perm1},
+					ResourceType: "organization",
+					Name:         roleName,
+					Description:  &roleDesc,
+					Permissions:  []string{perm1},
 				},
 			)
 			require.NoError(t, err)
@@ -62,8 +63,9 @@ func TestProductRole_Get(t *testing.T) {
 			permissions := []string{perm1, perm2}
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
-					Permissions: permissions,
+					ResourceType: "organization",
+					Name:         "RoleWithPermissions_" + ids.MustNew("test"),
+					Permissions:  permissions,
 				},
 			)
 			require.NoError(t, err)
@@ -117,7 +119,8 @@ func TestProductRole_Get(t *testing.T) {
 		"Reading a product role for nonexistent product returns a bad request", func(t *testing.T) {
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -142,7 +145,8 @@ func TestProductRole_Get(t *testing.T) {
 
 			createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)

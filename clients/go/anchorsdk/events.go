@@ -37,6 +37,9 @@ const (
 	eventTypeProductResourcePermissionCreated = "product.resource_permission.created"
 	eventTypeProductResourcePermissionUpdated = "product.resource_permission.updated"
 	eventTypeProductResourcePermissionDeleted = "product.resource_permission.deleted"
+	eventTypeProductResourceTypeCreated       = "product.resource_type.created"
+	eventTypeProductResourceTypeUpdated       = "product.resource_type.updated"
+	eventTypeProductResourceTypeDeleted       = "product.resource_type.deleted"
 
 	maxWebhookBodyBytes = 1 << 20
 )
@@ -182,6 +185,18 @@ type ProductResourcePermissionDeleted struct {
 	PermissionName string `json:"permission_name"`
 }
 
+// ProductResourceType names the type an event is about by ID and by slug.
+type ProductResourceType struct {
+	ResourceTypeID string `json:"resource_type_id"`
+	ResourceType   string `json:"resource_type"`
+}
+
+type ProductResourceTypeCreated ProductResourceType
+
+type ProductResourceTypeUpdated ProductResourceType
+
+type ProductResourceTypeDeleted ProductResourceType
+
 type eventEnvelope struct {
 	Type      string          `json:"type"`
 	Timestamp string          `json:"timestamp"`
@@ -217,6 +232,9 @@ func EventTypes() []string {
 		eventTypeProductResourcePermissionCreated,
 		eventTypeProductResourcePermissionUpdated,
 		eventTypeProductResourcePermissionDeleted,
+		eventTypeProductResourceTypeCreated,
+		eventTypeProductResourceTypeUpdated,
+		eventTypeProductResourceTypeDeleted,
 	}
 }
 
@@ -258,6 +276,9 @@ type WebhookHandler struct {
 	onProductResourcePermissionCreated []func(context.Context, ProductResourcePermissionCreated) error
 	onProductResourcePermissionUpdated []func(context.Context, ProductResourcePermissionUpdated) error
 	onProductResourcePermissionDeleted []func(context.Context, ProductResourcePermissionDeleted) error
+	onProductResourceTypeCreated       []func(context.Context, ProductResourceTypeCreated) error
+	onProductResourceTypeUpdated       []func(context.Context, ProductResourceTypeUpdated) error
+	onProductResourceTypeDeleted       []func(context.Context, ProductResourceTypeDeleted) error
 }
 
 // Events builds a [WebhookHandler] for the product signing secret (`whsec_...`).
@@ -431,6 +452,27 @@ func (h *WebhookHandler) ProductResourcePermissionDeleted(
 	return h
 }
 
+func (h *WebhookHandler) ProductResourceTypeCreated(
+	fn func(context.Context, ProductResourceTypeCreated) error,
+) *WebhookHandler {
+	h.onProductResourceTypeCreated = append(h.onProductResourceTypeCreated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductResourceTypeUpdated(
+	fn func(context.Context, ProductResourceTypeUpdated) error,
+) *WebhookHandler {
+	h.onProductResourceTypeUpdated = append(h.onProductResourceTypeUpdated, fn)
+	return h
+}
+
+func (h *WebhookHandler) ProductResourceTypeDeleted(
+	fn func(context.Context, ProductResourceTypeDeleted) error,
+) *WebhookHandler {
+	h.onProductResourceTypeDeleted = append(h.onProductResourceTypeDeleted, fn)
+	return h
+}
+
 func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -544,6 +586,12 @@ func (h *WebhookHandler) dispatch(ctx context.Context, event Event) error {
 		return dispatchTyped(ctx, event.Data, h.onProductResourcePermissionUpdated)
 	case eventTypeProductResourcePermissionDeleted:
 		return dispatchTyped(ctx, event.Data, h.onProductResourcePermissionDeleted)
+	case eventTypeProductResourceTypeCreated:
+		return dispatchTyped(ctx, event.Data, h.onProductResourceTypeCreated)
+	case eventTypeProductResourceTypeUpdated:
+		return dispatchTyped(ctx, event.Data, h.onProductResourceTypeUpdated)
+	case eventTypeProductResourceTypeDeleted:
+		return dispatchTyped(ctx, event.Data, h.onProductResourceTypeDeleted)
 	default:
 		return nil
 	}

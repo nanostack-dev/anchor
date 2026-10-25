@@ -24,7 +24,8 @@ func TestProductRole_Search(t *testing.T) {
 
 	createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
-			Name: role1Name,
+			ResourceType: "organization",
+			Name:         role1Name,
 		},
 	)
 	require.NoError(t, err)
@@ -35,7 +36,8 @@ func TestProductRole_Search(t *testing.T) {
 
 	createResp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
-			Name: role2Name,
+			ResourceType: "organization",
+			Name:         role2Name,
 		},
 	)
 	require.NoError(t, err)
@@ -46,7 +48,8 @@ func TestProductRole_Search(t *testing.T) {
 
 	createResp3, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
-			Name: role3Name,
+			ResourceType: "organization",
+			Name:         role3Name,
 		},
 	)
 	require.NoError(t, err)
@@ -237,8 +240,9 @@ func TestProductRole_Search_PermissionsNotTruncatedByPagination(t *testing.T) {
 		roleName := "PermHeavy_" + ids.MustNew("test")
 		createResp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 			ctx, productID, ct.CreateProductRoleJSONRequestBody{
-				Name:        roleName,
-				Permissions: permNames,
+				ResourceType: "organization",
+				Name:         roleName,
+				Permissions:  permNames,
 			},
 		)
 		require.NoError(t, err)
@@ -276,16 +280,18 @@ func TestProductRole_Search_ByPermissions(t *testing.T) {
 	readerName := "Reader_" + ids.MustNew("test")
 	sharer, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
-			Name:        sharerName,
-			Permissions: []string{"doc:share", "doc:read"},
+			ResourceType: "organization",
+			Name:         sharerName,
+			Permissions:  []string{"doc:share", "doc:read"},
 		},
 	)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, sharer.StatusCode())
 	reader, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
-			Name:        readerName,
-			Permissions: []string{"doc:read"},
+			ResourceType: "organization",
+			Name:         readerName,
+			Permissions:  []string{"doc:read"},
 		},
 	)
 	require.NoError(t, err)

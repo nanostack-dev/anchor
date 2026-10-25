@@ -13,6 +13,7 @@ function role(name: string): ProductRoleResponse {
 		id: `role_${name}`,
 		product_id: PRODUCT_ID,
 		name,
+		resource_type: "organization",
 		permissions: [],
 		created_at: "2026-07-14T09:12:00Z",
 		updated_at: "2026-07-14T09:12:00Z",

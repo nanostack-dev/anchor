@@ -1731,6 +1731,94 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/resource-permissions/{permission_name} (the `UpdateProductResourcePermission` operationId).
 	UpdateProductResourcePermission(ctx context.Context, productId ProductIdParameter, permissionName ResourcePermissionNameParameter, body UpdateProductResourcePermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateProductResourceTypeWithBody Create Product Resource Type
+	//
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+	CreateProductResourceTypeWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProductResourceType Create Product Resource Type
+	//
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+	CreateProductResourceType(ctx context.Context, productId ProductIdParameter, body CreateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
+	//
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+	ReplaceProductResourceTypesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReplaceProductResourceTypes Replace Product Resource Type Tree
+	//
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+	ReplaceProductResourceTypes(ctx context.Context, productId ProductIdParameter, body ReplaceProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchProductResourceTypesWithBody Search Product Resource Types
+	//
+	// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+	SearchProductResourceTypesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchProductResourceTypes Search Product Resource Types
+	//
+	// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+	SearchProductResourceTypes(ctx context.Context, productId ProductIdParameter, body SearchProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteProductResourceType Delete Product Resource Type
+	//
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
+	DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProductResourceType Get Product Resource Type
+	//
+	// Requires Platform Bearer token or Product API Key with resource_type:read.
+	//
+	// Corresponds with GET /v1/products/{product_id}/resource-types/{resource_type_id} (the `GetProductResourceType` operationId).
+	GetProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProductResourceTypeWithBody Update Product Resource Type
+	//
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+	UpdateProductResourceTypeWithBody(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProductResourceType Update Product Resource Type
+	//
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+	UpdateProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, body UpdateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateProductRoleWithBody Create ProductRole for Product
 	//
 	// Creates a new product role within a specific product. Can optionally assign initial permissions. Requires Platform Bearer token or Product API Key with product_role:create scope.
@@ -5192,6 +5280,194 @@ func (c *Client) UpdateProductResourcePermissionWithBody(ctx context.Context, pr
 // Corresponds with PUT /v1/products/{product_id}/resource-permissions/{permission_name} (the `UpdateProductResourcePermission` operationId).
 func (c *Client) UpdateProductResourcePermission(ctx context.Context, productId ProductIdParameter, permissionName ResourcePermissionNameParameter, body UpdateProductResourcePermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProductResourcePermissionRequest(c.Server, productId, permissionName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProductResourceTypeWithBody Create Product Resource Type
+//
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+func (c *Client) CreateProductResourceTypeWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProductResourceTypeRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProductResourceType Create Product Resource Type
+//
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+func (c *Client) CreateProductResourceType(ctx context.Context, productId ProductIdParameter, body CreateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProductResourceTypeRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
+//
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+func (c *Client) ReplaceProductResourceTypesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceProductResourceTypesRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReplaceProductResourceTypes Replace Product Resource Type Tree
+//
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+func (c *Client) ReplaceProductResourceTypes(ctx context.Context, productId ProductIdParameter, body ReplaceProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceProductResourceTypesRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchProductResourceTypesWithBody Search Product Resource Types
+//
+// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+func (c *Client) SearchProductResourceTypesWithBody(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductResourceTypesRequestWithBody(c.Server, productId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchProductResourceTypes Search Product Resource Types
+//
+// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+func (c *Client) SearchProductResourceTypes(ctx context.Context, productId ProductIdParameter, body SearchProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchProductResourceTypesRequest(c.Server, productId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteProductResourceType Delete Product Resource Type
+//
+// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+//
+// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
+func (c *Client) DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteProductResourceTypeRequest(c.Server, productId, resourceTypeId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetProductResourceType Get Product Resource Type
+//
+// Requires Platform Bearer token or Product API Key with resource_type:read.
+//
+// Corresponds with GET /v1/products/{product_id}/resource-types/{resource_type_id} (the `GetProductResourceType` operationId).
+func (c *Client) GetProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProductResourceTypeRequest(c.Server, productId, resourceTypeId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateProductResourceTypeWithBody Update Product Resource Type
+//
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+func (c *Client) UpdateProductResourceTypeWithBody(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProductResourceTypeRequestWithBody(c.Server, productId, resourceTypeId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateProductResourceType Update Product Resource Type
+//
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+func (c *Client) UpdateProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, body UpdateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateProductResourceTypeRequest(c.Server, productId, resourceTypeId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10919,6 +11195,283 @@ func NewUpdateProductResourcePermissionRequestWithBody(server string, productId 
 	return req, nil
 }
 
+// NewCreateProductResourceTypeRequest calls the generic CreateProductResourceType builder with application/json body
+func NewCreateProductResourceTypeRequest(server string, productId ProductIdParameter, body CreateProductResourceTypeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProductResourceTypeRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewCreateProductResourceTypeRequestWithBody constructs an http.Request for the CreateProductResourceType method, with any body, and a specified content type
+func NewCreateProductResourceTypeRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReplaceProductResourceTypesRequest calls the generic ReplaceProductResourceTypes builder with application/json body
+func NewReplaceProductResourceTypesRequest(server string, productId ProductIdParameter, body ReplaceProductResourceTypesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReplaceProductResourceTypesRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewReplaceProductResourceTypesRequestWithBody constructs an http.Request for the ReplaceProductResourceTypes method, with any body, and a specified content type
+func NewReplaceProductResourceTypesRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchProductResourceTypesRequest calls the generic SearchProductResourceTypes builder with application/json body
+func NewSearchProductResourceTypesRequest(server string, productId ProductIdParameter, body SearchProductResourceTypesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchProductResourceTypesRequestWithBody(server, productId, "application/json", bodyReader)
+}
+
+// NewSearchProductResourceTypesRequestWithBody constructs an http.Request for the SearchProductResourceTypes method, with any body, and a specified content type
+func NewSearchProductResourceTypesRequestWithBody(server string, productId ProductIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types/search", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteProductResourceTypeRequest constructs an http.Request for the DeleteProductResourceType method
+func NewDeleteProductResourceTypeRequest(server string, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "resource_type_id", resourceTypeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetProductResourceTypeRequest constructs an http.Request for the GetProductResourceType method
+func NewGetProductResourceTypeRequest(server string, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "resource_type_id", resourceTypeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateProductResourceTypeRequest calls the generic UpdateProductResourceType builder with application/json body
+func NewUpdateProductResourceTypeRequest(server string, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, body UpdateProductResourceTypeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateProductResourceTypeRequestWithBody(server, productId, resourceTypeId, "application/json", bodyReader)
+}
+
+// NewUpdateProductResourceTypeRequestWithBody constructs an http.Request for the UpdateProductResourceType method, with any body, and a specified content type
+func NewUpdateProductResourceTypeRequestWithBody(server string, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "resource_type_id", resourceTypeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/resource-types/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateProductRoleRequest calls the generic CreateProductRole builder with application/json body
 func NewCreateProductRoleRequest(server string, productId ProductIdParameter, body CreateProductRoleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -13035,6 +13588,98 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/resource-permissions/{permission_name} (the `UpdateProductResourcePermission` operationId).
 	UpdateProductResourcePermissionWithResponse(ctx context.Context, productId ProductIdParameter, permissionName ResourcePermissionNameParameter, body UpdateProductResourcePermissionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductResourcePermissionResponse, error)
+
+	// CreateProductResourceTypeWithBodyWithResponse Create Product Resource Type
+	//
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+	CreateProductResourceTypeWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProductResourceTypeResponse, error)
+
+	// CreateProductResourceTypeWithResponse Create Product Resource Type
+	//
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+	CreateProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, body CreateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProductResourceTypeResponse, error)
+
+	// ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
+	//
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+	ReplaceProductResourceTypesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceProductResourceTypesResponse, error)
+
+	// ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
+	//
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+	ReplaceProductResourceTypesWithResponse(ctx context.Context, productId ProductIdParameter, body ReplaceProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceProductResourceTypesResponse, error)
+
+	// SearchProductResourceTypesWithBodyWithResponse Search Product Resource Types
+	//
+	// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+	SearchProductResourceTypesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductResourceTypesResponse, error)
+
+	// SearchProductResourceTypesWithResponse Search Product Resource Types
+	//
+	// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+	SearchProductResourceTypesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductResourceTypesResponse, error)
+
+	// DeleteProductResourceTypeWithResponse Delete Product Resource Type
+	//
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
+	DeleteProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*DeleteProductResourceTypeResponse, error)
+
+	// GetProductResourceTypeWithResponse Get Product Resource Type
+	//
+	// Requires Platform Bearer token or Product API Key with resource_type:read.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/resource-types/{resource_type_id} (the `GetProductResourceType` operationId).
+	GetProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*GetProductResourceTypeResponse, error)
+
+	// UpdateProductResourceTypeWithBodyWithResponse Update Product Resource Type
+	//
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+	UpdateProductResourceTypeWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProductResourceTypeResponse, error)
+
+	// UpdateProductResourceTypeWithResponse Update Product Resource Type
+	//
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+	UpdateProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, body UpdateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductResourceTypeResponse, error)
 
 	// CreateProductRoleWithBodyWithResponse Create ProductRole for Product
 	//
@@ -20943,6 +21588,427 @@ func (r UpdateProductResourcePermissionResponse) ContentType() string {
 	return ""
 }
 
+type CreateProductResourceTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ProductResourceTypeResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON201() *ProductResourceTypeResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateProductResourceTypeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProductResourceTypeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProductResourceTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProductResourceTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProductResourceTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReplaceProductResourceTypesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductResourceTypeTreeResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON200() *ProductResourceTypeTreeResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReplaceProductResourceTypesResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r ReplaceProductResourceTypesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReplaceProductResourceTypesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReplaceProductResourceTypesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReplaceProductResourceTypesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchProductResourceTypesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductResourceTypeListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchProductResourceTypesResponse) GetJSON200() *ProductResourceTypeListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchProductResourceTypesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchProductResourceTypesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchProductResourceTypesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchProductResourceTypesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchProductResourceTypesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchProductResourceTypesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchProductResourceTypesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchProductResourceTypesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteProductResourceTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteProductResourceTypeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteProductResourceTypeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteProductResourceTypeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteProductResourceTypeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteProductResourceTypeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteProductResourceTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteProductResourceTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteProductResourceTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetProductResourceTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductResourceTypeResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetProductResourceTypeResponse) GetJSON200() *ProductResourceTypeResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetProductResourceTypeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetProductResourceTypeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetProductResourceTypeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetProductResourceTypeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProductResourceTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProductResourceTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProductResourceTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateProductResourceTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductResourceTypeResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON200() *ProductResourceTypeResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateProductResourceTypeResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateProductResourceTypeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateProductResourceTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateProductResourceTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProductResourceTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateProductRoleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24216,6 +25282,158 @@ func (c *ClientWithResponses) UpdateProductResourcePermissionWithResponse(ctx co
 		return nil, err
 	}
 	return ParseUpdateProductResourcePermissionResponse(rsp)
+}
+
+// CreateProductResourceTypeWithBodyWithResponse Create Product Resource Type
+//
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+func (c *ClientWithResponses) CreateProductResourceTypeWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProductResourceTypeResponse, error) {
+	rsp, err := c.CreateProductResourceTypeWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProductResourceTypeResponse(rsp)
+}
+
+// CreateProductResourceTypeWithResponse Create Product Resource Type
+//
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types (the `CreateProductResourceType` operationId).
+func (c *ClientWithResponses) CreateProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, body CreateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProductResourceTypeResponse, error) {
+	rsp, err := c.CreateProductResourceType(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProductResourceTypeResponse(rsp)
+}
+
+// ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
+//
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+func (c *ClientWithResponses) ReplaceProductResourceTypesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceProductResourceTypesResponse, error) {
+	rsp, err := c.ReplaceProductResourceTypesWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceProductResourceTypesResponse(rsp)
+}
+
+// ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
+//
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/resource-types (the `ReplaceProductResourceTypes` operationId).
+func (c *ClientWithResponses) ReplaceProductResourceTypesWithResponse(ctx context.Context, productId ProductIdParameter, body ReplaceProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceProductResourceTypesResponse, error) {
+	rsp, err := c.ReplaceProductResourceTypes(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReplaceProductResourceTypesResponse(rsp)
+}
+
+// SearchProductResourceTypesWithBodyWithResponse Search Product Resource Types
+//
+// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+func (c *ClientWithResponses) SearchProductResourceTypesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProductResourceTypesResponse, error) {
+	rsp, err := c.SearchProductResourceTypesWithBody(ctx, productId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchProductResourceTypesResponse(rsp)
+}
+
+// SearchProductResourceTypesWithResponse Search Product Resource Types
+//
+// Searches the product's resource types, `organization` included. Requires Platform Bearer token or Product API Key with resource_type:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/resource-types/search (the `SearchProductResourceTypes` operationId).
+func (c *ClientWithResponses) SearchProductResourceTypesWithResponse(ctx context.Context, productId ProductIdParameter, body SearchProductResourceTypesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProductResourceTypesResponse, error) {
+	rsp, err := c.SearchProductResourceTypes(ctx, productId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchProductResourceTypesResponse(rsp)
+}
+
+// DeleteProductResourceTypeWithResponse Delete Product Resource Type
+//
+// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
+func (c *ClientWithResponses) DeleteProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*DeleteProductResourceTypeResponse, error) {
+	rsp, err := c.DeleteProductResourceType(ctx, productId, resourceTypeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteProductResourceTypeResponse(rsp)
+}
+
+// GetProductResourceTypeWithResponse Get Product Resource Type
+//
+// Requires Platform Bearer token or Product API Key with resource_type:read.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/resource-types/{resource_type_id} (the `GetProductResourceType` operationId).
+func (c *ClientWithResponses) GetProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*GetProductResourceTypeResponse, error) {
+	rsp, err := c.GetProductResourceType(ctx, productId, resourceTypeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProductResourceTypeResponse(rsp)
+}
+
+// UpdateProductResourceTypeWithBodyWithResponse Update Product Resource Type
+//
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+func (c *ClientWithResponses) UpdateProductResourceTypeWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProductResourceTypeResponse, error) {
+	rsp, err := c.UpdateProductResourceTypeWithBody(ctx, productId, resourceTypeId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProductResourceTypeResponse(rsp)
+}
+
+// UpdateProductResourceTypeWithResponse Update Product Resource Type
+//
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/products/{product_id}/resource-types/{resource_type_id} (the `UpdateProductResourceType` operationId).
+func (c *ClientWithResponses) UpdateProductResourceTypeWithResponse(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, body UpdateProductResourceTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProductResourceTypeResponse, error) {
+	rsp, err := c.UpdateProductResourceType(ctx, productId, resourceTypeId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProductResourceTypeResponse(rsp)
 }
 
 // CreateProductRoleWithBodyWithResponse Create ProductRole for Product
@@ -30543,6 +31761,340 @@ func ParseUpdateProductResourcePermissionResponse(rsp *http.Response) (*UpdatePr
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProductResourcePermissionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProductResourceTypeResponse parses an HTTP response from a CreateProductResourceTypeWithResponse call
+func ParseCreateProductResourceTypeResponse(rsp *http.Response) (*CreateProductResourceTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProductResourceTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ProductResourceTypeResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReplaceProductResourceTypesResponse parses an HTTP response from a ReplaceProductResourceTypesWithResponse call
+func ParseReplaceProductResourceTypesResponse(rsp *http.Response) (*ReplaceProductResourceTypesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReplaceProductResourceTypesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductResourceTypeTreeResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchProductResourceTypesResponse parses an HTTP response from a SearchProductResourceTypesWithResponse call
+func ParseSearchProductResourceTypesResponse(rsp *http.Response) (*SearchProductResourceTypesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchProductResourceTypesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductResourceTypeListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteProductResourceTypeResponse parses an HTTP response from a DeleteProductResourceTypeWithResponse call
+func ParseDeleteProductResourceTypeResponse(rsp *http.Response) (*DeleteProductResourceTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteProductResourceTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProductResourceTypeResponse parses an HTTP response from a GetProductResourceTypeWithResponse call
+func ParseGetProductResourceTypeResponse(rsp *http.Response) (*GetProductResourceTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProductResourceTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductResourceTypeResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateProductResourceTypeResponse parses an HTTP response from a UpdateProductResourceTypeWithResponse call
+func ParseUpdateProductResourceTypeResponse(rsp *http.Response) (*UpdateProductResourceTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateProductResourceTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductResourceTypeResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

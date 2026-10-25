@@ -53,7 +53,7 @@ func (w world) newRole() string {
 	w.t.Helper()
 	resp, err := w.product.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		context.Background(), w.product.ProductID,
-		ct.CreateProductRoleJSONRequestBody{Name: "role-" + itshared.Faker.UUID().V4()},
+		ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: "role-" + itshared.Faker.UUID().V4()},
 	)
 	require.NoError(w.t, err)
 	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))

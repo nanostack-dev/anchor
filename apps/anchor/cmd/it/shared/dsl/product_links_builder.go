@@ -1,6 +1,7 @@
 package itdsl
 
 import (
+	"cmp"
 	"context"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,8 @@ type ProductRoleOpts struct {
 	Name         string
 	Description  *string
 	Permissions  []string
+	// ResourceType is the role's scope; empty means organization.
+	ResourceType string
 }
 
 // ProductOrganizationOpts configures organization creation linked to a product alias.
@@ -241,9 +244,10 @@ func (b *Builder) ProductRole(opts ProductRoleOpts) *Builder {
 		context.Background(),
 		productCtx.ProductID,
 		nanostackClient.CreateProductRoleJSONRequestBody{
-			Name:        roleName,
-			Description: opts.Description,
-			Permissions: opts.Permissions,
+			ResourceType: cmp.Or(opts.ResourceType, "organization"),
+			Name:         roleName,
+			Description:  opts.Description,
+			Permissions:  opts.Permissions,
 		},
 	)
 	require.NoError(b.t, err)

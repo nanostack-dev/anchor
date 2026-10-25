@@ -26,6 +26,7 @@ func TestProductResourcePermissionCreateSuccess(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		input := ct.CreateProductResourcePermissionRequest{
+			ResourceType:  "organization",
 			Name:          "file:read",
 			Description:   new("Read file contents"),
 			ScopeModifier: new("own"),
@@ -59,7 +60,8 @@ func TestProductResourcePermissionCreateEmitsWebhook(t *testing.T) {
 		sink := productContext.CaptureEvents()
 		resp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
 			ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
-				Name: "events:read",
+				ResourceType: "organization",
+				Name:         "events:read",
 			},
 		)
 		require.NoError(t, err)
@@ -84,38 +86,43 @@ func TestProductResourcePermissionCreateValidationErrors(t *testing.T) {
 		{
 			name: "empty name",
 			input: ct.CreateProductResourcePermissionRequest{
-				Name:        "",
-				Description: new("Test description"),
+				ResourceType: "organization",
+				Name:         "",
+				Description:  new("Test description"),
 			},
 			expectedErr: "name is required",
 		},
 		{
 			name: "name too short",
 			input: ct.CreateProductResourcePermissionRequest{
-				Name:        "a",
-				Description: new("Test description"),
+				ResourceType: "organization",
+				Name:         "a",
+				Description:  new("Test description"),
 			},
 			expectedErr: "name must be at least 2 characters",
 		},
 		{
 			name: "name too long",
 			input: ct.CreateProductResourcePermissionRequest{
-				Name:        string(make([]byte, 201)),
-				Description: new("Test description"),
+				ResourceType: "organization",
+				Name:         string(make([]byte, 201)),
+				Description:  new("Test description"),
 			},
 			expectedErr: "name must be at most 200 characters",
 		},
 		{
 			name: "description too long",
 			input: ct.CreateProductResourcePermissionRequest{
-				Name:        "valid:name",
-				Description: new(string(make([]byte, 501))),
+				ResourceType: "organization",
+				Name:         "valid:name",
+				Description:  new(string(make([]byte, 501))),
 			},
 			expectedErr: "description must be at most 500 characters",
 		},
 		{
 			name: "scope modifier too long",
 			input: ct.CreateProductResourcePermissionRequest{
+				ResourceType:  "organization",
 				Name:          "valid:name",
 				Description:   new("Test description"),
 				ScopeModifier: new(string(make([]byte, 101))),
@@ -150,8 +157,9 @@ func TestProductResourcePermissionCreateDuplicate(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		input := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:duplicate",
-			Description: new("First permission"),
+			ResourceType: "organization",
+			Name:         "file:duplicate",
+			Description:  new("First permission"),
 		}
 
 		resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -187,8 +195,9 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 			permissionName := "File:DuplicateCase:" + ids.MustNew("test")
 
 			input := ct.CreateProductResourcePermissionRequest{
-				Name:        permissionName,
-				Description: new("First permission"),
+				ResourceType: "organization",
+				Name:         permissionName,
+				Description:  new("First permission"),
 			}
 
 			resp1, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -200,8 +209,9 @@ func TestProductResourcePermissionCreateDuplicateDifferentCase(t *testing.T) {
 			duplicateName := strings.ToLower(permissionName)
 			resp2, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
 				ctx, testProduct.ProductID, ct.CreateProductResourcePermissionRequest{
-					Name:        duplicateName,
-					Description: new("Second permission"),
+					ResourceType: "organization",
+					Name:         duplicateName,
+					Description:  new("Second permission"),
 				},
 			)
 			require.NoError(t, err, "request should not error")
@@ -226,8 +236,9 @@ func TestProductResourcePermissionCreateNonExistentProduct(t *testing.T) {
 		nonExistentProductID := ids.MustNew("prod")
 
 		input := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Test permission"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Test permission"),
 		}
 
 		resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -249,7 +260,8 @@ func TestProductResourcePermissionCreateWithMinimalData(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		input := ct.CreateProductResourcePermissionRequest{
-			Name: "minimal:permission",
+			ResourceType: "organization",
+			Name:         "minimal:permission",
 		}
 
 		resp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

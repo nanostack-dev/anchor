@@ -19,6 +19,7 @@ import (
 	"anchor/internal/events"
 
 	"anchor/internal/repository"
+	rtservice "anchor/internal/resourcetype/service"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 
@@ -52,6 +53,7 @@ type productService struct {
 	productRepo           repository.ProductRepository
 	productPermissionRepo repository.ProductPermissionRepository
 	eventEndpoints        events.EndpointService
+	resourceTypes         rtservice.Service
 	products              cache.Cache[product.Product]
 	logger                zerolog.Logger
 	transactor            transactor.Transactor
@@ -61,11 +63,13 @@ func NewProductService(
 	productRepo repository.ProductRepository,
 	productPermissionRepo repository.ProductPermissionRepository,
 	eventEndpoints events.EndpointService,
+	resourceTypes rtservice.Service,
 	cacheStore cache.Store, transactor transactor.Transactor, logger zerolog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
+		resourceTypes:         resourceTypes,
 		eventEndpoints:        eventEndpoints,
 		products:              cache.New[product.Product](cacheStore, productCachePrefix, productCacheTTL, logger),
 		logger:                logger.With().Str("component", "product_service").Logger(),
@@ -217,7 +221,7 @@ func (s *productService) Create(
 			Str("product_id", prod.ID).
 			Int("permission_count", len(defaultPermissions)).
 			Msg("created default permissions")
-		return nil
+		return s.resourceTypes.SeedOrganization(txCtx, productCreated.ID)
 	})
 	return productCreated, err
 }

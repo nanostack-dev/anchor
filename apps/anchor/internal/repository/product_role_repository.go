@@ -377,6 +377,9 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 			)
 			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
 		}
+		if input.Filter.Scopes.Active() {
+			whereStmt = whereStmt.AND(scopeCondition(table.ProductRoles.ResourceTypeID, input.Filter.Scopes))
+		}
 		if len(input.Filter.Permissions) > 0 {
 			whereStmt = whereStmt.AND(postgres.EXISTS(
 				table.ProductRoleResourcePermissions.SELECT(postgres.Int(1)).WHERE(

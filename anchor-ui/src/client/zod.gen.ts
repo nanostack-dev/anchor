@@ -239,11 +239,94 @@ export const zProductPermissionListResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
+ * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product.
+ */
+export const zResourceTypeSlug = z.string().regex(/^[a-z][a-z0-9_]{0,48}$/);
+
+/**
+ * A kind of thing the product protects, placed in the product's tree of resource types under `organization`. A product has at most 50 resource types of its own besides `organization`.
+ */
+export const zProductResourceTypeCreateRequest = z.object({
+    slug: zResourceTypeSlug,
+    name: z.string().min(1).max(100),
+    description: z.string().max(500).nullish(),
+    parent_types: z.array(zResourceTypeSlug).min(1).max(10),
+    nests_in_itself: z.boolean().optional().default(false)
+});
+
+/**
+ * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+ */
+export const zProductResourceTypeUpdateRequest = z.object({
+    name: z.string().min(1).max(100).optional(),
+    description: z.string().max(500).nullish(),
+    parent_types: z.array(zResourceTypeSlug).min(1).max(10).optional(),
+    nests_in_itself: z.boolean().optional()
+});
+
+export const zProductResourceTypeTreeItem = z.object({
+    slug: zResourceTypeSlug,
+    name: z.string().min(1).max(100),
+    description: z.string().max(500).nullish(),
+    parent_types: z.array(zResourceTypeSlug).min(1).max(10),
+    nests_in_itself: z.boolean().optional().default(false)
+});
+
+/**
+ * The product's whole tree of resource types, `organization` excluded. Types are matched by slug: a listed type is created or updated, and a type left out is deleted. The tree is validated as a whole, with the same rules as the single-type routes, and applied in one transaction.
+ */
+export const zProductResourceTypeTreeRequest = z.object({
+    resource_types: z.array(zProductResourceTypeTreeItem).max(50)
+});
+
+export const zProductResourceTypeResponse = z.object({
+    id: zKsuid,
+    product_id: zKsuid,
+    slug: zResourceTypeSlug,
+    name: z.string(),
+    description: z.string().nullish(),
+    parent_types: z.array(zResourceTypeSlug),
+    nests_in_itself: z.boolean(),
+    built_in: z.boolean(),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zProductResourceTypeTreeResponse = z.object({
+    resource_types: z.array(zProductResourceTypeResponse)
+});
+
+export const zProductResourceTypeFilter = z.object({
+    ids: z.array(zKsuid).max(100).optional(),
+    slugs: z.array(zResourceTypeSlug).max(100).optional()
+});
+
+/**
+ * Field to sort by. Every order ends with `id`.
+ */
+export const zProductResourceTypeSortField = z.enum([
+    'created_at',
+    'updated_at',
+    'slug',
+    'name'
+]).default('created_at');
+
+export const zProductResourceTypeSearchRequest = zSearchRequest.and(z.object({
+    filter: zProductResourceTypeFilter.optional(),
+    sort_by: zProductResourceTypeSortField.optional()
+}));
+
+export const zProductResourceTypeListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zProductResourceTypeResponse)
+}));
+
+/**
  * Request body for defining a new domain-resource permission for the product's own application resources. For example, if you are building a Google Drive-like product you might define permissions such as "document:read", "document:create", or "file:delete". These permissions are later assigned to ProductRoles, which are attached to end-user organization memberships.
  */
 export const zCreateProductResourcePermissionRequest = z.object({
     name: z.string().min(2).max(200),
     description: z.string().max(500).nullish(),
+    resource_type: zResourceTypeSlug,
     scope_modifier: z.string().max(100).nullish()
 });
 
@@ -251,7 +334,8 @@ export const zCreateProductResourcePermissionRequest = z.object({
  * Request body for updating a product resource permission's metadata.
  */
 export const zUpdateProductResourcePermissionRequest = z.object({
-    description: z.string().max(500).nullish()
+    description: z.string().max(500).nullish(),
+    resource_type: zResourceTypeSlug.optional()
 });
 
 /**
@@ -261,13 +345,15 @@ export const zProductResourcePermissionResponse = z.object({
     product_id: zKsuid,
     name: z.string(),
     description: z.string().nullish(),
+    resource_type: zResourceTypeSlug,
     scope_modifier: z.string().nullish(),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
 });
 
 export const zProductResourcePermissionFilter = z.object({
-    names: z.array(z.string()).optional()
+    names: z.array(z.string()).optional(),
+    resource_types: z.array(zResourceTypeSlug).max(50).optional()
 });
 
 export const zProductResourcePermissionSearchRequest = zSearchRequest.and(z.object({
@@ -286,13 +372,15 @@ export const zProductResourcePermissionListResponse = zPagedListResponse.and(z.o
 export const zProductRoleCreateRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
-    permissions: z.array(z.string()).optional()
+    permissions: z.array(z.string()).optional(),
+    resource_type: zResourceTypeSlug
 });
 
 export const zProductRoleUpdateRequest = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
-    permissions: z.array(z.string()).optional()
+    permissions: z.array(z.string()).optional(),
+    resource_type: zResourceTypeSlug.optional()
 });
 
 /**
@@ -309,6 +397,7 @@ export const zProductRoleResponse = z.object({
     product_id: zKsuid,
     name: z.string(),
     description: z.string().nullish(),
+    resource_type: zResourceTypeSlug,
     permissions: z.array(zProductRolePermissionResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -452,7 +541,8 @@ export const zProductRoleFilter = z.object({
     ids: z.array(zKsuid).optional(),
     names: z.array(z.string()).optional(),
     name_contains: z.string().optional(),
-    permissions: z.array(z.string()).optional()
+    permissions: z.array(z.string()).optional(),
+    resource_types: z.array(zResourceTypeSlug).max(50).optional()
 });
 
 export const zProductApiKeyFilter = z.object({
@@ -1759,6 +1849,11 @@ export const zWorkspaceIdParameter = zKsuid;
 export const zProductUserIdParameter = zKsuid;
 
 /**
+ * The KSUID of the resource type.
+ */
+export const zResourceTypeIdParameter = zKsuid;
+
+/**
  * The KSUID of the product role.
  */
 export const zProductRoleIdParameter = zKsuid;
@@ -1989,6 +2084,71 @@ export const zIngestWebhookPath = z.object({
  * Webhook processed successfully.
  */
 export const zIngestWebhookResponse = zIntegrationWebhookResponse;
+
+export const zCreateProductResourceTypeBody = zProductResourceTypeCreateRequest;
+
+export const zCreateProductResourceTypePath = z.object({
+    product_id: zKsuid
+});
+
+/**
+ * Resource type created.
+ */
+export const zCreateProductResourceTypeResponse = zProductResourceTypeResponse;
+
+export const zReplaceProductResourceTypesBody = zProductResourceTypeTreeRequest;
+
+export const zReplaceProductResourceTypesPath = z.object({
+    product_id: zKsuid
+});
+
+/**
+ * The product's resource types after the change.
+ */
+export const zReplaceProductResourceTypesResponse = zProductResourceTypeTreeResponse;
+
+export const zSearchProductResourceTypesBody = zProductResourceTypeSearchRequest;
+
+export const zSearchProductResourceTypesPath = z.object({
+    product_id: zKsuid
+});
+
+/**
+ * Matching resource types.
+ */
+export const zSearchProductResourceTypesResponse = zProductResourceTypeListResponse;
+
+export const zDeleteProductResourceTypePath = z.object({
+    product_id: zKsuid,
+    resource_type_id: zKsuid
+});
+
+/**
+ * Resource type deleted.
+ */
+export const zDeleteProductResourceTypeResponse = z.void();
+
+export const zGetProductResourceTypePath = z.object({
+    product_id: zKsuid,
+    resource_type_id: zKsuid
+});
+
+/**
+ * The resource type.
+ */
+export const zGetProductResourceTypeResponse = zProductResourceTypeResponse;
+
+export const zUpdateProductResourceTypeBody = zProductResourceTypeUpdateRequest;
+
+export const zUpdateProductResourceTypePath = z.object({
+    product_id: zKsuid,
+    resource_type_id: zKsuid
+});
+
+/**
+ * The resource type after the change.
+ */
+export const zUpdateProductResourceTypeResponse = zProductResourceTypeResponse;
 
 /**
  * Resource permission details.

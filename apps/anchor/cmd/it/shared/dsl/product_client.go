@@ -31,19 +31,30 @@ func (tp *ProductContext) CreateProductResourcePermissions(
 	testingCtx *testing.T,
 	names ...string,
 ) []nanostackClient.ProductResourcePermissionResponse {
+	return tp.CreateScopedPermissions(testingCtx, "organization", names...)
+}
+
+// CreateScopedPermissions declares permissions scoped to one resource type.
+func (tp *ProductContext) CreateScopedPermissions(
+	testingCtx *testing.T,
+	resourceType string,
+	names ...string,
+) []nanostackClient.ProductResourcePermissionResponse {
+	testingCtx.Helper()
 	var permissions []nanostackClient.ProductResourcePermissionResponse
 	for _, name := range names {
 		resp, err := tp.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
 			context.Background(),
 			tp.ProductID,
 			nanostackClient.CreateProductResourcePermissionJSONRequestBody{
+				ResourceType:  resourceType,
 				Name:          name,
 				Description:   new("Test resource permission for integration tests"),
 				ScopeModifier: new("GLOBAL"),
 			},
 		)
 		require.NoError(testingCtx, err)
-		require.Equal(testingCtx, http.StatusCreated, resp.StatusCode())
+		require.Equal(testingCtx, http.StatusCreated, resp.StatusCode(), string(resp.Body))
 		require.NotNil(testingCtx, resp.JSON201)
 		permissions = append(permissions, *resp.JSON201)
 	}

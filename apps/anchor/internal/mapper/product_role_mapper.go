@@ -19,13 +19,14 @@ func (m *ProductRoleMapper) ToDomain(
 	description := functional.FromPtr(entity.Description).OrElse("")
 
 	return role.ProductRole{
-		ID:          entity.ID,
-		ProductID:   entity.ProductID,
-		Name:        entity.Name,
-		Description: description,
-		CreatedAt:   entity.CreatedAt,
-		UpdatedAt:   entity.UpdatedAt,
-		Permissions: m.permissionsToDomain(permissions),
+		ID:             entity.ID,
+		ProductID:      entity.ProductID,
+		Name:           entity.Name,
+		Description:    description,
+		ResourceTypeID: entity.ResourceTypeID,
+		CreatedAt:      entity.CreatedAt,
+		UpdatedAt:      entity.UpdatedAt,
+		Permissions:    m.permissionsToDomain(permissions),
 	}
 }
 
@@ -33,12 +34,13 @@ func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles
 	description := functional.OptionOf(domain.Description, domain.Description != "").ToPtr()
 
 	return model.ProductRoles{
-		ID:          domain.ID,
-		ProductID:   domain.ProductID,
-		Name:        domain.Name,
-		Description: description,
-		CreatedAt:   domain.CreatedAt,
-		UpdatedAt:   domain.UpdatedAt,
+		ID:             domain.ID,
+		ProductID:      domain.ProductID,
+		Name:           domain.Name,
+		Description:    description,
+		ResourceTypeID: domain.ResourceTypeID,
+		CreatedAt:      domain.CreatedAt,
+		UpdatedAt:      domain.UpdatedAt,
 	}
 }
 

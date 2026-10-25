@@ -108,6 +108,9 @@ test("access.permission-lifecycle: create, view, cancel edit, persist descriptio
 		create.getByRole("button", { name: "Create Permission", exact: true }),
 	).toBeDisabled();
 	await create.getByLabel("Name", { exact: true }).fill(name);
+	await expect(
+		create.getByRole("combobox", { name: "Resource type", exact: true }),
+	).toContainText("Organization");
 	await create
 		.getByLabel("Description", { exact: true })
 		.fill("Initial description");
@@ -147,6 +150,7 @@ test("access.permission-lifecycle: create, view, cancel edit, persist descriptio
 		`${world.productPath}/resource-permissions/${encodeURIComponent(name)}`,
 	);
 	expect(saved.description).toBe("Updated description");
+	expect(saved.resource_type).toBe("organization");
 	await page.reload();
 	await expect(
 		page.getByRole("region", { name: "Resource permission details" }),
