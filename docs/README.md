@@ -26,7 +26,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [case insensitive identifiers](case-insensitive-identifiers.md)
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
-- [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, and the organization backfill
+- [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, and the scope rollout
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
 - [product events spec](product-events-spec.md)

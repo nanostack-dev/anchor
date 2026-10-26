@@ -166,7 +166,7 @@ func (s *productRoleService) CreateProductRole(
 		); scopeErr != nil {
 			return scopeErr
 		}
-		productRole.ResourceTypeID = &scope.ID
+		productRole.ResourceTypeID = scope.ID
 
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)

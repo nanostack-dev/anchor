@@ -31,10 +31,11 @@ func createResourcePermissionFull(
 	t.Helper()
 
 	perm := resourcepermission.ProductResourcePermission{
-		ProductID:     productID,
-		Name:          name,
-		Description:   description,
-		ScopeModifier: scopeModifier,
+		ProductID:      productID,
+		Name:           name,
+		Description:    description,
+		ScopeModifier:  scopeModifier,
+		ResourceTypeID: organizationTypeID(t, productID),
 	}
 
 	created, err := repoCtx.ProductResourcePermissionRepository.Create(context.Background(), perm)

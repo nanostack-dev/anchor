@@ -31,12 +31,11 @@ var (
 const slugUniqueConstraint = "product_resource_types_product_id_slug_key"
 
 // RolePermissionScopes is one role of a product with the scopes of the permissions it
-// holds, all as resource type IDs. A NULL scope is a row a release before
-// resource types wrote during a rolling deploy; it counts as organization.
+// holds, all as resource type IDs.
 type RolePermissionScopes struct {
 	RoleID            string
-	ResourceTypeID    *string
-	PermissionTypeIDs []*string
+	ResourceTypeID    string
+	PermissionTypeIDs []string
 }
 
 type Repository interface {
@@ -56,10 +55,6 @@ type Repository interface {
 	) (search.Result[resourcetype.ResourceType], error)
 	CountUsage(ctx context.Context, productID, id string) (resourcetype.Usage, error)
 	FindRolePermissionScopes(ctx context.Context, productID string) ([]RolePermissionScopes, error)
-	// BackfillScopesInternal scopes the product's unscoped roles and
-	// permissions to its organization type (ADR-0022 G1). It is not tenant
-	// scoped: only the startup backfill calls it.
-	BackfillScopesInternal(ctx context.Context, productID, organizationTypeID string) (int64, error)
 }
 
 type repositoryImpl struct {
@@ -321,9 +316,9 @@ func (r *repositoryImpl) CountUsage(ctx context.Context, productID, id string) (
 }
 
 type rolePermissionScopesRow struct {
-	RoleID           string  `alias:"product_roles.id"`
-	RoleTypeID       *string `alias:"product_roles.resource_type_id"`
-	PermissionTypeID *string `alias:"product_resource_permissions.resource_type_id"`
+	RoleID           string `alias:"product_roles.id"`
+	RoleTypeID       string `alias:"product_roles.resource_type_id"`
+	PermissionTypeID string `alias:"product_resource_permissions.resource_type_id"`
 }
 
 func (r *repositoryImpl) FindRolePermissionScopes(
@@ -357,36 +352,9 @@ func (r *repositoryImpl) FindRolePermissionScopes(
 			RoleID:         roleID,
 			ResourceTypeID: permissions[0].RoleTypeID,
 			PermissionTypeIDs: functional.Slice(permissions).Map(
-				func(row rolePermissionScopesRow) *string { return row.PermissionTypeID },
+				func(row rolePermissionScopesRow) string { return row.PermissionTypeID },
 			),
 		})
 	}
 	return scopes, nil
-}
-
-func (r *repositoryImpl) BackfillScopesInternal(
-	ctx context.Context, productID, organizationTypeID string,
-) (int64, error) {
-	var scoped int64
-	for _, stmt := range []postgres.Statement{
-		table.ProductRoles.UPDATE(table.ProductRoles.ResourceTypeID).
-			SET(postgres.String(organizationTypeID)).
-			WHERE(table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductRoles.ResourceTypeID.IS_NULL())),
-		table.ProductResourcePermissions.UPDATE(table.ProductResourcePermissions.ResourceTypeID).
-			SET(postgres.String(organizationTypeID)).
-			WHERE(table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductResourcePermissions.ResourceTypeID.IS_NULL())),
-	} {
-		result, err := stmt.ExecContext(ctx, transactor.Executor(ctx, r.db))
-		if err != nil {
-			return scoped, err
-		}
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return scoped, err
-		}
-		scoped += affected
-	}
-	return scoped, nil
 }

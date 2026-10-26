@@ -130,7 +130,7 @@ func (s *resourcePermissionService) Create(
 		if !known {
 			return resourcetype.NewUnknownError([]string{input.ResourceType})
 		}
-		resourcePermission.ResourceTypeID = &scope.ID
+		resourcePermission.ResourceTypeID = scope.ID
 
 		var createErr error
 		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)

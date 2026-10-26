@@ -7,13 +7,11 @@ import (
 )
 
 type ProductRole struct {
-	ID          string
-	ProductID   string
-	Name        string
-	Description string
-	// ResourceTypeID is nil only on a row a release before resource types
-	// wrote during a rolling deploy; it counts as organization.
-	ResourceTypeID *string
+	ID             string
+	ProductID      string
+	Name           string
+	Description    string
+	ResourceTypeID string
 	// ResourceType is the slug of the scope, filled by the service.
 	ResourceType string
 	CreatedAt    time.Time
