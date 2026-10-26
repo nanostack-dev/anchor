@@ -42,9 +42,9 @@ func withRoleScope(tree resourcetype.Tree) func(role.ProductRole) role.ProductRo
 	}
 }
 
-// checkBundleScope refuses a permission that is neither scoped to the role's
+// checkPermissionScopes refuses a permission that is neither scoped to the role's
 // type nor to a type below it (ADR-0022 D1).
-func checkBundleScope(
+func checkPermissionScopes(
 	tree resourcetype.Tree, roleScope string, permissions []resourcepermission.ProductResourcePermission,
 ) error {
 	below := tree.Below(roleScope)

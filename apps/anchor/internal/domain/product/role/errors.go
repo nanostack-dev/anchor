@@ -18,7 +18,7 @@ var (
 	)
 )
 
-// NewPermissionOutsideScopeError refuses a bundle with a permission scoped to
+// NewPermissionOutsideScopeError refuses a role whose permission scopes include one scoped to
 // a type that is neither the role's own type nor below it (ADR-0022 D1).
 func NewPermissionOutsideScopeError(permission, permissionScope, roleScope string) *fault.Error {
 	return fault.BadRequest(

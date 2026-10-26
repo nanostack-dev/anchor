@@ -157,7 +157,7 @@ func (s *productRoleService) CreateProductRole(
 		if !known {
 			return resourcetype.NewUnknownError([]string{input.ResourceType})
 		}
-		if scopeErr := s.checkBundle(
+		if scopeErr := s.checkPermissionScopes(
 			txCtx,
 			tree,
 			input.ProductID,
@@ -309,7 +309,7 @@ func (s *productRoleService) UpdateProductRole(
 			if treeErr != nil {
 				return treeErr
 			}
-			if scopeErr := s.checkBundle(
+			if scopeErr := s.checkPermissionScopes(
 				txCtx,
 				tree,
 				input.ProductID,
@@ -508,7 +508,13 @@ func (s *productRoleService) AssignPermissionToProductRole(
 			return role.ErrProductRoleNotFound
 		}
 		roleScope := scopeSlug(tree, target.Value().ResourceTypeID)
-		if scopeErr := s.checkBundle(txCtx, tree, input.ProductID, roleScope, resolvedPermissions); scopeErr != nil {
+		if scopeErr := s.checkPermissionScopes(
+			txCtx,
+			tree,
+			input.ProductID,
+			roleScope,
+			resolvedPermissions,
+		); scopeErr != nil {
 			return scopeErr
 		}
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
@@ -718,9 +724,9 @@ func (s *productRoleService) withScope(
 	return withRoleScope(tree)(found), nil
 }
 
-// checkBundle reads the scopes of the role's permissions and refuses one
+// checkPermissionScopes reads the scopes of the role's permissions and refuses one
 // outside the role's scope.
-func (s *productRoleService) checkBundle(
+func (s *productRoleService) checkPermissionScopes(
 	ctx context.Context, tree resourcetype.Tree, productID, roleScope string,
 	permissions []role.ProductRolePermission,
 ) error {
@@ -732,5 +738,5 @@ func (s *productRoleService) checkBundle(
 	if err != nil {
 		return err
 	}
-	return checkBundleScope(tree, roleScope, found)
+	return checkPermissionScopes(tree, roleScope, found)
 }

@@ -98,12 +98,12 @@ func NewInUseError(slug string, usage Usage) *fault.Error {
 }
 
 // NewRolesOutOfScopeError refuses a tree change that would leave roles
-// bundling a permission no longer below their scope.
+// holding a permission no longer below their scope.
 func NewRolesOutOfScopeError(slug string, roleIDs []string) *fault.Error {
 	return fault.Conflict(
 		"RESOURCE_TYPE_IN_USE",
 		fmt.Sprintf(
-			"Roles would bundle permissions outside their scope if %s changed this way. Remove those permissions from the roles first.",
+			"Roles would hold permissions outside their scope if %s changed this way. Remove those permissions from the roles first.",
 			slug,
 		),
 	).Metadata(map[string]any{metadataSlug: slug, metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
@@ -114,6 +114,6 @@ func NewRolesOutOfScopeError(slug string, roleIDs []string) *fault.Error {
 func NewTreeRolesOutOfScopeError(roleIDs []string) *fault.Error {
 	return fault.Conflict(
 		"RESOURCE_TYPE_IN_USE",
-		"Roles would bundle permissions outside their scope with this tree. Remove those permissions from the roles first.",
+		"Roles would hold permissions outside their scope with this tree. Remove those permissions from the roles first.",
 	).Metadata(map[string]any{metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
 }

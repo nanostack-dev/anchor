@@ -145,9 +145,9 @@ func TestCreateRoleWithoutResourceType(t *testing.T) {
 	})
 }
 
-func TestCreateRoleBundlingPermissionsBelowItsScope(t *testing.T) {
+func TestCreateRoleWithPermissionScopesBelowItsScope(t *testing.T) {
 	t.Parallel()
-	t.Run("A project role bundles project, folder and document permissions", func(t *testing.T) {
+	t.Run("A project role holds project, folder and document permissions", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		declareDocumentTree(t, product)
@@ -162,9 +162,9 @@ func TestCreateRoleBundlingPermissionsBelowItsScope(t *testing.T) {
 	})
 }
 
-func TestCreateRoleBundlingPermissionAboveItsScope(t *testing.T) {
+func TestCreateRoleWithPermissionScopeAboveItsScope(t *testing.T) {
 	t.Parallel()
-	t.Run("A project role that bundles an organization permission answers 400", func(t *testing.T) {
+	t.Run("A project role that holds an organization permission answers 400", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		declareDocumentTree(t, product)

@@ -30,10 +30,10 @@ var (
 
 const slugUniqueConstraint = "product_resource_types_product_id_slug_key"
 
-// RoleBundle is one role of a product with the scopes of the permissions it
-// bundles, all as resource type IDs. A NULL scope is a row a release before
+// RolePermissionScopes is one role of a product with the scopes of the permissions it
+// holds, all as resource type IDs. A NULL scope is a row a release before
 // resource types wrote during a rolling deploy; it counts as organization.
-type RoleBundle struct {
+type RolePermissionScopes struct {
 	RoleID            string
 	ResourceTypeID    *string
 	PermissionTypeIDs []*string
@@ -56,7 +56,7 @@ type Repository interface {
 		request search.Request[resourcetype.Filter, resourcetype.SortField],
 	) (search.Result[resourcetype.ResourceType], error)
 	CountUsage(ctx context.Context, productID, id string) (resourcetype.Usage, error)
-	FindRoleBundles(ctx context.Context, productID string) ([]RoleBundle, error)
+	FindRolePermissionScopes(ctx context.Context, productID string) ([]RolePermissionScopes, error)
 	// BackfillScopesInternal scopes the product's unscoped roles and
 	// permissions to its organization type (ADR-0022 G1). It is not tenant
 	// scoped: only the startup backfill calls it.
@@ -325,14 +325,17 @@ func (r *repositoryImpl) CountUsage(ctx context.Context, productID, id string) (
 	return resourcetype.Usage{ChildTypes: int(children), Roles: int(roles), Permissions: int(permissions)}, nil
 }
 
-type roleBundleRow struct {
+type rolePermissionScopesRow struct {
 	RoleID           string  `alias:"product_roles.id"`
 	RoleTypeID       *string `alias:"product_roles.resource_type_id"`
 	PermissionTypeID *string `alias:"product_resource_permissions.resource_type_id"`
 }
 
-func (r *repositoryImpl) FindRoleBundles(ctx context.Context, productID string) ([]RoleBundle, error) {
-	rows, err := transactor.Query[[]roleBundleRow](ctx, r.db,
+func (r *repositoryImpl) FindRolePermissionScopes(
+	ctx context.Context,
+	productID string,
+) ([]RolePermissionScopes, error) {
+	rows, err := transactor.Query[[]rolePermissionScopesRow](ctx, r.db,
 		postgres.SELECT(
 			table.ProductRoles.ID.AS("product_roles.id"),
 			table.ProductRoles.ResourceTypeID.AS("product_roles.resource_type_id"),
@@ -352,18 +355,18 @@ func (r *repositoryImpl) FindRoleBundles(ctx context.Context, productID string) 
 	if err != nil {
 		return nil, err
 	}
-	grouped := functional.Slice(rows).GroupBy(func(row roleBundleRow) string { return row.RoleID })
-	bundles := make([]RoleBundle, 0, len(grouped))
+	grouped := functional.Slice(rows).GroupBy(func(row rolePermissionScopesRow) string { return row.RoleID })
+	scopes := make([]RolePermissionScopes, 0, len(grouped))
 	for roleID, permissions := range grouped {
-		bundles = append(bundles, RoleBundle{
+		scopes = append(scopes, RolePermissionScopes{
 			RoleID:         roleID,
 			ResourceTypeID: permissions[0].RoleTypeID,
 			PermissionTypeIDs: functional.Slice(permissions).Map(
-				func(row roleBundleRow) *string { return row.PermissionTypeID },
+				func(row rolePermissionScopesRow) *string { return row.PermissionTypeID },
 			),
 		})
 	}
-	return bundles, nil
+	return scopes, nil
 }
 
 func (r *repositoryImpl) BackfillScopesInternal(

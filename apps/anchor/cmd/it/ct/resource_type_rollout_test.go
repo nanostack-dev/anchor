@@ -42,7 +42,7 @@ func TestUnscopedPermissionReadsAsOrganization(t *testing.T) {
 
 func TestUnscopedRoleReadsAsOrganization(t *testing.T) {
 	t.Parallel()
-	t.Run("A role with no scope reads as organization and bundles any permission", func(t *testing.T) {
+	t.Run("A role with no scope reads as organization and holds any permission", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		declareDocumentTree(t, product)
@@ -79,13 +79,13 @@ func TestProductWithoutOrganizationTypeGetsOne(t *testing.T) {
 	})
 }
 
-// A role bundle check and a tree change race on the catalog lock: one of them
-// must lose, or a project role could end up bundling a document permission
+// A role's permission scopes check and a tree change race on the catalog lock:
+// one of them must lose, or a project role could end up holding a document permission
 // that is no longer below project.
-func TestConcurrentRoleBundleAndTreeChange(t *testing.T) {
+func TestConcurrentRolePermissionScopesAndTreeChange(t *testing.T) {
 	t.Parallel()
 	t.Run(
-		"A project role bundling a document permission and cutting document off from project never both succeed",
+		"A project role holding a document permission and cutting document off from project never both succeed",
 		func(t *testing.T) {
 			t.Parallel()
 			const rounds = 20

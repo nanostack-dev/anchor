@@ -109,7 +109,7 @@ func (t Tree) Children(slug string) []string {
 }
 
 // Below is slug and every type reachable downward from it: the types a role
-// scoped to slug may bundle permissions of (ADR-0022 D1).
+// scoped to slug may hold permissions of (ADR-0022 D1).
 func (t Tree) Below(slug string) map[string]bool {
 	below := map[string]bool{}
 	pending := []string{slug}

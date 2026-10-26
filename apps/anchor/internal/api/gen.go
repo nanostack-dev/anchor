@@ -2733,7 +2733,7 @@ type ProductResourceTypeUpdateRequest struct {
 	Name          *string `json:"name,omitempty"`
 	NestsInItself *bool   `json:"nests_in_itself,omitempty"`
 
-	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then bundle a permission outside its scope.
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
 	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
 }
 

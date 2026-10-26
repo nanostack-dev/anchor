@@ -491,7 +491,7 @@ export type ProductResourceTypeUpdateRequest = {
     name?: string;
     description?: string | null;
     /**
-     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then bundle a permission outside its scope.
+     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
      */
     parent_types?: Array<ResourceTypeSlug>;
     nests_in_itself?: boolean;

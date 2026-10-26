@@ -103,7 +103,7 @@ func TestUpdateResourceTypeCycle(t *testing.T) {
 func TestUpdateResourceTypeRemovingParentARoleNeeds(t *testing.T) {
 	t.Parallel()
 	t.Run(
-		"Cutting document off from project answers 409 while a project role bundles a document permission",
+		"Cutting document off from project answers 409 while a project role holds a document permission",
 		func(t *testing.T) {
 			t.Parallel()
 			product := createTestProductContext(t)

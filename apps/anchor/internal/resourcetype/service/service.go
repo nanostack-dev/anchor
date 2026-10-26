@@ -409,14 +409,14 @@ func replaceType(tree resourcetype.Tree, changed resourcetype.ResourceType) reso
 }
 
 // checkReshape validates a candidate tree and refuses it when a role would
-// then bundle a permission that is no longer at or below the role's scope.
+// then hold a permission that is no longer at or below the role's scope.
 func (s *service) checkReshape(
 	ctx context.Context, productID string, next resourcetype.Tree, slug string,
 ) error {
 	if err := next.Validate(); err != nil {
 		return err
 	}
-	bundles, err := s.repo.FindRoleBundles(ctx, productID)
+	roles, err := s.repo.FindRolePermissionScopes(ctx, productID)
 	if err != nil {
 		return err
 	}
@@ -428,11 +428,11 @@ func (s *service) checkReshape(
 		return next.ByID(*id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).OrElse(root.Slug)
 	}
 	var outside []string
-	for _, bundle := range bundles {
-		below := next.Below(scopeOf(bundle.ResourceTypeID))
-		for _, permissionType := range bundle.PermissionTypeIDs {
+	for _, role := range roles {
+		below := next.Below(scopeOf(role.ResourceTypeID))
+		for _, permissionType := range role.PermissionTypeIDs {
 			if !below[scopeOf(permissionType)] {
-				outside = append(outside, bundle.RoleID)
+				outside = append(outside, role.RoleID)
 				break
 			}
 		}
