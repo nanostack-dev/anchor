@@ -61,8 +61,7 @@ type Repository interface {
 	// ProductExists reports whether the Product is still there.
 	ProductExists(ctx context.Context, productID string) (bool, error)
 
-	// Permissions lists the Product's permissions with their scope's ID; a
-	// null scope counts as organization, as the resource type backfill writes.
+	// Permissions lists the Product's permissions with their scope's ID.
 	Permissions(ctx context.Context, productID string) ([]PermissionScope, error)
 	// OrganizationIDs lists every Organization of the Product.
 	OrganizationIDs(ctx context.Context, productID string) ([]string, error)
@@ -79,7 +78,7 @@ type Repository interface {
 
 type PermissionScope struct {
 	Name           string
-	ResourceTypeID *string
+	ResourceTypeID string
 }
 
 type repositoryImpl struct {

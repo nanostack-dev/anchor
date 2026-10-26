@@ -33,7 +33,11 @@ func givenSyncWorld(t *testing.T) syncWorld {
 	ctx := t.Context()
 	productID := GivenATenantAndProduct(t).Product.ID
 	permission := givenPermission(t, productID)
-	template := role.ProductRole{ProductID: productID, Name: "Reader " + uuid.NewString()}
+	template := role.ProductRole{
+		ProductID:      productID,
+		Name:           "Reader " + uuid.NewString(),
+		ResourceTypeID: organizationTypeID(t, productID),
+	}
 	template.Key = strings.ToLower(template.Name)
 	template.GenerateID()
 	_, err := ProductRoleRepo.Create(ctx, template)
@@ -312,7 +316,11 @@ func TestAuthzSyncCases(t *testing.T) {
 		member := givenMember(t, w, w.organizationID, w.templateID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		other := givenPermission(t, w.productID)
-		otherRole := role.ProductRole{ProductID: w.productID, Name: "Writer " + uuid.NewString()}
+		otherRole := role.ProductRole{
+			ProductID:      w.productID,
+			Name:           "Writer " + uuid.NewString(),
+			ResourceTypeID: organizationTypeID(t, w.productID),
+		}
 		otherRole.Key = strings.ToLower(otherRole.Name)
 		otherRole.GenerateID()
 		_, err := ProductRoleRepo.Create(t.Context(), otherRole)

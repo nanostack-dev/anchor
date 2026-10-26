@@ -288,11 +288,8 @@ func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, 
 		})
 	}
 	for _, p := range permissions {
-		scope := resourcetype.OrganizationSlug
-		if p.ResourceTypeID != nil {
-			scope = tree.ByID(*p.ResourceTypeID).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).
-				OrElse(resourcetype.OrganizationSlug)
-		}
+		scope := tree.ByID(p.ResourceTypeID).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).
+			OrElse(resourcetype.OrganizationSlug)
 		catalog.Permissions = append(catalog.Permissions, model.Permission{Name: p.Name, Scope: scope})
 	}
 	return catalog, nil
