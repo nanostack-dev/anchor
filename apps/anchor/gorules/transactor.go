@@ -11,6 +11,8 @@ func rowLockStaysInline(m dsl.Matcher) {
 	m.Match(
 		`$x := transactor.ForShare($_)`, `$x = transactor.ForShare($_)`,
 		`$x := transactor.ForUpdate($_)`, `$x = transactor.ForUpdate($_)`,
+		`$x := transactor.ForNoKeyUpdate($_)`, `$x = transactor.ForNoKeyUpdate($_)`,
+		`$x := transactor.ForKeyShare($_)`, `$x = transactor.ForKeyShare($_)`,
 		`$x := transactor.WithRowLock($*_)`, `$x = transactor.WithRowLock($*_)`,
 	).Report(`pass the locked context inline to the one call it locks: every query run with $x is locked`)
 }
