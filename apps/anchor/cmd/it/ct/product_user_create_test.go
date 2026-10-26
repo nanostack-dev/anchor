@@ -205,31 +205,67 @@ func TestCreateProductUser(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
-			status := ct.Active
+
+			apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
+
+			resp, err := apiKeyClient.CreateProductUserWithResponse(
+				ctx, productContext.ProductID,
+				ct.CreateProductUserJSONRequestBody{Email: email},
+			)
+
+			require.NoError(
+				t, err, "create product user without a name should not error",
+			)
+			require.Equal(
+				t, http.StatusCreated,
+				resp.StatusCode(),
+				"create product user without a name should return 201 Created: %s",
+				string(resp.Body),
+			)
+			require.NotNil(t, resp.JSON201)
+			assert.Equal(t, email, resp.JSON201.Email)
+			assert.Nil(t, resp.JSON201.Name, "an omitted name stays unset")
+			assert.Equal(t, ct.Active, resp.JSON201.Status)
+			assert.NotEmpty(t, resp.JSON201.Id)
+
+			readClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
+			getResp, err := readClient.GetProductUserWithResponse(
+				ctx, productContext.ProductID, resp.JSON201.Id,
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, getResp.StatusCode(), string(getResp.Body))
+			require.NotNil(t, getResp.JSON200)
+			assert.Nil(t, getResp.JSON200.Name, "persisted user created without a name has no name")
+		},
+	)
+
+	t.Run(
+		"Creating a product user with name longer than 100 characters returns a bad request", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+
+			email := itshared.Faker.Internet().Email()
+			tooLongName := strings.Repeat("a", 101)
 
 			apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
 
 			resp, err := apiKeyClient.CreateProductUserWithResponse(
 				ctx, productContext.ProductID,
 				ct.CreateProductUserJSONRequestBody{
-					Email:  email,
-					Status: &status,
+					Email: email,
+					Name:  &tooLongName,
 				},
 			)
 
-			require.NoError(
-				t, err, "create product user without a name should not error",
+			require.NoError(t, err, "create product user with >100-char name should not error")
+			require.Equal(
+				t, http.StatusBadRequest, resp.StatusCode(),
+				"create product user with >100-char name should return 400 Bad Request: %s",
+				string(resp.Body),
 			)
-			assert.Equal(
-				t, http.StatusCreated,
-				resp.StatusCode(),
-				"create product user without a name should return 201 Created",
-			)
-			assert.NotNil(t, resp.JSON201)
-			assert.Equal(t, email, resp.JSON201.Email)
-			assert.Nil(t, resp.JSON201.Name, "an omitted name stays unset")
-			assert.Equal(t, ct.Active, resp.JSON201.Status)
-			assert.NotEmpty(t, resp.JSON201.Id)
+			require.NotNil(t, resp.JSON400)
+			require.NotEmpty(t, resp.JSON400.Errors)
+			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
+			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name")
 		},
 	)
 
