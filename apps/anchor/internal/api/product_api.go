@@ -312,10 +312,11 @@ func (s *AnchorAPI) CreateProductUser(
 	name := functional.FromPtr(request.Body.Name).OrElse("")
 
 	input := user.CreateProductUserInput{
-		ProductID: request.ProductId,
-		Email:     request.Body.Email,
-		Name:      name,
-		Status:    status,
+		ProductID:  request.ProductId,
+		Email:      request.Body.Email,
+		Name:       name,
+		Status:     status,
+		ExternalID: request.Body.ExternalId,
 	}
 
 	createdUser, err := s.ProductUserService.Create(ctx, input)

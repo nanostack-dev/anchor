@@ -11,6 +11,12 @@ import (
 //
 //	user, err := c.Users().Create("new.user@company.com").Name("New User").Do(ctx)
 //
+// A product that is its own identity provider also sends its ID for the user,
+// and then evaluates access by that ID:
+//
+//	user, err := c.Users().Create(email).Name(name).ExternalID(accountID).Do(ctx)
+//	decision, err := c.AccessForUser(accountID).InOrganization(orgID).Permissions("flows:read").Do(ctx)
+//
 // A product user exists at product scope; membership of an organization is a
 // separate grant. Attach a user to an organization with [Members.Add] and detach
 // with [Members.Remove]; read the organizations a user belongs to with
@@ -182,6 +188,14 @@ func (b *UserCreateBuilder) Name(name string) *UserCreateBuilder {
 // Status sets the initial status. Without one Anchor applies its default.
 func (b *UserCreateBuilder) Status(status nanoclient.ProductUserStatus) *UserCreateBuilder {
 	b.req.Status = new(status)
+	return b
+}
+
+// ExternalID sets the user's ID in the product's own identity provider, the ID
+// [Client.AccessForUser] names the user by. It must be unique within the
+// product, and it cannot change after the create.
+func (b *UserCreateBuilder) ExternalID(externalID string) *UserCreateBuilder {
+	b.req.ExternalId = new(externalID)
 	return b
 }
 

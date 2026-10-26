@@ -420,7 +420,7 @@ type AccessResourceType string
 
 // AccessSubject defines model for AccessSubject.
 type AccessSubject struct {
-	// Id The external user ID, or the raw organization API key. A raw key is never logged.
+	// Id The product user's external ID (sent on product user create, or synced from Clerk), or the raw organization API key. A raw key is never logged.
 	Id         string                  `json:"id"`
 	Properties *map[string]interface{} `json:"properties,omitempty"`
 
@@ -2820,7 +2820,7 @@ type ProductUserResponse struct {
 	// Examples: end.Product User@example.com
 	Email string `json:"email"`
 
-	// ExternalId External identifier for the user, typically from an external identity provider.
+	// ExternalId The user's ID in its identity provider. The product sets it on create, or Clerk ingest sets it. Access evaluation names the user by this ID. It never changes after it is set. Absent when neither the product nor an integration gave one.
 	//
 	// Examples: user_2nTFC...
 	ExternalId *string `json:"external_id,omitempty"`
@@ -3527,6 +3527,15 @@ type CreateProductUserJSONBody struct {
 	//
 	// Examples: new.user@company.com
 	Email string `json:"email"`
+
+	// ExternalId The user's ID in the product's own identity provider. Access evaluation names the user by this ID (`subject.type: user`).
+	// Optional. Without it the user has no external ID until an identity provider integration (Clerk) syncs one, and access evaluation cannot name the user.
+	// Printable ASCII only (space to `~`). Unique within the product and compared exactly: letter case and spaces count. A blank value, a value longer than 255 characters, or a value with another character is refused with 400 `VALIDATION_ERROR`. An ID that another user of the product holds is refused with 409 `PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS`.
+	// Set on create only. No operation changes it later, because a new ID would point every access decision made for the old ID at another person. To change it, delete the user and create it again.
+	// A Clerk integration of the same product uses the same IDs. A user created with a Clerk user ID is the user that Clerk ingest then updates and deletes: each Clerk event replaces the email and name with Clerk's values (an empty Clerk name clears it) and sets the user active.
+	//
+	// Examples: usr_01JB7Z3K9Q
+	ExternalId *string `json:"external_id,omitempty"`
 
 	// Name User's display name.
 	//

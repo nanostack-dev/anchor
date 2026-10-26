@@ -13,7 +13,7 @@ This file is the project's glossary. When output names a domain concept — an i
 | **Organization** | A Product's customer. The unit a license attaches to. |
 | **Workspace** | A sub-unit within an Organization — a team or project. An Organization can have zero or more; none is inherently preferred. |
 | **Platform User** | An administrator of the platform. Authenticates with a bearer token. |
-| **Product User** | An end user of a Product. Directory-only; authentication comes from an external IdP. |
+| **Product User** | An end user of a Product. Directory-only: Anchor never authenticates it. The identity provider is a Clerk integration or the Product itself ([ADR-0023](docs/adr/0023-a-product-can-be-its-own-identity-provider.md)). |
 
 ## Licensing
 
@@ -70,6 +70,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **Organization API key** | A credential scoped to one Organization, issued by a Product to its customer. Configurable per-Product prefix, `*_org_apikey_`. |
 | **permission** | An RBAC grant naming an action, in `resource:action` form. Belongs to a Product's catalog. Unrelated to licensing. |
 | **role** | A named bundle of permissions, assignable to a member at Organization or Workspace level. |
+| **external ID** | A Product User's ID in its identity provider, unique within the Product and case-sensitive. The Product sends it when it creates the user, or Clerk ingest sets it. Access evaluation names a user by it. It never changes once set ([ADR-0023](docs/adr/0023-a-product-can-be-its-own-identity-provider.md)). |
 
 ## Membership
 
