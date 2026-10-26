@@ -161,6 +161,19 @@ func (s *EventSink) Count(eventType string) int {
 	return count
 }
 
+// Events lists the received events of one type, in delivery order.
+func (s *EventSink) Events(eventType string) []anchorsdk.Event {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var events []anchorsdk.Event
+	for _, recorded := range s.received {
+		if recorded.event.Type == eventType {
+			events = append(events, recorded.event)
+		}
+	}
+	return events
+}
+
 func (s *EventSink) assertAllDeliveries() {
 	s.t.Helper()
 	s.mu.Lock()
