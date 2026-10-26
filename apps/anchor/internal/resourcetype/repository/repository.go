@@ -44,10 +44,9 @@ type Repository interface {
 	FindTree(ctx context.Context, productID string) ([]resourcetype.ResourceType, error)
 	// EnsureOrganization seeds the built-in root type when the product lacks it.
 	EnsureOrganization(ctx context.Context, productID string) error
-	// LockCatalog locks the product's organization type row until the
-	// transaction ends: FOR NO KEY UPDATE for a tree write, FOR SHARE for a
-	// role or permission write that checks scopes against the tree.
-	LockCatalog(ctx context.Context, productID string, exclusive bool) error
+	// FindOrganization reads the product's organization type row; the caller
+	// passes the row lock that guards its catalog write.
+	FindOrganization(ctx context.Context, productID string) error
 	Create(ctx context.Context, rt resourcetype.ResourceType) error
 	Update(ctx context.Context, rt resourcetype.ResourceType) error
 	Delete(ctx context.Context, productID string, ids ...string) error
@@ -94,13 +93,9 @@ func (r *repositoryImpl) EnsureOrganization(ctx context.Context, productID strin
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *repositoryImpl) LockCatalog(ctx context.Context, productID string, exclusive bool) error {
-	lock := postgres.SHARE()
-	if exclusive {
-		lock = postgres.NO_KEY_UPDATE()
-	}
+func (r *repositoryImpl) FindOrganization(ctx context.Context, productID string) error {
 	_, err := transactor.QueryOptional[model.ProductResourceTypes](
-		transactor.WithRowLock(ctx, lock), r.db,
+		ctx, r.db,
 		table.ProductResourceTypes.SELECT(table.ProductResourceTypes.ID).WHERE(
 			table.ProductResourceTypes.ProductID.EQ(postgres.String(productID)).
 				AND(table.ProductResourceTypes.Slug.EQ(postgres.String(resourcetype.OrganizationSlug))),

@@ -76,17 +76,32 @@ func (s *service) Tree(ctx context.Context, productID string) (resourcetype.Tree
 	return resourcetype.NewTree(types), nil
 }
 
+// LockedTree holds the product's organization type FOR SHARE, so role and
+// permission writes check scopes side by side while no tree write runs.
 func (s *service) LockedTree(txCtx context.Context, productID string) (resourcetype.Tree, error) {
-	return s.lockedTree(txCtx, productID, false)
-}
-
-func (s *service) lockedTree(txCtx context.Context, productID string, exclusive bool) (resourcetype.Tree, error) {
 	if err := s.repo.EnsureOrganization(txCtx, productID); err != nil {
 		return resourcetype.Tree{}, err
 	}
-	if err := s.repo.LockCatalog(txCtx, productID, exclusive); err != nil {
+	if err := s.repo.FindOrganization(transactor.ForShare(txCtx), productID); err != nil {
 		return resourcetype.Tree{}, err
 	}
+	return s.tree(txCtx, productID)
+}
+
+// writableTree holds the product's organization type FOR NO KEY UPDATE for a
+// tree write: it waits for the role and permission writes holding it FOR SHARE
+// and keeps new ones out, while rows that reference the type still insert.
+func (s *service) writableTree(txCtx context.Context, productID string) (resourcetype.Tree, error) {
+	if err := s.repo.EnsureOrganization(txCtx, productID); err != nil {
+		return resourcetype.Tree{}, err
+	}
+	if err := s.repo.FindOrganization(transactor.ForNoKeyUpdate(txCtx), productID); err != nil {
+		return resourcetype.Tree{}, err
+	}
+	return s.tree(txCtx, productID)
+}
+
+func (s *service) tree(txCtx context.Context, productID string) (resourcetype.Tree, error) {
 	types, err := s.repo.FindTree(txCtx, productID)
 	if err != nil {
 		return resourcetype.Tree{}, err
@@ -116,7 +131,7 @@ func (s *service) Create(
 
 	var result resourcetype.ResourceType
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		tree, err := s.lockedTree(txCtx, input.ProductID, true)
+		tree, err := s.writableTree(txCtx, input.ProductID)
 		if err != nil {
 			return err
 		}
@@ -166,7 +181,7 @@ func (s *service) Update(
 	}
 	var result resourcetype.ResourceType
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		tree, err := s.lockedTree(txCtx, input.ProductID, true)
+		tree, err := s.writableTree(txCtx, input.ProductID)
 		if err != nil {
 			return err
 		}
@@ -206,7 +221,7 @@ func (s *service) Delete(ctx context.Context, productID, id string) error {
 		return resourcetype.ErrNotFound
 	}
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		tree, err := s.lockedTree(txCtx, productID, true)
+		tree, err := s.writableTree(txCtx, productID)
 		if err != nil {
 			return err
 		}
@@ -255,7 +270,7 @@ func (s *service) ReplaceTree(
 	}
 	var result []resourcetype.ResourceType
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		tree, err := s.lockedTree(txCtx, input.ProductID, true)
+		tree, err := s.writableTree(txCtx, input.ProductID)
 		if err != nil {
 			return err
 		}
