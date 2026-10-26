@@ -36,6 +36,8 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 
 Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md). Each has its `.json` source and the standalone `.html` report beside it.
 
+[Plans](plans/) hold delivery plans not built yet: [ADR-0022 M6 · first adopting Product](plans/adr-0022-m6-first-adopting-product.md).
+
 [Research](research/) contains sourced unresolved proposals; read each document's status before treating it as implementation.
 
 ## Maintain alongside implementation
