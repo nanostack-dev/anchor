@@ -31,7 +31,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [organization workspaces](organization-workspaces.md)
 - [product events spec](product-events-spec.md)
 
-Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md). Each has its `.json` source and the standalone `.html` report beside it.
+Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md), [2026-10-26 product user create required a name the contract marks optional](postmortems/2026-10-26-product-user-name-contract-drift.md). Each has its `.json` source and the standalone `.html` report beside it.
 
 [Research](research/) contains sourced unresolved proposals; read each document's status before treating it as implementation.
 

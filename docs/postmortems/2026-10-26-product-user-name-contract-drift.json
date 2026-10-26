@@ -1,0 +1,227 @@
+{
+ "title": "Create product user with email only answered 400: the server required a name the contract marks optional",
+ "short": "Product user name drift",
+ "service": "anchor",
+ "date": "2026-10-26",
+ "severity": "SEV3",
+ "status": "in review",
+ "authors": [
+  "Nanostack routine (echopoint-investigation)"
+ ],
+ "summary": "`POST /v1/products/{product_id}/product-users` documents `email` as the only required field, but Anchor answered 400 `VALIDATION_ERROR` (`field: Name, rule: required`) when `name` was left out. The domain input `CreateProductUserInput` has required `Name` since the first snapshot (2026-05-11), and the OpenAPI validator skips request bodies, so nothing compared the two rules; a CT even asserted the 400. The echopoint flow suite found it on 2026-10-26 while covering anchor#268 (`external_id`), the first test to send a product user without a name. No customer report and no log evidence of impact: validation refusals leave no trace. The fix makes `name` optional on create, as the contract says; the lesson is to send each create operation's minimum contract body once.",
+ "impact": {
+  "text": "Any client that followed the contract or skipped `.Name()` in the Go SDK got a 400 on product user creation, in dev and prod, for about 5.5 months. Products that are their own identity provider (anchor#268, ADR-0023) are the new callers most likely to create users without a display name. Impact on customers is unknown: 400 validation refusals are not logged with their field and rule.",
+  "numbers": [
+   {
+    "value": "168 days",
+    "label": "contract and server disagreed"
+   },
+   {
+    "value": "0",
+    "label": "log rows that would show a customer hitting it"
+   },
+   {
+    "value": "1",
+    "label": "operation affected (createProductUser)"
+   }
+  ]
+ },
+ "trigger": "The first snapshot of Anchor (98d19607, 2026-05-11) shipped `Name string validate:\"required,notblank\"` in `CreateProductUserInput` while the contract listed only `email` as required.",
+ "detection": "The echopoint-investigation routine built `anchor: product user external id` for anchor#268 at 2026-10-26T05:13Z. Its create node sent `email` and `external_id` only and got 400 `Name is a required field`. Not sooner because every CT helper, SDK example and existing flow sends a name, and the refusal is not logged.",
+ "resolution": "The flow now sends a name and the email-only check sits in `anchor: known bugs` (tag `known-bugs`, outside CI). [anchor#291](https://github.com/nanostack-dev/anchor/pull/291) makes `name` optional on create; it waits for human review because it reverses a behavior a CT pinned, so a maintainer decides whether the contract or the server is right.",
+ "timeline": {
+  "events": [
+   {
+    "t": "2026-05-11T21:16:14Z",
+    "kind": "trigger",
+    "label": "First snapshot: name required in code, optional in contract",
+    "link": "https://github.com/nanostack-dev/anchor/commit/98d19607"
+   },
+   {
+    "t": "2026-10-25T15:09:30Z",
+    "kind": "change",
+    "label": "anchor#268 adds external_id to the same input",
+    "detail": "The new field's bounds match the contract; the existing `Name` rule is unchanged.",
+    "link": "https://github.com/nanostack-dev/anchor/pull/268"
+   },
+   {
+    "t": "2026-10-26T05:13:10Z",
+    "kind": "detect",
+    "label": "New #268 flow: create user answers 400 Name required",
+    "detail": "Execution `01a176a0` of `anchor: product user external id` (prod CI org, dev API)."
+   },
+   {
+    "t": "2026-10-26T05:13:47Z",
+    "kind": "note",
+    "label": "Flow sends a name; #268 coverage green",
+    "detail": "Execution `01a176a1`; green 3x, tagged `anchor`."
+   },
+   {
+    "t": "2026-10-26T05:14:25Z",
+    "kind": "note",
+    "label": "Bug reproduced in `anchor: known bugs`",
+    "detail": "`user-email-only` expects 201, gets 400."
+   },
+   {
+    "t": "2026-10-26T05:30:00Z",
+    "approx": true,
+    "kind": "followup",
+    "label": "anchor#291 opened, waiting human review",
+    "link": "https://github.com/nanostack-dev/anchor/pull/291"
+   }
+  ]
+ },
+ "whys": {
+  "problem": "A product creating a user with email only, as the contract allows, got 400 from Anchor",
+  "because": [
+   {
+    "text": "`CreateProductUserInput.Name` is `required,notblank`; the contract lists only `email` as required",
+    "evidence": "`apps/anchor/internal/domain/product/user/user_input_types.go` line 13; openapi.yaml createProductUser `required: [email]`; response body `{\"field\":\"Name\",\"rule\":\"required\"}`",
+    "because": [
+     {
+      "text": "Two sources state the body rules and nothing compares them: the OpenAPI validator skips request bodies",
+      "evidence": "`apps/anchor/cmd/http/server.go:178` `ExcludeRequestBody: true`",
+      "because": [
+       {
+        "text": "Tests assert the server's behavior, not the contract: a CT pinned the 400 that the contract forbids",
+        "evidence": "`cmd/it/ct/product_user_create_test.go` \"Creating a product user with missing name returns a bad request\" asserted 400 `Name is a required field` since the first snapshot",
+        "because": [
+         {
+          "id": "R1",
+          "root": true,
+          "text": "CTs are written from the implementation; no check that each create operation accepts the minimum body its contract allows"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "text": "Every test and flow that creates a product user sends a name",
+      "evidence": "CT helper `newProductUserBody` sets `Name` from Faker; SDK examples call `.Name()`; all anchor flows send `name`",
+      "because": [
+       {
+        "text": "Test builders default to the fullest realistic body; the minimal request is never a named case",
+        "because": [
+         {
+          "id": "R2",
+          "root": true,
+          "text": "Test and flow conventions fill optional fields by default, with no rule to also send the contract minimum"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "lens": "impact",
+    "text": "The mismatch stayed unseen for 168 days and its customer impact cannot be measured",
+    "because": [
+     {
+      "text": "A 400 validation refusal leaves no log row with its operation, field and rule",
+      "evidence": "PostHog logs, service `anchor`, last 24 h, search `Name is a required field`: 0 rows, although this run sent such requests",
+      "because": [
+       {
+        "id": "R3",
+        "root": true,
+        "text": "Client-error refusals are not counted by operation and field, so a contract-vs-server mismatch is invisible"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "contributing": [
+  "A CT asserted the 400 with its message, so the suite defended the drift instead of catching it.",
+  "anchor#268 reviewed the new `external_id` bounds against the contract but not the neighbouring fields of the same input.",
+  "The Go SDK `Users().Create(email)` builder makes the name look optional, so an SDK caller would hit the 400 only at runtime."
+ ],
+ "lessons": {
+  "well": [
+   "Covering a new feature with a flow that sends only what the feature needs found an old bug in minutes.",
+   "The known-bugs flow keeps the failing check visible without blocking the CI gate."
+  ],
+  "wrong": [
+   "A five-month-old contract lie went unnoticed by CTs, SDK tests and 25 anchor flows, all of which send a name."
+  ],
+  "lucky": [
+   "No known customer creates product users without a name yet; ADR-0023 products (own identity provider) would have been the first.",
+   "The mismatch refused a request instead of storing bad data, so nothing needs repair."
+  ]
+ },
+ "actions": [
+  {
+   "id": "A1",
+   "what": "Make `name` optional on product user create, as the contract says; CT for the email-only body (or, if a human decides name is required, change the contract instead)",
+   "type": "prevent",
+   "owner": "Nanostack routine (echopoint-investigation)",
+   "due": "2026-10-27",
+   "status": "open",
+   "fixes": [
+    "R1"
+   ],
+   "ticket": {
+    "label": "anchor#291",
+    "url": "https://github.com/nanostack-dev/anchor/pull/291"
+   }
+  },
+  {
+   "id": "A2",
+   "what": "CT per create operation that sends only the contract's required properties and expects 2xx (generated from openapi.yaml)",
+   "type": "prevent",
+   "owner": "anchor maintainers",
+   "due": "2026-11-09",
+   "status": "open",
+   "fixes": [
+    "R1"
+   ]
+  },
+  {
+   "id": "A3",
+   "what": "flow-suite-testing skill + anchor testing doc: send each create's minimum contract body once",
+   "type": "process",
+   "owner": "Nanostack routine (echopoint-investigation)",
+   "due": "2026-10-26",
+   "status": "in progress",
+   "fixes": [
+    "R2"
+   ]
+  },
+  {
+   "id": "A4",
+   "what": "Count 400 VALIDATION_ERROR by operation, field and rule (metric or info log) and alert on a new pair",
+   "type": "detect",
+   "owner": "anchor maintainers",
+   "due": "2026-11-09",
+   "status": "open",
+   "fixes": [
+    "R3"
+   ]
+  }
+ ],
+ "responders": [
+  {
+   "role": "Detection, fix and write-up",
+   "name": "Nanostack routine (echopoint-investigation)"
+  }
+ ],
+ "messaging": {
+  "internal": "Anchor answered 400 to product user creates without `name`, although the contract marks it optional (since 2026-05-11). Found by the #268 flow. Fix makes name optional; known-bugs flow tracks it until live.",
+  "external": "None: no customer report and no evidence of impact."
+ },
+ "links": [
+  {
+   "label": "Report (artifact)",
+   "url": "https://claude.ai/artifact/9cd5VjqLrPT86J5Kr7rsVq"
+  },
+  {
+   "label": "anchor#268",
+   "url": "https://github.com/nanostack-dev/anchor/pull/268"
+  },
+  {
+   "label": "anchor#291 fix",
+   "url": "https://github.com/nanostack-dev/anchor/pull/291"
+  }
+ ]
+}
