@@ -133,7 +133,7 @@ func (s *productUserService) Create(
 		productUser := user.ProductUser{
 			ProductID:  input.ProductID,
 			Email:      input.Email,
-			Name:       input.Name,
+			Name:       functional.FromPtr(input.Name).OrElse(""),
 			ExternalID: input.ExternalID,
 			Status:     input.Status,
 			CreatedAt:  time.Now(),

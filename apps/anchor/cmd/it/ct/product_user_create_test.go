@@ -87,32 +87,31 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"Creating a product user with missing name returns a bad request", func(t *testing.T) {
+		"Creating a product user with only an email succeeds without a name", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
-			status := ct.Active
 
 			apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:create"})
 
 			resp, err := apiKeyClient.CreateProductUserWithResponse(
 				ctx, productContext.ProductID,
-				ct.CreateProductUserJSONRequestBody{
-					Email:  email,
-					Status: &status,
-				},
+				ct.CreateProductUserJSONRequestBody{Email: email},
 			)
 
-			require.NoError(
-				t, err, "create product user with missing name should not error",
+			require.NoError(t, err, "create product user without name should not error")
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+			require.NotNil(t, resp.JSON201)
+			assert.Equal(t, email, resp.JSON201.Email)
+			assert.Nil(t, resp.JSON201.Name, "a user created without a name has no name")
+
+			readClient, _ := productContext.CreateAPIKeyClientWithScopes([]string{"product_user:read"})
+			getResp, err := readClient.GetProductUserWithResponse(
+				ctx, productContext.ProductID, resp.JSON201.Id,
 			)
-			assert.Equal(
-				t, 400, resp.StatusCode(),
-				"create product user with missing name should return 400 Bad Request",
-			)
-			assert.NotNil(t, resp.JSON400)
-			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
-			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name is a required field")
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, getResp.StatusCode(), string(getResp.Body))
+			assert.Nil(t, getResp.JSON200.Name)
 		},
 	)
 
@@ -144,7 +143,7 @@ func TestCreateProductUser(t *testing.T) {
 			)
 			assert.NotNil(t, resp.JSON400)
 			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
-			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name is a required field")
+			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name cannot be blank")
 		},
 	)
 
