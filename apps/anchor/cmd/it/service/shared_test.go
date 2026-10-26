@@ -5,6 +5,7 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	"anchor/internal/repository"
+	rtrepository "anchor/internal/resourcetype/repository"
 	"anchor/internal/service"
 
 	"github.com/nanostack-dev/pgkit/queue"
@@ -26,6 +27,8 @@ var (
 	UserRepository         repository.UserRepository
 	Queue                  *queue.Client
 	APIKeyEventSvc         service.OrganizationAPIKeyEventService
+	ProductRoleRepo        repository.ProductRoleRepository
+	ResourceTypeRepo       rtrepository.Repository
 )
 
 func TestMain(m *testing.M) {
@@ -46,6 +49,8 @@ func TestMain(m *testing.M) {
 				&Queue,
 				&APIKeyEventSvc,
 				&ResourcePermissionRepo,
+				&ProductRoleRepo,
+				&ResourceTypeRepo,
 			},
 		},
 	)

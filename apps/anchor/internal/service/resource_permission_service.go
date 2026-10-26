@@ -7,13 +7,15 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
+	rtservice "anchor/internal/resourcetype/service"
 
 	"github.com/rs/zerolog"
 )
@@ -46,6 +48,7 @@ type ResourcePermissionService interface {
 type resourcePermissionService struct {
 	resourcePermissionRepo repository.ProductResourcePermissionRepository
 	apiKeyRepo             repository.ProductAPIKeyRepository
+	resourceTypes          rtservice.Service
 	transactor             transactor.Transactor
 	events                 events.Emitter
 	logger                 zerolog.Logger
@@ -54,6 +57,7 @@ type resourcePermissionService struct {
 func NewResourcePermissionService(
 	resourcePermissionRepo repository.ProductResourcePermissionRepository,
 	apiKeyRepo repository.ProductAPIKeyRepository,
+	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -61,6 +65,7 @@ func NewResourcePermissionService(
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
 		apiKeyRepo:             apiKeyRepo,
+		resourceTypes:          resourceTypes,
 		transactor:             tx,
 		events:                 eventEmitter,
 		logger: logger.With().Str(
@@ -86,6 +91,9 @@ func (s *resourcePermissionService) Create(
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
+	}
+	if input.ResourceType == "" {
+		return resourcepermission.ProductResourcePermission{}, resourcetype.ErrRequired
 	}
 
 	now := time.Now()
@@ -114,6 +122,16 @@ func (s *resourcePermissionService) Create(
 
 	var created resourcepermission.ProductResourcePermission
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tree, treeErr := s.resourceTypes.LockedTree(txCtx, input.ProductID)
+		if treeErr != nil {
+			return treeErr
+		}
+		scope, known := tree.BySlug(input.ResourceType).Get()
+		if !known {
+			return resourcetype.NewUnknownError([]string{input.ResourceType})
+		}
+		resourcePermission.ResourceTypeID = &scope.ID
+
 		var createErr error
 		created, createErr = s.resourcePermissionRepo.Create(txCtx, resourcePermission)
 		if errors.Is(createErr, repository.ErrProductResourcePermissionExists) {
@@ -127,6 +145,7 @@ func (s *resourcePermissionService) Create(
 				Msg("failed to create resource permission")
 			return fault.ErrUnexpected
 		}
+		created.ResourceType = scope.Slug
 		return s.emitResourcePermission(
 			txCtx, events.ProductResourcePermissionCreated, input.ProductID, created.Name,
 		)
@@ -164,7 +183,15 @@ func (s *resourcePermissionService) GetByID(
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
-	return found.ToResult(resourcepermission.ErrResourcePermissionNotFound).Value()
+	if found.IsAbsent() {
+		return resourcepermission.ProductResourcePermission{}, resourcepermission.ErrResourcePermissionNotFound
+	}
+	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
+	if err != nil {
+		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
+	}
+	return withPermissionScope(tree)(found.Value()), nil
 }
 
 func (s *resourcePermissionService) Update(
@@ -191,7 +218,15 @@ func (s *resourcePermissionService) Update(
 		return resourcepermission.ProductResourcePermission{}, resourcepermission.ErrResourcePermissionNotFound
 	}
 
-	updated := found.Value()
+	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
+	if err != nil {
+		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
+	}
+	updated := withPermissionScope(tree)(found.Value())
+	if input.ResourceType != nil && *input.ResourceType != updated.ResourceType {
+		return resourcepermission.ProductResourcePermission{}, resourcepermission.ErrScopeImmutable
+	}
 	updated.UpdatedAt = time.Now()
 	updated.Description = input.Description
 
@@ -207,6 +242,7 @@ func (s *resourcePermissionService) Update(
 				Msg("failed to update resource permission")
 			return fault.ErrUnexpected
 		}
+		result = withPermissionScope(tree)(result)
 		return s.emitResourcePermission(
 			txCtx, events.ProductResourcePermissionUpdated, input.ProductID, result.Name,
 		)
@@ -317,21 +353,9 @@ func (s *resourcePermissionService) SearchByProduct(
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
 	}
 
-	result, err := s.resourcePermissionRepo.SearchByProduct(
-		ctx, input.ProductID, input.Request,
-	)
-	if err != nil {
-		if searchx.IsClientError(err) {
-			return search.Result[resourcepermission.ProductResourcePermission]{}, err
-		}
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search resource permissions")
-		return search.Result[resourcepermission.ProductResourcePermission]{}, fault.ErrUnexpected
-	}
-
-	return result, nil
+	return scopedSearch(ctx, s.resourceTypes, logger, input.ProductID, input.Request,
+		resourcepermission.SearchProductResourcePermissionFilter.WithScopes,
+		s.resourcePermissionRepo.SearchByProduct, withPermissionScope)
 }
 
 func (s *resourcePermissionService) GetByRole(
@@ -351,6 +375,11 @@ func (s *resourcePermissionService) GetByRole(
 			Msg("failed to get resource permissions by role")
 		return nil, fault.ErrUnexpected
 	}
+	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
+	if err != nil {
+		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		return nil, fault.ErrUnexpected
+	}
 
-	return permissions, nil
+	return functional.Slice(permissions).Map(withPermissionScope(tree)), nil
 }

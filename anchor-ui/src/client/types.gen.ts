@@ -463,6 +463,106 @@ export type ProductPermissionListResponse = PagedListResponse & {
 };
 
 /**
+ * The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+ */
+export type ResourceTypeSlug = string;
+
+/**
+ * A kind of thing the product protects, placed in the product's tree of resource types under `organization`. A product has at most 50 resource types of its own besides `organization`.
+ */
+export type ProductResourceTypeCreateRequest = {
+    slug: ResourceTypeSlug;
+    name: string;
+    description?: string | null;
+    /**
+     * Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. An empty list answers 400 RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+     */
+    parent_types: Array<ResourceTypeSlug>;
+    /**
+     * `true` lets an instance sit under another instance of the same type, such as a folder inside a folder.
+     */
+    nests_in_itself?: boolean;
+};
+
+/**
+ * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+ */
+export type ProductResourceTypeUpdateRequest = {
+    name?: string;
+    description?: string | null;
+    /**
+     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
+     */
+    parent_types?: Array<ResourceTypeSlug>;
+    nests_in_itself?: boolean;
+};
+
+export type ProductResourceTypeTreeItem = {
+    slug: ResourceTypeSlug;
+    name: string;
+    description?: string | null;
+    parent_types: Array<ResourceTypeSlug>;
+    nests_in_itself?: boolean;
+};
+
+/**
+ * The product's whole tree of resource types, `organization` excluded. Types are matched by slug: a listed type is created or updated, and a type left out is deleted. The tree is validated as a whole, with the same rules as the single-type routes, and applied in one transaction.
+ */
+export type ProductResourceTypeTreeRequest = {
+    resource_types: Array<ProductResourceTypeTreeItem>;
+};
+
+export type ProductResourceTypeResponse = {
+    id: Ksuid;
+    product_id: Ksuid;
+    slug: ResourceTypeSlug;
+    name: string;
+    description?: string | null;
+    /**
+     * Slugs of the other types an instance may sit under. Empty for `organization`.
+     */
+    parent_types: Array<ResourceTypeSlug>;
+    nests_in_itself: boolean;
+    /**
+     * `true` for `organization`, the root type every product has. It can't be changed or deleted.
+     */
+    built_in: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ProductResourceTypeTreeResponse = {
+    /**
+     * Every resource type of the product: `organization` first, then by creation time, and types created together by slug.
+     */
+    resource_types: Array<ProductResourceTypeResponse>;
+};
+
+export type ProductResourceTypeFilter = {
+    ids?: Array<Ksuid>;
+    slugs?: Array<ResourceTypeSlug>;
+};
+
+/**
+ * Field to sort by. Every order ends with `id`.
+ */
+export enum ProductResourceTypeSortField {
+    CREATED_AT = 'created_at',
+    UPDATED_AT = 'updated_at',
+    SLUG = 'slug',
+    NAME = 'name'
+}
+
+export type ProductResourceTypeSearchRequest = SearchRequest & {
+    filter?: ProductResourceTypeFilter;
+    sort_by?: ProductResourceTypeSortField;
+};
+
+export type ProductResourceTypeListResponse = PagedListResponse & {
+    items: Array<ProductResourceTypeResponse>;
+};
+
+/**
  * Request body for defining a new domain-resource permission for the product's own application resources. For example, if you are building a Google Drive-like product you might define permissions such as "document:read", "document:create", or "file:delete". These permissions are later assigned to ProductRoles, which are attached to end-user organization memberships.
  */
 export type CreateProductResourcePermissionRequest = {
@@ -475,7 +575,13 @@ export type CreateProductResourcePermissionRequest = {
      */
     description?: string | null;
     /**
-     * Optional scope qualifier that narrows the permission to a subset of matching resources (e.g. "own" to restrict to resources the user owns, "team" to restrict to resources shared within their team).
+     * The resource type this permission is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+     */
+    resource_type: ResourceTypeSlug;
+    /**
+     * Deprecated. Use the permission's resource_type and role assignments on resources. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
+     *
+     * @deprecated
      */
     scope_modifier?: string | null;
 };
@@ -488,6 +594,10 @@ export type UpdateProductResourcePermissionRequest = {
      * Updated human-readable description of what this permission grants.
      */
     description?: string | null;
+    /**
+     * A permission's resource type never changes. Omit it, or send the current one; any other value answers 409 PERMISSION_SCOPE_IMMUTABLE.
+     */
+    resource_type?: ResourceTypeSlug;
 };
 
 /**
@@ -507,7 +617,13 @@ export type ProductResourcePermissionResponse = {
      */
     description?: string | null;
     /**
-     * Optional scope qualifier that narrows the permission (e.g. "own" restricts to resources owned by the user, "team" to resources shared within their team).
+     * The resource type this permission is scoped to.
+     */
+    resource_type: ResourceTypeSlug;
+    /**
+     * Deprecated. Use the permission's resource_type. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
+     *
+     * @deprecated
      */
     scope_modifier?: string | null;
     /**
@@ -525,6 +641,10 @@ export type ProductResourcePermissionFilter = {
      * Filter by resource permission names.
      */
     names?: Array<string>;
+    /**
+     * Keep only permissions scoped to one of these resource types.
+     */
+    resource_types?: Array<ResourceTypeSlug>;
 };
 
 export type ProductResourcePermissionSearchRequest = SearchRequest & {
@@ -549,9 +669,13 @@ export type ProductRoleCreateRequest = {
      */
     description?: string | null;
     /**
-     * Optional list of permission names (strings) to assign initially.
+     * Optional list of permission names to assign initially. Each must be scoped to the role's resource type or to a type below it; any other answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
      */
     permissions?: Array<string>;
+    /**
+     * The resource type this role is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+     */
+    resource_type: ResourceTypeSlug;
 };
 
 export type ProductRoleUpdateRequest = {
@@ -567,6 +691,10 @@ export type ProductRoleUpdateRequest = {
      * Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
      */
     permissions?: Array<string>;
+    /**
+     * A role's resource type never changes. Omit it, or send the current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
+     */
+    resource_type?: ResourceTypeSlug;
 };
 
 export type ProductRoleResponse = {
@@ -586,6 +714,10 @@ export type ProductRoleResponse = {
      * Description of the role.
      */
     description?: string | null;
+    /**
+     * The resource type this role is scoped to.
+     */
+    resource_type: ResourceTypeSlug;
     /**
      * List of permissions assigned to this role.
      */
@@ -907,6 +1039,10 @@ export type ProductRoleFilter = {
      * Filter by roles that hold any of these resource permission names, matched case-insensitively.
      */
     permissions?: Array<string>;
+    /**
+     * Keep only roles scoped to one of these resource types.
+     */
+    resource_types?: Array<ResourceTypeSlug>;
 };
 
 export type ProductApiKeyFilter = {
@@ -2977,6 +3113,11 @@ export type WorkspaceIdParameter = Ksuid;
 export type ProductUserIdParameter = Ksuid;
 
 /**
+ * The KSUID of the resource type.
+ */
+export type ResourceTypeIdParameter = Ksuid;
+
+/**
  * The KSUID of the product role.
  */
 export type ProductRoleIdParameter = Ksuid;
@@ -3765,6 +3906,278 @@ export type IngestWebhookResponses = {
 };
 
 export type IngestWebhookResponse = IngestWebhookResponses[keyof IngestWebhookResponses];
+
+export type CreateProductResourceTypeData = {
+    body: ProductResourceTypeCreateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types';
+};
+
+export type CreateProductResourceTypeErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type CreateProductResourceTypeError = CreateProductResourceTypeErrors[keyof CreateProductResourceTypeErrors];
+
+export type CreateProductResourceTypeResponses = {
+    /**
+     * Resource type created.
+     */
+    201: ProductResourceTypeResponse;
+};
+
+export type CreateProductResourceTypeResponse = CreateProductResourceTypeResponses[keyof CreateProductResourceTypeResponses];
+
+export type ReplaceProductResourceTypesData = {
+    body: ProductResourceTypeTreeRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types';
+};
+
+export type ReplaceProductResourceTypesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type ReplaceProductResourceTypesError = ReplaceProductResourceTypesErrors[keyof ReplaceProductResourceTypesErrors];
+
+export type ReplaceProductResourceTypesResponses = {
+    /**
+     * The product's resource types after the change.
+     */
+    200: ProductResourceTypeTreeResponse;
+};
+
+export type ReplaceProductResourceTypesResponse = ReplaceProductResourceTypesResponses[keyof ReplaceProductResourceTypesResponses];
+
+export type SearchProductResourceTypesData = {
+    body: ProductResourceTypeSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types/search';
+};
+
+export type SearchProductResourceTypesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchProductResourceTypesError = SearchProductResourceTypesErrors[keyof SearchProductResourceTypesErrors];
+
+export type SearchProductResourceTypesResponses = {
+    /**
+     * Matching resource types.
+     */
+    200: ProductResourceTypeListResponse;
+};
+
+export type SearchProductResourceTypesResponse = SearchProductResourceTypesResponses[keyof SearchProductResourceTypesResponses];
+
+export type DeleteProductResourceTypeData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the resource type.
+         */
+        resource_type_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types/{resource_type_id}';
+};
+
+export type DeleteProductResourceTypeErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type DeleteProductResourceTypeError = DeleteProductResourceTypeErrors[keyof DeleteProductResourceTypeErrors];
+
+export type DeleteProductResourceTypeResponses = {
+    /**
+     * Resource type deleted.
+     */
+    204: void;
+};
+
+export type DeleteProductResourceTypeResponse = DeleteProductResourceTypeResponses[keyof DeleteProductResourceTypeResponses];
+
+export type GetProductResourceTypeData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the resource type.
+         */
+        resource_type_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types/{resource_type_id}';
+};
+
+export type GetProductResourceTypeErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetProductResourceTypeError = GetProductResourceTypeErrors[keyof GetProductResourceTypeErrors];
+
+export type GetProductResourceTypeResponses = {
+    /**
+     * The resource type.
+     */
+    200: ProductResourceTypeResponse;
+};
+
+export type GetProductResourceTypeResponse = GetProductResourceTypeResponses[keyof GetProductResourceTypeResponses];
+
+export type UpdateProductResourceTypeData = {
+    body: ProductResourceTypeUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the resource type.
+         */
+        resource_type_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/resource-types/{resource_type_id}';
+};
+
+export type UpdateProductResourceTypeErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateProductResourceTypeError = UpdateProductResourceTypeErrors[keyof UpdateProductResourceTypeErrors];
+
+export type UpdateProductResourceTypeResponses = {
+    /**
+     * The resource type after the change.
+     */
+    200: ProductResourceTypeResponse;
+};
+
+export type UpdateProductResourceTypeResponse = UpdateProductResourceTypeResponses[keyof UpdateProductResourceTypeResponses];
 
 export type CreateProductResourcePermissionData = {
     /**

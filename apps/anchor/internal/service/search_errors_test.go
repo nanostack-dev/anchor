@@ -18,7 +18,9 @@ import (
 	"anchor/internal/domain/product/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	"anchor/internal/service"
 )
 
@@ -55,6 +57,15 @@ func (f failingResourcePermissions) SearchByProduct(
 		resourcepermission.SortFieldProductResourcePermission],
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	return search.Result[resourcepermission.ProductResourcePermission]{}, f.err
+}
+
+// organizationOnly is a product whose tree holds only the built-in root.
+type organizationOnly struct {
+	rtservice.Service
+}
+
+func (organizationOnly) Tree(_ context.Context, productID string) (resourcetype.Tree, error) {
+	return resourcetype.NewTree([]resourcetype.ResourceType{resourcetype.NewOrganization(productID)}), nil
 }
 
 type failingRoles struct {
@@ -118,7 +129,14 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 		},
 		"searchProductResourcePermissions": func(err error) error {
 			svc := service.NewResourcePermissionService(
-				failingResourcePermissions{failingSearches: failingSearches{err}}, nil, nil, nil, logger,
+				failingResourcePermissions{
+					failingSearches: failingSearches{err},
+				},
+				nil,
+				organizationOnly{},
+				nil,
+				nil,
+				logger,
 			)
 			_, got := svc.SearchByProduct(ctx, resourcepermission.SearchProductResourcePermissionInput{
 				ProductID: "product",
@@ -131,7 +149,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 		},
 		"searchProductRoles": func(err error) error {
 			svc := service.NewProductRoleService(
-				failingRoles{failingSearches: failingSearches{err}}, nil, nil, nil, nil, logger,
+				failingRoles{failingSearches: failingSearches{err}}, nil, nil, organizationOnly{}, nil, nil, logger,
 			)
 			_, got := svc.SearchProductRoles(ctx, role.SearchProductRolesInput{
 				ProductID: "product",

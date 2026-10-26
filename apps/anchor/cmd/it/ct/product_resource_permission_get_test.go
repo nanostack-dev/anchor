@@ -22,6 +22,7 @@ func TestProductResourcePermissionGetSuccess(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
+			ResourceType:  "organization",
 			Name:          "file:read",
 			Description:   new("Read file contents"),
 			ScopeModifier: new("own"),
@@ -149,18 +150,21 @@ func TestProductResourcePermissionGetMultiplePermissions(t *testing.T) {
 
 		permissions := []ct.CreateProductResourcePermissionRequest{
 			{
+				ResourceType:  "organization",
 				Name:          "file:read",
 				Description:   new("Read file contents"),
 				ScopeModifier: new("own"),
 			},
 			{
+				ResourceType:  "organization",
 				Name:          "file:write",
 				Description:   new("Write file contents"),
 				ScopeModifier: new("team"),
 			},
 			{
-				Name:        "file:delete",
-				Description: new("Delete file contents"),
+				ResourceType: "organization",
+				Name:         "file:delete",
+				Description:  new("Delete file contents"),
 			},
 		}
 

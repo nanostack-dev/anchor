@@ -23,6 +23,7 @@ func TestProductResourcePermissionUpdateSuccess(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
+			ResourceType:  "organization",
 			Name:          "file:read",
 			Description:   new("Read file contents"),
 			ScopeModifier: new("own"),
@@ -75,7 +76,8 @@ func TestProductResourcePermissionUpdateEmitsWebhook(t *testing.T) {
 		sink := productContext.CaptureEvents()
 		createResp, err := productContext.OwnerAuthenticatedClient().CreateProductResourcePermissionWithResponse(
 			ctx, productContext.ProductID, ct.CreateProductResourcePermissionRequest{
-				Name: "events:write",
+				ResourceType: "organization",
+				Name:         "events:write",
 			},
 		)
 		require.NoError(t, err)
@@ -111,8 +113,9 @@ func TestProductResourcePermissionUpdateDifferentCaseName(t *testing.T) {
 			ctx,
 			testProduct.ProductID,
 			ct.CreateProductResourcePermissionRequest{
-				Name:        permissionName,
-				Description: new("Read file contents"),
+				ResourceType: "organization",
+				Name:         permissionName,
+				Description:  new("Read file contents"),
 			},
 		)
 		require.NoError(t, err)
@@ -190,8 +193,9 @@ func TestProductResourcePermissionUpdateValidationErrors(t *testing.T) {
 	testProduct := createTestProductContext(t)
 
 	createInput := ct.CreateProductResourcePermissionRequest{
-		Name:        "file:read",
-		Description: new("Read file contents"),
+		ResourceType: "organization",
+		Name:         "file:read",
+		Description:  new("Read file contents"),
 	}
 
 	createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -246,8 +250,9 @@ func TestProductResourcePermissionUpdateNullDescription(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Original description"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Original description"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -292,8 +297,9 @@ func TestProductResourcePermissionUpdateEmptyRequest(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Original description"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Original description"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(
@@ -342,8 +348,9 @@ func TestProductResourcePermissionUpdateMultipleFields(t *testing.T) {
 		testProduct := createTestProductContext(t)
 
 		createInput := ct.CreateProductResourcePermissionRequest{
-			Name:        "file:read",
-			Description: new("Original description"),
+			ResourceType: "organization",
+			Name:         "file:read",
+			Description:  new("Original description"),
 		}
 
 		createResp, err := testOwnerClient(t).CreateProductResourcePermissionWithResponse(

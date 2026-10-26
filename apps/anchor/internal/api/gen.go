@@ -26,6 +26,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 
@@ -479,9 +480,13 @@ type CreateProductResourcePermissionRequest struct {
 	// Examples: document:read
 	Name string `json:"name"`
 
-	// ScopeModifier Optional scope qualifier that narrows the permission to a subset of matching resources (e.g. "own" to restrict to resources the user owns, "team" to restrict to resources shared within their team).
+	// ResourceType The resource type this permission is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// ScopeModifier Deprecated. Use the permission's resource_type and role assignments on resources. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
 	//
 	// Examples: own
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ScopeModifier *string `json:"scope_modifier,omitempty"`
 }
 
@@ -2546,6 +2551,9 @@ type ProductRequest struct {
 type ProductResourcePermissionFilter struct {
 	// Names Filter by resource permission names.
 	Names []string `json:"names,omitempty"`
+
+	// ResourceTypes Keep only permissions scoped to one of these resource types.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
 }
 
 // ProductResourcePermissionListResponse defines model for ProductResourcePermissionListResponse.
@@ -2581,9 +2589,13 @@ type ProductResourcePermissionResponse struct {
 	// Examples: prod_2iABC...
 	ProductId Ksuid `json:"product_id"`
 
-	// ScopeModifier Optional scope qualifier that narrows the permission (e.g. "own" restricts to resources owned by the user, "team" to resources shared within their team).
+	// ResourceType The resource type this permission is scoped to.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// ScopeModifier Deprecated. Use the permission's resource_type. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
 	//
 	// Examples: own
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ScopeModifier *string `json:"scope_modifier,omitempty"`
 
 	// UpdatedAt Timestamp when the resource permission was last updated.
@@ -2603,6 +2615,126 @@ type ProductResourcePermissionSearchRequest struct {
 
 	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
 	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ProductResourceTypeCreateRequest A kind of thing the product protects, placed in the product's tree of resource types under `organization`. A product has at most 50 resource types of its own besides `organization`.
+type ProductResourceTypeCreateRequest struct {
+	// Description Examples: Groups documents.
+	Description *string `json:"description,omitempty"`
+
+	// Name Examples: Folder
+	Name string `json:"name"`
+
+	// NestsInItself `true` lets an instance sit under another instance of the same type, such as a folder inside a folder.
+	NestsInItself *bool `json:"nests_in_itself,omitempty"`
+
+	// ParentTypes Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. An empty list answers 400 RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+	ParentTypes []ResourceTypeSlug `json:"parent_types"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug ResourceTypeSlug `json:"slug"`
+}
+
+// ProductResourceTypeFilter defines model for ProductResourceTypeFilter.
+type ProductResourceTypeFilter struct {
+	Ids   []Ksuid            `json:"ids,omitempty"`
+	Slugs []ResourceTypeSlug `json:"slugs,omitempty"`
+}
+
+// ProductResourceTypeListResponse defines model for ProductResourceTypeListResponse.
+type ProductResourceTypeListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                           `json:"count"`
+	Items []ProductResourceTypeResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// ProductResourceTypeResponse defines model for ProductResourceTypeResponse.
+type ProductResourceTypeResponse struct {
+	// BuiltIn `true` for `organization`, the root type every product has. It can't be changed or deleted.
+	BuiltIn     bool      `json:"built_in"`
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: rtype_2qLCf0ld3r2nT8vK5xR1
+	Id            Ksuid  `json:"id"`
+	Name          string `json:"name"`
+	NestsInItself bool   `json:"nests_in_itself"`
+
+	// ParentTypes Slugs of the other types an instance may sit under. Empty for `organization`.
+	ParentTypes []ResourceTypeSlug `json:"parent_types"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug      ResourceTypeSlug `json:"slug"`
+	UpdatedAt time.Time        `json:"updated_at"`
+}
+
+// ProductResourceTypeSearchRequest defines model for ProductResourceTypeSearchRequest.
+type ProductResourceTypeSearchRequest struct {
+	Filter *ProductResourceTypeFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. Every order ends with `id`.
+	SortBy *ProductResourceTypeSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ProductResourceTypeSortField Field to sort by. Every order ends with `id`.
+type ProductResourceTypeSortField = resourcetype.SortField
+
+// ProductResourceTypeTreeItem defines model for ProductResourceTypeTreeItem.
+type ProductResourceTypeTreeItem struct {
+	Description   *string            `json:"description,omitempty"`
+	Name          string             `json:"name"`
+	NestsInItself *bool              `json:"nests_in_itself,omitempty"`
+	ParentTypes   []ResourceTypeSlug `json:"parent_types"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug ResourceTypeSlug `json:"slug"`
+}
+
+// ProductResourceTypeTreeRequest The product's whole tree of resource types, `organization` excluded. Types are matched by slug: a listed type is created or updated, and a type left out is deleted. The tree is validated as a whole, with the same rules as the single-type routes, and applied in one transaction.
+type ProductResourceTypeTreeRequest struct {
+	ResourceTypes []ProductResourceTypeTreeItem `json:"resource_types"`
+}
+
+// ProductResourceTypeTreeResponse defines model for ProductResourceTypeTreeResponse.
+type ProductResourceTypeTreeResponse struct {
+	// ResourceTypes Every resource type of the product: `organization` first, then by creation time, and types created together by slug.
+	ResourceTypes []ProductResourceTypeResponse `json:"resource_types"`
+}
+
+// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+type ProductResourceTypeUpdateRequest struct {
+	Description   *string `json:"description,omitempty"`
+	Name          *string `json:"name,omitempty"`
+	NestsInItself *bool   `json:"nests_in_itself,omitempty"`
+
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
+	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
 }
 
 // ProductResponse defines model for ProductResponse.
@@ -2649,8 +2781,11 @@ type ProductRoleCreateRequest struct {
 	// Examples: Editor
 	Name string `json:"name"`
 
-	// Permissions Optional list of permission names (strings) to assign initially.
+	// Permissions Optional list of permission names to assign initially. Each must be scoped to the role's resource type or to a type below it; any other answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
 	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceType The resource type this role is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
 }
 
 // ProductRoleFilter defines model for ProductRoleFilter.
@@ -2666,6 +2801,9 @@ type ProductRoleFilter struct {
 
 	// Permissions Filter by roles that hold any of these resource permission names, matched case-insensitively.
 	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceTypes Keep only roles scoped to one of these resource types.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
 }
 
 // ProductRoleListResponse defines model for ProductRoleListResponse.
@@ -2724,8 +2862,11 @@ type ProductRoleResponse struct {
 	// ProductId ID of the Product this role belongs to.
 	//
 	// Examples: prod_2iABC...
-	ProductId Ksuid     `json:"product_id"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ProductId Ksuid `json:"product_id"`
+
+	// ResourceType The resource type this role is scoped to.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
 // ProductRoleSearchRequest defines model for ProductRoleSearchRequest.
@@ -2758,6 +2899,9 @@ type ProductRoleUpdateRequest struct {
 
 	// Permissions Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
 	Permissions *[]string `json:"permissions,omitempty"`
+
+	// ResourceType A role's resource type never changes. Omit it, or send the current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
+	ResourceType *ResourceTypeSlug `json:"resource_type,omitempty"`
 }
 
 // ProductSearchRequest defines model for ProductSearchRequest.
@@ -2954,6 +3098,11 @@ type RegisterRequest struct {
 	TenantName *string `json:"tenant_name,omitempty"`
 }
 
+// ResourceTypeSlug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+//
+// Examples: folder
+type ResourceTypeSlug = string
+
 // SearchRequest Generic search request template
 type SearchRequest struct {
 	// FullTextSearch Full-text search term to match against searchable fields.
@@ -3068,6 +3217,9 @@ type UpdateProductResourcePermissionRequest struct {
 	//
 	// Examples: Allows updating document contents.
 	Description *string `json:"description,omitempty"`
+
+	// ResourceType A permission's resource type never changes. Omit it, or send the current one; any other value answers 409 PERMISSION_SCOPE_IMMUTABLE.
+	ResourceType *ResourceTypeSlug `json:"resource_type,omitempty"`
 }
 
 // UsageGranularity Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
@@ -3338,6 +3490,11 @@ type ProviderTypeParameter = IntegrationProviderType
 
 // ResourcePermissionNameParameter Examples: file:read
 type ResourcePermissionNameParameter = string
+
+// ResourceTypeIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: rtype_2qLCf0ld3r2nT8vK5xR1
+type ResourceTypeIdParameter = Ksuid
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
@@ -3666,6 +3823,18 @@ type SearchProductResourcePermissionsJSONRequestBody = ProductResourcePermission
 
 // UpdateProductResourcePermissionJSONRequestBody defines body for UpdateProductResourcePermission for application/json ContentType.
 type UpdateProductResourcePermissionJSONRequestBody = UpdateProductResourcePermissionRequest
+
+// CreateProductResourceTypeJSONRequestBody defines body for CreateProductResourceType for application/json ContentType.
+type CreateProductResourceTypeJSONRequestBody = ProductResourceTypeCreateRequest
+
+// ReplaceProductResourceTypesJSONRequestBody defines body for ReplaceProductResourceTypes for application/json ContentType.
+type ReplaceProductResourceTypesJSONRequestBody = ProductResourceTypeTreeRequest
+
+// SearchProductResourceTypesJSONRequestBody defines body for SearchProductResourceTypes for application/json ContentType.
+type SearchProductResourceTypesJSONRequestBody = ProductResourceTypeSearchRequest
+
+// UpdateProductResourceTypeJSONRequestBody defines body for UpdateProductResourceType for application/json ContentType.
+type UpdateProductResourceTypeJSONRequestBody = ProductResourceTypeUpdateRequest
 
 // CreateProductRoleJSONRequestBody defines body for CreateProductRole for application/json ContentType.
 type CreateProductRoleJSONRequestBody = ProductRoleCreateRequest
@@ -4228,6 +4397,24 @@ type ServerInterface interface {
 	// UpdateProductResourcePermission Update Product Resource Permission
 	// (PUT /v1/products/{product_id}/resource-permissions/{permission_name})
 	UpdateProductResourcePermission(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, permissionName ResourcePermissionNameParameter)
+	// CreateProductResourceType Create Product Resource Type
+	// (POST /v1/products/{product_id}/resource-types)
+	CreateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// ReplaceProductResourceTypes Replace Product Resource Type Tree
+	// (PUT /v1/products/{product_id}/resource-types)
+	ReplaceProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// SearchProductResourceTypes Search Product Resource Types
+	// (POST /v1/products/{product_id}/resource-types/search)
+	SearchProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
+	// DeleteProductResourceType Delete Product Resource Type
+	// (DELETE /v1/products/{product_id}/resource-types/{resource_type_id})
+	DeleteProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter)
+	// GetProductResourceType Get Product Resource Type
+	// (GET /v1/products/{product_id}/resource-types/{resource_type_id})
+	GetProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter)
+	// UpdateProductResourceType Update Product Resource Type
+	// (PATCH /v1/products/{product_id}/resource-types/{resource_type_id})
+	UpdateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter)
 	// CreateProductRole Create ProductRole for Product
 	// (POST /v1/products/{product_id}/roles)
 	CreateProductRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -4936,6 +5123,42 @@ func (_ Unimplemented) GetProductResourcePermission(w http.ResponseWriter, r *ht
 // UpdateProductResourcePermission Update Product Resource Permission
 // (PUT /v1/products/{product_id}/resource-permissions/{permission_name})
 func (_ Unimplemented) UpdateProductResourcePermission(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, permissionName ResourcePermissionNameParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateProductResourceType Create Product Resource Type
+// (POST /v1/products/{product_id}/resource-types)
+func (_ Unimplemented) CreateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ReplaceProductResourceTypes Replace Product Resource Type Tree
+// (PUT /v1/products/{product_id}/resource-types)
+func (_ Unimplemented) ReplaceProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchProductResourceTypes Search Product Resource Types
+// (POST /v1/products/{product_id}/resource-types/search)
+func (_ Unimplemented) SearchProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteProductResourceType Delete Product Resource Type
+// (DELETE /v1/products/{product_id}/resource-types/{resource_type_id})
+func (_ Unimplemented) DeleteProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProductResourceType Get Product Resource Type
+// (GET /v1/products/{product_id}/resource-types/{resource_type_id})
+func (_ Unimplemented) GetProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateProductResourceType Update Product Resource Type
+// (PATCH /v1/products/{product_id}/resource-types/{resource_type_id})
+func (_ Unimplemented) UpdateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8811,6 +9034,189 @@ func (siw *ServerInterfaceWrapper) UpdateProductResourcePermission(w http.Respon
 	handler.ServeHTTP(w, r)
 }
 
+// CreateProductResourceType operation middleware
+func (siw *ServerInterfaceWrapper) CreateProductResourceType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProductResourceType(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReplaceProductResourceTypes operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceProductResourceTypes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReplaceProductResourceTypes(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchProductResourceTypes operation middleware
+func (siw *ServerInterfaceWrapper) SearchProductResourceTypes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchProductResourceTypes(w, r, productId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProductResourceType operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProductResourceType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type_id" -------------
+	var resourceTypeId ResourceTypeIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type_id", chi.URLParam(r, "resource_type_id"), &resourceTypeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProductResourceType(w, r, productId, resourceTypeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProductResourceType operation middleware
+func (siw *ServerInterfaceWrapper) GetProductResourceType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type_id" -------------
+	var resourceTypeId ResourceTypeIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type_id", chi.URLParam(r, "resource_type_id"), &resourceTypeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProductResourceType(w, r, productId, resourceTypeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProductResourceType operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProductResourceType(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type_id" -------------
+	var resourceTypeId ResourceTypeIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type_id", chi.URLParam(r, "resource_type_id"), &resourceTypeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProductResourceType(w, r, productId, resourceTypeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateProductRole operation middleware
 func (siw *ServerInterfaceWrapper) CreateProductRole(w http.ResponseWriter, r *http.Request) {
 
@@ -9216,6 +9622,24 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/integrations/webhooks/{provider_type}", wrapper.IngestWebhook)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/resource-types", wrapper.CreateProductResourceType)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/resource-types", wrapper.ReplaceProductResourceTypes)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/resource-types/search", wrapper.SearchProductResourceTypes)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/resource-types/{resource_type_id}", wrapper.DeleteProductResourceType)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/resource-types/{resource_type_id}", wrapper.GetProductResourceType)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/products/{product_id}/resource-types/{resource_type_id}", wrapper.UpdateProductResourceType)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/resource-permissions", wrapper.CreateProductResourcePermission)
@@ -18715,6 +19139,503 @@ func (response UpdateProductResourcePermission409JSONResponse) VisitUpdateProduc
 	return err
 }
 
+type CreateProductResourceTypeRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *CreateProductResourceTypeJSONRequestBody
+}
+
+type CreateProductResourceTypeResponseObject interface {
+	VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error
+}
+
+type CreateProductResourceType201JSONResponse ProductResourceTypeResponse
+
+func (response CreateProductResourceType201JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProductResourceType400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateProductResourceType400JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProductResourceType401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateProductResourceType401JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProductResourceType403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateProductResourceType403JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProductResourceType404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateProductResourceType404JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProductResourceType409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateProductResourceType409JSONResponse) VisitCreateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *ReplaceProductResourceTypesJSONRequestBody
+}
+
+type ReplaceProductResourceTypesResponseObject interface {
+	VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error
+}
+
+type ReplaceProductResourceTypes200JSONResponse ProductResourceTypeTreeResponse
+
+func (response ReplaceProductResourceTypes200JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypes400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ReplaceProductResourceTypes400JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypes401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ReplaceProductResourceTypes401JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypes403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ReplaceProductResourceTypes403JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypes404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ReplaceProductResourceTypes404JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReplaceProductResourceTypes409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ReplaceProductResourceTypes409JSONResponse) VisitReplaceProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchProductResourceTypesRequestObject struct {
+	ProductId ProductIdParameter `json:"product_id"`
+	Body      *SearchProductResourceTypesJSONRequestBody
+}
+
+type SearchProductResourceTypesResponseObject interface {
+	VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error
+}
+
+type SearchProductResourceTypes200JSONResponse ProductResourceTypeListResponse
+
+func (response SearchProductResourceTypes200JSONResponse) VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchProductResourceTypes400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchProductResourceTypes400JSONResponse) VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchProductResourceTypes401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchProductResourceTypes401JSONResponse) VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchProductResourceTypes403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchProductResourceTypes403JSONResponse) VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchProductResourceTypes404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchProductResourceTypes404JSONResponse) VisitSearchProductResourceTypesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductResourceTypeRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	ResourceTypeId ResourceTypeIdParameter `json:"resource_type_id"`
+}
+
+type DeleteProductResourceTypeResponseObject interface {
+	VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error
+}
+
+type DeleteProductResourceType204Response struct {
+}
+
+func (response DeleteProductResourceType204Response) VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteProductResourceType401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteProductResourceType401JSONResponse) VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductResourceType403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteProductResourceType403JSONResponse) VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductResourceType404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteProductResourceType404JSONResponse) VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteProductResourceType409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteProductResourceType409JSONResponse) VisitDeleteProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductResourceTypeRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	ResourceTypeId ResourceTypeIdParameter `json:"resource_type_id"`
+}
+
+type GetProductResourceTypeResponseObject interface {
+	VisitGetProductResourceTypeResponse(w http.ResponseWriter) error
+}
+
+type GetProductResourceType200JSONResponse ProductResourceTypeResponse
+
+func (response GetProductResourceType200JSONResponse) VisitGetProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductResourceType401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetProductResourceType401JSONResponse) VisitGetProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductResourceType403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetProductResourceType403JSONResponse) VisitGetProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductResourceType404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProductResourceType404JSONResponse) VisitGetProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceTypeRequestObject struct {
+	ProductId      ProductIdParameter      `json:"product_id"`
+	ResourceTypeId ResourceTypeIdParameter `json:"resource_type_id"`
+	Body           *UpdateProductResourceTypeJSONRequestBody
+}
+
+type UpdateProductResourceTypeResponseObject interface {
+	VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error
+}
+
+type UpdateProductResourceType200JSONResponse ProductResourceTypeResponse
+
+func (response UpdateProductResourceType200JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceType400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateProductResourceType400JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceType401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateProductResourceType401JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceType403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateProductResourceType403JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceType404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateProductResourceType404JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateProductResourceType409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateProductResourceType409JSONResponse) VisitUpdateProductResourceTypeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateProductRoleRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *CreateProductRoleJSONRequestBody
@@ -19659,6 +20580,24 @@ type StrictServerInterface interface {
 	// UpdateProductResourcePermission Update Product Resource Permission
 	// (PUT /v1/products/{product_id}/resource-permissions/{permission_name})
 	UpdateProductResourcePermission(ctx context.Context, request UpdateProductResourcePermissionRequestObject) (UpdateProductResourcePermissionResponseObject, error)
+	// CreateProductResourceType Create Product Resource Type
+	// (POST /v1/products/{product_id}/resource-types)
+	CreateProductResourceType(ctx context.Context, request CreateProductResourceTypeRequestObject) (CreateProductResourceTypeResponseObject, error)
+	// ReplaceProductResourceTypes Replace Product Resource Type Tree
+	// (PUT /v1/products/{product_id}/resource-types)
+	ReplaceProductResourceTypes(ctx context.Context, request ReplaceProductResourceTypesRequestObject) (ReplaceProductResourceTypesResponseObject, error)
+	// SearchProductResourceTypes Search Product Resource Types
+	// (POST /v1/products/{product_id}/resource-types/search)
+	SearchProductResourceTypes(ctx context.Context, request SearchProductResourceTypesRequestObject) (SearchProductResourceTypesResponseObject, error)
+	// DeleteProductResourceType Delete Product Resource Type
+	// (DELETE /v1/products/{product_id}/resource-types/{resource_type_id})
+	DeleteProductResourceType(ctx context.Context, request DeleteProductResourceTypeRequestObject) (DeleteProductResourceTypeResponseObject, error)
+	// GetProductResourceType Get Product Resource Type
+	// (GET /v1/products/{product_id}/resource-types/{resource_type_id})
+	GetProductResourceType(ctx context.Context, request GetProductResourceTypeRequestObject) (GetProductResourceTypeResponseObject, error)
+	// UpdateProductResourceType Update Product Resource Type
+	// (PATCH /v1/products/{product_id}/resource-types/{resource_type_id})
+	UpdateProductResourceType(ctx context.Context, request UpdateProductResourceTypeRequestObject) (UpdateProductResourceTypeResponseObject, error)
 	// CreateProductRole Create ProductRole for Product
 	// (POST /v1/products/{product_id}/roles)
 	CreateProductRole(ctx context.Context, request CreateProductRoleRequestObject) (CreateProductRoleResponseObject, error)
@@ -23131,6 +24070,193 @@ func (sh *strictHandler) UpdateProductResourcePermission(w http.ResponseWriter, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateProductResourcePermissionResponseObject); ok {
 		if err := validResponse.VisitUpdateProductResourcePermissionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateProductResourceType operation middleware
+func (sh *strictHandler) CreateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request CreateProductResourceTypeRequestObject
+
+	request.ProductId = productId
+
+	var body CreateProductResourceTypeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateProductResourceType(ctx, request.(CreateProductResourceTypeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateProductResourceType")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateProductResourceTypeResponseObject); ok {
+		if err := validResponse.VisitCreateProductResourceTypeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReplaceProductResourceTypes operation middleware
+func (sh *strictHandler) ReplaceProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request ReplaceProductResourceTypesRequestObject
+
+	request.ProductId = productId
+
+	var body ReplaceProductResourceTypesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReplaceProductResourceTypes(ctx, request.(ReplaceProductResourceTypesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReplaceProductResourceTypes")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReplaceProductResourceTypesResponseObject); ok {
+		if err := validResponse.VisitReplaceProductResourceTypesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchProductResourceTypes operation middleware
+func (sh *strictHandler) SearchProductResourceTypes(w http.ResponseWriter, r *http.Request, productId ProductIdParameter) {
+	var request SearchProductResourceTypesRequestObject
+
+	request.ProductId = productId
+
+	var body SearchProductResourceTypesJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchProductResourceTypes(ctx, request.(SearchProductResourceTypesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchProductResourceTypes")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchProductResourceTypesResponseObject); ok {
+		if err := validResponse.VisitSearchProductResourceTypesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteProductResourceType operation middleware
+func (sh *strictHandler) DeleteProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
+	var request DeleteProductResourceTypeRequestObject
+
+	request.ProductId = productId
+	request.ResourceTypeId = resourceTypeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteProductResourceType(ctx, request.(DeleteProductResourceTypeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteProductResourceType")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteProductResourceTypeResponseObject); ok {
+		if err := validResponse.VisitDeleteProductResourceTypeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProductResourceType operation middleware
+func (sh *strictHandler) GetProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
+	var request GetProductResourceTypeRequestObject
+
+	request.ProductId = productId
+	request.ResourceTypeId = resourceTypeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProductResourceType(ctx, request.(GetProductResourceTypeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProductResourceType")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProductResourceTypeResponseObject); ok {
+		if err := validResponse.VisitGetProductResourceTypeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateProductResourceType operation middleware
+func (sh *strictHandler) UpdateProductResourceType(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter) {
+	var request UpdateProductResourceTypeRequestObject
+
+	request.ProductId = productId
+	request.ResourceTypeId = resourceTypeId
+
+	var body UpdateProductResourceTypeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateProductResourceType(ctx, request.(UpdateProductResourceTypeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateProductResourceType")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateProductResourceTypeResponseObject); ok {
+		if err := validResponse.VisitUpdateProductResourceTypeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

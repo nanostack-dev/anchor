@@ -11,6 +11,11 @@ type ProductResourcePermission struct {
 	Name          string
 	Description   *string
 	ScopeModifier *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// ResourceTypeID is nil only on a row a release before resource types
+	// wrote during a rolling deploy; it counts as organization.
+	ResourceTypeID *string
+	// ResourceType is the slug of the scope, filled by the service.
+	ResourceType string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }

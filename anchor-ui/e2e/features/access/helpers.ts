@@ -20,7 +20,11 @@ export const row = (page: Page, name: string) =>
 export async function permission(world: World, prefix = "document:read") {
 	return world.api.post<ProductResourcePermissionResponse>(
 		`${world.productPath}/resource-permissions`,
-		{ name: world.name(prefix), description: "Read the test document" },
+		{
+			name: world.name(prefix),
+			description: "Read the test document",
+			resource_type: "organization",
+		},
 	);
 }
 
@@ -32,6 +36,7 @@ export async function role(
 	return world.api.post<ProductRoleResponse>(`${world.productPath}/roles`, {
 		name: world.name(prefix),
 		description: "Browser fixture role",
+		resource_type: "organization",
 		permissions,
 	});
 }

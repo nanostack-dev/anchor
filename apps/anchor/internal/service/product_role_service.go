@@ -13,10 +13,11 @@ import (
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	role "anchor/internal/domain/product/role"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
 	invitationrepository "anchor/internal/invitation/repository"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
+	rtservice "anchor/internal/resourcetype/service"
 
 	"github.com/rs/zerolog"
 )
@@ -63,6 +64,7 @@ type productRoleService struct {
 	roleRepo                      repository.ProductRoleRepository
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository
 	invitationRepo                invitationrepository.Repository
+	resourceTypes                 rtservice.Service
 	transactor                    transactor.Transactor
 	events                        events.Emitter
 	logger                        zerolog.Logger
@@ -72,6 +74,7 @@ func NewProductRoleService(
 	roleRepo repository.ProductRoleRepository,
 	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
 	invitationRepo invitationrepository.Repository,
+	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -80,6 +83,7 @@ func NewProductRoleService(
 		roleRepo:                      roleRepo,
 		productResourcePermissionRepo: productResourcePermissionRepo,
 		invitationRepo:                invitationRepo,
+		resourceTypes:                 resourceTypes,
 		transactor:                    tx,
 		events:                        eventEmitter,
 		logger: logger.With().Str(
@@ -105,6 +109,9 @@ func (s *productRoleService) CreateProductRole(
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
+	}
+	if input.ResourceType == "" {
+		return role.ProductRole{}, resourcetype.ErrRequired
 	}
 	if err := s.nameDuplicationValidation(ctx, input.ProductID, input.Name, "", logger); err != nil {
 		return role.ProductRole{}, err
@@ -142,6 +149,25 @@ func (s *productRoleService) CreateProductRole(
 
 	var created role.ProductRole
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tree, treeErr := s.resourceTypes.LockedTree(txCtx, input.ProductID)
+		if treeErr != nil {
+			return treeErr
+		}
+		scope, known := tree.BySlug(input.ResourceType).Get()
+		if !known {
+			return resourcetype.NewUnknownError([]string{input.ResourceType})
+		}
+		if scopeErr := s.checkPermissionScopes(
+			txCtx,
+			tree,
+			input.ProductID,
+			scope.Slug,
+			productRole.Permissions,
+		); scopeErr != nil {
+			return scopeErr
+		}
+		productRole.ResourceTypeID = &scope.ID
+
 		var createErr error
 		created, createErr = s.roleRepo.Create(txCtx, productRole)
 		if errors.Is(createErr, repository.ErrProductRoleNameExists) {
@@ -155,6 +181,7 @@ func (s *productRoleService) CreateProductRole(
 				Msg("failed to create product role")
 			return fault.ErrUnexpected
 		}
+		created.ResourceType = scope.Slug
 		return s.emitRole(txCtx, events.ProductRoleCreated, input.ProductID, created.ID)
 	})
 	if err != nil {
@@ -179,19 +206,8 @@ func (s *productRoleService) SearchProductRoles(
 		return search.Result[role.ProductRole]{}, err
 	}
 
-	result, err := s.roleRepo.SearchByProductID(ctx, input.ProductID, input.Request)
-	if err != nil {
-		if searchx.IsClientError(err) {
-			return search.Result[role.ProductRole]{}, err
-		}
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search product roles")
-		return search.Result[role.ProductRole]{}, fault.ErrUnexpected
-	}
-
-	return result, nil
+	return scopedSearch(ctx, s.resourceTypes, logger, input.ProductID, input.Request,
+		role.SearchProductRoleFilter.WithScopes, s.roleRepo.SearchByProductID, withRoleScope)
 }
 
 func (s *productRoleService) GetProductRole(
@@ -212,8 +228,10 @@ func (s *productRoleService) GetProductRole(
 			Msg("failed to get product role")
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
-
-	return found.ToResult(role.ErrProductRoleNotFound).Value()
+	if found.IsAbsent() {
+		return role.ProductRole{}, role.ErrProductRoleNotFound
+	}
+	return s.withScope(ctx, input.ProductID, found.Value(), logger)
 }
 
 func (s *productRoleService) UpdateProductRole(
@@ -243,7 +261,13 @@ func (s *productRoleService) UpdateProductRole(
 		return role.ProductRole{}, role.ErrProductRoleNotFound
 	}
 
-	updatedRole := foundRole.Value()
+	updatedRole, err := s.withScope(ctx, input.ProductID, foundRole.Value(), logger)
+	if err != nil {
+		return role.ProductRole{}, err
+	}
+	if input.ResourceType != nil && *input.ResourceType != updatedRole.ResourceType {
+		return role.ProductRole{}, role.ErrScopeImmutable
+	}
 
 	if input.Name != nil && *input.Name != updatedRole.Name {
 		err = s.nameDuplicationValidation(ctx, input.ProductID, *input.Name, input.ID, logger)
@@ -281,10 +305,24 @@ func (s *productRoleService) UpdateProductRole(
 			return fault.ErrUnexpected
 		}
 		if input.Permissions != nil {
+			tree, treeErr := s.resourceTypes.LockedTree(txCtx, input.ProductID)
+			if treeErr != nil {
+				return treeErr
+			}
+			if scopeErr := s.checkPermissionScopes(
+				txCtx,
+				tree,
+				input.ProductID,
+				updatedRole.ResourceType,
+				input.Permissions,
+			); scopeErr != nil {
+				return scopeErr
+			}
 			if updated, updateErr = s.replacePermissions(txCtx, input, logger); updateErr != nil {
 				return updateErr
 			}
 		}
+		updated.ResourceType = updatedRole.ResourceType
 		return s.emitRole(txCtx, events.ProductRoleUpdated, input.ProductID, updated.ID)
 	})
 	if err != nil {
@@ -458,6 +496,27 @@ func (s *productRoleService) AssignPermissionToProductRole(
 	newPermission = resolvedPermissions[0]
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		tree, treeErr := s.resourceTypes.LockedTree(txCtx, input.ProductID)
+		if treeErr != nil {
+			return treeErr
+		}
+		target, findErr := s.roleRepo.FindByProductIDAndRoleID(txCtx, input.ProductID, input.ProductRoleID)
+		if findErr != nil {
+			return findErr
+		}
+		if target.IsAbsent() {
+			return role.ErrProductRoleNotFound
+		}
+		roleScope := scopeSlug(tree, target.Value().ResourceTypeID)
+		if scopeErr := s.checkPermissionScopes(
+			txCtx,
+			tree,
+			input.ProductID,
+			roleScope,
+			resolvedPermissions,
+		); scopeErr != nil {
+			return scopeErr
+		}
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
 		if addErr != nil {
 			logger.Error().
@@ -652,4 +711,32 @@ func (s *productRoleService) resolveRolePermissions(
 		resolved[i].PermissionName = name
 	}
 	return resolved, nil
+}
+
+func (s *productRoleService) withScope(
+	ctx context.Context, productID string, found role.ProductRole, logger zerolog.Logger,
+) (role.ProductRole, error) {
+	tree, err := s.resourceTypes.Tree(ctx, productID)
+	if err != nil {
+		logger.Error().Str("product_id", productID).Err(err).Msg("failed to read resource types")
+		return role.ProductRole{}, fault.ErrUnexpected
+	}
+	return withRoleScope(tree)(found), nil
+}
+
+// checkPermissionScopes reads the scopes of the role's permissions and refuses one
+// outside the role's scope.
+func (s *productRoleService) checkPermissionScopes(
+	ctx context.Context, tree resourcetype.Tree, productID, roleScope string,
+	permissions []role.ProductRolePermission,
+) error {
+	if len(permissions) == 0 {
+		return nil
+	}
+	names := functional.Slice(permissions).Map(func(p role.ProductRolePermission) string { return p.PermissionName })
+	found, err := s.productResourcePermissionRepo.FindByProductIDAndPermissionNames(ctx, productID, names)
+	if err != nil {
+		return err
+	}
+	return checkPermissionScopes(tree, roleScope, found)
 }

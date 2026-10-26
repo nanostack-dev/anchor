@@ -211,7 +211,7 @@ func createEmptyRole(t *testing.T, productContext *itdsl.ProductContext) string 
 	t.Helper()
 	resp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		t.Context(), productContext.ProductID,
-		ct.CreateProductRoleJSONRequestBody{Name: "RaceRole_" + ids.MustNew("test")},
+		ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: "RaceRole_" + ids.MustNew("test")},
 	)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode())

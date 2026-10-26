@@ -3,6 +3,10 @@ import {
 	createProductResourcePermissionMutation,
 	searchProductResourcePermissionsQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import {
+	ORGANIZATION_RESOURCE_TYPE,
+	ResourceTypeSelect,
+} from "@/components/product/resource-types/ResourceTypeSelect";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
@@ -39,6 +43,7 @@ export function CreateProductResourcePermissionDialog({
 		useState<CreateProductResourcePermissionRequest>({
 			name: "",
 			description: "",
+			resource_type: ORGANIZATION_RESOURCE_TYPE,
 		});
 
 	const createMutation = useMutation({
@@ -49,7 +54,11 @@ export function CreateProductResourcePermissionDialog({
 				title: "Product resource permission created successfully!",
 			});
 			setOpen(false);
-			setFormData({ name: "", description: "" });
+			setFormData({
+				name: "",
+				description: "",
+				resource_type: ORGANIZATION_RESOURCE_TYPE,
+			});
 
 			// Invalidate the search query for this product
 			queryClient.invalidateQueries({
@@ -96,7 +105,7 @@ export function CreateProductResourcePermissionDialog({
 						</DialogDescription>
 					</DialogHeader>
 					<Box className="grid gap-4 py-4">
-						<Box className="grid grid-cols-4 items-center gap-4">
+						<Box className="flex flex-col gap-2">
 							<Label htmlFor="name">Name</Label>
 							<Input
 								id="name"
@@ -108,7 +117,18 @@ export function CreateProductResourcePermissionDialog({
 								required
 							/>
 						</Box>
-						<Box className="grid grid-cols-4 items-center gap-4">
+						<Box className="flex flex-col gap-2">
+							<Label htmlFor="resource-type">Resource type</Label>
+							<ResourceTypeSelect
+								id="resource-type"
+								productId={productId}
+								value={formData.resource_type}
+								onChange={(slug) =>
+									setFormData((prev) => ({ ...prev, resource_type: slug }))
+								}
+							/>
+						</Box>
+						<Box className="flex flex-col gap-2">
 							<Label htmlFor="description">Description</Label>
 							<Textarea
 								id="description"

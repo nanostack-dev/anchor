@@ -28,8 +28,9 @@ func TestProductRole_Create(t *testing.T) {
 			roleDesc := "Can edit content"
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        roleName,
-					Description: &roleDesc,
+					ResourceType: "organization",
+					Name:         roleName,
+					Description:  &roleDesc,
 				},
 			)
 			require.NoError(t, err)
@@ -55,13 +56,13 @@ func TestProductRole_Create(t *testing.T) {
 			longer := base + "-admin"
 
 			respLonger, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: longer},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: longer},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, respLonger.StatusCode())
 
 			respBase, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: base},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: base},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusCreated, respBase.StatusCode(),
@@ -69,7 +70,7 @@ func TestProductRole_Create(t *testing.T) {
 
 			// And an exact duplicate is still rejected.
 			respDup, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: base},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: base},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusConflict, respDup.StatusCode(),
@@ -81,7 +82,8 @@ func TestProductRole_Create(t *testing.T) {
 		"Creating a product role with empty name returns a bad request", func(t *testing.T) {
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: "",
+					ResourceType: "organization",
+					Name:         "",
 				},
 			)
 			require.NoError(t, err)
@@ -97,7 +99,8 @@ func TestProductRole_Create(t *testing.T) {
 			longName := strings.Repeat("a", 101)
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: longName,
+					ResourceType: "organization",
+					Name:         longName,
 				},
 			)
 			require.NoError(t, err)
@@ -116,8 +119,9 @@ func TestProductRole_Create(t *testing.T) {
 			longDesc := strings.Repeat("a", 501)
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "ValidRole_" + ids.MustNew("test"),
-					Description: &longDesc,
+					ResourceType: "organization",
+					Name:         "ValidRole_" + ids.MustNew("test"),
+					Description:  &longDesc,
 				},
 			)
 			require.NoError(t, err)
@@ -137,7 +141,8 @@ func TestProductRole_Create(t *testing.T) {
 
 			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: roleName,
+					ResourceType: "organization",
+					Name:         roleName,
 				},
 			)
 			require.NoError(t, err)
@@ -148,7 +153,8 @@ func TestProductRole_Create(t *testing.T) {
 
 			resp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name: roleName,
+					ResourceType: "organization",
+					Name:         roleName,
 				},
 			)
 			require.NoError(t, err)
@@ -167,13 +173,13 @@ func TestProductRole_Create(t *testing.T) {
 			roleName := "DuplicateRoleCase_" + ids.MustNew("test")
 
 			resp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: roleName},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: roleName},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusCreated, resp1.StatusCode())
 
 			resp2, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				ctx, productID, ct.CreateProductRoleJSONRequestBody{Name: strings.ToLower(roleName)},
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: strings.ToLower(roleName)},
 			)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusConflict, resp2.StatusCode())
@@ -190,8 +196,9 @@ func TestProductRole_Create(t *testing.T) {
 			permissions := []string{perm1, perm2}
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissions_" + ids.MustNew("test"),
-					Permissions: permissions,
+					ResourceType: "organization",
+					Name:         "RoleWithPermissions_" + ids.MustNew("test"),
+					Permissions:  permissions,
 				},
 			)
 			require.NoError(t, err)
@@ -212,8 +219,9 @@ func TestProductRole_Create(t *testing.T) {
 
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithPermissionsCase_" + ids.MustNew("test"),
-					Permissions: []string{strings.ToUpper(permissionName)},
+					ResourceType: "organization",
+					Name:         "RoleWithPermissionsCase_" + ids.MustNew("test"),
+					Permissions:  []string{strings.ToUpper(permissionName)},
 				},
 			)
 			require.NoError(t, err)
@@ -231,7 +239,7 @@ func TestProductRole_Create(t *testing.T) {
 		resp, err := apiKeyClient.CreateProductRoleWithResponse(
 			ctx,
 			productID,
-			ct.CreateProductRoleJSONRequestBody{Name: roleName},
+			ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: roleName},
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, resp.StatusCode())
@@ -244,8 +252,9 @@ func TestProductRole_Create(t *testing.T) {
 			permissions := []string{itshared.Faker.Lorem().Word() + ":" + itshared.Faker.Lorem().Word()}
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productID, ct.CreateProductRoleJSONRequestBody{
-					Name:        "RoleWithBadPermissions_" + ids.MustNew("test"),
-					Permissions: permissions,
+					ResourceType: "organization",
+					Name:         "RoleWithBadPermissions_" + ids.MustNew("test"),
+					Permissions:  permissions,
 				},
 			)
 			require.NoError(t, err)
@@ -265,7 +274,8 @@ func TestProductRole_Create(t *testing.T) {
 			sink := productContext.CaptureEvents()
 			resp, err := productContext.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, productContext.ProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "EventsRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "EventsRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
@@ -279,7 +289,8 @@ func TestProductRole_Create(t *testing.T) {
 			nonExistentProductID := ids.MustNew("prd")
 			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 				ctx, nonExistentProductID, ct.CreateProductRoleJSONRequestBody{
-					Name: "TestRole_" + ids.MustNew("test"),
+					ResourceType: "organization",
+					Name:         "TestRole_" + ids.MustNew("test"),
 				},
 			)
 			require.NoError(t, err)
