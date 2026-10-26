@@ -4,8 +4,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateResourceType(t *testing.T) {
@@ -98,6 +101,33 @@ func TestUpdateResourceTypeCycle(t *testing.T) {
 
 		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "RESOURCE_TYPE_CYCLE")
 	})
+}
+
+func TestUpdateResourceTypeBesideAnOutOfScopeRole(t *testing.T) {
+	t.Parallel()
+	t.Run("Renaming a type succeeds while a role holds a permission outside its scope, and moving one is refused",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			tree := declareDocumentTree(t, product)
+			product.CreateScopedPermissions(t, "organization", "billing:read")
+			role := createScopedRole(t, product, "project")
+			// A release before scopes could still assign this during the rolling deploy.
+			_, err := testDB.ExecContext(t.Context(), `INSERT INTO product_role_resource_permissions
+				(id, product_id, product_role_id, permission_name) VALUES ($1, $2, $3, 'billing:read')`,
+				ids.MustNew("prrp"), product.ProductID, role.Id)
+			require.NoError(t, err)
+
+			renamed := product.ResourceTypes().UpdateRaw(tree.document.Id, ct.UpdateProductResourceTypeJSONRequestBody{
+				Name: new("Page"),
+			})
+			assert.Equal(t, http.StatusOK, renamed.StatusCode(), string(renamed.Body))
+
+			moved := product.ResourceTypes().UpdateRaw(tree.folder.Id, ct.UpdateProductResourceTypeJSONRequestBody{
+				ParentTypes: &[]string{"project", "organization"},
+			})
+			requireAPIError(t, moved, moved.Body, http.StatusConflict, "RESOURCE_TYPE_IN_USE")
+		})
 }
 
 func TestUpdateResourceTypeRemovingParentARoleNeeds(t *testing.T) {

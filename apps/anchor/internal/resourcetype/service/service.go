@@ -197,9 +197,10 @@ func (s *service) Update(
 		if current.BuiltIn() {
 			return resourcetype.ErrBuiltIn
 		}
-		next := replaceType(tree, changed)
-		if err = s.checkReshape(txCtx, input.ProductID, next, changed.Slug); err != nil {
-			return err
+		if reshapes(current, changed) {
+			if err = s.checkReshape(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
+				return err
+			}
 		}
 		if err = s.repo.Update(txCtx, changed); err != nil {
 			return err
@@ -411,6 +412,15 @@ func differs(a, b resourcetype.ResourceType) bool {
 		functional.FromPtr(a.Description).OrElse("") != functional.FromPtr(b.Description).OrElse("") ||
 		a.NestsInItself != b.NestsInItself ||
 		!slices.Equal(pa, pb)
+}
+
+// reshapes reports a change that moves a scope boundary: the types below a
+// type depend only on parent types and nesting, never on names.
+func reshapes(a, b resourcetype.ResourceType) bool {
+	pa, pb := slices.Clone(a.ParentTypes), slices.Clone(b.ParentTypes)
+	slices.Sort(pa)
+	slices.Sort(pb)
+	return a.NestsInItself != b.NestsInItself || !slices.Equal(pa, pb)
 }
 
 func replaceType(tree resourcetype.Tree, changed resourcetype.ResourceType) resourcetype.Tree {

@@ -229,8 +229,40 @@ func TestUpdateRolePermissionsOutsideScope(t *testing.T) {
 	})
 }
 
+func TestCreateRoleScopedToUndeclaredType(t *testing.T) {
+	t.Parallel()
+	t.Run("A role scoped to an undeclared type answers 400", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+
+		resp, err := product.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+			t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{
+				Name: "role-" + ids.MustNew("ct"), ResourceType: "document",
+			})
+		require.NoError(t, err)
+
+		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "RESOURCE_TYPE_NOT_FOUND")
+	})
+}
+
 func TestUpdateRoleResourceType(t *testing.T) {
 	t.Parallel()
+	t.Run("Naming a role's current resource type succeeds", func(t *testing.T) {
+		t.Parallel()
+		product := createTestProductContext(t)
+		declareDocumentTree(t, product)
+		viewer := createScopedRole(t, product, "folder")
+
+		resp, err := product.OwnerAuthenticatedClient().UpdateProductRoleWithResponse(
+			t.Context(), product.ProductID, viewer.Id, ct.UpdateProductRoleJSONRequestBody{
+				Name: viewer.Name, ResourceType: new("folder"), Description: new("Opens folders."),
+			})
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		assert.Equal(t, "folder", resp.JSON200.ResourceType)
+	})
+
 	t.Run("Changing a role's resource type answers 409", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
