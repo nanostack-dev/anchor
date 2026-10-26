@@ -671,6 +671,19 @@ One model instead of a generic model plus a special case. A Product that has no 
 
 </details>
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| Phases 1 and 2 run as a startup step beside the start, plus a dual write on the workspace routes; the routes are deprecated with `Deprecation` and `Link` headers. | Public IDs are KSUIDs, which SQL can't mint, and the previous release keeps writing during the deploy. A step in fx's start hook would race its 15 s timeout, so it runs beside the start, and one anti-join finds the workspaces still missing. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| References the routes and the backfill write are marked; a marked reference whose workspace row is gone counts as absent, answers `WORKSPACE_NOT_IN_ORGANIZATION`, and is pruned. | The review reproduced it: a workspace the previous release deleted during the deploy kept its reference and answered allowed forever. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| Permissions the `workspace` type doesn't define are checked on the Organization until phase 4. | Every existing workspace decision asks Organization-scoped permissions. Without the fallback, each would have changed answer. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| `workspace_memberships` rows become assignments only when their role is `workspace`-scoped; other rows stay. | D4 requires the role's scope to equal the resource's type, and today's workspace roles are Organization-scoped. No route on `main` writes that table. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+
+</details>
+
 </details>
 
 ### B. Resources
@@ -1960,6 +1973,7 @@ Every Anchor collection is a cursor search with sort and filters, and every writ
 | A resource write marks only its own object (`authz_resource_marks`) and its replay syncs that object; an Organization sync reads no resource. | Reading every registered resource on each Organization sync cost about 0.4 ms per resource: 0.35 to 0.42 s at 1,000. Bulk registration was quadratic, and past about 7,000 resources one sync outlasted the 3 s lock wait. A replay now takes 6 to 8 ms at 10 or 1,000 resources. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
 | Mark revisions come from one sequence, and one replica sweeps at a time. | A mark deleted and made again restarted at revision 1, so a sync could clear a newer mark. Every replica repeated the same sweep. | [#276](https://github.com/nanostack-dev/anchor/pull/276) |
 | Production keeps a drift signal: the evaluator logs `authz.decision_drift`, sampled, when OpenFGA disagrees with the permissions the tables list. | The shadow (PR 6) is removed by the switch, and the end-of-suite mirror check runs only in CI. | [#278](https://github.com/nanostack-dev/anchor/pull/278) |
+| An Organization sync holds the Product's lock in share mode and its Organization's exclusively; a resource sync holds each of its objects' locks. Only a model write, the template grants and a rebuild hold the Product's lock exclusively. | With one lock per Product, a catalog write replayed the whole Product while membership writes in other Organizations waited their 3 s and fell back to the sweeper. The Nanostack product's CT suite saw decisions answer `MISSING_PERMISSION` for 3 to 7 s. `TestAuthzSyncLocks` holds one Organization's lock: another Organization of the Product syncs in under a second. | [#278](https://github.com/nanostack-dev/anchor/pull/278), [#281](https://github.com/nanostack-dev/anchor/pull/281) |
 
 </details>
 
@@ -2193,6 +2207,17 @@ flowchart LR
 > **Q-F5.1** In the first UI delivery, or a follow-up? *(recommended: follow-up, right after the canvas)*
 >
 > **Answer:** a follow-up, right after the canvas.
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| The access evaluation routes accept the Product's platform session as well as a Product API key. | The admin UI signs in with the platform session, so every Check answered 401. The maintainer approved the change. The tenant must own the Product, and the admin's own access is still decided by tenant ownership and API key scopes, never by OpenFGA. | [#286](https://github.com/nanostack-dev/anchor/pull/286) |
+| The path is written out under the panel, and "Show on the canvas" scrolls to the highlight. | The canvas shows types, not instances. A sticky canvas doesn't stick inside the app shell's scrolling box. | [#286](https://github.com/nanostack-dev/anchor/pull/286) |
+
+</details>
 
 </details>
 
