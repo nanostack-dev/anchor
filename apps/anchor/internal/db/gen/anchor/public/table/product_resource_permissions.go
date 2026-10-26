@@ -17,12 +17,13 @@ type productResourcePermissionsTable struct {
 	postgres.Table
 
 	// Columns
-	ProductID     postgres.ColumnString
-	Name          postgres.ColumnString
-	Description   postgres.ColumnString
-	ScopeModifier postgres.ColumnString
-	CreatedAt     postgres.ColumnTimestampz
-	UpdatedAt     postgres.ColumnTimestampz
+	ProductID      postgres.ColumnString
+	Name           postgres.ColumnString
+	Description    postgres.ColumnString
+	ScopeModifier  postgres.ColumnString
+	CreatedAt      postgres.ColumnTimestampz
+	UpdatedAt      postgres.ColumnTimestampz
+	ResourceTypeID postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -64,27 +65,29 @@ func newProductResourcePermissionsTable(schemaName, tableName, alias string) *Pr
 
 func newProductResourcePermissionsTableImpl(schemaName, tableName, alias string) productResourcePermissionsTable {
 	var (
-		ProductIDColumn     = postgres.StringColumn("product_id")
-		NameColumn          = postgres.StringColumn("name")
-		DescriptionColumn   = postgres.StringColumn("description")
-		ScopeModifierColumn = postgres.StringColumn("scope_modifier")
-		CreatedAtColumn     = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn     = postgres.TimestampzColumn("updated_at")
-		allColumns          = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, ScopeModifierColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns      = postgres.ColumnList{DescriptionColumn, ScopeModifierColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns      = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		ProductIDColumn      = postgres.StringColumn("product_id")
+		NameColumn           = postgres.StringColumn("name")
+		DescriptionColumn    = postgres.StringColumn("description")
+		ScopeModifierColumn  = postgres.StringColumn("scope_modifier")
+		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
+		ResourceTypeIDColumn = postgres.StringColumn("resource_type_id")
+		allColumns           = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, ScopeModifierColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
+		mutableColumns       = postgres.ColumnList{DescriptionColumn, ScopeModifierColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
+		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return productResourcePermissionsTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ProductID:     ProductIDColumn,
-		Name:          NameColumn,
-		Description:   DescriptionColumn,
-		ScopeModifier: ScopeModifierColumn,
-		CreatedAt:     CreatedAtColumn,
-		UpdatedAt:     UpdatedAtColumn,
+		ProductID:      ProductIDColumn,
+		Name:           NameColumn,
+		Description:    DescriptionColumn,
+		ScopeModifier:  ScopeModifierColumn,
+		CreatedAt:      CreatedAtColumn,
+		UpdatedAt:      UpdatedAtColumn,
+		ResourceTypeID: ResourceTypeIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

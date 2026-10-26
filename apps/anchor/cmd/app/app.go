@@ -25,6 +25,7 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/middleware"
 	"anchor/internal/repository"
+	"anchor/internal/resourcetype"
 	"anchor/internal/runtimeenv"
 	"anchor/internal/service"
 	"anchor/internal/session"
@@ -57,6 +58,7 @@ func startAnchor(target ...any) {
 		pglock.Module,
 		mapper.NewModule(),
 		repository.NewModule(),
+		resourcetype.NewModule(),
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),

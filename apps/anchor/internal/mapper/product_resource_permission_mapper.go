@@ -15,12 +15,13 @@ func (m *ProductResourcePermissionMapper) ToDomain(
 	entity model.ProductResourcePermissions,
 ) resourcepermission.ProductResourcePermission {
 	return resourcepermission.ProductResourcePermission{
-		ProductID:     entity.ProductID,
-		Name:          entity.Name,
-		Description:   entity.Description,
-		ScopeModifier: entity.ScopeModifier,
-		CreatedAt:     entity.CreatedAt,
-		UpdatedAt:     entity.UpdatedAt,
+		ProductID:      entity.ProductID,
+		Name:           entity.Name,
+		Description:    entity.Description,
+		ScopeModifier:  entity.ScopeModifier,
+		ResourceTypeID: entity.ResourceTypeID,
+		CreatedAt:      entity.CreatedAt,
+		UpdatedAt:      entity.UpdatedAt,
 	}
 }
 
@@ -28,11 +29,12 @@ func (m *ProductResourcePermissionMapper) ToEntity(
 	domain resourcepermission.ProductResourcePermission,
 ) model.ProductResourcePermissions {
 	return model.ProductResourcePermissions{
-		ProductID:     domain.ProductID,
-		Name:          domain.Name,
-		Description:   domain.Description,
-		ScopeModifier: domain.ScopeModifier,
-		CreatedAt:     domain.CreatedAt,
-		UpdatedAt:     domain.UpdatedAt,
+		ProductID:      domain.ProductID,
+		Name:           domain.Name,
+		Description:    domain.Description,
+		ScopeModifier:  domain.ScopeModifier,
+		ResourceTypeID: domain.ResourceTypeID,
+		CreatedAt:      domain.CreatedAt,
+		UpdatedAt:      domain.UpdatedAt,
 	}
 }

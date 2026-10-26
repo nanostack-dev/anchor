@@ -76,6 +76,12 @@
       "resources_permissions:delete"
     ]
   },
+  "DELETE /v1/products/{product_id}/resource-types/{resource_type_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:delete"
+    ]
+  },
   "DELETE /v1/products/{product_id}/roles/{role_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -240,6 +246,12 @@
       "resources_permissions:read"
     ]
   },
+  "GET /v1/products/{product_id}/resource-types/{resource_type_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:read"
+    ]
+  },
   "GET /v1/products/{product_id}/roles/{role_id}": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -250,6 +262,12 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_license:update"
+    ]
+  },
+  "PATCH /v1/products/{product_id}/resource-types/{resource_type_id}": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:update"
     ]
   },
   "POST /v1/auth/login": {
@@ -510,6 +528,18 @@
       "resources_permissions:read"
     ]
   },
+  "POST /v1/products/{product_id}/resource-types": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:create"
+    ]
+  },
+  "POST /v1/products/{product_id}/resource-types/search": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:read"
+    ]
+  },
   "POST /v1/products/{product_id}/roles": {
     "platformBearerAuth": [],
     "productApiKeyAuth": [
@@ -601,6 +631,14 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "resources_permissions:update"
+    ]
+  },
+  "PUT /v1/products/{product_id}/resource-types": {
+    "platformBearerAuth": [],
+    "productApiKeyAuth": [
+      "resource_type:create",
+      "resource_type:update",
+      "resource_type:delete"
     ]
   },
   "PUT /v1/products/{product_id}/roles/{role_id}": {

@@ -3,6 +3,8 @@ package resourcepermission
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/domain/resourcetype"
+
 	"anchor/internal/searchx"
 )
 
@@ -11,6 +13,7 @@ type CreateProductResourcePermissionInput struct {
 	Name          string  `validate:"required,notblank,min=2,max=200"`
 	Description   *string `validate:"omitempty,max=500"`
 	ScopeModifier *string `validate:"omitempty,max=100"`
+	ResourceType  string  `validate:"max=49"`
 }
 
 type GetProductResourcePermissionInput struct {
@@ -19,9 +22,10 @@ type GetProductResourcePermissionInput struct {
 }
 
 type UpdateProductResourcePermissionInput struct {
-	ProductID   string  `validate:"required,notblank"`
-	Name        string  `validate:"required,notblank,max=200"`
-	Description *string `validate:"omitempty,max=500"`
+	ProductID    string  `validate:"required,notblank"`
+	Name         string  `validate:"required,notblank,max=200"`
+	Description  *string `validate:"omitempty,max=500"`
+	ResourceType *string `validate:"omitempty,max=49"`
 }
 
 type DeleteProductResourcePermissionInput struct {
@@ -32,6 +36,9 @@ type DeleteProductResourcePermissionInput struct {
 type SearchProductResourcePermissionFilter struct {
 	Names          []string `validate:"omitempty,dive,notblank"`
 	ScopeModifiers []string `validate:"omitempty,dive,notblank"`
+	ResourceTypes  []string `validate:"omitempty,max=50,dive,notblank"`
+	// Scopes is what the service resolves ResourceTypes to.
+	Scopes resourcetype.ScopeFilter
 }
 
 type SortFieldProductResourcePermission string
@@ -58,4 +65,12 @@ func (in SearchProductResourcePermissionInput) Validate() error {
 type GetProductRoleResourcePermissionsInput struct {
 	ProductID     string `json:"product_id"      validate:"required,notblank"`
 	ProductRoleID string `json:"product_role_id" validate:"required,notblank"`
+}
+
+// WithScopes resolves the filter's resource types against the product's tree.
+func (f SearchProductResourcePermissionFilter) WithScopes(
+	tree resourcetype.Tree,
+) SearchProductResourcePermissionFilter {
+	f.Scopes = tree.ResolveScopes(f.ResourceTypes)
+	return f
 }

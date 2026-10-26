@@ -88,9 +88,17 @@ func NewProductRoleRepository(
 	}
 }
 
-func productRolesUpdatableColumns() postgres.ColumnList {
+func productRolesInsertColumns() postgres.ColumnList {
 	return table.ProductRoles.AllColumns.Except(
 		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt,
+	)
+}
+
+// productRolesUpdatableColumns leaves the scope out: it never changes, and
+// writing it back could undo the startup backfill of a row read earlier.
+func productRolesUpdatableColumns() postgres.ColumnList {
+	return table.ProductRoles.AllColumns.Except(
+		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt, table.ProductRoles.ResourceTypeID,
 	)
 }
 
@@ -130,7 +138,7 @@ func (r *productRoleRepositoryImpl) Create(
 ) (role.ProductRole, error) {
 	entity := r.productRoleMapper.ToEntity(productRole)
 	stmt := table.ProductRoles.INSERT(
-		productRolesUpdatableColumns(),
+		productRolesInsertColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
 	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
 		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
@@ -376,6 +384,9 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 				},
 			)
 			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
+		}
+		if input.Filter.Scopes.Active() {
+			whereStmt = whereStmt.AND(scopeCondition(table.ProductRoles.ResourceTypeID, input.Filter.Scopes))
 		}
 		if len(input.Filter.Permissions) > 0 {
 			whereStmt = whereStmt.AND(postgres.EXISTS(

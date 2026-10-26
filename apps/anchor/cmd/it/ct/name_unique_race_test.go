@@ -236,7 +236,10 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 					resp, err := client.CreateProductRoleWithResponse(
 						t.Context(),
 						product.ProductID,
-						ct.CreateProductRoleJSONRequestBody{Name: mixedCase(name, writer)},
+						ct.CreateProductRoleJSONRequestBody{
+							ResourceType: "organization",
+							Name:         mixedCase(name, writer),
+						},
 					)
 					if err != nil {
 						return raceOutcome(0, nil, err)
@@ -255,7 +258,9 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 			assertOneWinnerPerName(t, http.StatusOK, "ROLE_NAME_DUPLICATE",
 				renameToSameName(t, func(initialName string) string {
 					resp, err := client.CreateProductRoleWithResponse(
-						t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{Name: initialName},
+						t.Context(),
+						product.ProductID,
+						ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: initialName},
 					)
 					require.NoError(t, err)
 					require.Equal(t, http.StatusCreated, resp.StatusCode())
@@ -282,8 +287,12 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 			assertOneWinnerPerName(t, http.StatusCreated, "RESOURCE_PERMISSION_ALREADY_EXISTS",
 				sameNameCreate(func(name string, writer int) nameRaceOutcome {
 					resp, err := client.CreateProductResourcePermissionWithResponse(
-						t.Context(), product.ProductID,
-						ct.CreateProductResourcePermissionRequest{Name: "race:" + mixedCase(name, writer)},
+						t.Context(),
+						product.ProductID,
+						ct.CreateProductResourcePermissionRequest{
+							ResourceType: "organization",
+							Name:         "race:" + mixedCase(name, writer),
+						},
 					)
 					if err != nil {
 						return raceOutcome(0, nil, err)
@@ -417,7 +426,8 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
 			client := product.AllScopeAPIKeyClient()
 			roleResp, err := product.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
-				t.Context(), product.ProductID, ct.CreateProductRoleJSONRequestBody{Name: "Role-" + uuid.NewString()},
+				t.Context(),
+				product.ProductID, ct.CreateProductRoleJSONRequestBody{ResourceType: "organization", Name: "Role-" + uuid.NewString()},
 			)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, roleResp.StatusCode())
@@ -471,6 +481,29 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 						return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
 					}
 				})
+		},
+	)
+
+	t.Run(
+		"Concurrent resource type create requests with one slug produce one success and conflicts for all other writers",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			client := product.AllScopeAPIKeyClient()
+			assertOneWinnerPerName(t, http.StatusCreated, "RESOURCE_TYPE_SLUG_DUPLICATE",
+				sameNameCreate(func(name string, _ int) nameRaceOutcome {
+					slug := strings.ReplaceAll(strings.ToLower(name), "-", "_")
+					resp, err := client.CreateProductResourceTypeWithResponse(
+						t.Context(), product.ProductID,
+						ct.CreateProductResourceTypeJSONRequestBody{
+							Slug: slug, Name: name, ParentTypes: []string{"organization"},
+						},
+					)
+					if err != nil {
+						return raceOutcome(0, nil, err)
+					}
+					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
+				}))
 		},
 	)
 

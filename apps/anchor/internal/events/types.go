@@ -44,6 +44,10 @@ const (
 	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
 	ProductResourcePermissionDeleted Type = "product.resource_permission.deleted"
 
+	ProductResourceTypeCreated Type = "product.resource_type.created"
+	ProductResourceTypeUpdated Type = "product.resource_type.updated"
+	ProductResourceTypeDeleted Type = "product.resource_type.deleted"
+
 	ClerkUserCreated Type = "clerk.user.created"
 	ClerkUserUpdated Type = "clerk.user.updated"
 	ClerkUserDeleted Type = "clerk.user.deleted"
@@ -57,6 +61,8 @@ const (
 	FieldAPIKeyID       = "api_key_id"
 	FieldRoleID         = "role_id"
 	FieldPermissionName = "permission_name"
+	FieldResourceTypeID = "resource_type_id"
+	FieldResourceType   = "resource_type"
 )
 
 type Data map[string]string

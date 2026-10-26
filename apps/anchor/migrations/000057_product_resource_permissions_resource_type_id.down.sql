@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_product_resource_permissions_resource_type_id;

@@ -17,12 +17,13 @@ type productRolesTable struct {
 	postgres.Table
 
 	// Columns
-	ID          postgres.ColumnString
-	ProductID   postgres.ColumnString
-	Name        postgres.ColumnString
-	Description postgres.ColumnString
-	CreatedAt   postgres.ColumnTimestampz
-	UpdatedAt   postgres.ColumnTimestampz
+	ID             postgres.ColumnString
+	ProductID      postgres.ColumnString
+	Name           postgres.ColumnString
+	Description    postgres.ColumnString
+	CreatedAt      postgres.ColumnTimestampz
+	UpdatedAt      postgres.ColumnTimestampz
+	ResourceTypeID postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -64,27 +65,29 @@ func newProductRolesTable(schemaName, tableName, alias string) *ProductRolesTabl
 
 func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesTable {
 	var (
-		IDColumn          = postgres.StringColumn("id")
-		ProductIDColumn   = postgres.StringColumn("product_id")
-		NameColumn        = postgres.StringColumn("name")
-		DescriptionColumn = postgres.StringColumn("description")
-		CreatedAtColumn   = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn   = postgres.TimestampzColumn("updated_at")
-		allColumns        = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns    = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns    = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		IDColumn             = postgres.StringColumn("id")
+		ProductIDColumn      = postgres.StringColumn("product_id")
+		NameColumn           = postgres.StringColumn("name")
+		DescriptionColumn    = postgres.StringColumn("description")
+		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
+		ResourceTypeIDColumn = postgres.StringColumn("resource_type_id")
+		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
+		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
+		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return productRolesTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:          IDColumn,
-		ProductID:   ProductIDColumn,
-		Name:        NameColumn,
-		Description: DescriptionColumn,
-		CreatedAt:   CreatedAtColumn,
-		UpdatedAt:   UpdatedAtColumn,
+		ID:             IDColumn,
+		ProductID:      ProductIDColumn,
+		Name:           NameColumn,
+		Description:    DescriptionColumn,
+		CreatedAt:      CreatedAtColumn,
+		UpdatedAt:      UpdatedAtColumn,
+		ResourceTypeID: ResourceTypeIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

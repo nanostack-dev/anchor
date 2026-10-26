@@ -11,12 +11,13 @@ import (
 
 func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse {
 	return ProductRoleResponse{
-		Id:          productRole.ID,
-		ProductId:   productRole.ProductID,
-		Name:        productRole.Name,
-		Description: &productRole.Description,
-		CreatedAt:   productRole.CreatedAt,
-		UpdatedAt:   productRole.UpdatedAt,
+		Id:           productRole.ID,
+		ProductId:    productRole.ProductID,
+		Name:         productRole.Name,
+		Description:  &productRole.Description,
+		ResourceType: productRole.ResourceType,
+		CreatedAt:    productRole.CreatedAt,
+		UpdatedAt:    productRole.UpdatedAt,
 		Permissions: append([]ProductRolePermissionResponse{}, functional.Slice(productRole.Permissions).Map(
 			func(perm role.ProductRolePermission) ProductRolePermissionResponse {
 				return ProductRolePermissionResponse{
@@ -32,9 +33,10 @@ func (s *AnchorAPI) CreateProductRole(
 	ctx context.Context, request CreateProductRoleRequestObject,
 ) (CreateProductRoleResponseObject, error) {
 	input := role.CreateProductRoleInput{
-		ProductID:   request.ProductId,
-		Name:        request.Body.Name,
-		Permissions: request.Body.Permissions,
+		ProductID:    request.ProductId,
+		Name:         request.Body.Name,
+		ResourceType: request.Body.ResourceType,
+		Permissions:  request.Body.Permissions,
 	}
 	if request.Body.Description != nil {
 		input.Description = *request.Body.Description
@@ -95,9 +97,10 @@ func (s *AnchorAPI) UpdateProductRole(
 	ctx context.Context, request UpdateProductRoleRequestObject,
 ) (UpdateProductRoleResponseObject, error) {
 	input := role.UpdateProductRoleInput{
-		ProductID: request.ProductId,
-		ID:        request.RoleId,
-		Name:      &request.Body.Name,
+		ProductID:    request.ProductId,
+		ID:           request.RoleId,
+		Name:         &request.Body.Name,
+		ResourceType: request.Body.ResourceType,
 	}
 	if request.Body.Description != nil {
 		input.Description = request.Body.Description
@@ -189,6 +192,7 @@ func mapToSearchProductRoleInput(
 			ProductRoleIDs: f.Ids,
 			Names:          f.Names,
 			Permissions:    f.Permissions,
+			ResourceTypes:  f.ResourceTypes,
 		}
 	}).ToPtr()
 	return search.NewRequest[role.SearchProductRoleFilter, role.SortFieldProductRole]().

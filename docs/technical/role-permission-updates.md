@@ -10,6 +10,8 @@
 
 The generated Go SDK represents the optional array as `*[]string`. Leave the pointer nil to retain grants; pass a pointer to `[]string{}` to clear them. The schema is the owner of this distinction; regenerate the server, UI client and Go SDK when changing it.
 
+Every role and permission is scoped to a resource type, and a role bundles only permissions at or below its scope on create, on a replacement and on an assignment ([resource types](resource-types.md)).
+
 Role creation and the separate assign/remove endpoints retain their existing contracts. The current UI role wizard requires at least one permission; the API supports an empty set, and the role detail view displays that persisted state.
 
 `TestProductRole_UpdatePermissionReplacementStates` verifies the three HTTP operations against persisted state. `TestProductRoleUpdatePermissionJSON` verifies SDK serialization, and `access.role-empty-update` checks the persisted empty state after a browser reload.

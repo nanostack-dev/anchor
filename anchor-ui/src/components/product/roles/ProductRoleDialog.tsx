@@ -9,6 +9,7 @@ import {
 	updateProductRoleMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { PermissionsStep as CommonPermissionsStep } from "@/components/product/common/steps/PermissionsStep";
+import { ORGANIZATION_RESOURCE_TYPE } from "@/components/product/resource-types/ResourceTypeSelect";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
 	Dialog,
@@ -71,6 +72,7 @@ export function ProductRoleEditor({
 	const [formData, setFormData] = useState<RoleFormData>(() => ({
 		name: existingRole?.name ?? "",
 		description: existingRole?.description ?? "",
+		resourceType: existingRole?.resource_type ?? ORGANIZATION_RESOURCE_TYPE,
 		selectedPermissions:
 			existingRole?.permissions?.map((perm) => perm.permission_name) ?? [],
 	}));
@@ -165,6 +167,7 @@ export function ProductRoleEditor({
 			const createData: ProductRoleCreateRequest = {
 				name: formData.name,
 				description: formData.description || undefined,
+				resource_type: formData.resourceType,
 				permissions:
 					formData.selectedPermissions.length > 0
 						? formData.selectedPermissions
@@ -208,9 +211,11 @@ export function ProductRoleEditor({
 						</Progress>
 					</Stack>
 					<BasicInfoStep
+						productId={productId}
 						initialData={{
 							name: formData.name,
 							description: formData.description,
+							resourceType: formData.resourceType,
 						}}
 						onFormDataChange={(data: BasicInfoFormData) => {
 							setFormData((prev) => {
@@ -218,6 +223,7 @@ export function ProductRoleEditor({
 									...prev,
 									name: data.name,
 									description: data.description,
+									resourceType: data.resourceType,
 								};
 							});
 							nextStep();

@@ -1,0 +1,2 @@
+ALTER TABLE product_resource_permissions VALIDATE CONSTRAINT product_resource_permissions_resource_type_id_fkey;
+ALTER TABLE product_roles VALIDATE CONSTRAINT product_roles_resource_type_id_fkey;

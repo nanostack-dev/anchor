@@ -155,6 +155,14 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
         examples: ["pusr_8nOPQ..."]
+    ResourceTypeIdParameter:
+      name: resource_type_id
+      in: path
+      required: true
+      description: The KSUID of the resource type.
+      schema:
+        $ref: "#/components/schemas/ksuid"
+        examples: ["rtype_2qLCf0ld3r2nT8vK5xR1"]
     ProductRoleIdParameter:
       name: role_id
       in: path
@@ -944,6 +952,213 @@ components:
               $ref: "#/components/schemas/ProductPermissionResponse"
         required:
         - items
+    ResourceTypeSlug:
+      type: string
+      pattern: '^[a-z][a-z0-9_]{0,48}$'
+      description: >-
+        The resource type's slug, unique in its product. It names the type in
+        API calls and in the access model, so it never changes after creation.
+        `organization` is the built-in root type of every product; declaring
+        it again answers 409 BUILT_IN_RESOURCE_TYPE.
+      examples: ["folder"]
+
+    ProductResourceTypeCreateRequest:
+      type: object
+      description: >-
+        A kind of thing the product protects, placed in the product's tree of
+        resource types under `organization`. A product has at most 50 resource
+        types of its own besides `organization`.
+      required: [slug, name, parent_types]
+      properties:
+        slug:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          examples: ["Folder"]
+        description:
+          type: [string, "null"]
+          maxLength: 500
+          examples: ["Groups documents."]
+        parent_types:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          description: >-
+            Slugs of the other types an instance of this type may sit under,
+            such as `[project]` for a folder. An empty list answers 400
+            RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set
+            `nests_in_itself` instead. A cycle between types answers 400
+            RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting
+            `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+        nests_in_itself:
+          type: boolean
+          default: false
+          description: >-
+            `true` lets an instance sit under another instance of the same
+            type, such as a folder inside a folder.
+
+    ProductResourceTypeUpdateRequest:
+      type: object
+      description: >-
+        Fields to change. An omitted field keeps its value. The slug never
+        changes. The built-in `organization` type answers 409
+        BUILT_IN_RESOURCE_TYPE to any change.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        parent_types:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          description: >-
+            Replaces the allowed parent types. Removing a parent type that a
+            role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped
+            above this type would then hold a permission outside its scope.
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+        nests_in_itself:
+          type: boolean
+
+    ProductResourceTypeTreeItem:
+      type: object
+      required: [slug, name, parent_types]
+      properties:
+        slug:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: [string, "null"]
+          maxLength: 500
+        parent_types:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+        nests_in_itself:
+          type: boolean
+          default: false
+
+    ProductResourceTypeTreeRequest:
+      type: object
+      description: >-
+        The product's whole tree of resource types, `organization` excluded.
+        Types are matched by slug: a listed type is created or updated, and a
+        type left out is deleted. The tree is validated as a whole, with the
+        same rules as the single-type routes, and applied in one transaction.
+      required: [resource_types]
+      properties:
+        resource_types:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ProductResourceTypeTreeItem"
+
+    ProductResourceTypeResponse:
+      type: object
+      required: [id, product_id, slug, name, parent_types, nests_in_itself, built_in, created_at, updated_at]
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          examples: ["rtype_2qLCf0ld3r2nT8vK5xR1"]
+        product_id:
+          $ref: "#/components/schemas/ksuid"
+        slug:
+          $ref: "#/components/schemas/ResourceTypeSlug"
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        parent_types:
+          type: array
+          description: Slugs of the other types an instance may sit under. Empty for `organization`.
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+        nests_in_itself:
+          type: boolean
+        built_in:
+          type: boolean
+          description: "`true` for `organization`, the root type every product has. It can't be changed or deleted."
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductResourceTypeTreeResponse:
+      type: object
+      required: [resource_types]
+      properties:
+        resource_types:
+          type: array
+          description: >-
+            Every resource type of the product: `organization` first, then by
+            creation time, and types created together by slug.
+          items:
+            $ref: "#/components/schemas/ProductResourceTypeResponse"
+
+    ProductResourceTypeFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ksuid"
+          x-go-type-skip-optional-pointer: true
+        slugs:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          x-go-type-skip-optional-pointer: true
+
+    ProductResourceTypeSortField:
+      type: string
+      enum: [created_at, updated_at, slug, name]
+      default: created_at
+      description: Field to sort by. Every order ends with `id`.
+      x-go-type: resourcetype.SortField
+      x-go-type-import:
+        path: anchor/internal/domain/resourcetype
+
+    ProductResourceTypeSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - type: object
+        properties:
+          filter:
+            $ref: "#/components/schemas/ProductResourceTypeFilter"
+          sort_by:
+            $ref: "#/components/schemas/ProductResourceTypeSortField"
+
+    ProductResourceTypeListResponse:
+      allOf:
+      - $ref: "#/components/schemas/PagedListResponse"
+      - properties:
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/ProductResourceTypeResponse"
+        required:
+        - items
+
     CreateProductResourcePermissionRequest:
       description: >-
         Request body for defining a new domain-resource permission for the
@@ -969,16 +1184,26 @@ components:
           maxLength: 500
           description: Optional human-readable description of what this permission grants.
           examples: ["Allows reading document contents."]
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: >-
+            The resource type this permission is scoped to. Required: Anchor never
+            picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and
+            an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after
+            creation.
         scope_modifier:
           type: [string, "null"]
           maxLength: 100
+          deprecated: true
           description: >-
-            Optional scope qualifier that narrows the permission to a subset of
-            matching resources (e.g. "own" to restrict to resources the user
-            owns, "team" to restrict to resources shared within their team).
+            Deprecated. Use the permission's resource_type and role assignments
+            on resources. Nothing evaluates it. Removed in the cleanup
+            (ADR-0022 G6).
           examples: ["own"]
       required:
       - name
+      - resource_type
 
     UpdateProductResourcePermissionRequest:
       description: Request body for updating a product resource permission's metadata.
@@ -989,6 +1214,12 @@ components:
           maxLength: 500
           description: Updated human-readable description of what this permission grants.
           examples: ["Allows updating document contents."]
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: >-
+            A permission's resource type never changes. Omit it, or send the
+            current one; any other value answers 409 PERMISSION_SCOPE_IMMUTABLE.
 
     ProductResourcePermissionResponse:
       description: >-
@@ -1014,12 +1245,16 @@ components:
           type: [string, "null"]
           description: Human-readable description of what this permission grants.
           examples: ["Allows reading document contents."]
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: The resource type this permission is scoped to.
         scope_modifier:
           type: [string, "null"]
+          deprecated: true
           description: >-
-            Optional scope qualifier that narrows the permission (e.g. "own"
-            restricts to resources owned by the user, "team" to resources
-            shared within their team).
+            Deprecated. Use the permission's resource_type. Nothing evaluates
+            it. Removed in the cleanup (ADR-0022 G6).
           examples: ["own"]
         created_at:
           type: string
@@ -1032,6 +1267,7 @@ components:
       required:
       - product_id
       - name
+      - resource_type
       - created_at
       - updated_at
     ProductResourcePermissionFilter:
@@ -1042,6 +1278,13 @@ components:
           items:
             type: string
           description: Filter by resource permission names.
+          x-go-type-skip-optional-pointer: true
+        resource_types:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          description: Keep only permissions scoped to one of these resource types.
           x-go-type-skip-optional-pointer: true
     ProductResourcePermissionSearchRequest:
       allOf:
@@ -1085,14 +1328,25 @@ components:
           examples: ["Can view and edit resources within assigned organizations/workspaces."]
         permissions:
           type: array
-          description: Optional list of permission names (strings) to assign 
-            initially.
+          description: >-
+            Optional list of permission names to assign initially. Each must be
+            scoped to the role's resource type or to a type below it; any other
+            answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
           items:
             type: string
             examples: ["document:edit"]
           x-go-type-skip-optional-pointer: true
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: >-
+            The resource type this role is scoped to. Required: Anchor never
+            picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and
+            an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after
+            creation.
       required:
       - name
+      - resource_type
     ProductRoleUpdateRequest:
       type: object
       required:
@@ -1117,6 +1371,12 @@ components:
           items:
             type: string
             examples: ["document:edit"]
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: >-
+            A role's resource type never changes. Omit it, or send the
+            current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
     ProductRoleResponse:
       type: object
       properties:
@@ -1137,9 +1397,10 @@ components:
           type: [string, "null"]
           description: Description of the role.
           examples: ["Can view and edit resources within assigned organizations/workspaces."]
-        # scope: # Revisit if needed - we initially decided scope ('Org'/'WS') was implicit via Membership
-        #   type: string
-        #   enum: [Organization, Workspace]
+        resource_type:
+          allOf:
+          - $ref: "#/components/schemas/ResourceTypeSlug"
+          description: The resource type this role is scoped to.
         permissions:
           type: array
           items:
@@ -1155,6 +1416,7 @@ components:
       - id
       - product_id
       - name
+      - resource_type
       - permissions
       - created_at
       - updated_at
@@ -1636,6 +1898,13 @@ components:
             examples: ["document:edit"]
           description: Filter by roles that hold any of these resource
             permission names, matched case-insensitively.
+          x-go-type-skip-optional-pointer: true
+        resource_types:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          description: Keep only roles scoped to one of these resource types.
           x-go-type-skip-optional-pointer: true
     ProductAPIKeyFilter:
       type: object
@@ -5448,6 +5717,208 @@ paths:
   # Anchor. Resource permissions are assigned to ProductRoles, which are
   # then attached to end-user organization memberships to control what those
   # users can do inside your product.
+  /v1/products/{product_id}/resource-types:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Create Product Resource Type
+      description: >-
+        Adds a resource type to the product's tree. Roles and permissions are
+        scoped to a resource type, and a role held on a resource covers that
+        resource and every resource below it. A duplicate slug answers 409
+        RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400
+        RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization`
+        answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits
+        `product.resource_type.created`. Requires Platform Bearer token or
+        Product API Key with resource_type:create.
+      operationId: createProductResourceType
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:create"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductResourceTypeCreateRequest"
+      responses:
+        "201":
+          description: Resource type created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourceTypeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    put:
+      summary: Replace Product Resource Type Tree
+      description: >-
+        Replaces every resource type of the product except `organization` in
+        one transaction: the admin UI publishes a draft tree with this call.
+        A type in the body is created or updated by slug; a type left out is
+        deleted, under the same rules as the delete route. Emits one
+        `product.resource_type.*` event per type created, updated or deleted.
+        Requires Platform Bearer token or Product API Key with
+        resource_type:create, resource_type:update and resource_type:delete.
+      operationId: replaceProductResourceTypes
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:create", "resource_type:update", "resource_type:delete"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductResourceTypeTreeRequest"
+      responses:
+        "200":
+          description: The product's resource types after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourceTypeTreeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/products/{product_id}/resource-types/search:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    post:
+      summary: Search Product Resource Types
+      description: >-
+        Searches the product's resource types, `organization` included.
+        Requires Platform Bearer token or Product API Key with
+        resource_type:read.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchProductResourceTypes
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductResourceTypeSearchRequest"
+      responses:
+        "200":
+          description: Matching resource types.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourceTypeListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/resource-types/{resource_type_id}:
+    parameters:
+    - $ref: "#/components/parameters/ProductIdParameter"
+    - $ref: "#/components/parameters/ResourceTypeIdParameter"
+    get:
+      summary: Get Product Resource Type
+      description: Requires Platform Bearer token or Product API Key with resource_type:read.
+      operationId: getProductResourceType
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:read"]
+      responses:
+        "200":
+          description: The resource type.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourceTypeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update Product Resource Type
+      description: >-
+        Renames a resource type, changes its description or its allowed parent
+        types, or turns `nests_in_itself` on or off. Emits
+        `product.resource_type.updated` when something changed. Requires
+        Platform Bearer token or Product API Key with resource_type:update.
+      operationId: updateProductResourceType
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:update"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductResourceTypeUpdateRequest"
+      responses:
+        "200":
+          description: The resource type after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResourceTypeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      summary: Delete Product Resource Type
+      description: >-
+        Deletes a resource type that nothing uses. A type that is the parent of
+        another type, or that roles or permissions are scoped to, answers 409
+        RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`.
+        The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE.
+        Emits `product.resource_type.deleted`. Requires Platform Bearer token
+        or Product API Key with resource_type:delete.
+      operationId: deleteProductResourceType
+      tags: [ProductResourceType]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["resource_type:delete"]
+      responses:
+        "204":
+          description: Resource type deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /v1/products/{product_id}/resource-permissions:
     parameters:
     - $ref: "#/components/parameters/ProductIdParameter"

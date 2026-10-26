@@ -906,6 +906,30 @@ func (e ProductResourcePermissionSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for ProductResourceTypeSortField.
+const (
+	ProductResourceTypeSortFieldCreatedAt ProductResourceTypeSortField = "created_at"
+	ProductResourceTypeSortFieldName      ProductResourceTypeSortField = "name"
+	ProductResourceTypeSortFieldSlug      ProductResourceTypeSortField = "slug"
+	ProductResourceTypeSortFieldUpdatedAt ProductResourceTypeSortField = "updated_at"
+)
+
+// Valid indicates whether the value is a known member of the ProductResourceTypeSortField enum.
+func (e ProductResourceTypeSortField) Valid() bool {
+	switch e {
+	case ProductResourceTypeSortFieldCreatedAt:
+		return true
+	case ProductResourceTypeSortFieldName:
+		return true
+	case ProductResourceTypeSortFieldSlug:
+		return true
+	case ProductResourceTypeSortFieldUpdatedAt:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductRoleSearchRequestSortBy.
 const (
 	ProductRoleSearchRequestSortByCreatedAt ProductRoleSearchRequestSortBy = "created_at"
@@ -1413,9 +1437,13 @@ type CreateProductResourcePermissionRequest struct {
 	// Examples: document:read
 	Name string `json:"name"`
 
-	// ScopeModifier Optional scope qualifier that narrows the permission to a subset of matching resources (e.g. "own" to restrict to resources the user owns, "team" to restrict to resources shared within their team).
+	// ResourceType The resource type this permission is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// ScopeModifier Deprecated. Use the permission's resource_type and role assignments on resources. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
 	//
 	// Examples: own
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ScopeModifier *string `json:"scope_modifier,omitempty"`
 }
 
@@ -3546,6 +3574,9 @@ type ProductRequest struct {
 type ProductResourcePermissionFilter struct {
 	// Names Filter by resource permission names.
 	Names []string `json:"names,omitempty"`
+
+	// ResourceTypes Keep only permissions scoped to one of these resource types.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
 }
 
 // ProductResourcePermissionListResponse defines model for ProductResourcePermissionListResponse.
@@ -3581,9 +3612,13 @@ type ProductResourcePermissionResponse struct {
 	// Examples: prod_2iABC...
 	ProductId Ksuid `json:"product_id"`
 
-	// ScopeModifier Optional scope qualifier that narrows the permission (e.g. "own" restricts to resources owned by the user, "team" to resources shared within their team).
+	// ResourceType The resource type this permission is scoped to.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+
+	// ScopeModifier Deprecated. Use the permission's resource_type. Nothing evaluates it. Removed in the cleanup (ADR-0022 G6).
 	//
 	// Examples: own
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	ScopeModifier *string `json:"scope_modifier,omitempty"`
 
 	// UpdatedAt Timestamp when the resource permission was last updated.
@@ -3607,6 +3642,126 @@ type ProductResourcePermissionSearchRequest struct {
 
 // ProductResourcePermissionSearchRequestSortBy Field to sort by
 type ProductResourcePermissionSearchRequestSortBy string
+
+// ProductResourceTypeCreateRequest A kind of thing the product protects, placed in the product's tree of resource types under `organization`. A product has at most 50 resource types of its own besides `organization`.
+type ProductResourceTypeCreateRequest struct {
+	// Description Examples: Groups documents.
+	Description *string `json:"description,omitempty"`
+
+	// Name Examples: Folder
+	Name string `json:"name"`
+
+	// NestsInItself `true` lets an instance sit under another instance of the same type, such as a folder inside a folder.
+	NestsInItself *bool `json:"nests_in_itself,omitempty"`
+
+	// ParentTypes Slugs of the other types an instance of this type may sit under, such as `[project]` for a folder. An empty list answers 400 RESOURCE_TYPE_PARENT_REQUIRED. A type never lists itself: set `nests_in_itself` instead. A cycle between types answers 400 RESOURCE_TYPE_CYCLE. A tree deeper than 5 levels, counting `organization`, answers 400 RESOURCE_TYPE_TOO_DEEP.
+	ParentTypes []ResourceTypeSlug `json:"parent_types"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug ResourceTypeSlug `json:"slug"`
+}
+
+// ProductResourceTypeFilter defines model for ProductResourceTypeFilter.
+type ProductResourceTypeFilter struct {
+	Ids   []Ksuid            `json:"ids,omitempty"`
+	Slugs []ResourceTypeSlug `json:"slugs,omitempty"`
+}
+
+// ProductResourceTypeListResponse defines model for ProductResourceTypeListResponse.
+type ProductResourceTypeListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                           `json:"count"`
+	Items []ProductResourceTypeResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// ProductResourceTypeResponse defines model for ProductResourceTypeResponse.
+type ProductResourceTypeResponse struct {
+	// BuiltIn `true` for `organization`, the root type every product has. It can't be changed or deleted.
+	BuiltIn     bool      `json:"built_in"`
+	CreatedAt   time.Time `json:"created_at"`
+	Description *string   `json:"description,omitempty"`
+
+	// Id Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: rtype_2qLCf0ld3r2nT8vK5xR1
+	Id            Ksuid  `json:"id"`
+	Name          string `json:"name"`
+	NestsInItself bool   `json:"nests_in_itself"`
+
+	// ParentTypes Slugs of the other types an instance may sit under. Empty for `organization`.
+	ParentTypes []ResourceTypeSlug `json:"parent_types"`
+
+	// ProductId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductId Ksuid `json:"product_id"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug      ResourceTypeSlug `json:"slug"`
+	UpdatedAt time.Time        `json:"updated_at"`
+}
+
+// ProductResourceTypeSearchRequest defines model for ProductResourceTypeSearchRequest.
+type ProductResourceTypeSearchRequest struct {
+	Filter *ProductResourceTypeFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. Every order ends with `id`.
+	SortBy *ProductResourceTypeSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ProductResourceTypeSortField Field to sort by. Every order ends with `id`.
+type ProductResourceTypeSortField string
+
+// ProductResourceTypeTreeItem defines model for ProductResourceTypeTreeItem.
+type ProductResourceTypeTreeItem struct {
+	Description   *string            `json:"description,omitempty"`
+	Name          string             `json:"name"`
+	NestsInItself *bool              `json:"nests_in_itself,omitempty"`
+	ParentTypes   []ResourceTypeSlug `json:"parent_types"`
+
+	// Slug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Slug ResourceTypeSlug `json:"slug"`
+}
+
+// ProductResourceTypeTreeRequest The product's whole tree of resource types, `organization` excluded. Types are matched by slug: a listed type is created or updated, and a type left out is deleted. The tree is validated as a whole, with the same rules as the single-type routes, and applied in one transaction.
+type ProductResourceTypeTreeRequest struct {
+	ResourceTypes []ProductResourceTypeTreeItem `json:"resource_types"`
+}
+
+// ProductResourceTypeTreeResponse defines model for ProductResourceTypeTreeResponse.
+type ProductResourceTypeTreeResponse struct {
+	// ResourceTypes Every resource type of the product: `organization` first, then by creation time, and types created together by slug.
+	ResourceTypes []ProductResourceTypeResponse `json:"resource_types"`
+}
+
+// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+type ProductResourceTypeUpdateRequest struct {
+	Description   *string `json:"description,omitempty"`
+	Name          *string `json:"name,omitempty"`
+	NestsInItself *bool   `json:"nests_in_itself,omitempty"`
+
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
+	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
+}
 
 // ProductResponse defines model for ProductResponse.
 type ProductResponse struct {
@@ -3652,8 +3807,11 @@ type ProductRoleCreateRequest struct {
 	// Examples: Editor
 	Name string `json:"name"`
 
-	// Permissions Optional list of permission names (strings) to assign initially.
+	// Permissions Optional list of permission names to assign initially. Each must be scoped to the role's resource type or to a type below it; any other answers 400 PERMISSION_OUTSIDE_ROLE_SCOPE.
 	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceType The resource type this role is scoped to. Required: Anchor never picks a scope. A missing one answers 400 RESOURCE_TYPE_REQUIRED and an unknown one 400 RESOURCE_TYPE_NOT_FOUND. It never changes after creation.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
 }
 
 // ProductRoleFilter defines model for ProductRoleFilter.
@@ -3669,6 +3827,9 @@ type ProductRoleFilter struct {
 
 	// Permissions Filter by roles that hold any of these resource permission names, matched case-insensitively.
 	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceTypes Keep only roles scoped to one of these resource types.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
 }
 
 // ProductRoleListResponse defines model for ProductRoleListResponse.
@@ -3727,8 +3888,11 @@ type ProductRoleResponse struct {
 	// ProductId ID of the Product this role belongs to.
 	//
 	// Examples: prod_2iABC...
-	ProductId Ksuid     `json:"product_id"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ProductId Ksuid `json:"product_id"`
+
+	// ResourceType The resource type this role is scoped to.
+	ResourceType ResourceTypeSlug `json:"resource_type"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
 // ProductRoleSearchRequest defines model for ProductRoleSearchRequest.
@@ -3764,6 +3928,9 @@ type ProductRoleUpdateRequest struct {
 
 	// Permissions Permission names to replace the assigned set. Omit this field to keep the current permissions; send an empty array to remove all permissions.
 	Permissions *[]string `json:"permissions,omitempty"`
+
+	// ResourceType A role's resource type never changes. Omit it, or send the current one; any other value answers 409 ROLE_SCOPE_IMMUTABLE.
+	ResourceType *ResourceTypeSlug `json:"resource_type,omitempty"`
 }
 
 // ProductSearchRequest defines model for ProductSearchRequest.
@@ -3969,6 +4136,11 @@ type RegisterRequest struct {
 	TenantName *string `json:"tenant_name,omitempty"`
 }
 
+// ResourceTypeSlug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+//
+// Examples: folder
+type ResourceTypeSlug = string
+
 // SearchRequest Generic search request template
 type SearchRequest struct {
 	// FullTextSearch Full-text search term to match against searchable fields.
@@ -4083,6 +4255,9 @@ type UpdateProductResourcePermissionRequest struct {
 	//
 	// Examples: Allows updating document contents.
 	Description *string `json:"description,omitempty"`
+
+	// ResourceType A permission's resource type never changes. Omit it, or send the current one; any other value answers 409 PERMISSION_SCOPE_IMMUTABLE.
+	ResourceType *ResourceTypeSlug `json:"resource_type,omitempty"`
 }
 
 // UsageGranularity Which level of the continuous-aggregate cascade to read. Every level reports the last observation per bucket — never a sum or an average, because the underlying values are snapshots and the last one in a bucket already is the bucket's value. Finer levels are retained for a shorter time than coarser ones; see docs/adr/0005-timescaledb-for-usage-history.md.
@@ -4442,6 +4617,11 @@ type ProviderTypeParameter = IntegrationProviderType
 // ResourcePermissionNameParameter Examples: file:read
 type ResourcePermissionNameParameter = string
 
+// ResourceTypeIdParameter Unique identifier using KSUID format with a resource-specific prefix.
+//
+// Examples: rtype_2qLCf0ld3r2nT8vK5xR1
+type ResourceTypeIdParameter = Ksuid
+
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -4775,6 +4955,18 @@ type SearchProductResourcePermissionsJSONRequestBody = ProductResourcePermission
 
 // UpdateProductResourcePermissionJSONRequestBody defines body for UpdateProductResourcePermission for application/json ContentType.
 type UpdateProductResourcePermissionJSONRequestBody = UpdateProductResourcePermissionRequest
+
+// CreateProductResourceTypeJSONRequestBody defines body for CreateProductResourceType for application/json ContentType.
+type CreateProductResourceTypeJSONRequestBody = ProductResourceTypeCreateRequest
+
+// ReplaceProductResourceTypesJSONRequestBody defines body for ReplaceProductResourceTypes for application/json ContentType.
+type ReplaceProductResourceTypesJSONRequestBody = ProductResourceTypeTreeRequest
+
+// SearchProductResourceTypesJSONRequestBody defines body for SearchProductResourceTypes for application/json ContentType.
+type SearchProductResourceTypesJSONRequestBody = ProductResourceTypeSearchRequest
+
+// UpdateProductResourceTypeJSONRequestBody defines body for UpdateProductResourceType for application/json ContentType.
+type UpdateProductResourceTypeJSONRequestBody = ProductResourceTypeUpdateRequest
 
 // CreateProductRoleJSONRequestBody defines body for CreateProductRole for application/json ContentType.
 type CreateProductRoleJSONRequestBody = ProductRoleCreateRequest

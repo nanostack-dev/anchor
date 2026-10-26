@@ -39,6 +39,8 @@ func UseSchema(schema string) {
 	ProductOrganizationAPIKeyConfigs = ProductOrganizationAPIKeyConfigs.FromSchema(schema)
 	ProductPermissions = ProductPermissions.FromSchema(schema)
 	ProductResourcePermissions = ProductResourcePermissions.FromSchema(schema)
+	ProductResourceTypeParents = ProductResourceTypeParents.FromSchema(schema)
+	ProductResourceTypes = ProductResourceTypes.FromSchema(schema)
 	ProductRoleResourcePermissions = ProductRoleResourcePermissions.FromSchema(schema)
 	ProductRoles = ProductRoles.FromSchema(schema)
 	ProductUsers = ProductUsers.FromSchema(schema)

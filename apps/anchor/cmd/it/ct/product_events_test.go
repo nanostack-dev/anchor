@@ -217,7 +217,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		createdPerm, err := owner.CreateProductResourcePermissionWithResponse(
 			ctx,
 			product.ProductID,
-			ct.CreateProductResourcePermissionRequest{Name: "events:catalog"},
+			ct.CreateProductResourcePermissionRequest{ResourceType: "organization", Name: "events:catalog"},
 		)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, createdPerm.StatusCode())
@@ -241,7 +241,10 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		createdRole, roleErr := owner.CreateProductRoleWithResponse(
 			ctx,
 			product.ProductID,
-			ct.CreateProductRoleJSONRequestBody{Name: "Events Role " + ids.MustNew("test")},
+			ct.CreateProductRoleJSONRequestBody{
+				ResourceType: "organization",
+				Name:         "Events Role " + ids.MustNew("test"),
+			},
 		)
 		require.NoError(t, roleErr)
 		require.Equal(t, http.StatusCreated, createdRole.StatusCode())
