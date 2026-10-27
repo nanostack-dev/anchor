@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -17,6 +18,13 @@ import (
 )
 
 var _ Repository = (*repositoryImpl)(nil)
+
+// ErrRoleGone is returned by Create and UpdateRoleAndExpiry when the role was
+// deleted after the service found it: a role delete holds the role's row FOR
+// UPDATE, so the write waits and then trips the foreign key.
+var ErrRoleGone = errors.New("invitation role no longer exists")
+
+const roleForeignKey = "organization_invitations_product_role_id_fkey"
 
 // Repository persists organization invitations. Every method is scoped by
 // product, so a caller cannot reach another Product's invitation by guessing a
@@ -98,7 +106,7 @@ func toDomain(now time.Time) func(model.OrganizationInvitations) organizationinv
 			ProductID:      entity.ProductID,
 			OrganizationID: entity.OrganizationID,
 			Email:          entity.Email,
-			RoleID:         entity.ProductRoleID,
+			RoleID:         functional.FromPtr(entity.ProductRoleID).OrElse(""),
 			Status:         organizationinvitation.DeriveStatus(entity.AcceptedAt, entity.ExpiresAt, now),
 			ExpiresAt:      entity.ExpiresAt,
 			AcceptedAt:     entity.AcceptedAt,
@@ -157,7 +165,7 @@ func (r *repositoryImpl) Create(
 		ProductID:      invitation.ProductID,
 		OrganizationID: invitation.OrganizationID,
 		Email:          invitation.Email,
-		ProductRoleID:  invitation.RoleID,
+		ProductRoleID:  functional.OptionOf(invitation.RoleID, invitation.RoleID != "").ToPtr(),
 		ExpiresAt:      invitation.ExpiresAt,
 	}
 	stmt := table.OrganizationInvitations.INSERT(
@@ -168,7 +176,9 @@ func (r *repositoryImpl) Create(
 		table.OrganizationInvitations.ProductRoleID,
 		table.OrganizationInvitations.ExpiresAt,
 	).MODEL(entity).RETURNING(table.OrganizationInvitations.AllColumns)
-	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).Value()
+	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).
+		OnForeignKey(ErrRoleGone, roleForeignKey).
+		Value()
 }
 
 func (r *repositoryImpl) FindByID(
@@ -300,7 +310,9 @@ func (r *repositoryImpl) UpdateRoleAndExpiry(
 	).WHERE(
 		invitationByID(invitation.ProductID, invitation.OrganizationID, invitation.ID),
 	).RETURNING(table.OrganizationInvitations.AllColumns)
-	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).Value()
+	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).
+		OnForeignKey(ErrRoleGone, roleForeignKey).
+		Value()
 }
 
 func (r *repositoryImpl) MarkAccepted(

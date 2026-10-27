@@ -951,6 +951,24 @@ func (e ProductRoleSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for ProductRoleType.
+const (
+	CUSTOM  ProductRoleType = "CUSTOM"
+	MANAGED ProductRoleType = "MANAGED"
+)
+
+// Valid indicates whether the value is a known member of the ProductRoleType enum.
+func (e ProductRoleType) Valid() bool {
+	switch e {
+	case CUSTOM:
+		return true
+	case MANAGED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductSearchRequestSortBy.
 const (
 	ProductSearchRequestSortByCreatedAt ProductSearchRequestSortBy = "created_at"
@@ -1783,7 +1801,7 @@ type FoundingMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId Role to assign to the founding member.
+	// RoleId Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId Ksuid `json:"role_id"`
@@ -2428,7 +2446,7 @@ type OrganizationInvitationCreateRequest struct {
 	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// RoleId The role the invited person receives on accept. It must be a role of the Product.
+	// RoleId The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	RoleId Ksuid `json:"role_id"`
@@ -2517,7 +2535,7 @@ type OrganizationInvitationUpdateRequest struct {
 	// ExpiresAt The new expiry. It must be in the future.
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// RoleId The new role. It must be a role of the Product.
+	// RoleId The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	RoleId Ksuid `json:"role_id"`
@@ -2823,7 +2841,7 @@ type OrganizationMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId The role to assign to the member.
+	// RoleId The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId Ksuid `json:"role_id"`
@@ -2875,7 +2893,7 @@ type OrganizationMemberResponse struct {
 
 // OrganizationMemberRoleRequest Request body for updating a member's role within an organization.
 type OrganizationMemberRoleRequest struct {
-	// RoleId The new role to assign to the member.
+	// RoleId The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId Ksuid `json:"role_id"`
@@ -3871,7 +3889,10 @@ type ProductRoleResponse struct {
 
 	// ResourceType The resource type this role is scoped to.
 	ResourceType ResourceTypeSlug `json:"resource_type"`
-	UpdatedAt    time.Time        `json:"updated_at"`
+
+	// Type MANAGED: the Product manages the role, and every Organization of the Product references it by the same ID, so a change to it reaches every member who holds it. CUSTOM: one Organization owns the role, and only its members may hold it. The Product's role routes list MANAGED roles only.
+	Type      ProductRoleType `json:"type"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 // ProductRoleSearchRequest defines model for ProductRoleSearchRequest.
@@ -3892,6 +3913,9 @@ type ProductRoleSearchRequest struct {
 
 // ProductRoleSearchRequestSortBy Field to sort by
 type ProductRoleSearchRequestSortBy string
+
+// ProductRoleType MANAGED: the Product manages the role, and every Organization of the Product references it by the same ID, so a change to it reaches every member who holds it. CUSTOM: one Organization owns the role, and only its members may hold it. The Product's role routes list MANAGED roles only.
+type ProductRoleType string
 
 // ProductRoleUpdateRequest defines model for ProductRoleUpdateRequest.
 type ProductRoleUpdateRequest struct {

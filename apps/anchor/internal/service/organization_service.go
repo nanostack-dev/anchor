@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -400,6 +401,8 @@ func (s *organizationService) CreateWithMember(
 			return NewBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
+		// A new Organization has no custom role yet, so the founding member
+		// holds a role the Product manages.
 		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
 			lockCtx,
 			input.ProductID,
@@ -443,6 +446,9 @@ func (s *organizationService) CreateWithMember(
 		createdMembership, err = s.orgMembershipRepo.Create(
 			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID,
 		)
+		if errors.Is(err, repository.ErrOrganizationMembershipRoleGone) {
+			return NewBodyRoleNotFoundError(input.RoleID)
+		}
 		if err != nil {
 			logger.Error().Err(err).
 				Str("product_id", input.ProductID).

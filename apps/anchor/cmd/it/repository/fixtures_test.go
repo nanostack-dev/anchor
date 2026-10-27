@@ -114,13 +114,8 @@ func createWorkspace(t *testing.T, organizationID string) string {
 func createProductRole(t *testing.T, productID string) string {
 	t.Helper()
 
-	entity := role.ProductRole{
-		ProductID:      productID,
-		Name:           uniqueName(t, "Test Role"),
-		Description:    "fixture",
-		ResourceTypeID: organizationTypeID(t, productID),
-	}
-	entity.GenerateID()
+	entity := role.NewManaged(productID, uniqueName(t, "Test Role"), "fixture")
+	entity.ResourceTypeID = organizationTypeID(t, productID)
 
 	created, err := repoCtx.ProductRoleRepository.Create(context.Background(), entity)
 	require.NoError(t, err)

@@ -1,5 +1,5 @@
 import type { OrganizationInvitationResponse } from "@/client";
-import { OrganizationInvitationStatus } from "@/client";
+import { OrganizationInvitationStatus, ProductRoleType } from "@/client";
 import { ProductProvider } from "@/context/product/ProductContext";
 import {
 	type InvitationBackendState,
@@ -72,6 +72,7 @@ function backendState(
 				product_id: PRODUCT_ID,
 				name: "Member",
 				resource_type: "organization",
+				type: ProductRoleType.MANAGED,
 				permissions: [],
 				...timestamps,
 			},
@@ -80,6 +81,7 @@ function backendState(
 				product_id: PRODUCT_ID,
 				name: "Admin",
 				resource_type: "organization",
+				type: ProductRoleType.MANAGED,
 				permissions: [],
 				...timestamps,
 			},

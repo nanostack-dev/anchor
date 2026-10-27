@@ -1,4 +1,4 @@
-import { type ProductRoleResponse, client } from "@/client";
+import { type ProductRoleResponse, ProductRoleType, client } from "@/client";
 import { RouterLink } from "@/components/layout/router-link";
 import { ProductRoleDatatable } from "@/components/product/roles/ProductRoleDatatable";
 import { ProductProvider } from "@/context/product/ProductContext";
@@ -24,6 +24,7 @@ const ROLE: ProductRoleResponse = {
 	name: "Editor",
 	description: "Edit customer invoices",
 	resource_type: "organization",
+	type: ProductRoleType.MANAGED,
 	permissions: [
 		{
 			product_id: "prd_test",

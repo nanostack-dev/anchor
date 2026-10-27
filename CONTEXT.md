@@ -70,6 +70,8 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **Organization API key** | A credential scoped to one Organization, issued by a Product to its customer. Configurable per-Product prefix, `*_org_apikey_`. |
 | **permission** | An RBAC grant naming an action, in `resource:action` form. Belongs to a Product's catalog and is scoped to one resource type. Unrelated to licensing. |
 | **role** | A named bundle of permissions, scoped to one resource type. It bundles only permissions of its own type or of a type below it. |
+| **managed role** | A role the Product owns and edits. Every Organization of the Product references it by the same ID, so a change reaches every member who holds it. `type` `MANAGED`. | Not "template": nothing is copied. |
+| **custom role** | A role one Organization owns. Only members of that Organization may hold it. `type` `CUSTOM`. | Not a copy of a managed role. |
 | **resource type** | A kind of thing a Product protects, declared in its catalog and placed in a tree under the built-in `organization` type (`project`, `folder`, `document`). Not "resource" — that is one instance. |
 | **scope** | The resource type a permission or a role belongs to. It never changes. Not `scope_modifier`, which is deprecated. |
 | **external ID** | A Product User's ID in its identity provider, unique within the Product and case-sensitive. The Product sends it when it creates the user, or Clerk ingest sets it. Access evaluation names a user by it. It never changes once set ([ADR-0023](docs/adr/0023-a-product-can-be-its-own-identity-provider.md)). |
@@ -78,7 +80,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 
 | term | means | not |
 | --- | --- | --- |
-| **member** | A Product User who belongs to an Organization. A member holds exactly one role in that Organization. | Not "user" — a Product User exists in the directory whether or not it belongs to any Organization. |
+| **member** | A Product User who belongs to an Organization. A member holds at most one role in that Organization: a managed role, or a custom role of that Organization. A member with no role holds no permission. | Not "user" — a Product User exists in the directory whether or not it belongs to any Organization. |
 | **invitation** | An offer to become a member of one Organization, with a named role. It is addressed to an email address, not to a Product User, so the person can be invited before they have an account. The email never changes: a wrong address means deleting the invitation and creating a new one. Anchor stores it and its lifecycle. The Product decides who may invite and when, and tells the person itself: Anchor never sends the invitation email and issues no token ([ADR-0019](docs/adr/0019-organization-invitations-live-in-anchor.md)). | Not "invite" as a noun. Not a Platform invitation — that one makes a Platform User and is unrelated. |
 | **accept** | Turn a pending invitation into a membership for an existing Product User, by the invitation id. The Product performs it after it finds the invitation by a verified email address of the signed-in person. The person never talks to Anchor. | Not "join". |
 | **invitation status** | `pending`, `accepted`, or `expired`. An invitation reads `expired` once its expiry passes while still pending. Only a pending invitation can be accepted. | Not "revoked" — there is no revoke. Withdrawing an invitation means deleting it. |

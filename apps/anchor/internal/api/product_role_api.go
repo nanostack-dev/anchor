@@ -16,6 +16,7 @@ func mapProductRoleToResponse(productRole role.ProductRole) ProductRoleResponse 
 		Name:         productRole.Name,
 		Description:  &productRole.Description,
 		ResourceType: productRole.ResourceType,
+		Type:         productRole.Type,
 		CreatedAt:    productRole.CreatedAt,
 		UpdatedAt:    productRole.UpdatedAt,
 		Permissions: append([]ProductRolePermissionResponse{}, functional.Slice(productRole.Permissions).Map(

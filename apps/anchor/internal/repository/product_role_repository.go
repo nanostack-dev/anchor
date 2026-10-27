@@ -32,9 +32,17 @@ type productRoleWithPermission struct {
 }
 
 type ProductRoleRepository interface {
+	// FindByProductIDAndRoleID reads a role the Product manages.
 	FindByProductIDAndRoleID(
 		ctx context.Context, productID, id string,
 	) (functional.Option[role.ProductRole], error)
+	// FindInProductByID reads any role of the Product, managed or custom.
+	FindInProductByID(
+		ctx context.Context, productID, id string,
+	) (functional.Option[role.ProductRole], error)
+	// ExistsManaged reports whether the Product manages the role. Run it under
+	// a row lock to hold the role for the transaction.
+	ExistsManaged(ctx context.Context, productID, id string) (bool, error)
 	GetByProductIDAndName(
 		ctx context.Context, productID, name string,
 	) (functional.Option[role.ProductRole], error)
@@ -68,6 +76,9 @@ type ProductRoleRepository interface {
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 	) (search.Result[role.ProductRole], error)
+	// BackfillTypesInternal stores MANAGED on the Product's roles that a
+	// release before types wrote. Only the startup backfill calls it.
+	BackfillTypesInternal(ctx context.Context, productID string) (int64, error)
 }
 
 type productRoleRepositoryImpl struct {
@@ -94,11 +105,19 @@ func productRolesInsertColumns() postgres.ColumnList {
 	)
 }
 
-// productRolesUpdatableColumns leaves the scope out: it never changes.
+// productRolesUpdatableColumns leaves out what never changes: the scope, the
+// type and the owning Organization.
 func productRolesUpdatableColumns() postgres.ColumnList {
 	return table.ProductRoles.AllColumns.Except(
 		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt, table.ProductRoles.ResourceTypeID,
+		table.ProductRoles.OrganizationID, table.ProductRoles.Type,
 	)
+}
+
+// isManaged keeps the roles the Product manages; an Organization's custom
+// roles share the table.
+func isManaged() postgres.BoolExpression {
+	return table.ProductRoles.OrganizationID.IS_NULL()
 }
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
@@ -106,7 +125,26 @@ func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
 ) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
+	).AND(isManaged()))
+}
+
+func (r *productRoleRepositoryImpl) FindInProductByID(
+	ctx context.Context, productID, id string,
+) (functional.Option[role.ProductRole], error) {
+	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).AND(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
 	))
+}
+
+func (r *productRoleRepositoryImpl) ExistsManaged(ctx context.Context, productID, id string) (bool, error) {
+	found, err := transactor.QueryOptional[model.ProductRoles](ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			table.ProductRoles.ID.EQ(postgres.String(id)).
+				AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))).
+				AND(isManaged()),
+		),
+	)
+	return found.IsPresent(), err
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
@@ -117,14 +155,16 @@ func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 ) (functional.Option[role.ProductRole], error) {
 	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).AND(
 		table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-	))
+	).AND(isManaged()))
 }
 
-// A role name trips the byte-identical constraint from 000001_init or the
-// case-insensitive index from 000019_case_insensitive_names.
+// A managed role's name trips idx_product_roles_managed_lower_name (000062).
+// During a rolling deploy the product-wide guards it replaced (000001, 000019)
+// may still exist.
 const (
 	productRoleNameUniqueConstraint = "product_roles_product_id_name_key"
 	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
+	productRoleManagedNameIndex     = "idx_product_roles_managed_lower_name"
 )
 
 // ErrProductRoleNameExists is returned by Create and Update when the product
@@ -140,7 +180,10 @@ func (r *productRoleRepositoryImpl) Create(
 		productRolesInsertColumns(),
 	).MODEL(entity).RETURNING(table.ProductRoles.AllColumns)
 	created, err := transactor.Query[model.ProductRoles](ctx, r.db, stmt).
-		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		OnUnique(
+			ErrProductRoleNameExists,
+			productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleManagedNameIndex,
+		).
 		Value()
 	if err != nil {
 		return role.ProductRole{}, err
@@ -177,7 +220,10 @@ func (r *productRoleRepositoryImpl) Update(
 			AND(table.ProductRoles.ProductID.EQ(postgres.String(domainRole.ProductID))),
 	)
 	if err := transactor.Exec(ctx, r.db, updateStmt).
-		OnUnique(ErrProductRoleNameExists, productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex).
+		OnUnique(
+			ErrProductRoleNameExists,
+			productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleManagedNameIndex,
+		).
 		Err(); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -303,7 +349,8 @@ func (r *productRoleRepositoryImpl) DeleteByProductIDAndRoleID(
 ) error {
 	stmt := table.ProductRoles.DELETE().WHERE(
 		table.ProductRoles.ID.EQ(postgres.String(id)).
-			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))),
+			AND(table.ProductRoles.ProductID.EQ(postgres.String(productID))).
+			AND(isManaged()),
 	)
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
@@ -362,7 +409,7 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 ) (search.Result[role.ProductRole], error) {
-	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID))
+	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID)).AND(isManaged())
 	if input.FullTextSearch != nil {
 		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
 		whereStmt = whereStmt.AND(
@@ -510,4 +557,19 @@ func (r *productRoleRepositoryImpl) findOne(
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
 	)
+}
+
+func (r *productRoleRepositoryImpl) BackfillTypesInternal(ctx context.Context, productID string) (int64, error) {
+	stmt := table.ProductRoles.UPDATE(table.ProductRoles.Type).
+		SET(postgres.String(string(role.TypeManaged))).
+		WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(isManaged()).
+				AND(table.ProductRoles.Type.IS_NULL()),
+		)
+	result, err := stmt.ExecContext(ctx, transactor.Executor(ctx, r.db))
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

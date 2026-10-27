@@ -49,6 +49,20 @@ func TestProductRole_Create(t *testing.T) {
 	)
 
 	t.Run(
+		"A product role is one the product manages", func(t *testing.T) {
+			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{
+					ResourceType: "organization", Name: "Viewer_" + ids.MustNew("test"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+
+			assert.Equal(t, ct.MANAGED, resp.JSON201.Type)
+		},
+	)
+
+	t.Run(
 		"Product role name that creation is substring of existing is allowed", func(t *testing.T) {
 			// Regression: role-name uniqueness must be an exact match, not a
 			// substring match. Creating "<base>-admin" must not block "<base>".

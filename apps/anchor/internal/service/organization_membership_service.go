@@ -117,7 +117,7 @@ func (s *organizationMembershipService) AddMember(
 		return organization.Membership{}, err
 	}
 
-	if err := s.validateRole(ctx, input.ProductID, input.RoleID, logger); err != nil {
+	if err := s.validateRole(ctx, input.ProductID, input.OrganizationID, input.RoleID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -150,7 +150,7 @@ func (s *organizationMembershipService) UpdateMemberRole(
 		return organization.Membership{}, err
 	}
 
-	if err := s.validateRole(ctx, input.ProductID, input.RoleID, logger); err != nil {
+	if err := s.validateRole(ctx, input.ProductID, input.OrganizationID, input.RoleID, logger); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -244,6 +244,9 @@ func (s *organizationMembershipService) applyMembership(
 	}); txErr != nil {
 		if errors.Is(txErr, repository.ErrOrganizationMembershipExists) {
 			return organization.Membership{}, NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
+		}
+		if errors.Is(txErr, repository.ErrOrganizationMembershipRoleGone) {
+			return organization.Membership{}, NewBodyRoleNotFoundError(roleID)
 		}
 		logger.Error().Err(txErr).
 			Str("product_id", productID).
@@ -408,22 +411,36 @@ func (s *organizationMembershipService) validateProductUser(
 
 func (s *organizationMembershipService) validateRole(
 	ctx context.Context,
-	productID string,
-	roleID string,
+	productID, organizationID, roleID string,
 	logger zerolog.Logger,
 ) error {
-	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err != nil {
+	err := CheckAssignableRole(ctx, s.productRoleRepo, productID, organizationID, roleID)
+	if _, isFault := fault.As(err); err != nil && !isFault {
 		logger.Error().Err(err).
 			Str("product_id", productID).
 			Str("role_id", roleID).
 			Msg("failed to verify role exists")
+	}
+	return err
+}
+
+// CheckAssignableRole answers a role_id in a request body that a member of the
+// Organization may not hold. A member may hold a role the Product manages or
+// a custom role of their own Organization; another Organization's role answers
+// as an unknown one, so a request learns nothing about it.
+func CheckAssignableRole(
+	ctx context.Context, roles repository.ProductRoleRepository, productID, organizationID, roleID string,
+) error {
+	found, err := roles.FindInProductByID(ctx, productID, roleID)
+	if err != nil {
 		return err
 	}
 	if found.IsAbsent() {
 		return NewBodyRoleNotFoundError(roleID)
 	}
-
+	if named := found.Value(); !named.AssignableIn(organizationID) {
+		return NewBodyRoleNotFoundError(roleID)
+	}
 	return nil
 }
 

@@ -116,12 +116,7 @@ func (s *productRoleService) CreateProductRole(
 	if err := s.nameDuplicationValidation(ctx, input.ProductID, input.Name, "", logger); err != nil {
 		return role.ProductRole{}, err
 	}
-	productRole := role.ProductRole{
-		ProductID:   input.ProductID,
-		Name:        input.Name,
-		Description: input.Description,
-	}
-	productRole.GenerateID()
+	productRole := role.NewManaged(input.ProductID, input.Name, input.Description)
 	logger.Info().
 		Str("product_role_id", productRole.ID).
 		Str("product_id", input.ProductID).
@@ -382,20 +377,29 @@ func (s *productRoleService) DeleteProductRole(
 		return role.ErrProductRoleNotFound
 	}
 
-	assignmentCount, err := s.roleRepo.CountMembershipAssignments(ctx, input.ID)
-	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to count role membership assignments")
-		return fault.ErrUnexpected
-	}
-	if assignmentCount > 0 {
-		return NewRoleInUseError(input.ID)
-	}
-
 	err = s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// FOR UPDATE, not FOR NO KEY UPDATE: a membership written on the role
+		// takes FOR KEY SHARE through its foreign key, so it waits for this
+		// delete instead of being removed by its cascade.
+		exists, lockErr := s.roleRepo.ExistsManaged(transactor.ForUpdate(txCtx), input.ProductID, input.ID)
+		if lockErr != nil {
+			return lockErr
+		}
+		if !exists {
+			return role.ErrProductRoleNotFound
+		}
+		assignmentCount, countErr := s.roleRepo.CountMembershipAssignments(txCtx, input.ID)
+		if countErr != nil {
+			logger.Error().
+				Str("product_id", input.ProductID).
+				Str("role_id", input.ID).
+				Err(countErr).
+				Msg("failed to count role membership assignments")
+			return fault.ErrUnexpected
+		}
+		if assignmentCount > 0 {
+			return NewRoleInUseError(input.ID)
+		}
 		if invitationErr := s.releaseInvitations(txCtx, input.ProductID, input.ID, logger); invitationErr != nil {
 			return invitationErr
 		}

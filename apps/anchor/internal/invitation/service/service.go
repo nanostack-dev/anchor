@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -96,7 +97,9 @@ func (s *organizationInvitationService) Create(
 		if lockErr := s.lockOrganization(txCtx, input.ProductID, input.OrganizationID); lockErr != nil {
 			return lockErr
 		}
-		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
+		if roleErr := anchorservice.CheckAssignableRole(
+			txCtx, s.productRoleRepo, input.ProductID, input.OrganizationID, input.RoleID,
+		); roleErr != nil {
 			return roleErr
 		}
 		if pendingErr := s.ensureNoPendingInvitation(
@@ -111,6 +114,9 @@ func (s *organizationInvitationService) Create(
 		}
 		var createErr error
 		created, createErr = s.invitationRepo.Create(txCtx, invitation)
+		if errors.Is(createErr, repository.ErrRoleGone) {
+			return anchorservice.NewBodyRoleNotFoundError(input.RoleID)
+		}
 		if createErr != nil {
 			return createErr
 		}
@@ -188,7 +194,9 @@ func (s *organizationInvitationService) Update(
 		if statusErr := refuseUnlessPending(current); statusErr != nil {
 			return statusErr
 		}
-		if roleErr := s.ensureRoleExists(txCtx, input.ProductID, input.RoleID); roleErr != nil {
+		if roleErr := anchorservice.CheckAssignableRole(
+			txCtx, s.productRoleRepo, input.ProductID, input.OrganizationID, input.RoleID,
+		); roleErr != nil {
 			return roleErr
 		}
 
@@ -196,6 +204,9 @@ func (s *organizationInvitationService) Update(
 		current.ExpiresAt = input.ExpiresAt
 		var updateErr error
 		updated, updateErr = s.invitationRepo.UpdateRoleAndExpiry(txCtx, current)
+		if errors.Is(updateErr, repository.ErrRoleGone) {
+			return anchorservice.NewBodyRoleNotFoundError(input.RoleID)
+		}
 		if updateErr != nil {
 			return updateErr
 		}
@@ -309,19 +320,6 @@ func (s *organizationInvitationService) lockAndFind(
 		return organizationinvitation.Invitation{}, errInvitationNotFound
 	}
 	return found.Value(), nil
-}
-
-func (s *organizationInvitationService) ensureRoleExists(
-	ctx context.Context, productID, roleID string,
-) error {
-	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
-	if err != nil {
-		return err
-	}
-	if found.IsAbsent() {
-		return anchorservice.NewBodyRoleNotFoundError(roleID)
-	}
-	return nil
 }
 
 // ensureNoPendingInvitation enforces the first integrity rule: at most one

@@ -27,6 +27,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
 - [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, and the scope rollout
+- [Managed and custom roles](technical/managed-and-custom-roles.md): roles the Product manages, an Organization's own roles, who may hold each, and their rollout
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
 - [product events spec](product-events-spec.md)

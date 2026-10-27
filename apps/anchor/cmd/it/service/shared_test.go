@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
 	rtrepository "anchor/internal/resourcetype/repository"
 	"anchor/internal/service"
@@ -31,6 +32,11 @@ var (
 	ProductRoleRepo        repository.ProductRoleRepository
 	ResourceTypeRepo       rtrepository.Repository
 	TestDB                 *sql.DB
+	MembershipService      service.OrganizationMembershipService
+	InvitationService      invitationservice.OrganizationInvitationService
+	OrganizationService    service.OrganizationService
+	ProductRoleService     service.ProductRoleService
+	ResourcePermissionSvc  service.ResourcePermissionService
 )
 
 func TestMain(m *testing.M) {
@@ -54,6 +60,11 @@ func TestMain(m *testing.M) {
 				&ProductRoleRepo,
 				&ResourceTypeRepo,
 				&TestDB,
+				&MembershipService,
+				&InvitationService,
+				&OrganizationService,
+				&ProductRoleService,
+				&ResourcePermissionSvc,
 			},
 		},
 	)
