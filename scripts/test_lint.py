@@ -58,6 +58,10 @@ class LintCommandTest(unittest.TestCase):
         fake = self.bin / "golangci-lint"
         fake.write_text(f"#!{sys.executable}\n{FAKE_LINTER}")
         fake.chmod(0o755)
+        # Shadows a host go (CI has /usr/bin/go) so no test installs the real linter.
+        failing_go = self.bin / "go"
+        failing_go.write_text("#!/bin/sh\nexit 1\n")
+        failing_go.chmod(0o755)
         self.calls_file = Path(self.temp.name) / "calls.jsonl"
         self.env = {
             **os.environ,
