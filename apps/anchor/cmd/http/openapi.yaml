@@ -28,6 +28,8 @@ tags:
     Drive-like product). Full CRUD. (Admin + Product API Key operation)
 - name: ProductRole
   description: Manage Roles per Product. (Admin operation)
+- name: OrganizationRole
+  description: The roles an Organization's members may hold, and the Organization's own custom roles.
 - name: ProductAPIKey
   description: Manage API Keys per Product. (Admin operation)
 - name: OrganizationAPIKey
@@ -1004,8 +1006,9 @@ components:
       type: object
       description: >-
         Fields to change. An omitted field keeps its value. The slug never
-        changes. The built-in `organization` type answers 409
-        BUILT_IN_RESOURCE_TYPE to any change.
+        changes. The built-in `organization` type accepts only
+        `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any
+        other change.
       properties:
         name:
           type: string
@@ -1027,6 +1030,15 @@ components:
             $ref: "#/components/schemas/ResourceTypeSlug"
         nests_in_itself:
           type: boolean
+        allows_custom_roles:
+          type: boolean
+          description: >-
+            Lets the product's Organizations create their own roles scoped to
+            this type, through the Organization's role routes. Only
+            `organization` accepts `true` for now; any other type answers 400
+            CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles
+            that exist and the access they grant: Organizations can no longer
+            create or change them, but can still delete them.
 
     ProductResourceTypeTreeItem:
       type: object
@@ -1069,7 +1081,7 @@ components:
 
     ProductResourceTypeResponse:
       type: object
-      required: [id, product_id, slug, name, parent_types, nests_in_itself, built_in, created_at, updated_at]
+      required: [id, product_id, slug, name, parent_types, nests_in_itself, allows_custom_roles, built_in, created_at, updated_at]
       properties:
         id:
           $ref: "#/components/schemas/ksuid"
@@ -1089,6 +1101,9 @@ components:
             $ref: "#/components/schemas/ResourceTypeSlug"
         nests_in_itself:
           type: boolean
+        allows_custom_roles:
+          type: boolean
+          description: Whether the product's Organizations may create their own roles scoped to this type.
         built_in:
           type: boolean
           description: "`true` for `organization`, the root type every product has. It can't be changed or deleted."
@@ -1413,6 +1428,10 @@ components:
           description: The resource type this role is scoped to.
         type:
           $ref: "#/components/schemas/ProductRoleType"
+        organization_id:
+          type: [string, "null"]
+          description: The Organization that owns a CUSTOM role. `null` for a MANAGED role.
+          examples: ["org_2qL9aC3mE8xP1rT6vN4bK2sJ"]
         permissions:
           type: array
           items:
@@ -1430,6 +1449,7 @@ components:
       - name
       - resource_type
       - type
+      - organization_id
       - permissions
       - created_at
       - updated_at
@@ -1919,6 +1939,43 @@ components:
             $ref: "#/components/schemas/ResourceTypeSlug"
           description: Keep only roles scoped to one of these resource types.
           x-go-type-skip-optional-pointer: true
+    OrganizationRoleFilter:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: "#/components/schemas/ksuid"
+          description: Filter by specific role IDs.
+          x-go-type-skip-optional-pointer: true
+        names:
+          type: array
+          items:
+            type: string
+          description: Filter by role names (substring matches).
+          x-go-type-skip-optional-pointer: true
+        permissions:
+          type: array
+          items:
+            type: string
+            examples: ["document:edit"]
+          description: Filter by roles that hold any of these resource
+            permission names, matched case-insensitively.
+          x-go-type-skip-optional-pointer: true
+        resource_types:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ResourceTypeSlug"
+          description: Keep only roles scoped to one of these resource types.
+          x-go-type-skip-optional-pointer: true
+        types:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/ProductRoleType"
+          description: Keep only MANAGED roles, or only the Organization's CUSTOM roles.
+          x-go-type-skip-optional-pointer: true
     ProductAPIKeyFilter:
       type: object
       properties:
@@ -2279,6 +2336,23 @@ components:
           filter:
             $ref: "#/components/schemas/ProductRoleFilter"
             description: Filter criteria for app roles
+          sort_by:
+            type: string
+            enum:
+            - id
+            - name
+            - created_at
+            default: created_at
+            description: Field to sort by
+            x-go-type: role.SortFieldProductRole
+            x-go-type-import:
+              path: anchor/internal/domain/product/role
+    OrganizationRoleSearchRequest:
+      allOf:
+      - $ref: "#/components/schemas/SearchRequest"
+      - properties:
+          filter:
+            $ref: "#/components/schemas/OrganizationRoleFilter"
           sort_by:
             type: string
             enum:
@@ -7789,6 +7863,173 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/products/{product_id}/organizations/{organization_id}/roles/search:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Search Organization Roles
+      description: >-
+        Lists the roles a member of the Organization may hold: the Product's
+        MANAGED roles and the Organization's own CUSTOM roles. Another
+        Organization's custom roles never appear.
+
+        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+      operationId: searchOrganizationRoles
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:read"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationRoleSearchRequest"
+      responses:
+        "200":
+          description: The roles the Organization's members may hold.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/products/{product_id}/organizations/{organization_id}/roles:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    post:
+      summary: Create Organization Custom Role
+      description: >-
+        Creates a CUSTOM role that only this Organization's members may hold.
+        The resource type must allow custom roles (`allows_custom_roles`);
+        otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be
+        unique in the Organization and must not be the name of one of the
+        Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds
+        at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits
+        organization.role.created.
+      operationId: createOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:create"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRoleCreateRequest"
+      responses:
+        "201":
+          description: The custom role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}:
+    parameters:
+    - $ref: '#/components/parameters/ProductIdParameter'
+    - $ref: '#/components/parameters/OrganizationIdParameter'
+    - $ref: '#/components/parameters/ProductRoleIdParameter'
+    get:
+      summary: Get Organization Role
+      description: >-
+        Reads a role the Organization's members may hold: a MANAGED role of the
+        Product or a CUSTOM role of this Organization. Any other role answers
+        404 ROLE_NOT_FOUND.
+      operationId: getOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:read"]
+      responses:
+        "200":
+          description: The role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update Organization Custom Role
+      description: >-
+        Changes a CUSTOM role of this Organization. A MANAGED role answers 409
+        ROLE_NOT_EDITABLE: the Product changes it through its own role routes.
+        While the resource type does not allow custom roles, the call answers
+        400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+      operationId: updateOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:update"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRoleUpdateRequest"
+      responses:
+        "200":
+          description: The custom role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductRoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      summary: Delete Organization Custom Role
+      description: >-
+        Deletes a CUSTOM role of this Organization, also while the resource
+        type no longer allows custom roles. A role a member holds or a pending
+        invitation names answers 409 ROLE_IN_USE. A MANAGED role answers 409
+        ROLE_NOT_EDITABLE. Emits organization.role.deleted.
+      operationId: deleteOrganizationRole
+      tags: [OrganizationRole]
+      security:
+      - platformBearerAuth: []
+      - productApiKeyAuth: ["organization_role:delete"]
+      responses:
+        "204":
+          description: The custom role is deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /v1/products/{product_id}/organizations/{organization_id}/invitations:
     parameters:
     - $ref: '#/components/parameters/ProductIdParameter'

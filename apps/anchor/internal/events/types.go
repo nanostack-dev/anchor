@@ -36,6 +36,10 @@ const (
 	ProductRoleUpdated Type = "product.role.updated"
 	ProductRoleDeleted Type = "product.role.deleted"
 
+	OrganizationRoleCreated Type = "organization.role.created"
+	OrganizationRoleUpdated Type = "organization.role.updated"
+	OrganizationRoleDeleted Type = "organization.role.deleted"
+
 	ProductResourcePermissionCreated Type = "product.resource_permission.created"
 	ProductResourcePermissionUpdated Type = "product.resource_permission.updated"
 	ProductResourcePermissionDeleted Type = "product.resource_permission.deleted"
@@ -62,6 +66,13 @@ const (
 )
 
 type Data map[string]string
+
+func OrganizationRoleData(organizationID, roleID string) Data {
+	return Data{
+		FieldOrganizationID: organizationID,
+		FieldRoleID:         roleID,
+	}
+}
 
 func InvitationData(organizationID, invitationID string) Data {
 	return Data{

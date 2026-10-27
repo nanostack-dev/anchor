@@ -120,6 +120,21 @@ func ProductRBACEventRegistration() events.Registration {
 			Description: "Emitted when a product role is deleted.",
 		},
 		events.Definition{
+			Type:        events.OrganizationRoleCreated,
+			Name:        "Custom role created",
+			Description: "Emitted when an organization creates a custom role.",
+		},
+		events.Definition{
+			Type:        events.OrganizationRoleUpdated,
+			Name:        "Custom role updated",
+			Description: "Emitted when an organization's custom role or its permissions change.",
+		},
+		events.Definition{
+			Type:        events.OrganizationRoleDeleted,
+			Name:        "Custom role deleted",
+			Description: "Emitted when an organization deletes a custom role.",
+		},
+		events.Definition{
 			Type:        events.ProductResourcePermissionCreated,
 			Name:        "Resource permission created",
 			Description: "Emitted when a resource permission is created.",

@@ -255,13 +255,14 @@ export const zProductResourceTypeCreateRequest = z.object({
 });
 
 /**
- * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+ * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
  */
 export const zProductResourceTypeUpdateRequest = z.object({
     name: z.string().min(1).max(100).optional(),
     description: z.string().max(500).nullish(),
     parent_types: z.array(zResourceTypeSlug).min(1).max(10).optional(),
-    nests_in_itself: z.boolean().optional()
+    nests_in_itself: z.boolean().optional(),
+    allows_custom_roles: z.boolean().optional()
 });
 
 export const zProductResourceTypeTreeItem = z.object({
@@ -287,6 +288,7 @@ export const zProductResourceTypeResponse = z.object({
     description: z.string().nullish(),
     parent_types: z.array(zResourceTypeSlug),
     nests_in_itself: z.boolean(),
+    allows_custom_roles: z.boolean(),
     built_in: z.boolean(),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -404,6 +406,7 @@ export const zProductRoleResponse = z.object({
     description: z.string().nullish(),
     resource_type: zResourceTypeSlug,
     type: zProductRoleType,
+    organization_id: z.string().nullable(),
     permissions: z.array(zProductRolePermissionResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -551,6 +554,14 @@ export const zProductRoleFilter = z.object({
     resource_types: z.array(zResourceTypeSlug).max(50).optional()
 });
 
+export const zOrganizationRoleFilter = z.object({
+    ids: z.array(zKsuid).optional(),
+    names: z.array(z.string()).optional(),
+    permissions: z.array(z.string()).optional(),
+    resource_types: z.array(zResourceTypeSlug).max(50).optional(),
+    types: z.array(zProductRoleType).max(2).optional()
+});
+
 export const zProductApiKeyFilter = z.object({
     ids: z.array(zKsuid).optional(),
     names: z.array(z.string()).optional(),
@@ -681,6 +692,15 @@ export const zProductPermissionSearchRequest = zSearchRequest.and(z.object({
 
 export const zProductRoleSearchRequest = zSearchRequest.and(z.object({
     filter: zProductRoleFilter.optional(),
+    sort_by: z.enum([
+        'id',
+        'name',
+        'created_at'
+    ]).optional().default('created_at')
+}));
+
+export const zOrganizationRoleSearchRequest = zSearchRequest.and(z.object({
+    filter: zOrganizationRoleFilter.optional(),
     sort_by: z.enum([
         'id',
         'name',
@@ -2878,6 +2898,65 @@ export const zSearchOrganizationMembersPath = z.object({
  * Success
  */
 export const zSearchOrganizationMembersResponse = zOrganizationMemberListResponse;
+
+export const zSearchOrganizationRolesBody = zOrganizationRoleSearchRequest;
+
+export const zSearchOrganizationRolesPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid
+});
+
+/**
+ * The roles the Organization's members may hold.
+ */
+export const zSearchOrganizationRolesResponse = zProductRoleListResponse;
+
+export const zCreateOrganizationRoleBody = zProductRoleCreateRequest;
+
+export const zCreateOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid
+});
+
+/**
+ * The custom role.
+ */
+export const zCreateOrganizationRoleResponse = zProductRoleResponse;
+
+export const zDeleteOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The custom role is deleted.
+ */
+export const zDeleteOrganizationRoleResponse = z.void();
+
+export const zGetOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The role.
+ */
+export const zGetOrganizationRoleResponse = zProductRoleResponse;
+
+export const zUpdateOrganizationRoleBody = zProductRoleUpdateRequest;
+
+export const zUpdateOrganizationRolePath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    role_id: zKsuid
+});
+
+/**
+ * The custom role.
+ */
+export const zUpdateOrganizationRoleResponse = zProductRoleResponse;
 
 export const zCreateOrganizationInvitationBody = zOrganizationInvitationCreateRequest;
 

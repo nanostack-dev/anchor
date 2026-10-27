@@ -82,7 +82,8 @@ func (r *repositoryImpl) EnsureOrganization(ctx context.Context, productID strin
 	stmt := table.ProductResourceTypes.INSERT(
 		table.ProductResourceTypes.ID, table.ProductResourceTypes.ProductID,
 		table.ProductResourceTypes.Slug, table.ProductResourceTypes.Name,
-	).VALUES(root.ID, root.ProductID, root.Slug, root.Name).
+		table.ProductResourceTypes.AllowsCustomRoles,
+	).VALUES(root.ID, root.ProductID, root.Slug, root.Name, root.AllowsCustomRoles).
 		ON_CONFLICT(table.ProductResourceTypes.ProductID, table.ProductResourceTypes.Slug).
 		DO_NOTHING()
 	return transactor.Exec(ctx, r.db, stmt).Err()
@@ -104,7 +105,8 @@ func (r *repositoryImpl) Create(ctx context.Context, rt resourcetype.ResourceTyp
 		table.ProductResourceTypes.ID, table.ProductResourceTypes.ProductID,
 		table.ProductResourceTypes.Slug, table.ProductResourceTypes.Name,
 		table.ProductResourceTypes.Description, table.ProductResourceTypes.NestsInItself,
-	).VALUES(rt.ID, rt.ProductID, rt.Slug, rt.Name, rt.Description, rt.NestsInItself)
+		table.ProductResourceTypes.AllowsCustomRoles,
+	).VALUES(rt.ID, rt.ProductID, rt.Slug, rt.Name, rt.Description, rt.NestsInItself, rt.AllowsCustomRoles)
 	if err := transactor.Exec(ctx, r.db, stmt).OnUnique(ErrSlugExists, slugUniqueConstraint).Err(); err != nil {
 		return err
 	}
@@ -114,8 +116,8 @@ func (r *repositoryImpl) Create(ctx context.Context, rt resourcetype.ResourceTyp
 func (r *repositoryImpl) Update(ctx context.Context, rt resourcetype.ResourceType) error {
 	stmt := table.ProductResourceTypes.UPDATE(
 		table.ProductResourceTypes.Name, table.ProductResourceTypes.Description,
-		table.ProductResourceTypes.NestsInItself,
-	).SET(rt.Name, rt.Description, rt.NestsInItself).WHERE(
+		table.ProductResourceTypes.NestsInItself, table.ProductResourceTypes.AllowsCustomRoles,
+	).SET(rt.Name, rt.Description, rt.NestsInItself, rt.AllowsCustomRoles).WHERE(
 		table.ProductResourceTypes.ID.EQ(postgres.String(rt.ID)).
 			AND(table.ProductResourceTypes.ProductID.EQ(postgres.String(rt.ProductID))),
 	)
@@ -277,6 +279,8 @@ func (r *repositoryImpl) withParents(
 			Name:          row.Name,
 			Description:   row.Description,
 			NestsInItself: row.NestsInItself,
+			// NULL is a type the release before the switch wrote: off.
+			AllowsCustomRoles: functional.FromPtr(row.AllowsCustomRoles).OrElse(false),
 			ParentTypes: functional.Slice(parents[row.ID]).
 				Map(func(edge parentEdge) string { return edge.ParentSlug }),
 			CreatedAt: row.CreatedAt,

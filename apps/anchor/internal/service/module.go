@@ -27,6 +27,7 @@ func NewModule() fx.Option {
 			NewProductService,
 			NewProductAPIKeyService,
 			NewProductRoleService,
+			NewOrganizationRoleService,
 			NewResourcePermissionService,
 			NewProductUserService,
 			NewTenantService,

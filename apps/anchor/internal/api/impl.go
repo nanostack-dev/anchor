@@ -26,6 +26,7 @@ type AnchorAPI struct {
 	ProductAPIKeyService          service.ProductAPIKeyService
 	OrganizationAPIKeyService     service.OrganizationAPIKeyService
 	ProductRoleService            service.ProductRoleService
+	OrganizationRoleService       service.OrganizationRoleService
 	ProductUserService            service.ProductUserService
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
@@ -59,6 +60,7 @@ type Params struct {
 	ProductAPIKeyService          service.ProductAPIKeyService
 	OrganizationAPIKeyService     service.OrganizationAPIKeyService
 	ProductRoleService            service.ProductRoleService
+	OrganizationRoleService       service.OrganizationRoleService
 	ProductUserService            service.ProductUserService
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
@@ -92,6 +94,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ProductAPIKeyService:          params.ProductAPIKeyService,
 		OrganizationAPIKeyService:     params.OrganizationAPIKeyService,
 		ProductRoleService:            params.ProductRoleService,
+		OrganizationRoleService:       params.OrganizationRoleService,
 		ProductUserService:            params.ProductUserService,
 		ResourcePermissionService:     params.ResourcePermissionService,
 		ResourceTypeService:           params.ResourceTypeService,

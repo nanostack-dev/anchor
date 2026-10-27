@@ -693,6 +693,27 @@ func (e OrganizationMemberSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for OrganizationRoleSearchRequestSortBy.
+const (
+	OrganizationRoleSearchRequestSortByCreatedAt OrganizationRoleSearchRequestSortBy = "created_at"
+	OrganizationRoleSearchRequestSortById        OrganizationRoleSearchRequestSortBy = "id"
+	OrganizationRoleSearchRequestSortByName      OrganizationRoleSearchRequestSortBy = "name"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationRoleSearchRequestSortBy enum.
+func (e OrganizationRoleSearchRequestSortBy) Valid() bool {
+	switch e {
+	case OrganizationRoleSearchRequestSortByCreatedAt:
+		return true
+	case OrganizationRoleSearchRequestSortById:
+		return true
+	case OrganizationRoleSearchRequestSortByName:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PlatformInvitationSearchRequestSortBy.
 const (
 	PlatformInvitationSearchRequestSortByCreatedAt PlatformInvitationSearchRequestSortBy = "created_at"
@@ -2917,6 +2938,42 @@ type OrganizationMemberSearchRequest struct {
 // OrganizationMemberSearchRequestSortBy Field to sort by.
 type OrganizationMemberSearchRequestSortBy string
 
+// OrganizationRoleFilter defines model for OrganizationRoleFilter.
+type OrganizationRoleFilter struct {
+	// Ids Filter by specific role IDs.
+	Ids []Ksuid `json:"ids,omitempty"`
+
+	// Names Filter by role names (substring matches).
+	Names []string `json:"names,omitempty"`
+
+	// Permissions Filter by roles that hold any of these resource permission names, matched case-insensitively.
+	Permissions []string `json:"permissions,omitempty"`
+
+	// ResourceTypes Keep only roles scoped to one of these resource types.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
+
+	// Types Keep only MANAGED roles, or only the Organization's CUSTOM roles.
+	Types []ProductRoleType `json:"types,omitempty"`
+}
+
+// OrganizationRoleSearchRequest defines model for OrganizationRoleSearchRequest.
+type OrganizationRoleSearchRequest struct {
+	Filter *OrganizationRoleFilter `json:"filter,omitempty"`
+
+	// FullTextSearch Full-text search term to match against searchable fields.
+	FullTextSearch *string            `json:"full_text_search,omitempty"`
+	Pagination     *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by
+	SortBy *OrganizationRoleSearchRequestSortBy `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// OrganizationRoleSearchRequestSortBy Field to sort by
+type OrganizationRoleSearchRequestSortBy string
+
 // PagedListResponse defines model for PagedListResponse.
 type PagedListResponse struct {
 	// Count The number of items returned in this response.
@@ -3680,6 +3737,9 @@ type ProductResourceTypeListResponse struct {
 
 // ProductResourceTypeResponse defines model for ProductResourceTypeResponse.
 type ProductResourceTypeResponse struct {
+	// AllowsCustomRoles Whether the product's Organizations may create their own roles scoped to this type.
+	AllowsCustomRoles bool `json:"allows_custom_roles"`
+
 	// BuiltIn `true` for `organization`, the root type every product has. It can't be changed or deleted.
 	BuiltIn     bool      `json:"built_in"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -3749,11 +3809,13 @@ type ProductResourceTypeTreeResponse struct {
 	ResourceTypes []ProductResourceTypeResponse `json:"resource_types"`
 }
 
-// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+// ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
 type ProductResourceTypeUpdateRequest struct {
-	Description   *string `json:"description,omitempty"`
-	Name          *string `json:"name,omitempty"`
-	NestsInItself *bool   `json:"nests_in_itself,omitempty"`
+	// AllowsCustomRoles Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
+	AllowsCustomRoles *bool   `json:"allows_custom_roles,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	Name              *string `json:"name,omitempty"`
+	NestsInItself     *bool   `json:"nests_in_itself,omitempty"`
 
 	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
 	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
@@ -3877,6 +3939,11 @@ type ProductRoleResponse struct {
 	//
 	// Examples: Editor
 	Name string `json:"name"`
+
+	// OrganizationId The Organization that owns a CUSTOM role. `null` for a MANAGED role.
+	//
+	// Examples: org_2qL9aC3mE8xP1rT6vN4bK2sJ
+	OrganizationId *string `json:"organization_id"`
 
 	// Permissions List of permissions assigned to this role.
 	Permissions []ProductRolePermissionResponse `json:"permissions"`
@@ -4836,6 +4903,15 @@ type SearchOrganizationMembersJSONRequestBody = OrganizationMemberSearchRequest
 
 // UpdateOrganizationMemberRoleJSONRequestBody defines body for UpdateOrganizationMemberRole for application/json ContentType.
 type UpdateOrganizationMemberRoleJSONRequestBody = OrganizationMemberRoleRequest
+
+// CreateOrganizationRoleJSONRequestBody defines body for CreateOrganizationRole for application/json ContentType.
+type CreateOrganizationRoleJSONRequestBody = ProductRoleCreateRequest
+
+// SearchOrganizationRolesJSONRequestBody defines body for SearchOrganizationRoles for application/json ContentType.
+type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
+
+// UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
+type UpdateOrganizationRoleJSONRequestBody = ProductRoleUpdateRequest
 
 // CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
 type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest

@@ -1519,7 +1519,7 @@ The cost is one row per template per Organization: 10,000 Organizations with 8 t
 <details>
 <summary><b>DR-D9</b> · Custom roles open per resource type: Organization first, then the Product's own types — <i>✅ Accepted</i></summary>
 
-**Decision.** Each resource type gets a `custom_roles` switch the Product turns on. It is off by default, so an existing Product changes nothing (G2). A customer may create a custom role only on a type whose switch is on.
+**Decision.** Each resource type gets an `allows_custom_roles` switch the Product turns on. It is off by default, so an existing Product changes nothing (G2). A customer may create a custom role only on a type whose switch is on.
 
 | Phase | Customers can create custom roles on | Example in Acme Corp |
 | :-- | :-- | :-- |
@@ -1533,7 +1533,7 @@ Phase 2 changes nothing in the engine, the tables or the assignment API: a custo
 
 ```http
 PATCH /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/resource-types/project
-{ "custom_roles": true }
+{ "allows_custom_roles": true }
 
 POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
 { "name": "Release manager", "resource_type": "project",
@@ -1547,6 +1547,8 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 ```
 
 </details>
+
+> **Implementation note (PR 3).** The switch is `allows_custom_roles`: nullable with no default, so a type the previous release writes during the deploy reads as off. Turning it off keeps the existing custom roles and the access they grant; the Organization can still delete them but not create or change them (`400 CUSTOM_ROLES_DISABLED`). See [managed and custom roles](../technical/managed-and-custom-roles.md#custom-roles).
 
 > **Q-D9.1** Is Organization behind the same switch, or always open to custom roles? *(recommended: behind the switch, off by default; each Product decides whether its customers write roles at all)*
 >
@@ -2208,7 +2210,7 @@ flowchart LR
 - **Creating a role** starts with its scope. The permission picker then lists only permissions of that type and the types below it, grouped by type in tree order (Organization first). Invalid bundles can't be chosen, rather than erroring after the fact.
 - **The permissions table** shows the scope and the roles that bundle each permission.
 - **Clicking a node** on the canvas links to both pages, filtered to that type.
-- **The roles page lists managed roles** (D8). Each resource type's form carries the `custom_roles` switch (D9). An Organization's page lists the roles its members can hold, read-only: the managed roles and its custom roles, each marked with its type. Customers edit custom roles in the Product's own settings page.
+- **The roles page lists managed roles** (D8). Each resource type's form carries the `allows_custom_roles` switch (D9). An Organization's page lists the roles its members can hold, read-only: the managed roles and its custom roles, each marked with its type. Customers edit custom roles in the Product's own settings page.
 
 <details>
 <summary>📌 Real example</summary>
@@ -2378,9 +2380,9 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 | Milestone | PRs | Kind | Done when |
 | :-- | :-- | :-- | :-- |
 | [#259](https://github.com/nanostack-dev/anchor/issues/259) **M0 · Decisions on `main`** | 0. ADR-0021 and ADR-0022, docs only | invisible | merged |
-| [#260](https://github.com/nanostack-dev/anchor/issues/260) **M1 · Catalog scopes** | 1. Resource types table and API (A1–A5), `organization` seeded, every role and permission scoped to it (G1), `resource_type` required on create (G2), `product.resource_type.*` events (G3)<br/>2. Managed and custom roles in one table (D8): `type` and `organization_id` on roles, Product role routes read managed roles only, the Organization boundary on every role a request names, `409 ROLE_IN_USE` under a row lock (D10)<br/>2b. The Organization role becomes optional (D5)<br/>3. Organization custom roles behind `custom_roles` (D9 phase 1), at most 50 (D10)<br/>3b. Terraform provider (G5), in its own repository | invisible, then behind a switch | every existing check gives the same answer before and after the migrations; one test per limit and switch state |
+| [#260](https://github.com/nanostack-dev/anchor/issues/260) **M1 · Catalog scopes** | 1. Resource types table and API (A1–A5), `organization` seeded, every role and permission scoped to it (G1), `resource_type` required on create (G2), `product.resource_type.*` events (G3)<br/>2. Managed and custom roles in one table (D8): `type` and `organization_id` on roles, Product role routes read managed roles only, the Organization boundary on every role a request names, `409 ROLE_IN_USE` under a row lock (D10)<br/>2b. The Organization role becomes optional (D5)<br/>3. Organization custom roles behind `allows_custom_roles` (D9 phase 1), at most 50 (D10)<br/>3b. Terraform provider (G5), in its own repository | invisible, then behind a switch | every existing check gives the same answer before and after the migrations; one test per limit and switch state |
 | [#261](https://github.com/nanostack-dev/anchor/issues/261) **M2 · Decisions from OpenFGA** | 4. Embedded engine and relationship store, not read yet<br/>5. Catalog compiler (E3) and the write after commit with mark, sweeper and reconcile (E5)<br/>6. **Shadow:** each decision runs on both evaluators and logs any difference<br/>7. **Switch:** decisions come from OpenFGA; the old evaluator is deleted | invisible, then switch-over | zero differences on the CT suite and in dev before PR 7; a reconcile repairs a deleted tuple |
-| [#262](https://github.com/nanostack-dev/anchor/issues/262) **M3 · Admin UI** (parallel to M2, after M1) | 8. Resource types canvas: React Flow, computed layout, draft then publish (F1–F3)<br/>9. Scoped Roles and Permissions pages, managed roles, `custom_roles` switch, an Organization's roles read-only (F4)<br/>10. Access explainer (F5) | new | stories and E2E on mobile, tablet and desktop |
+| [#262](https://github.com/nanostack-dev/anchor/issues/262) **M3 · Admin UI** (parallel to M2, after M1) | 8. Resource types canvas: React Flow, computed layout, draft then publish (F1–F3)<br/>9. Scoped Roles and Permissions pages, managed roles, `allows_custom_roles` switch, an Organization's roles read-only (F4)<br/>10. Access explainer (F5) | new | stories and E2E on mobile, tablet and desktop |
 | [#263](https://github.com/nanostack-dev/anchor/issues/263) **M4 · Product resources** (after M2) | 11. Resource registry (B1–B4); `resource.*` events internal<br/>12. `resource_role_assignments` (D3, D4) with the `roles[]` contract; `resource.role_assignment.*` events to webhooks<br/>13. Evaluation on any resource type (E2), `RESOURCE_NOT_IN_ORGANIZATION`, `granted_by`<br/>14. Custom roles on the Product's own types (D9 phase 2) | new | a role on a folder grants its documents and nothing above it |
 | [#264](https://github.com/nanostack-dev/anchor/issues/264) **M5 · Workspace becomes generic** | 15. Workspaces migrate into a `workspace` resource type and assignments; the old routes are deprecated (A6 phases 1–2)<br/>16. Nanostack's own product moves to the generic API, under the cross-repo rollout rule in `AGENTS.md` | switch-over | released clients still pass against the deprecated routes |
 | [#265](https://github.com/nanostack-dev/anchor/issues/265) **M6 · First adopting product** | planned in its own change | new | — |

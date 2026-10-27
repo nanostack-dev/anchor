@@ -1455,6 +1455,76 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id} (the `UpdateOrganizationMemberRole` operationId).
 	UpdateOrganizationMemberRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid, body UpdateOrganizationMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateOrganizationRoleWithBody Create Organization Custom Role
+	//
+	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+	CreateOrganizationRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateOrganizationRole Create Organization Custom Role
+	//
+	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+	CreateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationRolesWithBody Search Organization Roles
+	//
+	// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+	SearchOrganizationRolesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchOrganizationRoles Search Organization Roles
+	//
+	// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+	SearchOrganizationRoles(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteOrganizationRole Delete Organization Custom Role
+	//
+	// Deletes a CUSTOM role of this Organization, also while the resource type no longer allows custom roles. A role a member holds or a pending invitation names answers 409 ROLE_IN_USE. A MANAGED role answers 409 ROLE_NOT_EDITABLE. Emits organization.role.deleted.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `DeleteOrganizationRole` operationId).
+	DeleteOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrganizationRole Get Organization Role
+	//
+	// Reads a role the Organization's members may hold: a MANAGED role of the Product or a CUSTOM role of this Organization. Any other role answers 404 ROLE_NOT_FOUND.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `GetOrganizationRole` operationId).
+	GetOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationRoleWithBody Update Organization Custom Role
+	//
+	// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+	UpdateOrganizationRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationRole Update Organization Custom Role
+	//
+	// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+	UpdateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateOrganizationWorkspaceWithBody Create Organization Workspace
 	//
 	// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
@@ -4715,6 +4785,156 @@ func (c *Client) UpdateOrganizationMemberRoleWithBody(ctx context.Context, produ
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id} (the `UpdateOrganizationMemberRole` operationId).
 func (c *Client) UpdateOrganizationMemberRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid, body UpdateOrganizationMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationMemberRoleRequest(c.Server, productId, organizationId, productUserId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrganizationRoleWithBody Create Organization Custom Role
+//
+// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+func (c *Client) CreateOrganizationRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrganizationRoleRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateOrganizationRole Create Organization Custom Role
+//
+// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+func (c *Client) CreateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateOrganizationRoleRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationRolesWithBody Search Organization Roles
+//
+// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+func (c *Client) SearchOrganizationRolesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationRolesRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchOrganizationRoles Search Organization Roles
+//
+// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+func (c *Client) SearchOrganizationRoles(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchOrganizationRolesRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteOrganizationRole Delete Organization Custom Role
+//
+// Deletes a CUSTOM role of this Organization, also while the resource type no longer allows custom roles. A role a member holds or a pending invitation names answers 409 ROLE_IN_USE. A MANAGED role answers 409 ROLE_NOT_EDITABLE. Emits organization.role.deleted.
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `DeleteOrganizationRole` operationId).
+func (c *Client) DeleteOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOrganizationRoleRequest(c.Server, productId, organizationId, roleId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationRole Get Organization Role
+//
+// Reads a role the Organization's members may hold: a MANAGED role of the Product or a CUSTOM role of this Organization. Any other role answers 404 ROLE_NOT_FOUND.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `GetOrganizationRole` operationId).
+func (c *Client) GetOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationRoleRequest(c.Server, productId, organizationId, roleId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationRoleWithBody Update Organization Custom Role
+//
+// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+func (c *Client) UpdateOrganizationRoleWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationRoleRequestWithBody(c.Server, productId, organizationId, roleId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationRole Update Organization Custom Role
+//
+// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+func (c *Client) UpdateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationRoleRequest(c.Server, productId, organizationId, roleId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -10212,6 +10432,271 @@ func NewUpdateOrganizationMemberRoleRequestWithBody(server string, productId Pro
 	return req, nil
 }
 
+// NewCreateOrganizationRoleRequest calls the generic CreateOrganizationRole builder with application/json body
+func NewCreateOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateOrganizationRoleRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewCreateOrganizationRoleRequestWithBody constructs an http.Request for the CreateOrganizationRole method, with any body, and a specified content type
+func NewCreateOrganizationRoleRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/roles", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchOrganizationRolesRequest calls the generic SearchOrganizationRoles builder with application/json body
+func NewSearchOrganizationRolesRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationRolesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchOrganizationRolesRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewSearchOrganizationRolesRequestWithBody constructs an http.Request for the SearchOrganizationRoles method, with any body, and a specified content type
+func NewSearchOrganizationRolesRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/roles/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteOrganizationRoleRequest constructs an http.Request for the DeleteOrganizationRole method
+func NewDeleteOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "role_id", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/roles/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrganizationRoleRequest constructs an http.Request for the GetOrganizationRole method
+func NewGetOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "role_id", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/roles/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrganizationRoleRequest calls the generic UpdateOrganizationRole builder with application/json body
+func NewUpdateOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrganizationRoleRequestWithBody(server, productId, organizationId, roleId, "application/json", bodyReader)
+}
+
+// NewUpdateOrganizationRoleRequestWithBody constructs an http.Request for the UpdateOrganizationRole method, with any body, and a specified content type
+func NewUpdateOrganizationRoleRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "role_id", roleId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/roles/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateOrganizationWorkspaceRequest calls the generic CreateOrganizationWorkspace builder with application/json body
 func NewCreateOrganizationWorkspaceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -13294,6 +13779,80 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id} (the `UpdateOrganizationMemberRole` operationId).
 	UpdateOrganizationMemberRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid, body UpdateOrganizationMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationMemberRoleResponse, error)
+
+	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
+	//
+	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+	CreateOrganizationRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationRoleResponse, error)
+
+	// CreateOrganizationRoleWithResponse Create Organization Custom Role
+	//
+	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+	CreateOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationRoleResponse, error)
+
+	// SearchOrganizationRolesWithBodyWithResponse Search Organization Roles
+	//
+	// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+	SearchOrganizationRolesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationRolesResponse, error)
+
+	// SearchOrganizationRolesWithResponse Search Organization Roles
+	//
+	// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+	SearchOrganizationRolesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationRolesResponse, error)
+
+	// DeleteOrganizationRoleWithResponse Delete Organization Custom Role
+	//
+	// Deletes a CUSTOM role of this Organization, also while the resource type no longer allows custom roles. A role a member holds or a pending invitation names answers 409 ROLE_IN_USE. A MANAGED role answers 409 ROLE_NOT_EDITABLE. Emits organization.role.deleted.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `DeleteOrganizationRole` operationId).
+	DeleteOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationRoleResponse, error)
+
+	// GetOrganizationRoleWithResponse Get Organization Role
+	//
+	// Reads a role the Organization's members may hold: a MANAGED role of the Product or a CUSTOM role of this Organization. Any other role answers 404 ROLE_NOT_FOUND.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `GetOrganizationRole` operationId).
+	GetOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationRoleResponse, error)
+
+	// UpdateOrganizationRoleWithBodyWithResponse Update Organization Custom Role
+	//
+	// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+	UpdateOrganizationRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationRoleResponse, error)
+
+	// UpdateOrganizationRoleWithResponse Update Organization Custom Role
+	//
+	// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+	UpdateOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationRoleResponse, error)
 
 	// CreateOrganizationWorkspaceWithBodyWithResponse Create Organization Workspace
 	//
@@ -20319,6 +20878,351 @@ func (r UpdateOrganizationMemberRoleResponse) ContentType() string {
 	return ""
 }
 
+type CreateOrganizationRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *ProductRoleResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON201() *ProductRoleResponse {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateOrganizationRoleResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateOrganizationRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateOrganizationRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateOrganizationRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateOrganizationRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchOrganizationRolesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductRoleListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchOrganizationRolesResponse) GetJSON200() *ProductRoleListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchOrganizationRolesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchOrganizationRolesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchOrganizationRolesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchOrganizationRolesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchOrganizationRolesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchOrganizationRolesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchOrganizationRolesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchOrganizationRolesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteOrganizationRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOrganizationRoleResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOrganizationRoleResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOrganizationRoleResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteOrganizationRoleResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOrganizationRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOrganizationRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOrganizationRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOrganizationRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrganizationRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductRoleResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationRoleResponse) GetJSON200() *ProductRoleResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrganizationRoleResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrganizationRoleResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrganizationRoleResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrganizationRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ProductRoleResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON200() *ProductRoleResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpdateOrganizationRoleResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrganizationRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrganizationRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrganizationRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrganizationRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateOrganizationWorkspaceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24814,6 +25718,128 @@ func (c *ClientWithResponses) UpdateOrganizationMemberRoleWithResponse(ctx conte
 		return nil, err
 	}
 	return ParseUpdateOrganizationMemberRoleResponse(rsp)
+}
+
+// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
+//
+// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+func (c *ClientWithResponses) CreateOrganizationRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationRoleResponse, error) {
+	rsp, err := c.CreateOrganizationRoleWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrganizationRoleResponse(rsp)
+}
+
+// CreateOrganizationRoleWithResponse Create Organization Custom Role
+//
+// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles (the `CreateOrganizationRole` operationId).
+func (c *ClientWithResponses) CreateOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationRoleResponse, error) {
+	rsp, err := c.CreateOrganizationRole(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateOrganizationRoleResponse(rsp)
+}
+
+// SearchOrganizationRolesWithBodyWithResponse Search Organization Roles
+//
+// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+func (c *ClientWithResponses) SearchOrganizationRolesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationRolesResponse, error) {
+	rsp, err := c.SearchOrganizationRolesWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationRolesResponse(rsp)
+}
+
+// SearchOrganizationRolesWithResponse Search Organization Roles
+//
+// Lists the roles a member of the Organization may hold: the Product's MANAGED roles and the Organization's own CUSTOM roles. Another Organization's custom roles never appear.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/roles/search (the `SearchOrganizationRoles` operationId).
+func (c *ClientWithResponses) SearchOrganizationRolesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationRolesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationRolesResponse, error) {
+	rsp, err := c.SearchOrganizationRoles(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchOrganizationRolesResponse(rsp)
+}
+
+// DeleteOrganizationRoleWithResponse Delete Organization Custom Role
+//
+// Deletes a CUSTOM role of this Organization, also while the resource type no longer allows custom roles. A role a member holds or a pending invitation names answers 409 ROLE_IN_USE. A MANAGED role answers 409 ROLE_NOT_EDITABLE. Emits organization.role.deleted.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `DeleteOrganizationRole` operationId).
+func (c *ClientWithResponses) DeleteOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationRoleResponse, error) {
+	rsp, err := c.DeleteOrganizationRole(ctx, productId, organizationId, roleId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOrganizationRoleResponse(rsp)
+}
+
+// GetOrganizationRoleWithResponse Get Organization Role
+//
+// Reads a role the Organization's members may hold: a MANAGED role of the Product or a CUSTOM role of this Organization. Any other role answers 404 ROLE_NOT_FOUND.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `GetOrganizationRole` operationId).
+func (c *ClientWithResponses) GetOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationRoleResponse, error) {
+	rsp, err := c.GetOrganizationRole(ctx, productId, organizationId, roleId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationRoleResponse(rsp)
+}
+
+// UpdateOrganizationRoleWithBodyWithResponse Update Organization Custom Role
+//
+// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+func (c *ClientWithResponses) UpdateOrganizationRoleWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationRoleResponse, error) {
+	rsp, err := c.UpdateOrganizationRoleWithBody(ctx, productId, organizationId, roleId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationRoleResponse(rsp)
+}
+
+// UpdateOrganizationRoleWithResponse Update Organization Custom Role
+//
+// Changes a CUSTOM role of this Organization. A MANAGED role answers 409 ROLE_NOT_EDITABLE: the Product changes it through its own role routes. While the resource type does not allow custom roles, the call answers 400 CUSTOM_ROLES_DISABLED. Emits organization.role.updated.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
+func (c *ClientWithResponses) UpdateOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationRoleResponse, error) {
+	rsp, err := c.UpdateOrganizationRole(ctx, productId, organizationId, roleId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationRoleResponse(rsp)
 }
 
 // CreateOrganizationWorkspaceWithBodyWithResponse Create Organization Workspace
@@ -30768,6 +31794,279 @@ func ParseUpdateOrganizationMemberRoleResponse(rsp *http.Response) (*UpdateOrgan
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest OrganizationMemberResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateOrganizationRoleResponse parses an HTTP response from a CreateOrganizationRoleWithResponse call
+func ParseCreateOrganizationRoleResponse(rsp *http.Response) (*CreateOrganizationRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateOrganizationRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ProductRoleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchOrganizationRolesResponse parses an HTTP response from a SearchOrganizationRolesWithResponse call
+func ParseSearchOrganizationRolesResponse(rsp *http.Response) (*SearchOrganizationRolesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchOrganizationRolesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductRoleListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteOrganizationRoleResponse parses an HTTP response from a DeleteOrganizationRoleWithResponse call
+func ParseDeleteOrganizationRoleResponse(rsp *http.Response) (*DeleteOrganizationRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOrganizationRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationRoleResponse parses an HTTP response from a GetOrganizationRoleWithResponse call
+func ParseGetOrganizationRoleResponse(rsp *http.Response) (*GetOrganizationRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductRoleResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrganizationRoleResponse parses an HTTP response from a UpdateOrganizationRoleWithResponse call
+func ParseUpdateOrganizationRoleResponse(rsp *http.Response) (*UpdateOrganizationRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrganizationRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProductRoleResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

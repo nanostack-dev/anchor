@@ -16,6 +16,7 @@ var domains = []string{
 	"resources_permissions",
 	"resource_type",
 	"product_role",
+	"organization_role",
 	"product_user",
 	"email_template",
 	"license_schema",

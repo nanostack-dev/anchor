@@ -32,6 +32,11 @@ var (
 		"Every resource type except organization has at least one parent type.",
 	)
 
+	ErrCustomRolesNotAvailable = fault.BadRequest(
+		"CUSTOM_ROLES_NOT_AVAILABLE",
+		"Only the organization resource type allows custom roles for now.",
+	)
+
 	ErrLimitReached = fault.Conflict(
 		"RESOURCE_TYPE_LIMIT_REACHED",
 		fmt.Sprintf("A product may declare at most %d resource types besides organization.", MaxOwnTypes),

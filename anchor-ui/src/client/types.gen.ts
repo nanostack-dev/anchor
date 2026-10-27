@@ -485,7 +485,7 @@ export type ProductResourceTypeCreateRequest = {
 };
 
 /**
- * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE to any change.
+ * Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
  */
 export type ProductResourceTypeUpdateRequest = {
     name?: string;
@@ -495,6 +495,10 @@ export type ProductResourceTypeUpdateRequest = {
      */
     parent_types?: Array<ResourceTypeSlug>;
     nests_in_itself?: boolean;
+    /**
+     * Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
+     */
+    allows_custom_roles?: boolean;
 };
 
 export type ProductResourceTypeTreeItem = {
@@ -523,6 +527,10 @@ export type ProductResourceTypeResponse = {
      */
     parent_types: Array<ResourceTypeSlug>;
     nests_in_itself: boolean;
+    /**
+     * Whether the product's Organizations may create their own roles scoped to this type.
+     */
+    allows_custom_roles: boolean;
     /**
      * `true` for `organization`, the root type every product has. It can't be changed or deleted.
      */
@@ -727,6 +735,10 @@ export type ProductRoleResponse = {
      */
     resource_type: ResourceTypeSlug;
     type: ProductRoleType;
+    /**
+     * The Organization that owns a CUSTOM role. `null` for a MANAGED role.
+     */
+    organization_id: string | null;
     /**
      * List of permissions assigned to this role.
      */
@@ -1054,6 +1066,29 @@ export type ProductRoleFilter = {
     resource_types?: Array<ResourceTypeSlug>;
 };
 
+export type OrganizationRoleFilter = {
+    /**
+     * Filter by specific role IDs.
+     */
+    ids?: Array<Ksuid>;
+    /**
+     * Filter by role names (substring matches).
+     */
+    names?: Array<string>;
+    /**
+     * Filter by roles that hold any of these resource permission names, matched case-insensitively.
+     */
+    permissions?: Array<string>;
+    /**
+     * Keep only roles scoped to one of these resource types.
+     */
+    resource_types?: Array<ResourceTypeSlug>;
+    /**
+     * Keep only MANAGED roles, or only the Organization's CUSTOM roles.
+     */
+    types?: Array<ProductRoleType>;
+};
+
 export type ProductApiKeyFilter = {
     /**
      * Filter by specific API key IDs.
@@ -1310,6 +1345,14 @@ export type ProductRoleSearchRequest = SearchRequest & {
      * Filter criteria for app roles
      */
     filter?: ProductRoleFilter;
+    /**
+     * Field to sort by
+     */
+    sort_by?: 'id' | 'name' | 'created_at';
+};
+
+export type OrganizationRoleSearchRequest = SearchRequest & {
+    filter?: OrganizationRoleFilter;
     /**
      * Field to sort by
      */
@@ -6907,6 +6950,252 @@ export type SearchOrganizationMembersResponses = {
 };
 
 export type SearchOrganizationMembersResponse = SearchOrganizationMembersResponses[keyof SearchOrganizationMembersResponses];
+
+export type SearchOrganizationRolesData = {
+    body: OrganizationRoleSearchRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/search';
+};
+
+export type SearchOrganizationRolesErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type SearchOrganizationRolesError = SearchOrganizationRolesErrors[keyof SearchOrganizationRolesErrors];
+
+export type SearchOrganizationRolesResponses = {
+    /**
+     * The roles the Organization's members may hold.
+     */
+    200: ProductRoleListResponse;
+};
+
+export type SearchOrganizationRolesResponse = SearchOrganizationRolesResponses[keyof SearchOrganizationRolesResponses];
+
+export type CreateOrganizationRoleData = {
+    body: ProductRoleCreateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles';
+};
+
+export type CreateOrganizationRoleErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type CreateOrganizationRoleError = CreateOrganizationRoleErrors[keyof CreateOrganizationRoleErrors];
+
+export type CreateOrganizationRoleResponses = {
+    /**
+     * The custom role.
+     */
+    201: ProductRoleResponse;
+};
+
+export type CreateOrganizationRoleResponse = CreateOrganizationRoleResponses[keyof CreateOrganizationRoleResponses];
+
+export type DeleteOrganizationRoleData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the product role.
+         */
+        role_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}';
+};
+
+export type DeleteOrganizationRoleErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type DeleteOrganizationRoleError = DeleteOrganizationRoleErrors[keyof DeleteOrganizationRoleErrors];
+
+export type DeleteOrganizationRoleResponses = {
+    /**
+     * The custom role is deleted.
+     */
+    204: void;
+};
+
+export type DeleteOrganizationRoleResponse = DeleteOrganizationRoleResponses[keyof DeleteOrganizationRoleResponses];
+
+export type GetOrganizationRoleData = {
+    body?: never;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the product role.
+         */
+        role_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}';
+};
+
+export type GetOrganizationRoleErrors = {
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+};
+
+export type GetOrganizationRoleError = GetOrganizationRoleErrors[keyof GetOrganizationRoleErrors];
+
+export type GetOrganizationRoleResponses = {
+    /**
+     * The role.
+     */
+    200: ProductRoleResponse;
+};
+
+export type GetOrganizationRoleResponse = GetOrganizationRoleResponses[keyof GetOrganizationRoleResponses];
+
+export type UpdateOrganizationRoleData = {
+    body: ProductRoleUpdateRequest;
+    path: {
+        /**
+         * The KSUID of the product.
+         */
+        product_id: Ksuid;
+        /**
+         * The KSUID of the organization.
+         */
+        organization_id: Ksuid;
+        /**
+         * The KSUID of the product role.
+         */
+        role_id: Ksuid;
+    };
+    query?: never;
+    url: '/v1/products/{product_id}/organizations/{organization_id}/roles/{role_id}';
+};
+
+export type UpdateOrganizationRoleErrors = {
+    /**
+     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
+     */
+    400: ApiErrorResponse;
+    /**
+     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
+     */
+    401: ApiErrorResponse;
+    /**
+     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
+     */
+    403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
+     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
+     */
+    409: ApiErrorResponse;
+};
+
+export type UpdateOrganizationRoleError = UpdateOrganizationRoleErrors[keyof UpdateOrganizationRoleErrors];
+
+export type UpdateOrganizationRoleResponses = {
+    /**
+     * The custom role.
+     */
+    200: ProductRoleResponse;
+};
+
+export type UpdateOrganizationRoleResponse = UpdateOrganizationRoleResponses[keyof UpdateOrganizationRoleResponses];
 
 export type CreateOrganizationInvitationData = {
     body: OrganizationInvitationCreateRequest;
