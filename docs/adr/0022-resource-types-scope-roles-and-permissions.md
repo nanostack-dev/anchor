@@ -1139,7 +1139,7 @@ erDiagram
 
 > **Revised 2026-10-26.** The default role is replaced by an optional role. The accepted version is kept folded below.
 
-**Decision.** Adding a member or creating an invitation may leave out the role. A member with no Organization role belongs to the Organization and holds no permission there: every check on the Organization answers deny until the member gets a role, on the Organization or on a resource below it. Anchor never picks a role for the member, and there is no default role to configure.
+**Decision.** Adding a member or creating an invitation may leave out the role. A member with no Organization role belongs to the Organization and holds no permission there: every check on the Organization answers deny until the member gets a role, on the Organization or on a resource below it. Anchor never picks a role for the member, and there is no default role to configure. Updating a member with `"role_id": null` removes their Organization role; leaving the field out of an update still answers `400`.
 
 <details>
 <summary>📌 Real example</summary>
