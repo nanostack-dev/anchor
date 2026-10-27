@@ -2,10 +2,10 @@
 
 | Status | Date | Where | Builds on |
 | :-- | :-- | :-- | :-- |
-| ✅ **Accepted** | 2026-10-25 | delivery [#259](https://github.com/nanostack-dev/anchor/issues/259)–[#266](https://github.com/nanostack-dev/anchor/issues/266); proof of concept on `poc/openfga-authz` | [ADR-0021](0021-access-decisions-come-from-openfga.md), access decisions from OpenFGA |
+| ✅ **Accepted** | 2026-10-25, roles revised 2026-10-26 (D5, D8, D10) | delivery [#259](https://github.com/nanostack-dev/anchor/issues/259)–[#266](https://github.com/nanostack-dev/anchor/issues/266); proof of concept on `poc/openfga-authz` | [ADR-0021](0021-access-decisions-come-from-openfga.md), access decisions from OpenFGA |
 
 > [!NOTE]
-> A Product declares a tree of **resource types** under the built-in **Organization** type: a document product would declare `project → folder → document`. Every **permission** and every **role** is scoped to one resource type. A role assigned on a resource covers that resource and everything under it. Roles are data each Organization owns: copies of the Product's **role templates**, which the customer may edit, and the customer's own **custom roles**. Anchor keeps OpenFGA from ADR-0021 underneath, and products never write model language.
+> A Product declares a tree of **resource types** under the built-in **Organization** type: a document product would declare `project → folder → document`. Every **permission** and every **role** is scoped to one resource type. A role assigned on a resource covers that resource and everything under it. A role is **managed**, defined once by the Product and shared by every Organization, or **custom**, an Organization's own. A member may hold no role, and then has no access. Anchor keeps OpenFGA from ADR-0021 underneath, and products never write model language.
 
 > [!TIP]
 > **How to answer.** Each decision record is folded: its line shows its state and whether it has questions. Open it to read and fill the `Answer:` lines, or answer in the [open questions table](#open-questions) at the end.
@@ -123,14 +123,14 @@ flowchart TB
 | Role | Scope | Bundles | Allowed because |
 | --- | --- | --- | --- |
 | `admin` | Organization | everything | Organization is the root, so every type is below it |
-| `member` (default) | Organization | none | A member gets access only through roles lower down |
+| `member` | Organization | none | A member gets access only through roles lower down |
 | `project-admin` | project | `project:manage`, `folder:edit`, `document:view`, `document:edit`, `document:share` | folder and document are below project |
 | `folder-viewer` | folder | `folder:view`, `document:view` | document is below folder |
 | `document-viewer` | document | `document:view` | its own type |
 
 A role scoped to `document` can't bundle `project:manage`. The UI only offers permissions of the role's type and the types below it, so the invalid combination can't even be selected.
 
-These five are **role templates**. Every Organization gets its own copy of each. Its admins may edit a copy, or add a custom role such as `billing-auditor` next to them, and its members then hold whichever role they are given ([DR-D8](#dr-d8)).
+These five are **managed roles**: the Product defines them once, and every Organization assigns the same rows by the same IDs. An Organization may add a **custom role** of its own, such as `billing-auditor`, next to them. `member` is optional: a member who holds no Organization role at all is still a member, with the same access as `member` gives ([DR-D5](#dr-d5), [DR-D8](#dr-d8)).
 
 </details>
 
@@ -232,12 +232,12 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D2](#dr-d2) · A role's scope never changes | ✅ Accepted |  |
 |  | [DR-D3](#dr-d3) · One role per member per resource, several as a Product option | ✅ Accepted |  |
 |  | [DR-D4](#dr-d4) · Organization membership stays separate; every other assignment is generic | ✅ Accepted |  |
-|  | [DR-D5](#dr-d5) · A default Organization role | ✅ Accepted |  |
+|  | [DR-D5](#dr-d5) · The Organization role is optional (revised: replaces the default role) | ✅ Accepted |  |
 |  | [DR-D6](#dr-d6) · Role priority | ⚪ Deferred |  |
 |  | [DR-D7](#dr-d7) · Organization API keys | ✅ Accepted |  |
-|  | [DR-D8](#dr-d8) · Every role belongs to an Organization: template copies and custom roles | ✅ Accepted |  |
+|  | [DR-D8](#dr-d8) · Managed roles shared by every Organization, and custom roles (revised: replaces template copies) | ✅ Accepted |  |
 |  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | ✅ Accepted |  |
-|  | [DR-D10](#dr-d10) · Template changes, deletes, the default role and limits | ✅ Accepted |  |
+|  | [DR-D10](#dr-d10) · Role changes, deletes and limits (revised) | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
 |  | [DR-E3](#dr-e3) · Roles are data; the Product's OpenFGA model holds only types and permissions | ✅ Accepted (depends on ADR-0021) |  |
@@ -1135,9 +1135,11 @@ erDiagram
 
 <a id="dr-d5"></a>
 <details>
-<summary><b>DR-D5</b> · A default Organization role — <i>✅ Accepted</i></summary>
+<summary><b>DR-D5</b> · The Organization role is optional (revised: replaces the default role) — <i>✅ Accepted</i></summary>
 
-**Decision.** Let a Product mark at most one Organization-scoped role as default. Leaving out `role_ids` (D3) when adding a member or creating an invitation then means the default role. With no default role set, `role_ids` stays required. The default is a role the Product chose explicitly, not a scope Anchor picks (C1, D1).
+> **Revised 2026-10-26.** The default role is replaced by an optional role. The accepted version is kept folded below.
+
+**Decision.** Adding a member or creating an invitation may leave out the role. A member with no Organization role belongs to the Organization and holds no permission there: every check on the Organization answers deny until the member gets a role, on the Organization or on a resource below it. Anchor never picks a role for the member, and there is no default role to configure.
 
 <details>
 <summary>📌 Real example</summary>
@@ -1148,23 +1150,41 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 
 201 Created
 { "id": "oinv_2qLEn8vR3xK6tQ1wZ9cP4m", "email": "priya.nair@acme.example",
-  "role": { "id": "role_2qLBm3mb3rT8vN2xQ6pK4w", "name": "member" }, "status": "PENDING" }
+  "role": null, "status": "PENDING" }
 ```
 
-The Product marked `member` (Organization scope, no permissions) as its default role, so Priya joins with no access until she gets a role on a project or folder.
+Priya joins Acme Corp with no access. The Product then gives her `folder-viewer` on the folder Design, and she reads its documents and nothing else.
+
+| Acme Corp member | Organization role | `document:view` on Pricing page |
+| :-- | :-- | :-- |
+| Maya Chen | `admin` | allowed |
+| Priya Nair | none | denied, `MISSING_PERMISSION` |
 
 </details>
 
 <details>
-<summary>Context</summary>
+<summary>Why no role, and not a default role</summary>
 
-A **default** Organization-scoped role (typically `member`, with no permissions) is the role a member gets when added without one, for example through directory sync. In Anchor, adding a member and creating an invitation both require a role today.
+A default role answered one need: adding a member, for example through directory sync, without picking a role. A missing role meets the same need with nothing to configure, no per-Organization override, and no question of what happens when the default role is deleted. A Product that wants every new member to hold `member` sends that role itself.
+
+Released clients always send a role, so they never receive `"role": null`. Only a Product that adds members without a role sees it.
 
 </details>
+
+<details>
+<summary>Superseded: a default Organization role (accepted 2026-10-25)</summary>
+
+**Decision.** Let a Product mark at most one Organization-scoped role as default. Leaving out `role_ids` (D3) when adding a member or creating an invitation then means the default role. With no default role set, `role_ids` stays required. The default is a role the Product chose explicitly, not a scope Anchor picks (C1, D1).
 
 > **Q-D5.1** Add a default role now? *(recommended: yes; it is what makes a `member` role with no permissions useful)*
 >
 > **Answer:** yes, a Product may mark one Organization-scoped role as its default.
+
+</details>
+
+> **Q-D5.2** Replace the default role with an optional role? *(recommended: yes)*
+>
+> **Answer:** yes. A member may hold no role, and then has no access. (2026-10-26)
 
 </details>
 
@@ -1234,7 +1254,137 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/access/v1/evaluation
 
 <a id="dr-d8"></a>
 <details>
-<summary><b>DR-D8</b> · Every role belongs to an Organization: template copies and custom roles — <i>✅ Accepted</i></summary>
+<summary><b>DR-D8</b> · Managed roles shared by every Organization, and custom roles (revised: replaces template copies) — <i>✅ Accepted</i></summary>
+
+> **Revised 2026-10-26.** Template copies are replaced by managed roles that every Organization shares. The accepted version is kept folded below.
+
+**Decision.** Roles stay in one table, `product_roles`, and come in two types, told apart by a `type` column.
+
+- **A managed role** (`type: MANAGED`, no `organization_id`) is the Product's. The Product manages it in the Anchor admin UI and through Terraform (G5), under `/v1/products/{p}/roles`. Every Organization of the Product may assign it, and every Organization assigns **the same row, by the same ID**.
+- **A custom role** (`type: CUSTOM`, with an `organization_id`) is one Organization's own: its name, scope and bundle, under the same scope rules as any role (D1). Which scopes allow custom roles is a Product setting (D9). No other Organization sees it.
+- **A change reaches everyone at once.** A membership or an assignment references the role row, so a rename or a permission added or removed applies to every member who holds the role, in every Organization, with nothing to copy or sync.
+- **An Organization only reaches its own roles.** A membership, invitation or role assignment in Organization O may name a managed role of its Product or a custom role of O. Any other role ID answers `400 ROLE_NOT_FOUND_IN_REQUEST`, the same answer as an unknown ID, so it reveals nothing about other Organizations.
+- **Roles are addressed by ID.** A managed role has one ID in every Organization, so the Product, its Terraform configuration and released clients keep the IDs they hold. There is no role key and no `role_keys`.
+- **A role in use is never deleted.** Deleting a role that a membership, a pending invitation or an assignment still names answers `409 ROLE_IN_USE` with the number of assignments, counted across every Organization for a managed role. The caller reassigns them first.
+- **Names.** A managed role's name is unique in its Product, and a custom role's name is unique in its Organization, both regardless of case. A custom role can't take the name of one of its Product's managed roles (`409 ROLE_NAME_DUPLICATE`). A managed role created later may reuse a name a custom role holds, so a customer never blocks the Product; responses carry `type` to tell them apart.
+- **The rules live in code.** `type` has no SQL default and no check constraint. The domain builds a role only as managed (no Organization) or custom (with one), and the service enforces the boundary and the names.
+- **The routes.** The Product manages managed roles under `/v1/products/{p}/roles`. `…/organizations/{o}/roles` lists the managed roles and O's custom roles, each with its `type`, and creates, edits and deletes O's custom roles (D9). Anchor doesn't know who the customer's admins are, so the Product calls these routes from its own settings page, behind its own Organization-scoped permission such as `roles:manage`.
+
+<details>
+<summary>📌 Real example</summary>
+
+```mermaid
+erDiagram
+    PRODUCTS ||--o{ PRODUCT_ROLES : "owns"
+    ORGANIZATIONS |o--o{ PRODUCT_ROLES : "owns its custom roles"
+    PRODUCT_ROLES ||--o{ PRODUCT_ROLE_RESOURCE_PERMISSIONS : "bundles"
+    PRODUCT_ROLES |o--o{ ORGANIZATION_MEMBERSHIPS : "held by, optional (D5)"
+    PRODUCT_ROLES ||--o{ RESOURCE_ROLE_ASSIGNMENTS : "held through"
+    PRODUCT_ROLES {
+        string id PK
+        string product_id
+        string type "MANAGED or CUSTOM"
+        string organization_id "empty for a managed role"
+        string name
+        string resource_type_id
+    }
+    ORGANIZATION_MEMBERSHIPS {
+        string organization_id PK
+        string product_user_id PK
+        string role_id "empty: no access"
+    }
+    PRODUCT_ROLE_RESOURCE_PERMISSIONS {
+        string role_id PK
+        string permission_id PK
+    }
+```
+
+Two customers of the same Product, after Acme Corp added a custom role:
+
+| Role | Type | Organization | Scope | Bundles | Assignable in |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| `admin` · `role_2qLBa0` | MANAGED | — | organization | everything | Acme Corp, Globex |
+| `project-admin` · `role_2qLBp7` | MANAGED | — | project | `project:manage`, `folder:edit`, `document:view`, `document:edit`, `document:share` | Acme Corp, Globex |
+| `billing-auditor` · `role_2qLGa7` | CUSTOM | Acme Corp | organization | `billing:read`, `document:view` | Acme Corp only |
+
+Globex never sees `billing-auditor`. When the Product removes `document:share` from `project-admin`, every project admin in both Organizations loses it on the next check.
+
+```http
+POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
+{ "name": "Billing auditor", "resource_type": "organization",
+  "permissions": ["billing:read", "document:view"] }
+
+201 Created
+{ "id": "role_2qLGa7kT3vN8xR1pQ5wZ2m", "type": "CUSTOM", "name": "Billing auditor",
+  "organization_id": "org_2qL9aC3mE8xP1rT6vN4bK2sJ", "resource_type": "organization",
+  "permissions": ["billing:read", "document:view"] }
+
+PUT /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/members/pusr_2qLAp4rN8xK1vT6yQ3cW7jB
+{ "role_ids": ["role_2qLGa7kT3vN8xR1pQ5wZ2m"] }
+
+200 OK
+{ "product_user_id": "pusr_2qLAp4rN8xK1vT6yQ3cW7jB",
+  "roles": [ { "id": "role_2qLGa7kT3vN8xR1pQ5wZ2m", "name": "Billing auditor", "type": "CUSTOM" } ] }
+```
+
+The same `role_ids` sent for a member of Globex answers `400 ROLE_NOT_FOUND_IN_REQUEST`.
+
+The life of that role, from creation to a decision:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Acme admin
+    participant P as Product backend
+    participant A as Anchor
+    participant PG as Anchor tables
+    participant F as OpenFGA, in Anchor
+    Admin->>P: create the role Billing auditor
+    P->>A: POST …/organizations/acme/roles
+    A->>A: check the switch, the name, the scope and the bundle
+    A->>PG: one transaction: CUSTOM role of Acme, permissions, event, sync mark
+    A->>F: after the commit: grants_billing_read and grants_document_view on the role
+    A-->>P: 201
+    Admin->>P: make Priya a billing auditor
+    P->>A: PUT …/members/priya with role_ids [billing-auditor]
+    A->>A: the role is MANAGED or Acme's own
+    A->>PG: one transaction: membership role, event, sync mark
+    A->>F: after the commit: the role assignment tuples
+    A-->>P: 200
+    P->>A: evaluate Priya, billing:read, organization Acme
+    A->>F: check user priya can_billing_read on organization acme
+    F-->>A: allowed: Acme, then the assignment, then the role grants it
+    A-->>P: decision true, roles billing-auditor
+    Note over A,F: A failed tuple write leaves its sync mark, and the sweeper replays it within 5 s (E5)
+```
+
+</details>
+
+<details>
+<summary>Why shared managed roles, and not a copy per Organization</summary>
+
+| | A copy of each template per Organization (accepted 2026-10-25) | **Managed roles shared by every Organization (chosen)** |
+| :-- | :-- | :-- |
+| Rows | one per template per Organization: 10,000 Organizations with 8 templates is 80,000 rows, and their tuples in OpenFGA | one per managed role |
+| A Product edits a role | the change is copied to every copy in the same transaction | the row changes; nothing to copy |
+| Role IDs | each Organization has its own, so assignment needs `role_keys` and a template ID must resolve to the copy | one ID everywhere |
+| A customer edits a Product role | edits its copy, which then stops following the template | creates a custom role instead |
+| Delete of a role in use | detach the copies into custom roles | `409 ROLE_IN_USE` |
+| Evaluation and the model (E3) | one path | one path: a membership or assignment holds a role row, whatever its type |
+
+The cost is that an Organization can't change a managed role for itself. It writes a custom role with the bundle it wants and assigns that one.
+
+</details>
+
+<details>
+<summary>Sources</summary>
+
+- [OpenFGA: custom roles](https://openfga.dev/docs/modeling/custom-roles)
+
+</details>
+
+<details>
+<summary>Superseded: every role belongs to an Organization, template copies and custom roles (accepted 2026-10-25)</summary>
 
 **Decision.** Roles become data that each Organization owns, with the same template-and-copy split as licenses ([ADR-0004](0004-license-schema-template-and-copy.md), [ADR-0018](0018-license-follows-its-template.md)).
 
@@ -1363,6 +1513,8 @@ The cost is one row per template per Organization: 10,000 Organizations with 8 t
 
 </details>
 
+</details>
+
 <a id="dr-d9"></a>
 <details>
 <summary><b>DR-D9</b> · Custom roles open per resource type: Organization first, then the Product's own types — <i>✅ Accepted</i></summary>
@@ -1374,7 +1526,7 @@ The cost is one row per template per Organization: 10,000 Organizations with 8 t
 | 1 | Organization | `billing-auditor` |
 | 2 | any of the Product's own types whose switch is on | `release-manager` on `project`, `reviewer` on `folder` |
 
-Phase 2 changes nothing in the engine, the tables or the assignment API: a custom role is a row with a scope, whatever that scope is. It adds the switch on the Product's own types, its validation, and the scope picker in the role editor. Template roles exist on every type from the start, so a Product can offer `project-admin` everywhere before it lets customers write their own project roles.
+Phase 2 changes nothing in the engine, the tables or the assignment API: a custom role is a row with a scope, whatever that scope is. It adds the switch on the Product's own types, its validation, and the scope picker in the role editor. Managed roles exist on every type from the start, so a Product can offer `project-admin` everywhere before it lets customers write their own project roles.
 
 <details>
 <summary>📌 Real example</summary>
@@ -1384,12 +1536,12 @@ PATCH /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/resource-types/project
 { "custom_roles": true }
 
 POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
-{ "key": "release-manager", "name": "Release manager", "resource_type": "project",
+{ "name": "Release manager", "resource_type": "project",
   "permissions": ["project:manage", "document:view"] }
 → 201
 
 POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT6vN4bK2sJ/roles
-{ "key": "reviewer", "name": "Reviewer", "resource_type": "folder", "permissions": ["document:view"] }
+{ "name": "Reviewer", "resource_type": "folder", "permissions": ["document:view"] }
 → 400 { "code": "CUSTOM_ROLES_DISABLED",
         "message": "This product doesn't allow custom roles on folder." }
 ```
@@ -1404,7 +1556,62 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 
 <a id="dr-d10"></a>
 <details>
-<summary><b>DR-D10</b> · Template changes, deletes, the default role and limits — <i>✅ Accepted</i></summary>
+<summary><b>DR-D10</b> · Role changes, deletes and limits (revised) — <i>✅ Accepted</i></summary>
+
+> **Revised 2026-10-26** to follow the revised D8: no copies, so nothing to propagate or detach. The accepted version is kept folded below.
+
+**Decision.**
+
+| When | Behaviour |
+| :-- | :-- |
+| The Product edits a managed role | The row changes, so every member who holds it, in every Organization, gets the new bundle on the next check. |
+| An Organization edits its custom role | Only its own members who hold that role are affected. |
+| The Product deletes a managed role | `409 ROLE_IN_USE` while any membership, pending invitation or assignment in any Organization names it, with the count. Otherwise it is deleted. |
+| An Organization deletes its custom role | `409 ROLE_IN_USE` while one of its memberships, pending invitations or assignments names it. |
+| An Organization is deleted | Its custom roles are deleted with it. |
+| The Product deletes a permission | It is removed from every role that bundles it, custom roles included, and from Organization API keys, in one transaction, with a role-updated event per role changed. A customer's custom role never blocks the Product's catalog. |
+| An Organization creates custom roles | At most 50 per Organization. |
+
+A delete locks the role row `FOR UPDATE` before it counts, so a member added at the same moment waits and then fails with `400 ROLE_NOT_FOUND_IN_REQUEST`, instead of being removed by the cascade.
+
+<details>
+<summary>📌 Real example</summary>
+
+The Product deletes the permission `document:share`. Two roles bundle it:
+
+| Role | Type | Before | After, in the same transaction |
+| :-- | :-- | :-- | :-- |
+| `project-admin` | MANAGED | `document:view`, `document:share` | `document:view` |
+| `billing-auditor` (Acme Corp) | CUSTOM | `billing:read`, `document:share` | `billing:read`; Acme Corp gets a role-updated event |
+
+Refusing the delete instead would let one customer's custom role block the Product's own catalog, and the Product can't edit that role.
+
+```mermaid
+sequenceDiagram
+    participant D as DELETE /roles/project-admin
+    participant PG as product_roles
+    participant M as PUT /members/priya
+    D->>PG: lock project-admin FOR UPDATE
+    M->>PG: insert membership on project-admin (its foreign key waits)
+    D->>PG: count memberships = 0, delete the role
+    D-->>D: 204
+    PG-->>M: the role is gone
+    M-->>M: 400 ROLE_NOT_FOUND_IN_REQUEST
+```
+
+</details>
+
+> **Q-D10.4** A limit on custom roles per Organization? *(recommended: 50)*
+>
+> **Answer:** at most 50 per Organization.
+
+> **Q-D10.5** When the Product deletes a permission a custom role bundles? *(recommended: remove it from every role, custom roles included)*
+>
+> **Answer:** remove it from every role, with an event. (2026-10-26)
+
+<details>
+<summary>Superseded: template changes, deletes, the default role and limits (accepted 2026-10-25)</summary>
+
 
 **Decision.**
 
@@ -1443,6 +1650,8 @@ The Product removes `document:share` from the `project-admin` template:
 > **Q-D10.4** A limit on custom roles per Organization? *(recommended: 50)*
 >
 > **Answer:** at most 50 per Organization.
+
+</details>
 
 </details>
 
@@ -1556,7 +1765,7 @@ The spec only shows reasons in a non-normative example (`reason_admin`, `reason_
 <details>
 <summary><b>DR-E3</b> · Roles are data; the Product's OpenFGA model holds only types and permissions — <i>✅ Accepted (depends on ADR-0021)</i></summary>
 
-**Decision.** Anchor compiles the Product's types and permissions into its OpenFGA model, and writes roles as tuples. The model never names a role, so creating, editing or deleting a role, whether a template copy or a custom role (D8), never changes it.
+**Decision.** Anchor compiles the Product's types and permissions into its OpenFGA model, and writes roles as tuples. The model never names a role, so creating, editing or deleting a role, whether managed or custom (D8), never changes it.
 
 The model has two fixed types, plus one type per resource type:
 - **`role`**: one `grants_<permission>` relation per permission, of type `[user:*]`. A role's bundle is one tuple per permission.
@@ -1602,7 +1811,7 @@ flowchart LR
     end
     subgraph data["Organization data"]
         direction TB
-        r["Roles: template copies and custom roles"]
+        r["Roles: managed and custom"]
         a["Role assignments"]
     end
     c{{"Anchor compiler"}}
@@ -1734,10 +1943,10 @@ flowchart LR
         subgraph cat["Product catalog"]
             rt["product_resource_types"]
             pp["product_resource_permissions"]
-            tpl["role_templates"]
+            tpl["product_roles · managed"]
         end
         subgraph org["Each Organization"]
-            orl["organization_roles<br/>template copies and custom roles"]
+            orl["product_roles · custom"]
             om["organization_memberships"]
             res["resources"]
             ra["resource_role_assignments"]
@@ -1999,7 +2208,7 @@ flowchart LR
 - **Creating a role** starts with its scope. The permission picker then lists only permissions of that type and the types below it, grouped by type in tree order (Organization first). Invalid bundles can't be chosen, rather than erroring after the fact.
 - **The permissions table** shows the scope and the roles that bundle each permission.
 - **Clicking a node** on the canvas links to both pages, filtered to that type.
-- **The roles page lists role templates** (D8). Each resource type's form carries the `custom_roles` switch (D9). An Organization's page lists its own roles read-only, marked template, customized or custom; customers edit them in the Product's own settings page.
+- **The roles page lists managed roles** (D8). Each resource type's form carries the `custom_roles` switch (D9). An Organization's page lists the roles its members can hold, read-only: the managed roles and its custom roles, each marked with its type. Customers edit custom roles in the Product's own settings page.
 
 <details>
 <summary>📌 Real example</summary>
@@ -2059,11 +2268,13 @@ flowchart LR
 **Decision.** One migration:
 - seeds the `organization` type for every Product;
 - sets every existing permission's and role's scope to it;
-- turns every existing role into a role template, copies it into every Organization of its Product (D8), and points memberships and role assignments to the copies.
+- marks every existing role as a managed role (D8). Memberships and role assignments keep pointing at the same rows, so nothing is copied or moved.
 
 After it, every decision is unchanged, because Organization-scoped roles reach every resource below the Organization. The workspace move (A6) is a separate, later migration.
 
 > **Implementation note (PR 1).** Public IDs are KSUIDs, which SQL cannot mint, and a rolling deploy runs the previous release beside the new one. The seed and the scope backfill therefore run as an idempotent startup step, `resource_type_id` stays nullable, and a null scope reads as Organization until the G6 cleanup makes it `NOT NULL`. See [resource types](../technical/resource-types.md#backfill).
+
+> **Implementation note (PR 2).** The same holds for the role `type`: it is added nullable with no default, the code reads a null type as `MANAGED` (the previous release writes only managed roles), a startup step writes `MANAGED`, and a later contract step makes it `NOT NULL`.
 
 <details>
 <summary>📌 Real example</summary>
@@ -2079,16 +2290,14 @@ FROM product_resource_types t WHERE t.product_id = p.product_id AND t.slug = 'or
 UPDATE product_roles r SET resource_type_id = t.id
 FROM product_resource_types t WHERE t.product_id = r.product_id AND t.slug = 'organization';
 
--- product_roles become role_templates; then one copy per Organization, keyed by the template
-INSERT INTO organization_roles (id, organization_id, key, name, resource_type_id, template_id, customized)
-SELECT gen_ksuid('orole'), o.id, rt.key, rt.name, rt.resource_type_id, rt.id, false
-FROM role_templates rt JOIN organizations o ON o.product_id = rt.product_id;
+-- every existing role is a managed role; nothing is copied
+UPDATE product_roles SET type = 'MANAGED' WHERE type IS NULL;
 ```
 
 | Before | After |
 | :-- | :-- |
 | role `admin`, 34 permissions | role `admin`, scope organization, the same 34 permissions |
-| Maya Chen holds `admin` in Acme Corp | she holds Acme Corp's copy of `admin`; every check gives the same answer |
+| Maya Chen holds `admin` in Acme Corp | she holds the same `admin` row, now a managed role; every check gives the same answer |
 
 </details>
 
@@ -2112,7 +2321,7 @@ FROM role_templates rt JOIN organizations o ON o.product_id = rt.product_id;
 | Script that creates a permission | add `"resource_type": "organization"` (or another type) |
 | Terraform `anchor_product_role` | add `resource_type = data.anchor_product_resource_type.organization.slug` |
 | Code that reads `role` on a member | read `roles[0]` (D3) |
-| Code that assigns a role by its current ID | nothing: a template ID resolves to the Organization's copy (D8) |
+| Code that assigns a role by its current ID | nothing: a managed role keeps its ID in every Organization (D8) |
 | Released CLI calling `/workspaces` | nothing until the cleanup (G6) |
 
 </details>
@@ -2169,9 +2378,9 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 | Milestone | PRs | Kind | Done when |
 | :-- | :-- | :-- | :-- |
 | [#259](https://github.com/nanostack-dev/anchor/issues/259) **M0 · Decisions on `main`** | 0. ADR-0021 and ADR-0022, docs only | invisible | merged |
-| [#260](https://github.com/nanostack-dev/anchor/issues/260) **M1 · Catalog scopes** | 1. Resource types table and API (A1–A5), `organization` seeded, every role and permission scoped to it (G1), `resource_type` required on create (G2), `product.resource_type.*` events (G3)<br/>2. Role templates and Organization copies (D8): memberships move to the copies, template IDs resolve to the copy, default Organization role (D5, D10), `409 ROLE_IN_USE`<br/>3. Organization custom roles behind `custom_roles` (D9 phase 1), template propagation and `customized` (D10), at most 50<br/>3b. Terraform provider (G5), in its own repository | invisible, then behind a switch | every existing check gives the same answer before and after the migrations; one test per limit and switch state |
+| [#260](https://github.com/nanostack-dev/anchor/issues/260) **M1 · Catalog scopes** | 1. Resource types table and API (A1–A5), `organization` seeded, every role and permission scoped to it (G1), `resource_type` required on create (G2), `product.resource_type.*` events (G3)<br/>2. Managed and custom roles in one table (D8): `type` and `organization_id` on roles, Product role routes read managed roles only, the Organization boundary on every role a request names, `409 ROLE_IN_USE` under a row lock (D10)<br/>2b. The Organization role becomes optional (D5)<br/>3. Organization custom roles behind `custom_roles` (D9 phase 1), at most 50 (D10)<br/>3b. Terraform provider (G5), in its own repository | invisible, then behind a switch | every existing check gives the same answer before and after the migrations; one test per limit and switch state |
 | [#261](https://github.com/nanostack-dev/anchor/issues/261) **M2 · Decisions from OpenFGA** | 4. Embedded engine and relationship store, not read yet<br/>5. Catalog compiler (E3) and the write after commit with mark, sweeper and reconcile (E5)<br/>6. **Shadow:** each decision runs on both evaluators and logs any difference<br/>7. **Switch:** decisions come from OpenFGA; the old evaluator is deleted | invisible, then switch-over | zero differences on the CT suite and in dev before PR 7; a reconcile repairs a deleted tuple |
-| [#262](https://github.com/nanostack-dev/anchor/issues/262) **M3 · Admin UI** (parallel to M2, after M1) | 8. Resource types canvas: React Flow, computed layout, draft then publish (F1–F3)<br/>9. Scoped Roles and Permissions pages, templates, `custom_roles` switch, an Organization's roles read-only (F4)<br/>10. Access explainer (F5) | new | stories and E2E on mobile, tablet and desktop |
+| [#262](https://github.com/nanostack-dev/anchor/issues/262) **M3 · Admin UI** (parallel to M2, after M1) | 8. Resource types canvas: React Flow, computed layout, draft then publish (F1–F3)<br/>9. Scoped Roles and Permissions pages, managed roles, `custom_roles` switch, an Organization's roles read-only (F4)<br/>10. Access explainer (F5) | new | stories and E2E on mobile, tablet and desktop |
 | [#263](https://github.com/nanostack-dev/anchor/issues/263) **M4 · Product resources** (after M2) | 11. Resource registry (B1–B4); `resource.*` events internal<br/>12. `resource_role_assignments` (D3, D4) with the `roles[]` contract; `resource.role_assignment.*` events to webhooks<br/>13. Evaluation on any resource type (E2), `RESOURCE_NOT_IN_ORGANIZATION`, `granted_by`<br/>14. Custom roles on the Product's own types (D9 phase 2) | new | a role on a folder grants its documents and nothing above it |
 | [#264](https://github.com/nanostack-dev/anchor/issues/264) **M5 · Workspace becomes generic** | 15. Workspaces migrate into a `workspace` resource type and assignments; the old routes are deprecated (A6 phases 1–2)<br/>16. Nanostack's own product moves to the generic API, under the cross-repo rollout rule in `AGENTS.md` | switch-over | released clients still pass against the deprecated routes |
 | [#265](https://github.com/nanostack-dev/anchor/issues/265) **M6 · First adopting product** | planned in its own change | new | — |
@@ -2342,11 +2551,11 @@ To add to [CONTEXT.md](../../CONTEXT.md) once the records they depend on are acc
 | **scope** | The resource type a permission or role belongs to. | Not `scope_modifier`, which is deprecated (C3). |
 | **role assignment** | A member holding a role on one resource. On the Organization itself, it is the membership's role. | Replaces "workspace role" once A6 lands. |
 | **ancestor** | A resource's parent, its parent's parent, and so on up to the Organization. | |
-| **role template** | A role the Product defines once; every Organization gets its own copy. | Never assigned directly. |
-| **custom role** | A role an Organization creates for itself, next to its template copies. | Not visible to other Organizations. |
+| **managed role** | A role the Product defines once, in the Anchor admin UI or through Terraform; every Organization of the Product assigns the same row. | Not "role template": nothing is copied. |
+| **custom role** | A role an Organization creates for itself, next to the managed roles. | Not visible to other Organizations. |
 
 **Changes to existing entries:**
-- **role**: "A named bundle of permissions owned by one Organization, scoped to one resource type and assignable on resources of that type: a copy of a role template, or a custom role."
+- **role**: "A named bundle of permissions scoped to one resource type and assignable on resources of that type: a managed role of the Product, or a custom role of one Organization."
 - **Workspace**: removed as an Anchor term once A6 lands. A Product may declare a resource type of that name.
 
 </details>
@@ -2367,13 +2576,15 @@ Answer here or inline; each line links to its record.
 | [Q-C3.1](#dr-c3) | Deprecate `scope_modifier`? | yes | **yes**, removed in G6 |
 | [Q-D3.1](#dr-d3) | One or several roles per member per resource? | one | **one** |
 | [Q-D3.2](#dr-d3) | `roles_per_resource` Product setting with a list-shaped contract? | list-shaped contract now, setting later | **contract now**, setting later |
-| [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes** |
+| [Q-D5.1](#dr-d5) | Default Organization role now? | yes | **yes**, superseded by Q-D5.2 |
+| [Q-D5.2](#dr-d5) | Optional role instead of a default role? | yes | **yes** (2026-10-26) |
 | [Q-D7.1](#dr-d7) | API keys limited to one resource? | defer | **defer**; keys reach every resource |
 | [Q-D9.1](#dr-d9) | Organization behind the custom-roles switch too? | yes, off by default | **yes**, off by default |
-| [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | **yes**, except customized copies |
-| [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | **custom roles** |
-| [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | **yes** |
+| [Q-D10.1](#dr-d10) | Copies follow template changes? | yes, except customized copies | superseded: no copies (2026-10-26) |
+| [Q-D10.2](#dr-d10) | A deleted template's copies? | become custom roles | superseded: `409 ROLE_IN_USE` (2026-10-26) |
+| [Q-D10.3](#dr-d10) | Organization picks its own default role? | yes | superseded: no default role (2026-10-26) |
 | [Q-D10.4](#dr-d10) | Custom roles per Organization? | at most 50 | **50** |
+| [Q-D10.5](#dr-d10) | Permission delete with custom roles bundling it? | remove it everywhere | **remove it everywhere**, with an event (2026-10-26) |
 | [Q-E2.1](#dr-e2) | `granted_by` in the decision context? | yes, on request | **yes**, extension, inside `context` |
 | [Q-E5.1](#dr-e5) | Mirror, or OpenFGA as the only store of relationships? | mirror | **mirror** |
 | [Q-E5.2](#dr-e5) | Sync before each decision, or after each write? | after each write | **after each write**, mark as backup |
