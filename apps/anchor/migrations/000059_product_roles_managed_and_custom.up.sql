@@ -3,7 +3,7 @@
 -- (an Organization's own role). The code owns the values of type and keeps it
 -- in step with organization_id. The previous release keeps writing roles
 -- without a type during the deploy: the code reads a NULL type as MANAGED,
--- and the startup backfill fills it.
+-- and the cleanup migration fills it before it makes type NOT NULL.
 SET LOCAL lock_timeout = '5s';
 
 ALTER TABLE product_roles ADD COLUMN organization_id VARCHAR(255);

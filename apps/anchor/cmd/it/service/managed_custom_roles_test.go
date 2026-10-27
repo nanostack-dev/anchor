@@ -14,27 +14,20 @@ import (
 	"anchor/internal/domain/organizationinvitation"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
-	"anchor/internal/service"
 )
 
-// A release before role types wrote roles with none. Only the startup
-// backfill types them, and no route reaches it.
-func TestRoleTypeBackfill(t *testing.T) {
-	t.Run("A role written without a type is stored as managed", func(t *testing.T) {
-		managed := givenUntypedRole(t, GivenATenantAndProduct(t).Product.ID)
+// The previous release writes roles without a type during the deploy, and it
+// writes only roles the Product manages.
+func TestRoleWrittenWithoutAType(t *testing.T) {
+	t.Run("A role written without a type reads as managed", func(t *testing.T) {
+		productID := GivenATenantAndProduct(t).Product.ID
+		untyped := givenUntypedRole(t, productID)
 
-		require.NoError(t, service.BackfillRoleTypes(t.Context(), ProductRepository, ProductRoleRepo, TestLogger))
+		found, err := ProductRoleRepo.FindByProductIDAndRoleID(t.Context(), productID, untyped.ID)
 
-		assert.Equal(t, string(role.TypeManaged), storedRoleType(t, managed.ID))
-	})
-
-	t.Run("Running the backfill again changes nothing", func(t *testing.T) {
-		managed := givenUntypedRole(t, GivenATenantAndProduct(t).Product.ID)
-		require.NoError(t, service.BackfillRoleTypes(t.Context(), ProductRepository, ProductRoleRepo, TestLogger))
-
-		require.NoError(t, service.BackfillRoleTypes(t.Context(), ProductRepository, ProductRoleRepo, TestLogger))
-
-		assert.Equal(t, string(role.TypeManaged), storedRoleType(t, managed.ID))
+		require.NoError(t, err)
+		require.True(t, found.IsPresent())
+		assert.Equal(t, role.TypeManaged, found.Value().Type)
 	})
 }
 
@@ -324,14 +317,6 @@ func givenProductUser(t *testing.T, productID string) string {
 		VALUES ($1, $2, $3, 'ACTIVE')`, userID, productID, uuid.NewString()+"@example.com")
 	require.NoError(t, err)
 	return userID
-}
-
-func storedRoleType(t *testing.T, roleID string) string {
-	t.Helper()
-	var stored string
-	require.NoError(t, TestDB.QueryRowContext(t.Context(),
-		`SELECT type FROM product_roles WHERE id = $1`, roleID).Scan(&stored))
-	return stored
 }
 
 func rolePermissions(t *testing.T, roleID string) []string {

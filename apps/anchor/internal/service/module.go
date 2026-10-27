@@ -46,7 +46,6 @@ func NewModule() fx.Option {
 
 		// Background workers
 		fx.Invoke(RegisterProductPermissionStartupSync),
-		fx.Invoke(RegisterRoleTypeBackfill),
 		fx.Invoke(RegisterAPIKeyEventWorker),
 		fx.Invoke(RegisterIntegrationEventWorker),
 	)

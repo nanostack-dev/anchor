@@ -54,9 +54,9 @@ This ships in steps, because a rolling deploy runs the previous release beside t
 
 1. **This release** adds `type` and `organization_id`, makes the membership role nullable, and reads custom roles and role-less members correctly. It writes neither.
 2. **The next releases** add members without a role, and let Organizations create custom roles.
-3. **A later cleanup** makes `type` `NOT NULL`.
+3. **A later cleanup** fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
 
-`type` has no default. Migration `000059` stores `MANAGED` on every existing role. The previous release keeps writing roles without a type during the deploy, so the code reads a `NULL` type as `MANAGED`, which is the only kind that release writes, and on every start, under the `product_roles:type-backfill` lock, `BackfillRoleTypes` stores it on them.
+`type` has no default. Migration `000059` stores `MANAGED` on every existing role. The previous release keeps writing roles without a type during the deploy, so the code reads a `NULL` type as `MANAGED`, which is the only kind that release writes. Nothing needs to store it before the cleanup migration.
 
 Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixDirty` marks a failed migration as applied and never retries it, and a failed `CONCURRENTLY` build leaves an `INVALID` index, so the resource type module checks on start that each role migration (`000059` to `000065`) holds, and refuses to start otherwise (`roleSchemaFacts` in `internal/resourcetype/schema_check.go`):
 
@@ -79,4 +79,4 @@ During the deploy, the previous release maps only the product-wide name guards t
 
 ## Tests
 
-`TestRoleTypeBackfill`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add.
+`TestRoleWrittenWithoutAType`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add.

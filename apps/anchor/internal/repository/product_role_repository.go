@@ -76,9 +76,6 @@ type ProductRoleRepository interface {
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 	) (search.Result[role.ProductRole], error)
-	// BackfillTypesInternal stores MANAGED on the Product's roles that a
-	// release before types wrote. Only the startup backfill calls it.
-	BackfillTypesInternal(ctx context.Context, productID string) (int64, error)
 }
 
 type productRoleRepositoryImpl struct {
@@ -557,19 +554,4 @@ func (r *productRoleRepositoryImpl) findOne(
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
 	)
-}
-
-func (r *productRoleRepositoryImpl) BackfillTypesInternal(ctx context.Context, productID string) (int64, error) {
-	stmt := table.ProductRoles.UPDATE(table.ProductRoles.Type).
-		SET(postgres.String(string(role.TypeManaged))).
-		WHERE(
-			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-				AND(isManaged()).
-				AND(table.ProductRoles.Type.IS_NULL()),
-		)
-	result, err := stmt.ExecContext(ctx, transactor.Executor(ctx, r.db))
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
