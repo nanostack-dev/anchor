@@ -1,6 +1,9 @@
 package service
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 func canonicalizePermissionNames(foundNames, requestedNames []string) ([]string, []string) {
 	canonicalNames := make(map[string]string, len(foundNames))
@@ -16,7 +19,10 @@ func canonicalizePermissionNames(foundNames, requestedNames []string) ([]string,
 			missingNames = append(missingNames, name)
 			continue
 		}
-		canonicalRequested = append(canonicalRequested, canonicalName)
+		// A repeat would trip the grant table's primary key and answer 500.
+		if !slices.Contains(canonicalRequested, canonicalName) {
+			canonicalRequested = append(canonicalRequested, canonicalName)
+		}
 	}
 
 	return canonicalRequested, missingNames

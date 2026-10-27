@@ -118,6 +118,7 @@ flowchart TD
 | A3 | Rule in `docs/development/agent-rules.md`: a pre-check's write maps the unique violation and adds a race-test case | process | anchor backend |  | done | [anchor#237](https://github.com/nanostack-dev/anchor/pull/237) | R1, R2 |
 | A4 | Fix the two leftovers: idempotent inbound webhook event insert, email template version race | prevent | anchor backend (human) | 2026-10-30 | open |  | R1 |
 | A5 | Deploy anchor#237 to prod (prod still on 48bdb77) | mitigate | anchor backend (human) | 2026-10-23 | open |  | R1 |
+| A6 | Schema-wide check: `TestEveryUniqueGuardMapsToADomainError` fails on a unique guard that no write maps. It found that a permission listed twice on an API key or role create answered 500; those names are now deduplicated. | detect | anchor backend |  | done |  | R1, R2 |
 
 ## Responders
 

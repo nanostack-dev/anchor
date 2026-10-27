@@ -69,6 +69,25 @@ func TestProductAPIKeyCreate(t *testing.T) {
 		},
 	)
 	t.Run(
+		"Create API key with a permission listed twice grants it once", func(t *testing.T) {
+			resp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
+				t.Context(),
+				product.ProductID,
+				ct.CreateProductAPIKeyJSONRequestBody{
+					Name:        uuid.NewString(),
+					Permissions: []string{permission1, strings.ToUpper(permission1)},
+				},
+			)
+			if err != nil {
+				t.Fatalf("failed to create API key: %v", err)
+			}
+			if assert.NotNil(t, resp.JSON201, string(resp.Body)) {
+				assert.Len(t, resp.JSON201.Permissions, 1)
+				assert.Equal(t, permission1, resp.JSON201.Permissions[0].PermissionName)
+			}
+		},
+	)
+	t.Run(
 		"Create mutable API key when requested", func(t *testing.T) {
 			apiKeyName := uuid.NewString()
 			mutable := true

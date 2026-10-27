@@ -67,6 +67,8 @@ Product permissions have no public create, and registration serializes on its in
 
 Add a case to one of the two tests for every new uniqueness pre-check.
 
+`TestEveryUniqueGuardMapsToADomainError` (`apps/anchor/cmd/it/service/unique_index_mapping_test.go`) catches a guard that no write maps at all. It reads every unique index and constraint from the migrated schema, then parses `internal/` for the names passed to `OnUnique` and `pgerr.IsUniqueViolation`. It fails when a guard is neither mapped nor listed in `uniqueGuardsWithoutMapping` with a reason, and when a mapped or listed name matches no guard, so a misspelt constraint name fails too. A guard that a migration dropped while the mapping still names it for the previous release's schema goes in `retiredUniqueGuards`, which must be absent from the schema. Guards over an `id` column are skipped because the server generates ids. The test checks guard names, not write paths: a guard mapped on create but missed on a rename passes, which the race tests above cover. Run it with `go test ./cmd/it/service/... -run TestEveryUniqueGuardMapsToADomainError -count=1` from `apps/anchor`.
+
 ## API-key pagination boundaries
 
 The product API-key and organization API-key repository tests list their five page boundaries as named local cases: full, first, second, partial and beyond-end without sort. Every case checks total matches separately from the returned count, length and ordered IDs. Preserve the two repository scopes and the existing sequential fixture execution when extending these tables. Those tables page by offset, which a search still accepts.

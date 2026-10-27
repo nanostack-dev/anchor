@@ -710,7 +710,7 @@ func (s *productRoleService) resolveRolePermissions(
 		return nil, NewPermissionsNotFoundError(productID, missing)
 	}
 
-	resolved := slices.Clone(input)
+	resolved := slices.Clone(input[:len(canonicalNames)]) // repeats dropped; entries differ only by name and ID
 	for i, name := range canonicalNames {
 		resolved[i].PermissionName = name
 	}

@@ -42,7 +42,7 @@ func TestResolveRolePermissionsPreservesInput(t *testing.T) {
 		expected  []string
 		missing   bool
 	}{
-		{"case duplicate catalog uses last spelling", []string{"document:READ", "DOCUMENT:read"}, []string{"Document:Read", "Document:Read"}, false},
+		{"case variants of one name resolve to one grant in the last catalog spelling", []string{"document:READ", "DOCUMENT:read"}, []string{"Document:Read"}, false},
 		{"missing name leaves valid input untouched", []string{"document:READ", "missing:Grant"}, nil, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
