@@ -11,6 +11,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -227,10 +228,10 @@ func (s *organizationMembershipService) checkMembershipPresence(
 // AddMember and UpdateMemberRole can share the common tail.
 func (s *organizationMembershipService) applyMembership(
 	ctx context.Context,
-	productID, organizationID, productUserID, roleID string,
+	productID, organizationID, productUserID string, roleID *string,
 	eventType events.Type,
 	failMsg, successMsg string,
-	repoFn func(context.Context, string, string, string, string) (organization.Membership, error),
+	repoFn func(context.Context, string, string, string, *string) (organization.Membership, error),
 	logger zerolog.Logger,
 ) (organization.Membership, error) {
 	var membership organization.Membership
@@ -246,13 +247,13 @@ func (s *organizationMembershipService) applyMembership(
 			return organization.Membership{}, NewOrganizationMembershipAlreadyExistsError(productUserID, organizationID)
 		}
 		if errors.Is(txErr, repository.ErrOrganizationMembershipRoleGone) {
-			return organization.Membership{}, NewBodyRoleNotFoundError(roleID)
+			return organization.Membership{}, NewBodyRoleNotFoundError(loggedRoleID(roleID))
 		}
 		logger.Error().Err(txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
-			Str("role_id", roleID).
+			Str("role_id", loggedRoleID(roleID)).
 			Msg(failMsg)
 		return organization.Membership{}, txErr
 	}
@@ -261,7 +262,7 @@ func (s *organizationMembershipService) applyMembership(
 		Str("product_id", productID).
 		Str("organization_id", organizationID).
 		Str("product_user_id", productUserID).
-		Str("role_id", roleID).
+		Str("role_id", loggedRoleID(roleID)).
 		Msg(successMsg)
 
 	return membership, nil
@@ -411,14 +412,14 @@ func (s *organizationMembershipService) validateProductUser(
 
 func (s *organizationMembershipService) validateRole(
 	ctx context.Context,
-	productID, organizationID, roleID string,
+	productID, organizationID string, roleID *string,
 	logger zerolog.Logger,
 ) error {
 	err := CheckAssignableRole(ctx, s.productRoleRepo, productID, organizationID, roleID)
 	if _, isFault := fault.As(err); err != nil && !isFault {
 		logger.Error().Err(err).
 			Str("product_id", productID).
-			Str("role_id", roleID).
+			Str("role_id", loggedRoleID(roleID)).
 			Msg("failed to verify role exists")
 	}
 	return err
@@ -427,21 +428,30 @@ func (s *organizationMembershipService) validateRole(
 // CheckAssignableRole answers a role_id in a request body that a member of the
 // Organization may not hold. A member may hold a role the Product manages or
 // a custom role of their own Organization; another Organization's role answers
-// as an unknown one, so a request learns nothing about it.
+// as an unknown one, so a request learns nothing about it. No role (nil) is
+// always allowed: the member holds no permission.
 func CheckAssignableRole(
-	ctx context.Context, roles repository.ProductRoleRepository, productID, organizationID, roleID string,
+	ctx context.Context, roles repository.ProductRoleRepository, productID, organizationID string, roleID *string,
 ) error {
-	found, err := roles.FindInProductByID(ctx, productID, roleID)
+	if roleID == nil {
+		return nil
+	}
+	found, err := roles.FindInProductByID(ctx, productID, *roleID)
 	if err != nil {
 		return err
 	}
 	if found.IsAbsent() {
-		return NewBodyRoleNotFoundError(roleID)
+		return NewBodyRoleNotFoundError(*roleID)
 	}
 	if named := found.Value(); !named.AssignableIn(organizationID) {
-		return NewBodyRoleNotFoundError(roleID)
+		return NewBodyRoleNotFoundError(*roleID)
 	}
 	return nil
+}
+
+// loggedRoleID is a role_id for a log line or an error: empty for no role.
+func loggedRoleID(roleID *string) string {
+	return functional.FromPtr(roleID).OrElse("")
 }
 
 func (s *organizationMembershipService) ensureOrganizationExists(

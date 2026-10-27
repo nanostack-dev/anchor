@@ -78,7 +78,7 @@ func (w world) invite(email string) ct.OrganizationInvitationResponse {
 	w.t.Helper()
 	return w.invitations.Create(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 		Email:  openapi_types.Email(email),
-		RoleId: w.roleID,
+		RoleId: new(w.roleID),
 	})
 }
 
@@ -96,7 +96,7 @@ func (w world) inviteRaw(email string) *ct.CreateOrganizationInvitationResponse 
 	w.t.Helper()
 	return w.invitations.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 		Email:  openapi_types.Email(email),
-		RoleId: w.roleID,
+		RoleId: new(w.roleID),
 	})
 }
 
@@ -104,7 +104,7 @@ func (w world) addMember(productUserID string) {
 	w.t.Helper()
 	resp, err := w.product.AllScopeAPIKeyClient().AddOrganizationMemberWithResponse(
 		context.Background(), w.product.ProductID, w.organizationID,
-		ct.AddOrganizationMemberJSONRequestBody{ProductUserId: productUserID, RoleId: w.roleID},
+		ct.AddOrganizationMemberJSONRequestBody{ProductUserId: productUserID, RoleId: new(w.roleID)},
 	)
 	require.NoError(w.t, err)
 	require.Equal(w.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))

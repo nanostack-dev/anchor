@@ -562,7 +562,7 @@ func productInvitationsCursorCase(t *testing.T) cursorCase {
 		}
 		w.invitations.Create(second, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 	}
 	execSQL(

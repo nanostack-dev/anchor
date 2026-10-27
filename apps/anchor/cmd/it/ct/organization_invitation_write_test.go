@@ -23,14 +23,14 @@ func TestUpdateInvitation_ChangesRoleAndExpiry(t *testing.T) {
 		expiresAt := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
 
 		updated := w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    otherRole,
+			RoleId:    new(otherRole),
 			ExpiresAt: expiresAt,
 		})
 
-		assert.Equal(t, otherRole, updated.RoleId)
+		assert.Equal(t, new(otherRole), updated.RoleId)
 		assert.WithinDuration(t, expiresAt, updated.ExpiresAt, time.Second)
 		assert.Equal(t, created.Email, updated.Email)
-		assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
+		assert.Equal(t, new(otherRole), w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
 }
 
@@ -64,7 +64,7 @@ func TestUpdateInvitation_RefusesExpiryInThePast(t *testing.T) {
 		created := w.invite(uniqueEmail())
 
 		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    w.roleID,
+			RoleId:    new(w.roleID),
 			ExpiresAt: time.Now().Add(-time.Minute),
 		})
 
@@ -83,7 +83,7 @@ func TestUpdateInvitation_RefusesUnknownRole(t *testing.T) {
 		created := w.invite(uniqueEmail())
 
 		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    ids.MustNew("product_role"),
+			RoleId:    new(ids.MustNew("product_role")),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 
@@ -104,7 +104,7 @@ func TestUpdateInvitation_RefusesUnknownInvitation(t *testing.T) {
 			w.organizationID,
 			ids.MustNew("oinv"),
 			ct.UpdateOrganizationInvitationJSONRequestBody{
-				RoleId:    w.roleID,
+				RoleId:    new(w.roleID),
 				ExpiresAt: time.Now().Add(time.Hour),
 			},
 		)
@@ -124,7 +124,7 @@ func TestUpdateInvitation_RefusesAnExpiredInvitation(t *testing.T) {
 		w.expire(created.Id)
 
 		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    w.roleID,
+			RoleId:    new(w.roleID),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 
@@ -145,13 +145,13 @@ func TestUpdateInvitation_RefusesAnAcceptedInvitation(t *testing.T) {
 		w.accept(created.Id, w.newProductUser(uniqueEmail()))
 
 		resp := w.invitations.UpdateRaw(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    w.newRole(),
+			RoleId:    new(w.newRole()),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 
 		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 		assert.Equal(t, "ORGANIZATION_INVITATION_ALREADY_ACCEPTED", errorCode(t, resp.JSON409.Errors))
-		assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
+		assert.Equal(t, new(w.roleID), w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
 }
 

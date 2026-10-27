@@ -20,6 +20,7 @@ require (
 	github.com/nanostack-dev/nanostack-framework v0.20.0
 	github.com/nanostack-dev/pgkit v0.0.44
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
+	github.com/oapi-codegen/nullable v1.1.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23

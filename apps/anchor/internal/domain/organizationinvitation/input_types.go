@@ -12,8 +12,9 @@ type CreateInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 	Email          string `validate:"required,email"`
-	RoleID         string `validate:"required,notblank"`
-	ExpiresAt      *time.Time
+	// Nil invites a member who will hold no role.
+	RoleID    *string `validate:"omitempty,notblank"`
+	ExpiresAt *time.Time
 }
 
 type GetInput struct {
@@ -23,11 +24,12 @@ type GetInput struct {
 }
 
 type UpdateInput struct {
-	ProductID      string    `validate:"required,notblank"`
-	OrganizationID string    `validate:"required,notblank"`
-	InvitationID   string    `validate:"required,notblank"`
-	RoleID         string    `validate:"required,notblank"`
-	ExpiresAt      time.Time `validate:"required"`
+	ProductID      string `validate:"required,notblank"`
+	OrganizationID string `validate:"required,notblank"`
+	InvitationID   string `validate:"required,notblank"`
+	// Nil sets the invitation to no role.
+	RoleID    *string   `validate:"omitempty,notblank"`
+	ExpiresAt time.Time `validate:"required"`
 }
 
 type DeleteInput struct {

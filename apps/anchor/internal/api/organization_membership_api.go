@@ -80,11 +80,16 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
+	roleID, err := requiredRoleID(request.Body.RoleId)
+	if err != nil {
+		return nil, err
+	}
+
 	input := organization.UpdateMemberRoleInput{
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
 		ProductUserID:  request.ProductUserId,
-		RoleID:         request.Body.RoleId,
+		RoleID:         roleID,
 	}
 
 	membership, err := s.OrganizationMembershipService.UpdateMemberRole(ctx, input)
@@ -217,15 +222,19 @@ func mapOrgMemberToResponse(m organization.Membership, includePermissions bool) 
 		JoinedAt:      m.JoinedAt,
 		Name:          name,
 		ProductUserId: m.ProductUserID,
-		Role: struct {
-			Id          Ksuid     `json:"id"` //nolint:revive,staticcheck // matches generated struct field name
-			Name        string    `json:"name"`
-			Permissions *[]string `json:"permissions,omitempty"`
-		}{
-			Id:          m.RoleID,
-			Name:        m.RoleName,
-			Permissions: includedRolePermissions(m.RolePermissions, includePermissions),
-		},
+		Role:          memberRoleResponse(m, includePermissions),
+	}
+}
+
+// memberRoleResponse is the member's role, or nil for a member who holds none.
+func memberRoleResponse(m organization.Membership, includePermissions bool) *OrganizationMemberRoleResponse {
+	if m.Role == nil {
+		return nil
+	}
+	return &OrganizationMemberRoleResponse{
+		Id:          m.Role.ID,
+		Name:        m.Role.Name,
+		Permissions: includedRolePermissions(m.RolePermissions, includePermissions),
 	}
 }
 

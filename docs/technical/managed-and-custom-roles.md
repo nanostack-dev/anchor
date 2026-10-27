@@ -38,7 +38,20 @@ Managed role names are unique in their Product, regardless of case (`idx_product
 
 ## A member with no role
 
-A membership or an invitation may hold no role (`product_role_id` is nullable). The member belongs to the Organization and holds no permission. Membership reads join the role with `LEFT JOIN`, so such a member still lists.
+A member may hold no role ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) D5). They belong to the Organization and hold no permission there: an access check reaches the Organization and denies every action with `MISSING_PERMISSION`, until the member gets a role.
+
+| Request | Body | Result |
+| --- | --- | --- |
+| Add a member, create an invitation, create an Organization with a founding member | `role_id` left out | a member, or an invitation, with no role |
+| Update a member's role, update an invitation | `"role_id": null` | the role is removed |
+| Update a member's role, update an invitation | `role_id` left out | `400 VALIDATION_ERROR` on `role_id`, as before |
+| Accept an invitation with no role | — | a member with no role |
+
+Responses show `"role": null` on a member and on a product user's organization, and `"role_id": null` on an invitation. Released clients always name a role, so they never see null. The access decision context leaves `role` out.
+
+The update routes tell a missing `role_id` from `null` on the server only: the request type is `nullable.Nullable[string]` (`x-go-type` in `openapi.yaml`, read by `requiredRoleID` in `internal/api`). `generate_anchor.sh` drops that hint from the client spec, so the generated clients send a nil pointer as `null`.
+
+In the domain, `organization.Membership.Role` and `user.OrganizationMembership.Role` are a `*role.Ref`, nil for no role, and the role IDs of the write inputs and of an invitation are a `*string`. Membership reads join the role with `LEFT JOIN`, so such a member still lists, with no permission. Membership and invitation events carry no role, so they do not change.
 
 ## Deletes
 
@@ -52,9 +65,10 @@ A resource type that a custom role is scoped to is in use (`CountUsage`), and a 
 
 This ships in steps, because a rolling deploy runs the previous release beside the next one:
 
-1. **This release** adds `type` and `organization_id`, makes the membership role nullable, and reads custom roles and role-less members correctly. It writes neither.
-2. **The next releases** add members without a role, and let Organizations create custom roles.
-3. **A later cleanup** fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
+1. **The first release** adds `type` and `organization_id`, makes the membership role nullable, and reads custom roles and role-less members correctly. It writes neither.
+2. **The second release** adds members and invitations without a role. The first release runs beside it during that deploy, and shows such a member's role as an empty `{"id": "", "name": ""}` until its replicas stop.
+3. **A later release** lets Organizations create custom roles.
+4. **A later cleanup** fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
 
 `type` has no default. Migration `000059` stores `MANAGED` on every existing role. The previous release keeps writing roles without a type during the deploy, so the code reads a `NULL` type as `MANAGED`, which is the only kind that release writes. Nothing needs to store it before the cleanup migration.
 
@@ -79,4 +93,4 @@ During the deploy, the previous release maps only the product-wide name guards t
 
 ## Tests
 
-`TestRoleWrittenWithoutAType`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add.
+`TestRoleWrittenWithoutAType`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add. `TestOrganizationMemberWithoutARole` and `TestOrganizationInvitationWithoutARole` in `apps/anchor/cmd/it/ct` cover the routes in the table above.

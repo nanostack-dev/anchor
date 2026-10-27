@@ -23,7 +23,7 @@ func createOrgMembership(t *testing.T, productID, organizationID string) (produc
 	productUserID = createProductUser(t, productID)
 
 	_, err := repoCtx.OrganizationMembershipRepository.Create(
-		context.Background(), productID, organizationID, productUserID, roleID,
+		context.Background(), productID, organizationID, productUserID, &roleID,
 	)
 	require.NoError(t, err)
 
@@ -49,7 +49,7 @@ func createOrgMembershipWithUser(
 	roleID := createProductRole(t, productID)
 
 	_, err = repoCtx.OrganizationMembershipRepository.Create(
-		context.Background(), productID, organizationID, created.ID, roleID,
+		context.Background(), productID, organizationID, created.ID, &roleID,
 	)
 	require.NoError(t, err)
 
@@ -299,7 +299,8 @@ func TestOrganizationMembershipRepositorySearchByOrgIDFilterByRoleIDs(t *testing
 	require.NoError(t, err)
 	require.Len(t, byRole.Items, 1)
 	assert.Equal(t, matchingProductUserID, byRole.Items[0].ProductUserID)
-	assert.Equal(t, matchingRoleID, byRole.Items[0].RoleID)
+	require.NotNil(t, byRole.Items[0].Role)
+	assert.Equal(t, matchingRoleID, byRole.Items[0].Role.ID)
 
 	none, err := repoCtx.OrganizationMembershipRepository.SearchByOrgID(
 		context.Background(), productID, organizationID,

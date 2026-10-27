@@ -106,7 +106,7 @@ func toDomain(now time.Time) func(model.OrganizationInvitations) organizationinv
 			ProductID:      entity.ProductID,
 			OrganizationID: entity.OrganizationID,
 			Email:          entity.Email,
-			RoleID:         functional.FromPtr(entity.ProductRoleID).OrElse(""),
+			RoleID:         entity.ProductRoleID,
 			Status:         organizationinvitation.DeriveStatus(entity.AcceptedAt, entity.ExpiresAt, now),
 			ExpiresAt:      entity.ExpiresAt,
 			AcceptedAt:     entity.AcceptedAt,
@@ -165,7 +165,7 @@ func (r *repositoryImpl) Create(
 		ProductID:      invitation.ProductID,
 		OrganizationID: invitation.OrganizationID,
 		Email:          invitation.Email,
-		ProductRoleID:  functional.OptionOf(invitation.RoleID, invitation.RoleID != "").ToPtr(),
+		ProductRoleID:  invitation.RoleID,
 		ExpiresAt:      invitation.ExpiresAt,
 	}
 	stmt := table.OrganizationInvitations.INSERT(
@@ -304,10 +304,10 @@ func (r *repositoryImpl) UpdateRoleAndExpiry(
 	stmt := table.OrganizationInvitations.UPDATE(
 		table.OrganizationInvitations.ProductRoleID,
 		table.OrganizationInvitations.ExpiresAt,
-	).SET(
-		postgres.String(invitation.RoleID),
-		postgres.TimestampzT(invitation.ExpiresAt),
-	).WHERE(
+	).MODEL(model.OrganizationInvitations{
+		ProductRoleID: invitation.RoleID,
+		ExpiresAt:     invitation.ExpiresAt,
+	}).WHERE(
 		invitationByID(invitation.ProductID, invitation.OrganizationID, invitation.ID),
 	).RETURNING(table.OrganizationInvitations.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).

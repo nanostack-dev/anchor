@@ -2155,7 +2155,11 @@ components:
           - id
           - name
         role:
-          $ref: "#/components/schemas/UserOrganizationRoleResponse"
+          anyOf:
+          - $ref: "#/components/schemas/UserOrganizationRoleResponse"
+          - type: "null"
+          description: >-
+            The user's role within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
         joined_at:
           type: string
           format: date-time
@@ -2700,11 +2704,11 @@ components:
           description: >-
             Role to assign to the founding member. It must be a role the Product
             manages: a new Organization has no custom role yet. Any other role
-            answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding
+            member a member with no role and no permission.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
-      - role_id
     ProductOrganizationResponse:
       type: object
       properties:
@@ -2893,31 +2897,11 @@ components:
           description: External (Clerk) user ID of the member.
           examples: ["user_2NNEqL2nrIRdJ194ndJqow38MB1"]
         role:
-          type: object
-          description: Role assigned to the member within the organization.
-          properties:
-            id:
-              $ref: "#/components/schemas/ksuid"
-              description: Unique identifier of the role.
-              examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
-            name:
-              type: string
-              description: Display name of the role.
-              examples: ["Admin"]
-            permissions:
-              type: array
-              items:
-                type: string
-              description: >-
-                Product resource permission names assigned to this role
-                (for example "document:read", "file:delete"). Present only when
-                the caller sends `include=role_permissions`. Absent means the
-                caller did not ask for the permissions. Absent never means the
-                role has no permissions.
-              examples: [["org:read", "org:write"]]
-          required:
-          - id
-          - name
+          anyOf:
+          - $ref: "#/components/schemas/OrganizationMemberRoleResponse"
+          - type: "null"
+          description: >-
+            Role assigned to the member within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
         joined_at:
           type: string
           format: date-time
@@ -2927,6 +2911,32 @@ components:
       - email
       - role
       - joined_at
+    OrganizationMemberRoleResponse:
+      type: object
+      description: The role a member holds within the organization.
+      properties:
+        id:
+          $ref: "#/components/schemas/ksuid"
+          description: Unique identifier of the role.
+          examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
+        name:
+          type: string
+          description: Display name of the role.
+          examples: ["Admin"]
+        permissions:
+          type: array
+          items:
+            type: string
+          description: >-
+            Product resource permission names assigned to this role
+            (for example "document:read", "file:delete"). Present only when
+            the caller sends `include=role_permissions`. Absent means the
+            caller did not ask for the permissions. Absent never means the
+            role has no permissions.
+          examples: [["org:read", "org:write"]]
+      required:
+      - id
+      - name
     OrganizationMemberListResponse:
       type: object
       description: Paginated list of organization members.
@@ -2951,20 +2961,35 @@ components:
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: >-
-            The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+            The role to assign to the member. It must be a role the Product
+            manages or a custom role of this Organization; any other role
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with
+            no role: they belong to the Organization and hold no permission
+            there until they get one.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
-      - role_id
     OrganizationMemberRoleRequest:
       type: object
       description: Request body for updating a member's role within an 
         organization.
       properties:
         role_id:
-          $ref: "#/components/schemas/ksuid"
+          type: [string, "null"]
+          pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
+          # Server only: a Nullable tells an omitted role_id (400) from null
+          # (no role). generate_anchor.sh drops these three hints from the
+          # client spec, where a nil pointer sends null.
+          x-go-type: nullable.Nullable[string]
+          x-go-type-skip-optional-pointer: true
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
           description: >-
-            The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+            The new role to assign to the member. It must be a role the Product
+            manages or a custom role of this Organization; any other role
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the
+            member's role: they stay a member and hold no permission. The field
+            is required, so leaving it out answers 400.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - role_id
@@ -3046,8 +3071,13 @@ components:
           description: The invited email address. It never changes.
           examples: ["alice@example.com"]
         role_id:
-          $ref: "#/components/schemas/ksuid"
-          description: The role the invited person receives on accept.
+          anyOf:
+          - $ref: "#/components/schemas/ksuid"
+          - type: "null"
+          description: >-
+            The role the invited person receives on accept. Null means they
+            join with no role and no permission. A client that always names a
+            role when it invites never sees null.
         status:
           $ref: "#/components/schemas/OrganizationInvitationStatus"
         expires_at:
@@ -3096,7 +3126,10 @@ components:
         role_id:
           $ref: "#/components/schemas/ksuid"
           description: >-
-            The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+            The role the invited person receives on accept. It must be a role
+            the Product manages or a custom role of this Organization; any
+            other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite
+            a member with no role.
         expires_at:
           type: string
           format: date-time
@@ -3105,7 +3138,6 @@ components:
             7 days from now.
       required:
       - email
-      - role_id
     OrganizationInvitationUpdateRequest:
       type: object
       description: >-
@@ -3114,9 +3146,20 @@ components:
       additionalProperties: false
       properties:
         role_id:
-          $ref: "#/components/schemas/ksuid"
+          type: [string, "null"]
+          pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
+          # Server only: a Nullable tells an omitted role_id (400) from null
+          # (no role). generate_anchor.sh drops these three hints from the
+          # client spec, where a nil pointer sends null.
+          x-go-type: nullable.Nullable[string]
+          x-go-type-skip-optional-pointer: true
+          x-go-type-import:
+            path: github.com/oapi-codegen/nullable
           description: >-
-            The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+            The new role. It must be a role the Product manages or a custom
+            role of this Organization; any other role answers 400
+            ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The
+            field is required, so leaving it out answers 400.
         expires_at:
           type: string
           format: date-time

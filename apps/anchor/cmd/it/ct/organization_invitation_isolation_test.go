@@ -37,13 +37,13 @@ func TestInvitations_AnotherProductCannotReachAnInvitationOfThisProduct(t *testi
 	t.Run("The create operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.CreateRaw(owner.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: owner.roleID,
+			RoleId: new(owner.roleID),
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 	t.Run("The update operation cannot reach an invitation belonging to another product or tenant", func(t *testing.T) {
 		resp := intruder.UpdateRaw(owner.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    owner.roleID,
+			RoleId:    new(owner.roleID),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))

@@ -95,7 +95,7 @@ func TestSearchInvitations_ListsOnlyTheInvitationsOfTheOrganization(t *testing.T
 		otherOrganization := w.newOrganization()
 		w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 
 		items := w.invitations.Search(w.organizationID, ct.SearchOrganizationInvitationsJSONRequestBody{})

@@ -92,16 +92,19 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 	if !isMember {
 		return e.whyNotAMember(ctx, request)
 	}
-	return reached(&Identity{
+	identity := &Identity{
 		OrganizationID:   member.OrganizationID,
 		OrganizationName: member.OrganizationName,
-		RoleID:           member.RoleID,
-		RoleName:         member.RoleName,
 		ProductUserID:    user.ID,
 		ProductUserName:  user.Name,
 		ProductUserEmail: user.Email,
 		Permissions:      member.RolePermissions,
-	}), nil
+	}
+	// A member with no role reaches the organization and holds no permission.
+	if member.Role != nil {
+		identity.RoleID, identity.RoleName = member.Role.ID, member.Role.Name
+	}
+	return reached(identity), nil
 }
 
 // whyNotAMember tells a missing organization from a missing membership; it

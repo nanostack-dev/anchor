@@ -96,7 +96,7 @@ func TestOrganizationFoundingMemberRetryDoesNotRecreateWorkspaces(t *testing.T) 
 			Workspace: &ct.ProductWorkspaceRequest{Name: "Engineering"},
 			FoundingMember: &ct.FoundingMemberRequest{
 				ProductUserId: state.ProductUser("u").ID,
-				RoleId:        state.ProductRole("r").ID,
+				RoleId:        new(state.ProductRole("r").ID),
 			},
 		}
 		created := product.Organizations().Create(body)

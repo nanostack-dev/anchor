@@ -444,7 +444,7 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 							t.Context(), product.ProductID, org.Id,
 							ct.AddOrganizationMemberJSONRequestBody{
 								ProductUserId: userResp.JSON201.Id,
-								RoleId:        roleResp.JSON201.Id,
+								RoleId:        new(roleResp.JSON201.Id),
 							},
 						)
 						if addErr != nil {

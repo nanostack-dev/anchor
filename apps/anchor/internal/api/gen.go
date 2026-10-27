@@ -33,6 +33,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/oapi-codegen/nullable"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -841,10 +842,10 @@ type FoundingMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+	// RoleId Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding member a member with no role and no permission.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId *Ksuid `json:"role_id,omitempty"`
 }
 
 // IntegrationAuditLogEntryResponse defines model for IntegrationAuditLogEntryResponse.
@@ -1459,10 +1460,10 @@ type OrganizationInvitationCreateRequest struct {
 	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// RoleId The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+	// RoleId The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite a member with no role.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
+	RoleId *Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationInvitationFilter Filter criteria for searching organization invitations.
@@ -1511,10 +1512,8 @@ type OrganizationInvitationResponse struct {
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	OrganizationId Ksuid `json:"organization_id"`
 
-	// RoleId The role the invited person receives on accept.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
+	// RoleId The role the invited person receives on accept. Null means they join with no role and no permission. A client that always names a role when it invites never sees null.
+	RoleId *Ksuid `json:"role_id"`
 
 	// Status The status of an organization invitation. `expired` is derived on read: an invitation reads `expired` once its expiry has passed while it is pending. Anchor never stores it. Only a pending invitation can be accepted or updated.
 	Status    OrganizationInvitationStatus `json:"status"`
@@ -1545,10 +1544,8 @@ type OrganizationInvitationUpdateRequest struct {
 	// ExpiresAt The new expiry. It must be in the future.
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// RoleId The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
-	//
-	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-	RoleId Ksuid `json:"role_id"`
+	// RoleId The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The field is required, so leaving it out answers 400.
+	RoleId nullable.Nullable[string] `json:"role_id"`
 }
 
 // OrganizationLicenseAdjustRequest An adjustment to one organization's license. Use it for a bespoke arrangement that does not deserve a new tier.
@@ -1848,10 +1845,10 @@ type OrganizationMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+	// RoleId The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId *Ksuid `json:"role_id,omitempty"`
 }
 
 // OrganizationMemberResponse Represents a member of an organization with their role details.
@@ -1879,31 +1876,34 @@ type OrganizationMemberResponse struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// Role Role assigned to the member within the organization.
-	Role struct {
-		// Id Unique identifier of the role.
-		//
-		// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-		Id Ksuid `json:"id"`
-
-		// Name Display name of the role.
-		//
-		// Examples: Admin
-		Name string `json:"name"`
-
-		// Permissions Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
-		//
-		// Examples: ["org:read","org:write"]
-		Permissions *[]string `json:"permissions,omitempty"`
-	} `json:"role"`
+	// Role Role assigned to the member within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
+	Role *OrganizationMemberRoleResponse `json:"role"`
 }
 
 // OrganizationMemberRoleRequest Request body for updating a member's role within an organization.
 type OrganizationMemberRoleRequest struct {
-	// RoleId The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+	// RoleId The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
-	RoleId Ksuid `json:"role_id"`
+	RoleId nullable.Nullable[string] `json:"role_id"`
+}
+
+// OrganizationMemberRoleResponse The role a member holds within the organization.
+type OrganizationMemberRoleResponse struct {
+	// Id Unique identifier of the role.
+	//
+	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
+	Id Ksuid `json:"id"`
+
+	// Name Display name of the role.
+	//
+	// Examples: Admin
+	Name string `json:"name"`
+
+	// Permissions Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
+	//
+	// Examples: ["org:read","org:write"]
+	Permissions *[]string `json:"permissions,omitempty"`
 }
 
 // OrganizationMemberSearchRequest defines model for OrganizationMemberSearchRequest.
@@ -3350,8 +3350,8 @@ type UserOrganizationResponse struct {
 		Name string `json:"name"`
 	} `json:"organization"`
 
-	// Role The user's role within an organization.
-	Role UserOrganizationRoleResponse `json:"role"`
+	// Role The user's role within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
+	Role *UserOrganizationRoleResponse `json:"role"`
 }
 
 // UserOrganizationRoleResponse The user's role within an organization.

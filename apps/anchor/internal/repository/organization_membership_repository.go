@@ -11,6 +11,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/mapper"
 
@@ -118,20 +119,22 @@ type OrganizationMembershipRepository interface {
 		req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
 	) (search.Result[organization.Membership], error)
 
+	// Create adds the member. A nil roleID adds a member who holds no role.
 	Create(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		productUserID string,
-		roleID string,
+		roleID *string,
 	) (organization.Membership, error)
 
+	// Update sets the member's role. A nil roleID removes it.
 	Update(
 		ctx context.Context,
 		productID string,
 		organizationID string,
 		productUserID string,
-		roleID string,
+		roleID *string,
 	) (organization.Membership, error)
 
 	Delete(
@@ -253,7 +256,15 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 		return result, err
 	}
 
-	roleIDs := functional.Slice(result.Items).Map(func(m user.OrganizationMembership) string { return m.RoleID })
+	var roleIDs []string
+	for _, item := range result.Items {
+		if item.Role != nil {
+			roleIDs = append(roleIDs, item.Role.ID)
+		}
+	}
+	if len(roleIDs) == 0 {
+		return result, nil
+	}
 	permissions, err := transactor.Query[[]model.ProductRoleResourcePermissions](
 		ctx, r.db,
 		table.ProductRoleResourcePermissions.SELECT(table.ProductRoleResourcePermissions.AllColumns).WHERE(
@@ -271,7 +282,9 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 		)
 	}
 	for i := range result.Items {
-		result.Items[i].RolePermissions = rolePermissions[result.Items[i].RoleID]
+		if held := result.Items[i].Role; held != nil {
+			result.Items[i].RolePermissions = rolePermissions[held.ID]
+		}
 	}
 
 	return result, nil
@@ -317,12 +330,12 @@ func (r *organizationMembershipRepositoryImpl) Create(
 	productID string,
 	organizationID string,
 	productUserID string,
-	roleID string,
+	roleID *string,
 ) (organization.Membership, error) {
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
 		ProductUserID:  productUserID,
-		ProductRoleID:  functional.OptionOf(roleID, roleID != "").ToPtr(),
+		ProductRoleID:  roleID,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -360,12 +373,12 @@ func (r *organizationMembershipRepositoryImpl) Update(
 	productID string,
 	organizationID string,
 	productUserID string,
-	roleID string,
+	roleID *string,
 ) (organization.Membership, error) {
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
 		ProductUserID:  productUserID,
-		ProductRoleID:  functional.OptionOf(roleID, roleID != "").ToPtr(),
+		ProductRoleID:  roleID,
 		UpdatedAt:      time.Now(),
 	}
 
@@ -458,8 +471,7 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 		OrganizationName:         row.Organization.Name,
 		OrganizationDescription:  row.Organization.Description,
 		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.Organization.MetadataJSON),
-		RoleID:                   heldRoleID(row.OrganizationMemberships),
-		RoleName:                 row.Role.Name,
+		Role:                     heldRole(row.OrganizationMemberships, row.Role),
 		RolePermissions:          permissions,
 		JoinedAt:                 row.OrganizationMemberships.CreatedAt,
 	}
@@ -479,8 +491,7 @@ func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembers
 		UserEmail:       row.ProductUser.Email,
 		UserName:        userName,
 		UserExternalID:  row.ProductUser.ExternalID,
-		RoleID:          heldRoleID(row.OrganizationMemberships),
-		RoleName:        row.Role.Name,
+		Role:            heldRole(row.OrganizationMemberships, row.Role),
 		RolePermissions: permissions,
 		JoinedAt:        row.OrganizationMemberships.CreatedAt,
 	}
@@ -653,8 +664,11 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		Value()
 }
 
-// heldRoleID is the membership's role, or "" for a member who holds none: the
+// heldRole is the membership's role, or nil for a member who holds none: the
 // role joins with LEFT JOIN, so such a member still lists.
-func heldRoleID(membership model.OrganizationMemberships) string {
-	return functional.FromPtr(membership.ProductRoleID).OrElse("")
+func heldRole(membership model.OrganizationMemberships, joined model.ProductRoles) *role.Ref {
+	if membership.ProductRoleID == nil {
+		return nil
+	}
+	return &role.Ref{ID: *membership.ProductRoleID, Name: joined.Name}
 }

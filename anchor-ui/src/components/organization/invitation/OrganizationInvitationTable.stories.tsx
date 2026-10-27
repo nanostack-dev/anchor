@@ -135,6 +135,26 @@ export const EveryStatus: Story = {
 	},
 };
 
+const noRoleInvitation = invitation({
+	id: "oinv_2Nq8xKf3pLm3",
+	email: "katherine@example.com",
+	role_id: null,
+});
+
+/**
+ * An invitation with no role says so: the invited person joins with no
+ * permission.
+ */
+export const WithoutARole: Story = {
+	args: { invitations: [noRoleInvitation], total: 1 },
+	play: async ({ canvasElement }) => {
+		const row = rowFor(within(canvasElement), "katherine@example.com");
+		await waitFor(async () => {
+			await expect(row.getByText("No role")).toBeVisible();
+		});
+	},
+};
+
 function DeleteFixture({ onDelete }: { onDelete: (id: string) => void }) {
 	const [rows, setRows] = useState(allStatuses);
 	return (
