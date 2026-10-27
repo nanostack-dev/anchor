@@ -246,6 +246,25 @@ func TestProductRole_Create(t *testing.T) {
 		},
 	)
 
+	t.Run(
+		"Creating a product role with a permission listed twice grants it once", func(t *testing.T) {
+			permissionName := testCtx.DefaultResourcePermissions[0].Name
+
+			resp, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+				ctx, productID, ct.CreateProductRoleJSONRequestBody{
+					ResourceType: "organization",
+					Name:         "RoleWithRepeatedPermission_" + ids.MustNew("test"),
+					Permissions:  []string{permissionName, strings.ToUpper(permissionName)},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+			if assert.Len(t, resp.JSON201.Permissions, 1) {
+				assert.Equal(t, permissionName, resp.JSON201.Permissions[0].PermissionName)
+			}
+		},
+	)
+
 	t.Run("Creating a product role with API key scope succeeds", func(t *testing.T) {
 		apiKeyClient, _ := testCtx.CreateAPIKeyClientWithScopes([]string{"product_role:create"})
 

@@ -69,6 +69,26 @@ func TestOrganizationAPIKeyCreate(t *testing.T) {
 	)
 
 	t.Run(
+		"Creating an organization API key with a permission listed twice grants it once", func(t *testing.T) {
+			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
+
+			resp, err := apiKeyClient.CreateOrganizationAPIKeyWithResponse(
+				ctx,
+				product.ProductID,
+				org.Id,
+				ct.CreateOrganizationAPIKeyJSONRequestBody{
+					Name:        "OrgKey-" + uuid.NewString(),
+					Permissions: []string{permissions.FileRead, strings.ToUpper(permissions.FileRead)},
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+			require.Len(t, resp.JSON201.Permissions, 1)
+			assert.Equal(t, permissions.FileRead, resp.JSON201.Permissions[0].PermissionName)
+		},
+	)
+
+	t.Run(
 		"Create organization API key uses product organization API key prefix", func(t *testing.T) {
 			prefix := "acmeorg"
 			getProductResp, err := product.OwnerAuthenticatedClient().GetProductWithResponse(
