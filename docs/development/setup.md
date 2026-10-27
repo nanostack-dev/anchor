@@ -4,7 +4,7 @@ Clone Anchor alone and read [AGENTS.md](../../AGENTS.md). No shared workspace, e
 
 ## Agent harness discovery
 
-Codex, OpenCode and Grok Build read this repository's `AGENTS.md` directly. Claude Code's repo-owned [.claude/settings.json](../../.claude/settings.json) adds a read-only `SessionStart` hook: Git resolves the current project's root, then the hook prints that root's `AGENTS.md` as session context. It works from nested directories and does not call workspace bootstrap or require Python/Node. Existing hooks/preferences remain additive; developer overrides belong in ignored `.claude/settings.local.json`.
+Codex, OpenCode and Grok Build read this repository's `AGENTS.md` directly. Claude Code's repo-owned [.claude/settings.json](../../.claude/settings.json) adds a read-only `SessionStart` hook: Git resolves the current project's root, then the hook prints that root's `AGENTS.md` as session context. It works from nested directories and does not call workspace bootstrap or require Python/Node. Existing hooks/preferences remain additive; developer overrides belong in ignored `.claude/settings.local.json`. Two more hooks call [scripts/agent-hooks](../../scripts/agent-hooks): after an Edit or Write, `format-edited.sh` formats that one file (the pinned golangci-lint for Go, Biome for `anchor-ui` sources) and never blocks; before a Bash call, `deny-ci-polling.sh` refuses a `sleep` loop around `gh` checks and names the non-blocking alternative.
 
 Approve the repository through the client's normal one-time trust flow before project hooks run. After pulling a changed hook or guide, start/reload the session so the current instructions are loaded. Login, trust and personal/global settings remain developer-controlled.
 
@@ -32,7 +32,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 ./scripts/lint.sh backend
 ```
 
-The lint script uses the installed binary on `PATH` and rejects a missing/mismatched version before analysis. The default checks without editing source; installation and fixes are explicit. [Go lint](testing.md#go-lint) owns full/iteration commands, comparison bases, fallbacks and failure handling.
+The lint script runs only the pinned version. It prefers `${XDG_CACHE_HOME:-~/.cache}/anchor/golangci-lint/<version>/` (override with `ANCHOR_TOOL_CACHE`), then a matching binary on `PATH`; when neither exists and `go` is on `PATH`, it installs the pin into that cache. A stale global binary is never used. The default checks without editing source; fixes are explicit. [Go lint](testing.md#go-lint) owns full/iteration commands, comparison bases, fallbacks and failure handling.
 
 ## Recommended disposable app
 

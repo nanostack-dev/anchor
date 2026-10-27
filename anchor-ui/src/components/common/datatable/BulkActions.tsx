@@ -16,6 +16,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@nanostackorg/design-system/components/dropdown-menu";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -167,13 +168,15 @@ export function BulkActions<TData>({
 							<p className="text-destructive">
 								Failed rows remain selected for retry.
 							</p>
-							<ul className="max-h-40 overflow-y-auto text-destructive">
-								{result.failures.map((failure) => (
-									<li key={failure.id}>
-										{failure.label}: {failure.message}
-									</li>
-								))}
-							</ul>
+							<ScrollArea maxHeight="md">
+								<ul className="text-destructive">
+									{result.failures.map((failure) => (
+										<li key={failure.id}>
+											{failure.label}: {failure.message}
+										</li>
+									))}
+								</ul>
+							</ScrollArea>
 						</>
 					)}
 					{result.refreshError && (
@@ -196,11 +199,13 @@ export function BulkActions<TData>({
 							{pending?.action.description}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-					<ul className="max-h-40 overflow-y-auto text-sm">
-						{pending?.rows.map((row) => (
-							<li key={getRowId(row)}>{getRowLabel(row)}</li>
-						))}
-					</ul>
+					<ScrollArea maxHeight="md">
+						<ul className="text-sm">
+							{pending?.rows.map((row) => (
+								<li key={getRowId(row)}>{getRowLabel(row)}</li>
+							))}
+						</ul>
+					</ScrollArea>
 					{progress !== null && (
 						<output
 							className="flex items-center gap-2 text-sm"

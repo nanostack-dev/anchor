@@ -228,14 +228,12 @@ export function LicenseMigrationDialog({
 				</DialogHeader>
 
 				{migration ? (
-					<Box className="min-h-0 flex-1 overflow-y-auto">
-						<LicenseMigrationOutcomes
-							migration={migration}
-							organizationNames={migratedNames}
-						/>
-					</Box>
+					<LicenseMigrationOutcomes
+						migration={migration}
+						organizationNames={migratedNames}
+					/>
 				) : (
-					<Box className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
+					<Box className="flex flex-col gap-5">
 						<Stack space="sm">
 							<Label htmlFor="license-migration-target">Move to tier</Label>
 							<Select

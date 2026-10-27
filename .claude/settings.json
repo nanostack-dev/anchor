@@ -10,6 +10,30 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$(git -C \"${CLAUDE_PROJECT_DIR:-$PWD}\" rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -x \"$r/scripts/agent-hooks/deny-ci-polling.sh\" ] || exit 0; exec \"$r/scripts/agent-hooks/deny-ci-polling.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "r=\"$(git -C \"${CLAUDE_PROJECT_DIR:-$PWD}\" rev-parse --show-toplevel 2>/dev/null)\" || exit 0; [ -x \"$r/scripts/agent-hooks/format-edited.sh\" ] || exit 0; exec \"$r/scripts/agent-hooks/format-edited.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }
