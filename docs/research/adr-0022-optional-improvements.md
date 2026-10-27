@@ -11,6 +11,8 @@ Each entry is independent. Pick one up as its own PR when it is worth it, then m
 | # | Improvement | Where | State |
 | :-- | :-- | :-- | :-- |
 | [I1](#i1) | Resolve a role's or permission's scope in SQL, not through the tree | role and permission search and reads (#270) | open |
+| [I2](#i2) | Reconcile as many Products per pass as the 15-minute window needs | authz sweeper (M2, PR 4) | open |
+| [I3](#i3) | Keep Base UI's focus guards out of the Storybook axe check | Storybook a11y config | open |
 
 ---
 
@@ -119,4 +121,122 @@ sequenceDiagram
     end
 ```
 
+</details>
+
+---
+
+<a id="i2"></a>
+## I2 · Reconcile as many Products per pass as the window needs
+
+**Today (M2, PR 4).** The sweeper in `internal/authz/service/sweeper.go` runs every `sweepInterval` (5 s) on one replica at a time. Each pass does two things:
+1. it replays up to 100 sync marks;
+2. it rebuilds **one** Product whose last rebuild is older than `reconcileInterval` (15 min), through `DueForReconcileInternal`.
+
+So one replica can rebuild at most 15 min / 5 s = **180 Products** per window. With a 181st Product, the oldest rebuild gets later every window. Nothing reports it, except the age of `authz_stores.reconciled_at`.
+
+Writes reach the store right after their commit, so this lag does not delay decisions. The rebuild is only the backup that repairs drift from writes that left no mark.
+
+**Proposal.** In each pass, rebuild overdue Products until a time budget runs out, for example 3 s of the 5 s interval, oldest first. Log `authz.reconcile_lag` with the oldest `reconciled_at` age when it passes the interval.
+
+**Removes:** the hard limit of 180 Products. It also removes the silent lag past that limit.
+
+**Keeps:** one sweeper replica at a time, marks replayed before rebuilds in each pass, and the 15-minute target.
+
+**Cost:** a loop and a deadline in `reconcileOverdue`, a `limit` on `DueForReconcileInternal`, one log event, and a service test with more Products than one pass can take.
+
+<details>
+<summary>📌 Real example</summary>
+
+Take a Product count past the limit, say 240, with rebuilds of about 40 ms each. The numbers are illustrative.
+
+| | Products rebuilt per 15 min | Oldest `reconciled_at` after one hour |
+| :-- | :-- | :-- |
+| Today, one per pass | 180 | 20 min, then 25, 30 … it keeps growing |
+| Proposed, 3 s budget per pass | all 240 in the first ~4 passes | under 15 min |
+
+The query that shows the lag today:
+
+```sql
+SELECT count(*) FILTER (WHERE reconciled_at < now() - interval '15 minutes') AS overdue,
+       max(now() - reconciled_at)                                         AS oldest
+FROM authz_stores;
+```
+</details>
+
+<details>
+<summary>Diagram: before and after</summary>
+
+```mermaid
+flowchart LR
+  subgraph Today
+    T1[tick every 5 s] --> R1[replay up to 100 marks] --> C1[rebuild 1 overdue Product]
+  end
+  subgraph Proposed
+    T2[tick every 5 s] --> R2[replay up to 100 marks] --> C2{overdue Product left<br/>and budget left?}
+    C2 -- yes --> B2[rebuild the oldest] --> C2
+    C2 -- no --> L2[log authz.reconcile_lag if the oldest is past 15 min]
+  end
+```
+</details>
+
+---
+
+<a id="i3"></a>
+## I3 · Keep Base UI's focus guards out of the Storybook axe check
+
+**Today.** `anchor-ui/.storybook/preview.ts` runs axe on every story with `a11y.test: "error"`. Its comment still says it reports violations "without failing the run". Base UI 1.8 renders a focus guard around an open popover: a visually hidden `<span tabindex="0" aria-hidden="true" data-base-ui-focus-guard>` (`@base-ui/react/utils/FocusGuard.js`). axe reports that span as `aria-hidden-focus`.
+
+When axe runs depends on the timing of the story. If it runs while a popover is still open or closing, the story fails. Otherwise it passes. This has failed CI at random on stories such as `ResourceTypeSelect › Chooses By Slug` and on `LicenseSchemaEditor`, and each time a rerun passed.
+
+**Proposal.** In `preview.ts`, leave the guards out of the axe context:
+
+```ts
+a11y: {
+	test: "error",
+	// Base UI's focus guards are aria-hidden on purpose: they only catch Tab
+	// to keep focus in an open popover.
+	context: { exclude: ["[data-base-ui-focus-guard]"] },
+},
+```
+
+Also fix the stale comment.
+
+**Removes:** the random `aria-hidden-focus` failure and its reruns.
+
+**Keeps:** every other axe rule on every story, including `aria-hidden-focus` on Anchor's own markup.
+
+**Cost:** one config line, plus one story that opens a popover and asserts axe passes.
+
+<details>
+<summary>📌 Real example</summary>
+
+`ResourceTypeSelect › Chooses By Slug` failed one Storybook shard with the axe rule `aria-hidden-focus`. The element is Base UI's guard, as `FocusGuard.js` renders it:
+
+```html
+<span tabindex="0" aria-hidden="true" data-base-ui-focus-guard="" style="position: absolute; …"></span>
+```
+
+Rerunning the same story file passed 3 of 3 times. The guard exists only while the popup is mounted, so whether axe sees it depends on the timing of the play function's last step.
+</details>
+
+<details>
+<summary>Diagram: before and after</summary>
+
+```mermaid
+sequenceDiagram
+  participant P as play()
+  participant UI as Popover
+  participant A as axe
+  Note over P,A: Today
+  P->>UI: choose an option
+  UI->>UI: closing, focus guards still mounted
+  P-->>A: play ends
+  A->>UI: scan finds aria-hidden span with tabindex 0
+  A-->>P: fail (sometimes)
+  Note over P,A: Proposed
+  P->>UI: choose an option
+  P-->>A: play ends
+  A->>UI: scan, focus guards excluded
+  A-->>P: pass
+```
 </details>
