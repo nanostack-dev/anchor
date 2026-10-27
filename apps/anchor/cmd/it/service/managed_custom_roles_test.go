@@ -14,6 +14,7 @@ import (
 	"anchor/internal/domain/organizationinvitation"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
+	"anchor/internal/domain/resourcetype"
 )
 
 // Every release writes a role type, so the database refuses a role without one.
@@ -28,6 +29,24 @@ func TestRoleWithoutAType(t *testing.T) {
 		_, err = TestDB.ExecContext(t.Context(), `UPDATE product_roles SET type = NULL WHERE id = $1`, managed.ID)
 
 		require.ErrorContains(t, err, "not-null")
+	})
+}
+
+// The release before the custom roles switch writes resource types without it.
+func TestResourceTypeWrittenWithoutTheSwitch(t *testing.T) {
+	t.Run("A resource type with no switch stored allows no custom roles", func(t *testing.T) {
+		productID := GivenATenantAndProduct(t).Product.ID
+		typeID := organizationTypeID(t, productID)
+		_, err := TestDB.ExecContext(t.Context(),
+			`UPDATE product_resource_types SET allows_custom_roles = NULL WHERE id = $1`, typeID)
+		require.NoError(t, err)
+
+		types, err := ResourceTypeRepo.FindTree(t.Context(), productID)
+
+		require.NoError(t, err)
+		root, found := resourcetype.NewTree(types).Organization().Get()
+		require.True(t, found)
+		assert.False(t, root.AllowsCustomRoles)
 	})
 }
 

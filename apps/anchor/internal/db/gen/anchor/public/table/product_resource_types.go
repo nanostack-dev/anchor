@@ -17,14 +17,15 @@ type productResourceTypesTable struct {
 	postgres.Table
 
 	// Columns
-	ID            postgres.ColumnString
-	ProductID     postgres.ColumnString
-	Slug          postgres.ColumnString
-	Name          postgres.ColumnString
-	Description   postgres.ColumnString
-	NestsInItself postgres.ColumnBool
-	CreatedAt     postgres.ColumnTimestampz
-	UpdatedAt     postgres.ColumnTimestampz
+	ID                postgres.ColumnString
+	ProductID         postgres.ColumnString
+	Slug              postgres.ColumnString
+	Name              postgres.ColumnString
+	Description       postgres.ColumnString
+	NestsInItself     postgres.ColumnBool
+	CreatedAt         postgres.ColumnTimestampz
+	UpdatedAt         postgres.ColumnTimestampz
+	AllowsCustomRoles postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -66,31 +67,33 @@ func newProductResourceTypesTable(schemaName, tableName, alias string) *ProductR
 
 func newProductResourceTypesTableImpl(schemaName, tableName, alias string) productResourceTypesTable {
 	var (
-		IDColumn            = postgres.StringColumn("id")
-		ProductIDColumn     = postgres.StringColumn("product_id")
-		SlugColumn          = postgres.StringColumn("slug")
-		NameColumn          = postgres.StringColumn("name")
-		DescriptionColumn   = postgres.StringColumn("description")
-		NestsInItselfColumn = postgres.BoolColumn("nests_in_itself")
-		CreatedAtColumn     = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn     = postgres.TimestampzColumn("updated_at")
-		allColumns          = postgres.ColumnList{IDColumn, ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns      = postgres.ColumnList{ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns      = postgres.ColumnList{NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                = postgres.StringColumn("id")
+		ProductIDColumn         = postgres.StringColumn("product_id")
+		SlugColumn              = postgres.StringColumn("slug")
+		NameColumn              = postgres.StringColumn("name")
+		DescriptionColumn       = postgres.StringColumn("description")
+		NestsInItselfColumn     = postgres.BoolColumn("nests_in_itself")
+		CreatedAtColumn         = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn         = postgres.TimestampzColumn("updated_at")
+		AllowsCustomRolesColumn = postgres.BoolColumn("allows_custom_roles")
+		allColumns              = postgres.ColumnList{IDColumn, ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn, AllowsCustomRolesColumn}
+		mutableColumns          = postgres.ColumnList{ProductIDColumn, SlugColumn, NameColumn, DescriptionColumn, NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn, AllowsCustomRolesColumn}
+		defaultColumns          = postgres.ColumnList{NestsInItselfColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return productResourceTypesTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:            IDColumn,
-		ProductID:     ProductIDColumn,
-		Slug:          SlugColumn,
-		Name:          NameColumn,
-		Description:   DescriptionColumn,
-		NestsInItself: NestsInItselfColumn,
-		CreatedAt:     CreatedAtColumn,
-		UpdatedAt:     UpdatedAtColumn,
+		ID:                IDColumn,
+		ProductID:         ProductIDColumn,
+		Slug:              SlugColumn,
+		Name:              NameColumn,
+		Description:       DescriptionColumn,
+		NestsInItself:     NestsInItselfColumn,
+		CreatedAt:         CreatedAtColumn,
+		UpdatedAt:         UpdatedAtColumn,
+		AllowsCustomRoles: AllowsCustomRolesColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

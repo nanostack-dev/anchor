@@ -54,9 +54,11 @@ type ProductResourcePermissionRepository interface {
 	) ([]resourcepermission.ProductResourcePermission, error)
 
 	LockByName(ctx context.Context, productID, name string) error
-	FindAssignedRoleIDs(
+	// FindAssignedRoles lists the roles that bundle the permission, managed
+	// and custom.
+	FindAssignedRoles(
 		ctx context.Context, productID, permissionName string,
-	) ([]string, error)
+	) ([]AssignedRole, error)
 	FindByProductIDAndPermissionNames(
 		ctx context.Context, productID string, permissionNames []string,
 	) ([]resourcepermission.ProductResourcePermission, error)
@@ -260,20 +262,33 @@ func (r *productResourcePermissionRepository) LockByName(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *productResourcePermissionRepository) FindAssignedRoleIDs(
+// AssignedRole is a role that bundles a permission. OrganizationID is set on
+// a custom role only.
+type AssignedRole struct {
+	RoleID         string
+	OrganizationID string
+}
+
+func (r *productResourcePermissionRepository) FindAssignedRoles(
 	ctx context.Context, productID, permissionName string,
-) ([]string, error) {
-	stmt := table.ProductRoleResourcePermissions.
-		SELECT(table.ProductRoleResourcePermissions.AllColumns).
-		FROM(table.ProductRoleResourcePermissions).
+) ([]AssignedRole, error) {
+	stmt := postgres.SELECT(table.ProductRoles.ID, table.ProductRoles.OrganizationID).
+		FROM(table.ProductRoleResourcePermissions.INNER_JOIN(
+			table.ProductRoles, table.ProductRoles.ID.EQ(table.ProductRoleResourcePermissions.ProductRoleID),
+		)).
 		WHERE(
 			table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
 				AND(table.ProductRoleResourcePermissions.PermissionName.EQ(postgres.String(permissionName))),
 		).
-		ORDER_BY(table.ProductRoleResourcePermissions.ProductRoleID)
+		ORDER_BY(table.ProductRoles.ID)
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		func(assignment model.ProductRoleResourcePermissions) string { return assignment.ProductRoleID },
+		func(assigned model.ProductRoles) AssignedRole {
+			return AssignedRole{
+				RoleID:         assigned.ID,
+				OrganizationID: functional.FromPtr(assigned.OrganizationID).OrElse(""),
+			}
+		},
 	).Value()
 }
 

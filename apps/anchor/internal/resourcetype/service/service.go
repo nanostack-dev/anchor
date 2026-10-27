@@ -194,8 +194,11 @@ func (s *service) Update(
 			result = current
 			return nil
 		}
-		if current.BuiltIn() {
+		if current.BuiltIn() && !onlySwitchChanged(current, changed) {
 			return resourcetype.ErrBuiltIn
+		}
+		if changed.AllowsCustomRoles && !current.AllowsCustomRoles && !current.BuiltIn() {
+			return resourcetype.ErrCustomRolesNotAvailable
 		}
 		if reshapes(current, changed) {
 			if err = s.checkReshape(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
@@ -381,6 +384,7 @@ func planTree(tree resourcetype.Tree, input resourcetype.ReplaceTreeInput) treeP
 
 func withIdentity(desired, current resourcetype.ResourceType) resourcetype.ResourceType {
 	desired.ID = current.ID
+	desired.AllowsCustomRoles = current.AllowsCustomRoles
 	desired.CreatedAt = current.CreatedAt
 	desired.UpdatedAt = current.UpdatedAt
 	return desired
@@ -401,7 +405,17 @@ func applyUpdate(current resourcetype.ResourceType, input resourcetype.UpdateInp
 	if input.NestsInItself != nil {
 		changed.NestsInItself = *input.NestsInItself
 	}
+	if input.AllowsCustomRoles != nil {
+		changed.AllowsCustomRoles = *input.AllowsCustomRoles
+	}
 	return changed
+}
+
+// onlySwitchChanged lets the built-in organization type change its custom
+// roles switch and nothing else.
+func onlySwitchChanged(a, b resourcetype.ResourceType) bool {
+	b.AllowsCustomRoles = a.AllowsCustomRoles
+	return !differs(a, b)
 }
 
 func differs(a, b resourcetype.ResourceType) bool {
@@ -411,6 +425,7 @@ func differs(a, b resourcetype.ResourceType) bool {
 	return a.Name != b.Name ||
 		functional.FromPtr(a.Description).OrElse("") != functional.FromPtr(b.Description).OrElse("") ||
 		a.NestsInItself != b.NestsInItself ||
+		a.AllowsCustomRoles != b.AllowsCustomRoles ||
 		!slices.Equal(pa, pb)
 }
 

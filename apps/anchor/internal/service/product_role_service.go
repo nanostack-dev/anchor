@@ -79,6 +79,20 @@ func NewProductRoleService(
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
 ) ProductRoleService {
+	return newProductRoleService(
+		roleRepo, productResourcePermissionRepo, invitationRepo, resourceTypes, tx, eventEmitter, logger,
+	)
+}
+
+func newProductRoleService(
+	roleRepo repository.ProductRoleRepository,
+	productResourcePermissionRepo repository.ProductResourcePermissionRepository,
+	invitationRepo invitationrepository.Repository,
+	resourceTypes rtservice.Service,
+	tx transactor.Transactor,
+	eventEmitter events.Emitter,
+	logger zerolog.Logger,
+) *productRoleService {
 	return &productRoleService{
 		roleRepo:                      roleRepo,
 		productResourcePermissionRepo: productResourcePermissionRepo,

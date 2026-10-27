@@ -22,6 +22,9 @@ const (
 	TypeManaged Type = "MANAGED"
 	// TypeCustom is a role one Organization owns.
 	TypeCustom Type = "CUSTOM"
+
+	// MaxCustomRoles caps the custom roles of one Organization (ADR-0022 D10).
+	MaxCustomRoles = 50
 )
 
 type ProductRole struct {

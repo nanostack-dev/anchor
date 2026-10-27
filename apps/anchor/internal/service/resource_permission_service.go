@@ -291,7 +291,7 @@ func (s *resourcePermissionService) Delete(
 		if lockErr := s.resourcePermissionRepo.LockByName(txCtx, input.ProductID, name.Name); lockErr != nil {
 			return lockErr
 		}
-		assignedRoleIDs, findRolesErr := s.resourcePermissionRepo.FindAssignedRoleIDs(
+		assignedRoles, findRolesErr := s.resourcePermissionRepo.FindAssignedRoles(
 			txCtx, input.ProductID, name.Name,
 		)
 		if findRolesErr != nil {
@@ -316,12 +316,17 @@ func (s *resourcePermissionService) Delete(
 		); emitErr != nil {
 			return emitErr
 		}
-		for _, roleID := range assignedRoleIDs {
-			if emitErr := s.events.Emit(txCtx, events.Event{
+		for _, assigned := range assignedRoles {
+			event := events.Event{
 				Type:      events.ProductRoleUpdated,
 				ProductID: input.ProductID,
-				Data:      events.Data{events.FieldRoleID: roleID},
-			}); emitErr != nil {
+				Data:      events.Data{events.FieldRoleID: assigned.RoleID},
+			}
+			if assigned.OrganizationID != "" {
+				event.Type = events.OrganizationRoleUpdated
+				event.Data = events.OrganizationRoleData(assigned.OrganizationID, assigned.RoleID)
+			}
+			if emitErr := s.events.Emit(txCtx, event); emitErr != nil {
 				return emitErr
 			}
 		}

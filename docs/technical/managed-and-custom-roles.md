@@ -36,6 +36,33 @@ The Product's role routes (`/v1/products/{product_id}/roles`) read and write man
 
 Managed role names are unique in their Product, regardless of case (`idx_product_roles_managed_lower_name`). Custom role names are unique in their Organization (`idx_product_roles_custom_lower_name`), so two Organizations may each have a `Billing auditor`.
 
+## Custom roles
+
+An Organization creates its own roles through `/v1/products/{product_id}/organizations/{organization_id}/roles` (D9 phase 1), when the Product turns on `allows_custom_roles` on the `organization` resource type. The switch is off for every type at first; any other type answers `400 CUSTOM_ROLES_NOT_AVAILABLE` for now.
+
+```http
+PATCH /v1/products/prd_1/resource-types/rtype_org
+{ "allows_custom_roles": true }
+
+POST /v1/products/prd_1/organizations/org_acme/roles
+{ "name": "Billing auditor", "resource_type": "organization", "permissions": ["billing:read"] }
+→ 201 { "type": "CUSTOM", "organization_id": "org_acme", … }
+```
+
+| Route | Does | Refuses |
+| --- | --- | --- |
+| `POST …/roles/search` | lists the managed roles and the Organization's custom roles; `filter.types` keeps one kind | — |
+| `GET …/roles/{role_id}` | reads a managed role or one of the Organization's custom roles | another Organization's role: `404 ROLE_NOT_FOUND` |
+| `POST …/roles` | creates a custom role | switch off: `400 CUSTOM_ROLES_DISABLED`; a managed role's name or one the Organization uses: `409 ROLE_NAME_DUPLICATE`; a 51st custom role: `409 CUSTOM_ROLE_LIMIT_REACHED` |
+| `PUT …/roles/{role_id}` | changes a custom role's name, description and permissions | a managed role: `409 ROLE_NOT_EDITABLE`; switch off: `400 CUSTOM_ROLES_DISABLED` |
+| `DELETE …/roles/{role_id}` | deletes a custom role, also with the switch off | a managed role: `409 ROLE_NOT_EDITABLE`; a role in use: `409 ROLE_IN_USE` |
+
+Turning the switch off keeps the custom roles that exist, and the access they grant: no member loses a permission. The Organization can no longer create or change them, and can still delete them.
+
+The create counts the Organization's custom roles under its row lock (`transactor.ForNoKeyUpdate` on the `organizations` row, written inline in the service), so two creates at 49 can't both pass the limit of 50. The lock leaves member adds alone: their foreign key takes `FOR KEY SHARE`, which `FOR NO KEY UPDATE` lets through. A managed role may later take a custom role's name, so a customer never blocks the Product.
+
+Each write emits `organization.role.created`, `organization.role.updated` or `organization.role.deleted`, with `organization_id` and `role_id`. A permission delete emits `organization.role.updated` for each custom role it changes, and `product.role.updated` for each managed role.
+
 ## A member with no role
 
 A member may hold no role ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) D5). They belong to the Organization and hold no permission there: an access check reaches the Organization and denies every action with `MISSING_PERMISSION`, until the member gets a role.
@@ -67,12 +94,12 @@ This ships in steps, because a rolling deploy runs the previous release beside t
 
 1. **The first release** adds `type` and `organization_id`, makes the membership role nullable, and reads custom roles and role-less members correctly. It writes neither.
 2. **The second release** adds members and invitations without a role. The first release runs beside it during that deploy, and shows such a member's role as an empty `{"id": "", "name": ""}` until its replicas stop.
-3. **A later release** lets Organizations create custom roles.
+3. **The custom roles release** (`000067`) adds `allows_custom_roles` and the Organization's role routes. `NULL`, which the previous release writes on a new resource type during the deploy, reads as off, so the column has no default.
 4. **The cleanup** (`000066`) fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
 
 `type` has no default. Migration `000059` stores `MANAGED` on every existing role. The release before it kept writing roles without a type during that deploy, all of them managed, so `000066` stores `MANAGED` on those. Every release since writes the type.
 
-Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixDirty` marks a failed migration as applied and never retries it, and a failed `CONCURRENTLY` build leaves an `INVALID` index, so the resource type module checks on start that each role migration (`000059` to `000066`) holds, and refuses to start otherwise (`roleSchemaFacts` in `internal/resourcetype/schema_check.go`):
+Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixDirty` marks a failed migration as applied and never retries it, and a failed `CONCURRENTLY` build leaves an `INVALID` index, so the resource type module checks on start that each role migration (`000059` to `000067`) holds, and refuses to start otherwise (`roleSchemaFacts` in `internal/resourcetype/schema_check.go`):
 
 | Migration | Must hold |
 | --- | --- |
@@ -82,6 +109,7 @@ Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixD
 | `000062`, `000063` | `idx_product_roles_managed_lower_name` and `idx_product_roles_custom_lower_name` are valid |
 | `000064`, `000065` | the product-wide name constraint and index are gone |
 | `000066` | `type` is `NOT NULL` |
+| `000067` | `product_resource_types` has `allows_custom_roles` |
 
 Each error names the recovery: `migrate force` to the version before, after `DROP INDEX CONCURRENTLY` for an invalid index, then redeploy.
 
@@ -94,4 +122,4 @@ During the deploy, the previous release maps only the product-wide name guards t
 
 ## Tests
 
-`TestRoleWrittenWithoutAType`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add. `TestOrganizationMemberWithoutARole` and `TestOrganizationInvitationWithoutARole` in `apps/anchor/cmd/it/ct` cover the routes in the table above.
+`TestRoleWithoutAType`, `TestResourceTypeWrittenWithoutTheSwitch`, `TestCustomRolesWrittenByTheNextRelease` and `TestMembersWithoutARoleWrittenByTheNextRelease` in `apps/anchor/cmd/it/service` write the rows the next releases write and check this release against them. `TestConcurrentRoleDeleteAndMemberAdd` in `apps/anchor/cmd/it/ct` races a role delete against a member add. `TestOrganizationMemberWithoutARole` and `TestOrganizationInvitationWithoutARole` in `apps/anchor/cmd/it/ct` cover the routes in the table above. `TestCustomRoleSwitch`, `TestOrganizationCustomRoles`, `TestOrganizationCustomRoleNames`, `TestOrganizationCustomRoleLimit` and `TestOrganizationCustomRoleChanges` cover the Organization's role routes, one test per rule, limit and switch state.

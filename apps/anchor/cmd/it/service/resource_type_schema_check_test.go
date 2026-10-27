@@ -97,6 +97,12 @@ func TestResourceTypeSchemaCheck(t *testing.T) {
 			problem:  "product_roles.type is still nullable",
 			recovery: "migrate force 65",
 		},
+		{
+			name:     "A missing custom roles switch fails the check and names the recovery",
+			breakIt:  `ALTER TABLE product_resource_types DROP COLUMN allows_custom_roles`,
+			problem:  "product_resource_types has no allows_custom_roles column",
+			recovery: "migrate force 66",
+		},
 	} {
 		t.Run(broken.name, func(t *testing.T) {
 			tx := migratedSchemaTx(t)
@@ -133,6 +139,7 @@ func migratedSchemaTx(t *testing.T) *sql.Tx {
 		`ALTER TABLE product_roles ADD CONSTRAINT product_roles_organization_id_fkey
 			FOREIGN KEY (organization_id) REFERENCES organizations(id)`,
 		`CREATE TABLE product_resource_permissions (resource_type_id VARCHAR(255) NOT NULL)`,
+		`CREATE TABLE product_resource_types (allows_custom_roles BOOLEAN)`,
 		`CREATE TABLE organization_memberships (product_role_id VARCHAR(255))`,
 		`CREATE TABLE organization_invitations (product_role_id VARCHAR(255))`,
 		`CREATE UNIQUE INDEX idx_product_roles_managed_lower_name ON product_roles (product_id, lower(name))

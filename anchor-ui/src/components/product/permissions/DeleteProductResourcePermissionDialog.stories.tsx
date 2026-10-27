@@ -19,6 +19,7 @@ function role(name: string): ProductRoleResponse {
 		name,
 		resource_type: "organization",
 		type: ProductRoleType.MANAGED,
+		organization_id: null,
 		permissions: [],
 		created_at: "2026-07-14T09:12:00Z",
 		updated_at: "2026-07-14T09:12:00Z",

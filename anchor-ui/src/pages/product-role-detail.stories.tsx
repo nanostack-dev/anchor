@@ -25,6 +25,7 @@ const ROLE: ProductRoleResponse = {
 	description: "Edit customer invoices",
 	resource_type: "organization",
 	type: ProductRoleType.MANAGED,
+	organization_id: null,
 	permissions: [
 		{
 			product_id: "prd_test",

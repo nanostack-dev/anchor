@@ -11,16 +11,17 @@ import (
 
 func mapResourceTypeToResponse(rt resourcetype.ResourceType) ProductResourceTypeResponse {
 	return ProductResourceTypeResponse{
-		Id:            rt.ID,
-		ProductId:     rt.ProductID,
-		Slug:          rt.Slug,
-		Name:          rt.Name,
-		Description:   rt.Description,
-		ParentTypes:   append([]ResourceTypeSlug{}, rt.ParentTypes...),
-		NestsInItself: rt.NestsInItself,
-		BuiltIn:       rt.BuiltIn(),
-		CreatedAt:     rt.CreatedAt,
-		UpdatedAt:     rt.UpdatedAt,
+		Id:                rt.ID,
+		ProductId:         rt.ProductID,
+		Slug:              rt.Slug,
+		Name:              rt.Name,
+		Description:       rt.Description,
+		ParentTypes:       append([]ResourceTypeSlug{}, rt.ParentTypes...),
+		NestsInItself:     rt.NestsInItself,
+		AllowsCustomRoles: rt.AllowsCustomRoles,
+		BuiltIn:           rt.BuiltIn(),
+		CreatedAt:         rt.CreatedAt,
+		UpdatedAt:         rt.UpdatedAt,
 	}
 }
 
@@ -106,12 +107,13 @@ func (s *AnchorAPI) UpdateProductResourceType(
 	ctx context.Context, request UpdateProductResourceTypeRequestObject,
 ) (UpdateProductResourceTypeResponseObject, error) {
 	updated, err := s.ResourceTypeService.Update(ctx, resourcetype.UpdateInput{
-		ProductID:     request.ProductId,
-		ID:            request.ResourceTypeId,
-		Name:          request.Body.Name,
-		Description:   request.Body.Description,
-		ParentTypes:   functional.FromPtr(request.Body.ParentTypes).OrElse(nil),
-		NestsInItself: request.Body.NestsInItself,
+		ProductID:         request.ProductId,
+		ID:                request.ResourceTypeId,
+		Name:              request.Body.Name,
+		Description:       request.Body.Description,
+		ParentTypes:       functional.FromPtr(request.Body.ParentTypes).OrElse(nil),
+		NestsInItself:     request.Body.NestsInItself,
+		AllowsCustomRoles: request.Body.AllowsCustomRoles,
 	})
 	if err != nil {
 		return nil, err

@@ -79,6 +79,16 @@ func NewRoleWithAlreadyExistingNameError(roleName, productID string) *fault.Erro
 		})
 }
 
+func NewCustomRoleNameDuplicateError(roleName, organizationID string) *fault.Error {
+	return fault.Conflict(
+		"ROLE_NAME_DUPLICATE",
+		"The organization already has a role with this name, or the product manages one.",
+	).Metadata(map[string]any{
+		"role_name":       roleName,
+		"organization_id": organizationID,
+	})
+}
+
 func NewPermissionAlreadyAssignedError(roleID, permissionName string) *fault.Error {
 	return fault.Conflict("PERMISSION_ALREADY_ASSIGNED", "The permission is already assigned to the role.").
 		Metadata(map[string]any{

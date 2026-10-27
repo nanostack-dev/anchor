@@ -30,9 +30,10 @@ const (
 	migrationDropProductNameKey   = 64
 	migrationDropProductNameIndex = 65
 	migrationRoleTypeRequired     = 66
+	migrationAllowsCustomRoles    = 67
 )
 
-// roleSchemaFact is one thing the role migrations (000059 to 000066) must
+// roleSchemaFact is one thing the role migrations (000059 to 000067) must
 // leave true. holds is a query that returns one boolean. Without a recovery,
 // the recovery is to force the version before and redeploy.
 type roleSchemaFact struct {
@@ -107,6 +108,13 @@ SELECT count(*) = 1 FROM information_schema.columns
 WHERE table_schema = current_schema() AND table_name = 'product_roles'
   AND column_name = 'type' AND is_nullable = 'NO'`,
 			problem: "product_roles.type is still nullable", version: migrationRoleTypeRequired,
+		},
+		{
+			holds: `
+SELECT count(*) = 1 FROM information_schema.columns
+WHERE table_schema = current_schema() AND table_name = 'product_resource_types'
+  AND column_name = 'allows_custom_roles'`,
+			problem: "product_resource_types has no allows_custom_roles column", version: migrationAllowsCustomRoles,
 		},
 	}
 }

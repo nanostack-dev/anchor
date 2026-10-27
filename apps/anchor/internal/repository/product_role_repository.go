@@ -76,6 +76,27 @@ type ProductRoleRepository interface {
 		ctx context.Context, productID string,
 		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 	) (search.Result[role.ProductRole], error)
+
+	// FindInOrganization reads a role a member of the Organization may hold:
+	// a managed role, or a custom role of that Organization.
+	FindInOrganization(
+		ctx context.Context, productID, organizationID, id string,
+	) (functional.Option[role.ProductRole], error)
+	// ExistsCustom reports whether the Organization owns the role. Run it
+	// under a row lock to hold the role for the transaction.
+	ExistsCustom(ctx context.Context, productID, organizationID, id string) (bool, error)
+	// GetCustomByName looks up one of the Organization's custom roles by its
+	// exact name, case-insensitive.
+	GetCustomByName(
+		ctx context.Context, productID, organizationID, name string,
+	) (functional.Option[role.ProductRole], error)
+	CountCustom(ctx context.Context, productID, organizationID string) (int, error)
+	DeleteCustom(ctx context.Context, productID, organizationID, id string) error
+	// SearchInOrganization lists the roles a member of the Organization may hold.
+	SearchInOrganization(
+		ctx context.Context, productID, organizationID string,
+		input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
+	) (search.Result[role.ProductRole], error)
 }
 
 type productRoleRepositoryImpl struct {
@@ -115,6 +136,80 @@ func productRolesUpdatableColumns() postgres.ColumnList {
 // roles share the table.
 func isManaged() postgres.BoolExpression {
 	return table.ProductRoles.OrganizationID.IS_NULL()
+}
+
+func isCustomOf(organizationID string) postgres.BoolExpression {
+	return table.ProductRoles.OrganizationID.EQ(postgres.String(organizationID))
+}
+
+// assignableIn keeps the roles a member of the Organization may hold.
+func assignableIn(organizationID string) postgres.BoolExpression {
+	return postgres.OR(isManaged(), isCustomOf(organizationID))
+}
+
+func inProduct(productID string) postgres.BoolExpression {
+	return table.ProductRoles.ProductID.EQ(postgres.String(productID))
+}
+
+func (r *productRoleRepositoryImpl) FindInOrganization(
+	ctx context.Context, productID, organizationID, id string,
+) (functional.Option[role.ProductRole], error) {
+	return r.findOne(ctx, table.ProductRoles.ID.EQ(postgres.String(id)).
+		AND(inProduct(productID)).AND(assignableIn(organizationID)))
+}
+
+func (r *productRoleRepositoryImpl) ExistsCustom(
+	ctx context.Context, productID, organizationID, id string,
+) (bool, error) {
+	found, err := transactor.QueryOptional[model.ProductRoles](ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			table.ProductRoles.ID.EQ(postgres.String(id)).
+				AND(inProduct(productID)).AND(isCustomOf(organizationID)),
+		),
+	)
+	return found.IsPresent(), err
+}
+
+func (r *productRoleRepositoryImpl) GetCustomByName(
+	ctx context.Context, productID, organizationID, name string,
+) (functional.Option[role.ProductRole], error) {
+	return r.findOne(ctx, postgres.LOWER(table.ProductRoles.Name).EQ(postgres.LOWER(postgres.String(name))).
+		AND(inProduct(productID)).AND(isCustomOf(organizationID)))
+}
+
+func (r *productRoleRepositoryImpl) CountCustom(
+	ctx context.Context, productID, organizationID string,
+) (int, error) {
+	count, err := transactor.QueryCount(ctx, r.db,
+		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			inProduct(productID).AND(isCustomOf(organizationID)),
+		),
+	).Value()
+	return int(count), err
+}
+
+func (r *productRoleRepositoryImpl) DeleteCustom(
+	ctx context.Context, productID, organizationID, id string,
+) error {
+	stmt := table.ProductRoles.DELETE().WHERE(
+		table.ProductRoles.ID.EQ(postgres.String(id)).
+			AND(inProduct(productID)).AND(isCustomOf(organizationID)),
+	)
+	return transactor.Exec(ctx, r.db, stmt).Err()
+}
+
+func (r *productRoleRepositoryImpl) SearchInOrganization(
+	ctx context.Context, productID, organizationID string,
+	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
+) (search.Result[role.ProductRole], error) {
+	visible := assignableIn(organizationID)
+	if input.Filter != nil && len(input.Filter.Types) == 1 {
+		visible = isManaged()
+		if input.Filter.Types[0] == role.TypeCustom {
+			visible = isCustomOf(organizationID)
+		}
+	}
+	return r.search(ctx, productID, visible, input)
 }
 
 func (r *productRoleRepositoryImpl) FindByProductIDAndRoleID(
@@ -162,6 +257,7 @@ const (
 	productRoleNameUniqueConstraint = "product_roles_product_id_name_key"
 	productRoleNameLowerUniqueIndex = "idx_product_roles_product_lower_name_unique"
 	productRoleManagedNameIndex     = "idx_product_roles_managed_lower_name"
+	productRoleCustomNameIndex      = "idx_product_roles_custom_lower_name"
 )
 
 // ErrProductRoleNameExists is returned by Create and Update when the product
@@ -180,6 +276,7 @@ func (r *productRoleRepositoryImpl) Create(
 		OnUnique(
 			ErrProductRoleNameExists,
 			productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleManagedNameIndex,
+			productRoleCustomNameIndex,
 		).
 		Value()
 	if err != nil {
@@ -220,11 +317,12 @@ func (r *productRoleRepositoryImpl) Update(
 		OnUnique(
 			ErrProductRoleNameExists,
 			productRoleNameUniqueConstraint, productRoleNameLowerUniqueIndex, productRoleManagedNameIndex,
+			productRoleCustomNameIndex,
 		).
 		Err(); err != nil {
 		return role.ProductRole{}, err
 	}
-	updated, err := r.FindByProductIDAndRoleID(ctx, domainRole.ProductID, domainRole.ID)
+	updated, err := r.FindInProductByID(ctx, domainRole.ProductID, domainRole.ID)
 	if err != nil {
 		return role.ProductRole{}, err
 	}
@@ -406,7 +504,15 @@ func (r *productRoleRepositoryImpl) SearchByProductID(
 	ctx context.Context, productID string,
 	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
 ) (search.Result[role.ProductRole], error) {
-	whereStmt := table.ProductRoles.ProductID.EQ(postgres.String(productID)).AND(isManaged())
+	return r.search(ctx, productID, isManaged(), input)
+}
+
+// search pages over the product's roles that visible keeps.
+func (r *productRoleRepositoryImpl) search(
+	ctx context.Context, productID string, visible postgres.BoolExpression,
+	input search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole],
+) (search.Result[role.ProductRole], error) {
+	whereStmt := inProduct(productID).AND(visible)
 	if input.FullTextSearch != nil {
 		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
 		whereStmt = whereStmt.AND(

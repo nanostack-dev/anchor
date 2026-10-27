@@ -12,12 +12,13 @@ import (
 )
 
 type ProductResourceTypes struct {
-	ID            string `sql:"primary_key"`
-	ProductID     string
-	Slug          string
-	Name          string
-	Description   *string
-	NestsInItself bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                string `sql:"primary_key"`
+	ProductID         string
+	Slug              string
+	Name              string
+	Description       *string
+	NestsInItself     bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	AllowsCustomRoles *bool
 }
