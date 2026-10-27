@@ -25,16 +25,6 @@ func TestRoleTypes(t *testing.T) {
 		assert.NotEmpty(t, r.ID)
 	})
 
-	t.Run("A row with no stored type is managed", func(t *testing.T) {
-		assert.Equal(t, role.TypeManaged, role.TypeOf(nil))
-	})
-
-	t.Run("A stored type is read as is", func(t *testing.T) {
-		custom := string(role.TypeCustom)
-
-		assert.Equal(t, role.TypeCustom, role.TypeOf(&custom))
-	})
-
 	t.Run("A member of any Organization may hold a managed role", func(t *testing.T) {
 		managed := role.NewManaged("prod_1", "Admin", "")
 

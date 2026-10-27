@@ -56,15 +56,6 @@ func NewCustom(productID, organizationID, name, description string) ProductRole 
 	return r
 }
 
-// TypeOf reads a stored type. A row a release before types wrote has none,
-// and that release wrote only roles the Product manages.
-func TypeOf(stored *string) Type {
-	if stored == nil {
-		return TypeManaged
-	}
-	return Type(*stored)
-}
-
 // AssignableIn reports whether a member of the Organization may hold the
 // role: a managed role, or a custom role of that Organization.
 func (r *ProductRole) AssignableIn(organizationID string) bool {

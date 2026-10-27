@@ -16,18 +16,18 @@ import (
 	"anchor/internal/domain/product/role"
 )
 
-// The previous release writes roles without a type during the deploy, and it
-// writes only roles the Product manages.
-func TestRoleWrittenWithoutAType(t *testing.T) {
-	t.Run("A role written without a type reads as managed", func(t *testing.T) {
+// Every release writes a role type, so the database refuses a role without one.
+func TestRoleWithoutAType(t *testing.T) {
+	t.Run("A role write without a type fails", func(t *testing.T) {
 		productID := GivenATenantAndProduct(t).Product.ID
-		untyped := givenUntypedRole(t, productID)
-
-		found, err := ProductRoleRepo.FindByProductIDAndRoleID(t.Context(), productID, untyped.ID)
-
+		managed := role.NewManaged(productID, "Legacy "+uuid.NewString(), "")
+		managed.ResourceTypeID = organizationTypeID(t, productID)
+		_, err := ProductRoleRepo.Create(t.Context(), managed)
 		require.NoError(t, err)
-		require.True(t, found.IsPresent())
-		assert.Equal(t, role.TypeManaged, found.Value().Type)
+
+		_, err = TestDB.ExecContext(t.Context(), `UPDATE product_roles SET type = NULL WHERE id = $1`, managed.ID)
+
+		require.ErrorContains(t, err, "not-null")
 	})
 }
 
@@ -271,17 +271,6 @@ func givenAMemberWithoutARole(t *testing.T) roleLessMemberFixture {
 		(organization_id, product_user_id) VALUES ($1, $2)`, organizationID, userID)
 	require.NoError(t, err)
 	return roleLessMemberFixture{productID: productID, organizationID: organizationID, userID: userID}
-}
-
-func givenUntypedRole(t *testing.T, productID string) role.ProductRole {
-	t.Helper()
-	managed := role.NewManaged(productID, "Legacy "+uuid.NewString(), "")
-	managed.ResourceTypeID = organizationTypeID(t, productID)
-	_, err := ProductRoleRepo.Create(t.Context(), managed)
-	require.NoError(t, err)
-	_, err = TestDB.ExecContext(t.Context(), `UPDATE product_roles SET type = NULL WHERE id = $1`, managed.ID)
-	require.NoError(t, err)
-	return managed
 }
 
 func givenOrganization(t *testing.T, productID string) string {

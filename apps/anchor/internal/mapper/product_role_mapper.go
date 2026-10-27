@@ -22,7 +22,7 @@ func (m *ProductRoleMapper) ToDomain(
 		ID:             entity.ID,
 		ProductID:      entity.ProductID,
 		OrganizationID: functional.FromPtr(entity.OrganizationID).OrElse(""),
-		Type:           role.TypeOf(entity.Type),
+		Type:           role.Type(entity.Type),
 		Name:           entity.Name,
 		Description:    description,
 		ResourceTypeID: entity.ResourceTypeID,
@@ -34,13 +34,12 @@ func (m *ProductRoleMapper) ToDomain(
 
 func (m *ProductRoleMapper) ToEntity(domain role.ProductRole) model.ProductRoles {
 	description := functional.OptionOf(domain.Description, domain.Description != "").ToPtr()
-	roleType := string(domain.Type)
 
 	return model.ProductRoles{
 		ID:             domain.ID,
 		ProductID:      domain.ProductID,
 		OrganizationID: functional.OptionOf(domain.OrganizationID, domain.OrganizationID != "").ToPtr(),
-		Type:           &roleType,
+		Type:           string(domain.Type),
 		Name:           domain.Name,
 		Description:    description,
 		ResourceTypeID: domain.ResourceTypeID,
