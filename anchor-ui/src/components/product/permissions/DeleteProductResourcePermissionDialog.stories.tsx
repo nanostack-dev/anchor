@@ -1,4 +1,8 @@
-import type { ProductRoleResponse, ProductRoleSearchRequest } from "@/client";
+import {
+	type ProductRoleResponse,
+	type ProductRoleSearchRequest,
+	ProductRoleType,
+} from "@/client";
 import { client } from "@/client/client.gen";
 import { StoryQuery } from "@/lib/storybook/story-query";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -14,6 +18,7 @@ function role(name: string): ProductRoleResponse {
 		product_id: PRODUCT_ID,
 		name,
 		resource_type: "organization",
+		type: ProductRoleType.MANAGED,
 		permissions: [],
 		created_at: "2026-07-14T09:12:00Z",
 		updated_at: "2026-07-14T09:12:00Z",

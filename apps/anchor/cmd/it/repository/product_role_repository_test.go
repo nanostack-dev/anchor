@@ -124,10 +124,8 @@ func TestProductRoleRepositorySearchByProductIDSortDirections(t *testing.T) {
 	names := []string{"Alpha", "Bravo", "Charlie"}
 	ids := make(map[string]string, len(names))
 	for _, name := range names {
-		entity := role.ProductRole{
-			ProductID: productID, Name: name, Description: "fixture", ResourceTypeID: organizationTypeID(t, productID),
-		}
-		entity.GenerateID()
+		entity := role.NewManaged(productID, name, "fixture")
+		entity.ResourceTypeID = organizationTypeID(t, productID)
 		created, err := repoCtx.ProductRoleRepository.Create(context.Background(), entity)
 		require.NoError(t, err)
 		ids[name] = created.ID
@@ -258,10 +256,8 @@ func TestProductRoleRepositorySearchByProductIDFilterByNames(t *testing.T) {
 	productID := tenantProductChain(t)
 
 	name := uniqueName(t, "Editor Role")
-	entity := role.ProductRole{
-		ProductID: productID, Name: name, Description: "fixture", ResourceTypeID: organizationTypeID(t, productID),
-	}
-	entity.GenerateID()
+	entity := role.NewManaged(productID, name, "fixture")
+	entity.ResourceTypeID = organizationTypeID(t, productID)
 	matching, err := repoCtx.ProductRoleRepository.Create(context.Background(), entity)
 	require.NoError(t, err)
 
@@ -344,16 +340,11 @@ func TestProductRoleRepositorySearchByProductIDPermissionsNotTruncatedByPaginati
 		require.NoError(t, err)
 	}
 
-	entity := role.ProductRole{
-		// A fresh product per test means a plain literal name is unique enough —
-		// uniqueName's t.Name() prefix would push this past the 100-char column
-		// limit on product_roles.name for this particularly long test name.
-		ProductID:      productID,
-		Name:           "Permission Heavy Role",
-		Description:    "fixture",
-		ResourceTypeID: organizationTypeID(t, productID),
-	}
-	entity.GenerateID()
+	// A fresh product per test means a plain literal name is unique enough —
+	// uniqueName's t.Name() prefix would push this past the 100-char column
+	// limit on product_roles.name for this particularly long test name.
+	entity := role.NewManaged(productID, "Permission Heavy Role", "fixture")
+	entity.ResourceTypeID = organizationTypeID(t, productID)
 	entity.Permissions = make([]role.ProductRolePermission, len(permNames))
 	for i, name := range permNames {
 		perm := role.ProductRolePermission{ProductRoleID: entity.ID, ProductID: productID, PermissionName: name}

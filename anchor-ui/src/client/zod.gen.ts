@@ -384,6 +384,11 @@ export const zProductRoleUpdateRequest = z.object({
 });
 
 /**
+ * MANAGED: the Product manages the role, and every Organization of the Product references it by the same ID, so a change to it reaches every member who holds it. CUSTOM: one Organization owns the role, and only its members may hold it. The Product's role routes list MANAGED roles only.
+ */
+export const zProductRoleType = z.enum(['MANAGED', 'CUSTOM']);
+
+/**
  * Represents a product resource permission (e.g. "document:read") that has been assigned to a ProductRole. These are domain-specific permissions defined by the product owner for their own application resources, not to be confused with the built-in ProductPermissions that govern access to the product within Anchor.
  */
 export const zProductRolePermissionResponse = z.object({
@@ -398,6 +403,7 @@ export const zProductRoleResponse = z.object({
     name: z.string(),
     description: z.string().nullish(),
     resource_type: zResourceTypeSlug,
+    type: zProductRoleType,
     permissions: z.array(zProductRolePermissionResponse),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()

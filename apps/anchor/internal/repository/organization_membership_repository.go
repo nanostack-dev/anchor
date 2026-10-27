@@ -240,7 +240,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 					table.Organizations,
 					table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
 				).
-				INNER_JOIN(
+				LEFT_JOIN(
 					table.ProductRoles,
 					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
 				),
@@ -305,6 +305,13 @@ const organizationMembershipPrimaryKey = "organization_memberships_pkey"
 // race the service pre-check cannot.
 var ErrOrganizationMembershipExists = errors.New("organization membership already exists")
 
+// ErrOrganizationMembershipRoleGone is returned by Create and Update when the
+// role was deleted after the service found it: a role delete holds the role's
+// row FOR UPDATE, so the write waits and then trips the foreign key.
+var ErrOrganizationMembershipRoleGone = errors.New("organization membership role no longer exists")
+
+const organizationMembershipRoleForeignKey = "organization_memberships_product_role_id_fkey"
+
 func (r *organizationMembershipRepositoryImpl) Create(
 	ctx context.Context,
 	productID string,
@@ -315,7 +322,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
 		ProductUserID:  productUserID,
-		ProductRoleID:  roleID,
+		ProductRoleID:  functional.OptionOf(roleID, roleID != "").ToPtr(),
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -326,6 +333,7 @@ func (r *organizationMembershipRepositoryImpl) Create(
 
 	if err := transactor.Exec(ctx, r.db, stmt).
 		OnUnique(ErrOrganizationMembershipExists, organizationMembershipPrimaryKey).
+		OnForeignKey(ErrOrganizationMembershipRoleGone, organizationMembershipRoleForeignKey).
 		Err(); err != nil {
 		return organization.Membership{}, err
 	}
@@ -357,7 +365,7 @@ func (r *organizationMembershipRepositoryImpl) Update(
 	entity := model.OrganizationMemberships{
 		OrganizationID: organizationID,
 		ProductUserID:  productUserID,
-		ProductRoleID:  roleID,
+		ProductRoleID:  functional.OptionOf(roleID, roleID != "").ToPtr(),
 		UpdatedAt:      time.Now(),
 	}
 
@@ -372,7 +380,9 @@ func (r *organizationMembershipRepositoryImpl) Update(
 		),
 	)
 
-	if err := transactor.Exec(ctx, r.db, stmt).Err(); err != nil {
+	if err := transactor.Exec(ctx, r.db, stmt).
+		OnForeignKey(ErrOrganizationMembershipRoleGone, organizationMembershipRoleForeignKey).
+		Err(); err != nil {
 		return organization.Membership{}, err
 	}
 
@@ -413,7 +423,7 @@ func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions boo
 			table.Organizations,
 			table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
 		).
-		INNER_JOIN(
+		LEFT_JOIN(
 			table.ProductRoles,
 			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
 		)
@@ -448,7 +458,7 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 		OrganizationName:         row.Organization.Name,
 		OrganizationDescription:  row.Organization.Description,
 		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.Organization.MetadataJSON),
-		RoleID:                   row.Role.ID,
+		RoleID:                   heldRoleID(row.OrganizationMemberships),
 		RoleName:                 row.Role.Name,
 		RolePermissions:          permissions,
 		JoinedAt:                 row.OrganizationMemberships.CreatedAt,
@@ -469,7 +479,7 @@ func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembers
 		UserEmail:       row.ProductUser.Email,
 		UserName:        userName,
 		UserExternalID:  row.ProductUser.ExternalID,
-		RoleID:          row.Role.ID,
+		RoleID:          heldRoleID(row.OrganizationMemberships),
 		RoleName:        row.Role.Name,
 		RolePermissions: permissions,
 		JoinedAt:        row.OrganizationMemberships.CreatedAt,
@@ -484,7 +494,7 @@ func (r *organizationMembershipRepositoryImpl) buildOrgQuery(includePermissions 
 			table.ProductUsers,
 			table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
 		).
-		INNER_JOIN(
+		LEFT_JOIN(
 			table.ProductRoles,
 			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
 		)
@@ -632,7 +642,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 					table.ProductUsers,
 					table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
 				).
-				INNER_JOIN(
+				LEFT_JOIN(
 					table.ProductRoles,
 					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
 				),
@@ -641,4 +651,10 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 		Keyset(order).
 		Run(ctx, req.Pagination).
 		Value()
+}
+
+// heldRoleID is the membership's role, or "" for a member who holds none: the
+// role joins with LEFT JOIN, so such a member still lists.
+func heldRoleID(membership model.OrganizationMemberships) string {
+	return functional.FromPtr(membership.ProductRoleID).OrElse("")
 }

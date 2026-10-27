@@ -697,6 +697,14 @@ export type ProductRoleUpdateRequest = {
     resource_type?: ResourceTypeSlug;
 };
 
+/**
+ * MANAGED: the Product manages the role, and every Organization of the Product references it by the same ID, so a change to it reaches every member who holds it. CUSTOM: one Organization owns the role, and only its members may hold it. The Product's role routes list MANAGED roles only.
+ */
+export enum ProductRoleType {
+    MANAGED = 'MANAGED',
+    CUSTOM = 'CUSTOM'
+}
+
 export type ProductRoleResponse = {
     /**
      * Unique identifier for the product role (e.g., prefix 'role_').
@@ -718,6 +726,7 @@ export type ProductRoleResponse = {
      * The resource type this role is scoped to.
      */
     resource_type: ResourceTypeSlug;
+    type: ProductRoleType;
     /**
      * List of permissions assigned to this role.
      */
@@ -1237,7 +1246,7 @@ export type OrganizationMembershipRequest = {
      */
     organization_id: Ksuid;
     /**
-     * The role to assign to the user within the organization.
+     * The role to assign to the user within the organization. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
 };
@@ -1247,7 +1256,7 @@ export type OrganizationMembershipRequest = {
  */
 export type OrganizationMembershipUpdateRequest = {
     /**
-     * The new role to assign to the user within the organization.
+     * The new role to assign to the user within the organization. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
 };
@@ -1596,7 +1605,7 @@ export type FoundingMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * Role to assign to the founding member.
+     * Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
 };
@@ -1767,7 +1776,7 @@ export type OrganizationMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * The role to assign to the member.
+     * The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
 };
@@ -1777,7 +1786,7 @@ export type OrganizationMemberRequest = {
  */
 export type OrganizationMemberRoleRequest = {
     /**
-     * The new role to assign to the member.
+     * The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
 };
@@ -1877,7 +1886,7 @@ export type OrganizationInvitationCreateRequest = {
      */
     email: string;
     /**
-     * The role the invited person receives on accept. It must be a role of the Product.
+     * The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
     /**
@@ -1891,7 +1900,7 @@ export type OrganizationInvitationCreateRequest = {
  */
 export type OrganizationInvitationUpdateRequest = {
     /**
-     * The new role. It must be a role of the Product.
+     * The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
      */
     role_id: Ksuid;
     /**

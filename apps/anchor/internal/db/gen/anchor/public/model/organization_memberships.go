@@ -14,7 +14,7 @@ import (
 type OrganizationMemberships struct {
 	OrganizationID string `sql:"primary_key"`
 	ProductUserID  string `sql:"primary_key"`
-	ProductRoleID  string
+	ProductRoleID  *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

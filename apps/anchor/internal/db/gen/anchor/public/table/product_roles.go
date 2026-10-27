@@ -24,6 +24,8 @@ type productRolesTable struct {
 	CreatedAt      postgres.ColumnTimestampz
 	UpdatedAt      postgres.ColumnTimestampz
 	ResourceTypeID postgres.ColumnString
+	OrganizationID postgres.ColumnString
+	Type           postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -72,8 +74,10 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		CreatedAtColumn      = postgres.TimestampzColumn("created_at")
 		UpdatedAtColumn      = postgres.TimestampzColumn("updated_at")
 		ResourceTypeIDColumn = postgres.StringColumn("resource_type_id")
-		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
-		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn}
+		OrganizationIDColumn = postgres.StringColumn("organization_id")
+		TypeColumn           = postgres.StringColumn("type")
+		allColumns           = postgres.ColumnList{IDColumn, ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TypeColumn}
+		mutableColumns       = postgres.ColumnList{ProductIDColumn, NameColumn, DescriptionColumn, CreatedAtColumn, UpdatedAtColumn, ResourceTypeIDColumn, OrganizationIDColumn, TypeColumn}
 		defaultColumns       = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
@@ -88,6 +92,8 @@ func newProductRolesTableImpl(schemaName, tableName, alias string) productRolesT
 		CreatedAt:      CreatedAtColumn,
 		UpdatedAt:      UpdatedAtColumn,
 		ResourceTypeID: ResourceTypeIDColumn,
+		OrganizationID: OrganizationIDColumn,
+		Type:           TypeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

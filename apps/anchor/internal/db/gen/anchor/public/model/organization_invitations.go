@@ -16,7 +16,7 @@ type OrganizationInvitations struct {
 	ProductID      string
 	OrganizationID string
 	Email          string
-	ProductRoleID  string
+	ProductRoleID  *string
 	ExpiresAt      time.Time
 	AcceptedAt     *time.Time
 	CreatedAt      time.Time
