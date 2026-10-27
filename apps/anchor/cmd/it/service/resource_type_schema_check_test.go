@@ -91,6 +91,12 @@ func TestResourceTypeSchemaCheck(t *testing.T) {
 			problem:  "idx_product_roles_product_lower_name_unique still exists",
 			recovery: "migrate force 64",
 		},
+		{
+			name:     "A nullable role type fails the check and names the recovery",
+			breakIt:  `ALTER TABLE product_roles ALTER COLUMN type DROP NOT NULL`,
+			problem:  "product_roles.type is still nullable",
+			recovery: "migrate force 65",
+		},
 	} {
 		t.Run(broken.name, func(t *testing.T) {
 			tx := migratedSchemaTx(t)
@@ -123,7 +129,7 @@ func migratedSchemaTx(t *testing.T) *sql.Tx {
 		`SET LOCAL search_path TO ` + schema,
 		`CREATE TABLE organizations (id VARCHAR(255) PRIMARY KEY)`,
 		`CREATE TABLE product_roles (id VARCHAR(255) PRIMARY KEY, resource_type_id VARCHAR(255) NOT NULL,
-			product_id VARCHAR(255), name VARCHAR(100), organization_id VARCHAR(255), type VARCHAR(10))`,
+			product_id VARCHAR(255), name VARCHAR(100), organization_id VARCHAR(255), type VARCHAR(10) NOT NULL)`,
 		`ALTER TABLE product_roles ADD CONSTRAINT product_roles_organization_id_fkey
 			FOREIGN KEY (organization_id) REFERENCES organizations(id)`,
 		`CREATE TABLE product_resource_permissions (resource_type_id VARCHAR(255) NOT NULL)`,

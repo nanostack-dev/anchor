@@ -20,5 +20,5 @@ type ProductRoles struct {
 	UpdatedAt      time.Time
 	ResourceTypeID string
 	OrganizationID *string
-	Type           *string
+	Type           string
 }

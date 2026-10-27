@@ -29,9 +29,10 @@ const (
 	migrationCustomRoleNames      = 63
 	migrationDropProductNameKey   = 64
 	migrationDropProductNameIndex = 65
+	migrationRoleTypeRequired     = 66
 )
 
-// roleSchemaFact is one thing the role migrations (000059 to 000065) must
+// roleSchemaFact is one thing the role migrations (000059 to 000066) must
 // leave true. holds is a query that returns one boolean. Without a recovery,
 // the recovery is to force the version before and redeploy.
 type roleSchemaFact struct {
@@ -99,6 +100,13 @@ SELECT NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.rel
 WHERE c.relname = 'idx_product_roles_product_lower_name_unique' AND n.nspname = current_schema())`,
 			problem: "the product-wide role name index idx_product_roles_product_lower_name_unique still exists",
 			version: migrationDropProductNameIndex,
+		},
+		{
+			holds: `
+SELECT count(*) = 1 FROM information_schema.columns
+WHERE table_schema = current_schema() AND table_name = 'product_roles'
+  AND column_name = 'type' AND is_nullable = 'NO'`,
+			problem: "product_roles.type is still nullable", version: migrationRoleTypeRequired,
 		},
 	}
 }

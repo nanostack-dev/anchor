@@ -68,11 +68,11 @@ This ships in steps, because a rolling deploy runs the previous release beside t
 1. **The first release** adds `type` and `organization_id`, makes the membership role nullable, and reads custom roles and role-less members correctly. It writes neither.
 2. **The second release** adds members and invitations without a role. The first release runs beside it during that deploy, and shows such a member's role as an empty `{"id": "", "name": ""}` until its replicas stop.
 3. **A later release** lets Organizations create custom roles.
-4. **A later cleanup** fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
+4. **The cleanup** (`000066`) fills any `type` still `NULL` with `MANAGED` and makes it `NOT NULL`, in one migration.
 
-`type` has no default. Migration `000059` stores `MANAGED` on every existing role. The previous release keeps writing roles without a type during the deploy, so the code reads a `NULL` type as `MANAGED`, which is the only kind that release writes. Nothing needs to store it before the cleanup migration.
+`type` has no default. Migration `000059` stores `MANAGED` on every existing role. The release before it kept writing roles without a type during that deploy, all of them managed, so `000066` stores `MANAGED` on those. Every release since writes the type.
 
-Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixDirty` marks a failed migration as applied and never retries it, and a failed `CONCURRENTLY` build leaves an `INVALID` index, so the resource type module checks on start that each role migration (`000059` to `000065`) holds, and refuses to start otherwise (`roleSchemaFacts` in `internal/resourcetype/schema_check.go`):
+Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixDirty` marks a failed migration as applied and never retries it, and a failed `CONCURRENTLY` build leaves an `INVALID` index, so the resource type module checks on start that each role migration (`000059` to `000066`) holds, and refuses to start otherwise (`roleSchemaFacts` in `internal/resourcetype/schema_check.go`):
 
 | Migration | Must hold |
 | --- | --- |
@@ -81,6 +81,7 @@ Every `ALTER` migration sets `lock_timeout` to 5 seconds. Production's `autoFixD
 | `000061` | the membership and invitation role are nullable |
 | `000062`, `000063` | `idx_product_roles_managed_lower_name` and `idx_product_roles_custom_lower_name` are valid |
 | `000064`, `000065` | the product-wide name constraint and index are gone |
+| `000066` | `type` is `NOT NULL` |
 
 Each error names the recovery: `migrate force` to the version before, after `DROP INDEX CONCURRENTLY` for an invalid index, then redeploy.
 
