@@ -40,6 +40,7 @@ import {
 } from "@nanostackorg/design-system/components/dialog";
 import { Input } from "@nanostackorg/design-system/components/input";
 import { Label } from "@nanostackorg/design-system/components/label";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -1888,7 +1889,7 @@ export function EmailTemplateBuilder({
 						</TabsContent>
 
 						<TabsContent value="variables">
-							<Box className="h-full min-h-0 overflow-y-auto">
+							<ScrollArea height="fill">
 								<Stack space="lg">
 									<Text tone="muted">
 										Define the variables your template expects. These appear in
@@ -1999,11 +2000,11 @@ export function EmailTemplateBuilder({
 										onChange={handleVariablesChange}
 									/>
 								</Stack>
-							</Box>
+							</ScrollArea>
 						</TabsContent>
 
 						<TabsContent value="examples">
-							<Box className="h-full min-h-0 overflow-y-auto">
+							<ScrollArea height="fill">
 								<ExampleManager
 									productId={productId}
 									templateId={templateId}
@@ -2012,7 +2013,7 @@ export function EmailTemplateBuilder({
 									activeVarValues={activeVarValues}
 									onActiveChange={setActiveVarValues}
 								/>
-							</Box>
+							</ScrollArea>
 						</TabsContent>
 
 						{/* Mobile-only preview tab (desktop renders the split panel below) */}

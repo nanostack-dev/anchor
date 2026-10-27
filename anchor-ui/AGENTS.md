@@ -52,6 +52,8 @@ pnpm build        # vite only, no type check
 pnpm test-storybook # styled Chromium component/feature tests
 ```
 
+While iterating, `pnpm lint:changed` and `pnpm format:changed` run Biome on only the `.ts`/`.tsx`/`.mjs` files changed since `origin/main`; `pnpm check` still covers the whole app.
+
 `pnpm build` does not check types. `pnpm typecheck` is a different command. Run
 both. `pnpm typecheck:app` skips `.storybook` and `vitest.workspace.ts`; the
 deploy pipeline runs that one as a precondition, before anything ships.

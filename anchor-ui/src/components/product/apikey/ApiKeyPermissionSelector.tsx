@@ -9,6 +9,7 @@ import {
 	InputGroupAddon,
 	InputGroupInput,
 } from "@nanostackorg/design-system/components/input-group";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { useQuery } from "@tanstack/react-query";
@@ -214,58 +215,60 @@ export function ApiKeyPermissionSelector({
 						{visiblePermissions.length}
 					</Badge>
 				</Box>
-				<Box className="max-h-[22rem] overflow-y-auto divide-y divide-border">
-					{visiblePermissions.length === 0 ? (
-						<Box className="flex flex-col items-center justify-center py-10 text-center">
-							<Search className="size-7 text-muted-foreground mb-2" />
-							<Box as="p" className="text-sm text-muted-foreground">
-								No permissions match your search
+				<ScrollArea maxHeight="md">
+					<Box className="divide-y divide-border">
+						{visiblePermissions.length === 0 ? (
+							<Box className="flex flex-col items-center justify-center py-10 text-center">
+								<Search className="size-7 text-muted-foreground mb-2" />
+								<Box as="p" className="text-sm text-muted-foreground">
+									No permissions match your search
+								</Box>
 							</Box>
-						</Box>
-					) : (
-						visiblePermissions.map((permission) => {
-							const isSelected = value.includes(permission.name);
-							const wasOriginal = originalPermissions?.includes(
-								permission.name,
-							);
-							return (
-								<button
-									key={permission.name}
-									type="button"
-									onClick={() => toggle(permission.name)}
-									className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
-										isSelected ? "bg-accent" : "bg-card hover:bg-muted/60"
-									}`}
-								>
-									<Checkbox
-										checked={isSelected}
-										onCheckedChange={() => toggle(permission.name)}
-									/>
-									<Box className="flex-1 min-w-0">
-										<Box className="flex flex-wrap items-center gap-2">
-											<code className="text-xs bg-muted text-foreground px-2 py-0.5 rounded-md font-mono break-all">
-												{permission.name}
-											</code>
-											{wasOriginal && (
-												<Badge tone="neutral" variant="soft">
-													Currently assigned
-												</Badge>
+						) : (
+							visiblePermissions.map((permission) => {
+								const isSelected = value.includes(permission.name);
+								const wasOriginal = originalPermissions?.includes(
+									permission.name,
+								);
+								return (
+									<button
+										key={permission.name}
+										type="button"
+										onClick={() => toggle(permission.name)}
+										className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
+											isSelected ? "bg-accent" : "bg-card hover:bg-muted/60"
+										}`}
+									>
+										<Checkbox
+											checked={isSelected}
+											onCheckedChange={() => toggle(permission.name)}
+										/>
+										<Box className="flex-1 min-w-0">
+											<Box className="flex flex-wrap items-center gap-2">
+												<code className="text-xs bg-muted text-foreground px-2 py-0.5 rounded-md font-mono break-all">
+													{permission.name}
+												</code>
+												{wasOriginal && (
+													<Badge tone="neutral" variant="soft">
+														Currently assigned
+													</Badge>
+												)}
+											</Box>
+											{permission.description && (
+												<Box
+													as="p"
+													className="text-xs text-muted-foreground mt-1 leading-relaxed"
+												>
+													{permission.description}
+												</Box>
 											)}
 										</Box>
-										{permission.description && (
-											<Box
-												as="p"
-												className="text-xs text-muted-foreground mt-1 leading-relaxed"
-											>
-												{permission.description}
-											</Box>
-										)}
-									</Box>
-								</button>
-							);
-						})
-					)}
-				</Box>
+									</button>
+								);
+							})
+						)}
+					</Box>
+				</ScrollArea>
 			</Box>
 		</Box>
 	);

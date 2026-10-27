@@ -8,7 +8,7 @@ Start with [AGENTS.md](../AGENTS.md) for task-specific pointers and [CONTEXT.md]
 | Consequential decisions and rationale | [Existing ADR history](adr/) |
 | Local prerequisites/runtime and native agent discovery | [Setup](development/setup.md) |
 | Test selection, generators and CI | [Testing](development/testing.md), [deployed flow suites](development/flow-suite-testing.md) |
-| Engineering and delivery requirements | [Implementation rules](development/agent-rules.md), [Go conventions](development/go-conventions.md), [engineering practices](engineering-best-practices.md), [agent workflow](development/agent-workflow.md) |
+| Engineering and delivery requirements | [Implementation rules](development/agent-rules.md), [Go conventions](development/go-conventions.md), [engineering practices](engineering-best-practices.md), [agent workflow](development/agent-workflow.md), [review standards](../CODING_STANDARDS.md) |
 | Verified developer repairs | [Troubleshooting](development/troubleshooting.md) |
 | Release and recovery | [Deployment](runbooks/deployment.md), [rollback](runbooks/rollback.md) |
 | Frontend/component/browser detail | [anchor-ui/AGENTS.md](../anchor-ui/AGENTS.md), [anchor-ui documentation](../anchor-ui/docs/) and [browser test guide](../anchor-ui/e2e/guide/README.md) |

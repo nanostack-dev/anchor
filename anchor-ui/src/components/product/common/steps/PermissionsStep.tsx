@@ -387,7 +387,7 @@ export function PermissionsStep({
 
 				{/* Permissions list */}
 				<Box className="rounded-xl border border-border overflow-hidden">
-					<Box className="max-h-80 overflow-y-auto">
+					<ScrollArea maxHeight="md">
 						<Box className="divide-y divide-border">
 							{filteredPermissions.map((permission) => {
 								const isSelected = currentSelected.includes(permission.name);
@@ -448,7 +448,7 @@ export function PermissionsStep({
 								);
 							})}
 						</Box>
-					</Box>
+					</ScrollArea>
 				</Box>
 			</Box>
 		);

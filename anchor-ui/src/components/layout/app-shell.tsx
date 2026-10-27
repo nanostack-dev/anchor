@@ -4,6 +4,7 @@ import {
 	AppShellSidebar,
 	AppShell as SharedAppShell,
 } from "@nanostackorg/design-system/blocks/app-shell";
+import { ScrollArea } from "@nanostackorg/design-system/components/scroll-area";
 import {
 	SidebarInset,
 	SidebarTrigger,
@@ -69,12 +70,14 @@ export function AppShellSidebarTrigger() {
 export function AppShellContent({ children }: ChildrenProps) {
 	return (
 		<Box
-			id="app-shell-content"
-			tabIndex={-1}
 			data-slot="app-shell-content"
-			className="min-h-0 flex-1 overflow-auto outline-none"
+			className="flex min-h-0 min-w-0 flex-1 flex-col"
 		>
-			{children}
+			<ScrollArea height="fill" orientation="both">
+				{/* Skip-link target */}
+				<Box id="app-shell-content" tabIndex={-1} className="outline-none" />
+				{children}
+			</ScrollArea>
 		</Box>
 	);
 }

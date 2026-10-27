@@ -5,6 +5,8 @@ import ts from "typescript";
 const palette =
 	/(?:^|[\s:!"'`])-?(?:bg|text|border|ring|outline|fill|stroke|from|via|to|shadow|decoration|divide|accent|caret|placeholder)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black)(?:-\d{2,3})?\b/;
 const arbitraryColor = /-\[(?:#|rgb|hsl|oklch|color-mix)/;
+// Horizontal-only overflow (tables, code) stays allowed.
+const scrollClass = /(?:^|[\s:!"'`])overflow-(?:y-)?(?:auto|scroll)\b/;
 const failures = [];
 async function files(directory) {
 	const entries = await readdir(directory, { withFileTypes: true });
@@ -101,6 +103,17 @@ for (const file of await files("src")) {
 				"Use semantic design tokens instead of palette or arbitrary color utilities.",
 			);
 		if (
+			(ts.isStringLiteralLike(node) ||
+				ts.isTemplateHead(node) ||
+				ts.isTemplateMiddle(node) ||
+				ts.isTemplateTail(node)) &&
+			scrollClass.test(node.text)
+		)
+			report(
+				node,
+				"Use ScrollArea from @nanostackorg/design-system/components/scroll-area for a scroll region.",
+			);
+		if (
 			file.startsWith("src/routes/") ||
 			(file.startsWith("src/pages/") && !file.includes(".stories."))
 		) {
@@ -122,5 +135,5 @@ if (failures.length) {
 	process.exitCode = 1;
 } else
 	console.log(
-		"UI contract verified: public imports, closed component styling, semantic tokens, and page composition.",
+		"UI contract verified: public imports, closed component styling, semantic tokens, scroll regions, and page composition.",
 	);

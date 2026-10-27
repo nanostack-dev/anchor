@@ -64,6 +64,7 @@ class LintCommandTest(unittest.TestCase):
             "PATH": f"{self.bin}:/usr/bin:/bin",
             "TMPDIR": self.temp.name,
             "LINT_TEST_CALLS": str(self.calls_file),
+            "ANCHOR_TOOL_CACHE": str(Path(self.temp.name) / "tool-cache"),
             "LINT_TEST_VERSION": (ROOT / ".golangci-lint-version").read_text().strip().removeprefix("v"),
         }
         self.write_file("apps/anchor/backend.go", "package fixture\n")
@@ -207,6 +208,32 @@ class LintCommandTest(unittest.TestCase):
         result = self.run_lint("backend")
         self.assertEqual(result.returncode, 2)
         self.assertIn("reason: tool_missing", result.stdout)
+
+    def test_missing_binary_installs_the_pin_into_the_cache_when_go_exists(self):
+        (self.bin / "golangci-lint").unlink()
+        fake_go = self.bin / "go"
+        fake_go.write_text(
+            f"#!{sys.executable}\nimport os, pathlib, sys\n"
+            "target = pathlib.Path(os.environ['GOBIN'], 'golangci-lint')\n"
+            "target.parent.mkdir(parents=True, exist_ok=True)\n"
+            f"target.write_text({f'#!{sys.executable}' + chr(10) + FAKE_LINTER!r})\n"
+            "target.chmod(0o755)\n"
+        )
+        fake_go.chmod(0o755)
+        result = self.run_lint("backend")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        version = (ROOT / ".golangci-lint-version").read_text().strip()
+        self.assertTrue((Path(self.temp.name) / "tool-cache/golangci-lint" / version / "golangci-lint").exists())
+
+    def test_cached_pin_wins_over_a_stale_binary_on_path(self):
+        version = (ROOT / ".golangci-lint-version").read_text().strip()
+        cached = Path(self.temp.name) / "tool-cache/golangci-lint" / version / "golangci-lint"
+        cached.parent.mkdir(parents=True)
+        shutil.copyfile(self.bin / "golangci-lint", cached)
+        cached.chmod(0o755)
+        (self.bin / "golangci-lint").write_text("#!/bin/sh\nexit 99\n")
+        result = self.run_lint("backend")
+        self.assertEqual(result.returncode, 0, result.stdout)
 
     def test_usage_and_help_do_not_start_the_linter(self):
         for args in [[], ["other"], ["backend", "--timeout"], ["backend", "--fix", "extra"],
