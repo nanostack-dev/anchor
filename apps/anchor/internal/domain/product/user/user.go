@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
+
+	"anchor/internal/domain/product/role"
 )
 
 type ProductUserStatus string
@@ -31,14 +33,14 @@ func (u *ProductUser) GenerateID() {
 }
 
 // OrganizationMembership represents an organization from the user's perspective,
-// including their role and membership details within that organization.
+// including their role and membership details within that organization. Role
+// is nil when the user holds no role there.
 type OrganizationMembership struct {
 	OrganizationID           string
 	OrganizationName         string
 	OrganizationDescription  *string
 	OrganizationMetadataJSON json.RawMessage
-	RoleID                   string
-	RoleName                 string
+	Role                     *role.Ref
 	RolePermissions          []string // Only populated when include=role_permissions
 	JoinedAt                 time.Time
 }

@@ -54,7 +54,7 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 		func(t *testing.T) {
 			resp, err := client.AddOrganizationMemberWithResponse(
 				ctx, productCtx.ProductID, missingOrg,
-				ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: role.ID},
+				ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: new(role.ID)},
 			)
 			require.NoError(t, err)
 			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
@@ -107,7 +107,7 @@ func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
 		func(t *testing.T) {
 			resp, err := client.UpdateOrganizationMemberRoleWithResponse(
 				ctx, productCtx.ProductID, org.Id, nonMember.ID,
-				ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: role.ID},
+				ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: new(role.ID)},
 			)
 			require.NoError(t, err)
 			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")

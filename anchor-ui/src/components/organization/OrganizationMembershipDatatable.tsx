@@ -90,13 +90,19 @@ export function OrganizationMembershipDatatable({
 					</Box>
 				),
 			}),
-			columnHelper.accessor("role.name", {
+			columnHelper.accessor((member) => member.role?.name ?? null, {
+				id: "role",
 				header: "Role",
-				cell: (info) => (
-					<Badge tone="neutral" variant="soft">
-						{info.getValue()}
-					</Badge>
-				),
+				cell: (info) => {
+					const name = info.getValue();
+					return name === null ? (
+						<Box className="text-muted-foreground">No role</Box>
+					) : (
+						<Badge tone="neutral" variant="soft">
+							{name}
+						</Badge>
+					);
+				},
 			}),
 			columnHelper.accessor("joined_at", {
 				header: "Joined",

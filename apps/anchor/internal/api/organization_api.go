@@ -105,7 +105,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 			logAPIError(s.logger, err).
 				Str("product_id", request.ProductId).
 				Str("product_user_id", request.Body.FoundingMember.ProductUserId).
-				Str("role_id", request.Body.FoundingMember.RoleId).
+				Str(roleIDField, functional.FromPtr(request.Body.FoundingMember.RoleId).OrElse("")).
 				Msg("failed to create organization with founding member")
 			return nil, err
 		}

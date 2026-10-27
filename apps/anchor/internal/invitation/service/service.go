@@ -115,7 +115,7 @@ func (s *organizationInvitationService) Create(
 		var createErr error
 		created, createErr = s.invitationRepo.Create(txCtx, invitation)
 		if errors.Is(createErr, repository.ErrRoleGone) {
-			return anchorservice.NewBodyRoleNotFoundError(input.RoleID)
+			return anchorservice.NewBodyRoleNotFoundError(functional.FromPtr(input.RoleID).OrElse(""))
 		}
 		if createErr != nil {
 			return createErr
@@ -205,7 +205,7 @@ func (s *organizationInvitationService) Update(
 		var updateErr error
 		updated, updateErr = s.invitationRepo.UpdateRoleAndExpiry(txCtx, current)
 		if errors.Is(updateErr, repository.ErrRoleGone) {
-			return anchorservice.NewBodyRoleNotFoundError(input.RoleID)
+			return anchorservice.NewBodyRoleNotFoundError(functional.FromPtr(input.RoleID).OrElse(""))
 		}
 		if updateErr != nil {
 			return updateErr

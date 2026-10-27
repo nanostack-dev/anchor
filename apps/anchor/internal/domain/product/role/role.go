@@ -9,6 +9,13 @@ import (
 // Type tells a role the Product manages from an Organization's own role.
 type Type string
 
+// Ref is the role a member holds, as reads show it. A member who holds no
+// role has none: a nil *Ref, never an empty one.
+type Ref struct {
+	ID   string
+	Name string
+}
+
 const (
 	// TypeManaged is a role the Product manages. Every Organization of the
 	// Product references it by the same ID, so a change reaches all of them.

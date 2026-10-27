@@ -79,7 +79,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 			ctx,
 			product.ProductID,
 			org.JSON201.Id,
-			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: role.ID},
+			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: new(role.ID)},
 		)
 		require.NoError(t, addErr)
 		require.Equal(t, http.StatusCreated, added.StatusCode())
@@ -93,7 +93,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 			product.ProductID,
 			org.JSON201.Id,
 			user.ID,
-			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: otherRole.ID},
+			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: new(otherRole.ID)},
 		)
 		require.NoError(t, updateErr)
 		require.Equal(t, http.StatusOK, updated.StatusCode())

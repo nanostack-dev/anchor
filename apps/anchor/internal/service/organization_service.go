@@ -401,22 +401,8 @@ func (s *organizationService) CreateWithMember(
 			return NewBodyProductUserNotFoundError(input.ProductUserID)
 		}
 
-		// A new Organization has no custom role yet, so the founding member
-		// holds a role the Product manages.
-		foundRole, roleErr := s.productRoleRepo.FindByProductIDAndRoleID(
-			lockCtx,
-			input.ProductID,
-			input.RoleID,
-		)
-		if roleErr != nil {
-			logger.Error().Err(roleErr).
-				Str("product_id", input.ProductID).
-				Str("role_id", input.RoleID).
-				Msg("failed to verify product role")
+		if roleErr := s.checkFoundingRole(lockCtx, input.ProductID, input.RoleID, logger); roleErr != nil {
 			return roleErr
-		}
-		if foundRole.IsAbsent() {
-			return NewBodyRoleNotFoundError(input.RoleID)
 		}
 
 		template, templateErr := s.resolveLicenseTemplate(
@@ -447,7 +433,7 @@ func (s *organizationService) CreateWithMember(
 			lockCtx, input.ProductID, createdOrg.ID, input.ProductUserID, input.RoleID,
 		)
 		if errors.Is(err, repository.ErrOrganizationMembershipRoleGone) {
-			return NewBodyRoleNotFoundError(input.RoleID)
+			return NewBodyRoleNotFoundError(loggedRoleID(input.RoleID))
 		}
 		if err != nil {
 			logger.Error().Err(err).
@@ -521,7 +507,7 @@ func (s *organizationService) CreateWithMember(
 		Str("product_id", input.ProductID).
 		Str("organization_id", createdOrg.ID).
 		Str("product_user_id", input.ProductUserID).
-		Str("role_id", input.RoleID).
+		Str("role_id", loggedRoleID(input.RoleID)).
 		Msg("organization created with founding member")
 
 	return organization.OrganizationWithMemberResult{
@@ -737,4 +723,27 @@ func (s *organizationService) Search(
 	}
 
 	return result, nil
+}
+
+// checkFoundingRole answers a founding member's role_id that names no role the
+// Product manages: a new Organization has no custom role yet. No role (nil) is
+// allowed.
+func (s *organizationService) checkFoundingRole(
+	ctx context.Context, productID string, roleID *string, logger zerolog.Logger,
+) error {
+	if roleID == nil {
+		return nil
+	}
+	found, err := s.productRoleRepo.FindByProductIDAndRoleID(ctx, productID, *roleID)
+	if err != nil {
+		logger.Error().Err(err).
+			Str("product_id", productID).
+			Str("role_id", *roleID).
+			Msg("failed to verify product role")
+		return err
+	}
+	if found.IsAbsent() {
+		return NewBodyRoleNotFoundError(*roleID)
+	}
+	return nil
 }

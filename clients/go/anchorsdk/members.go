@@ -62,7 +62,7 @@ func (m Members) Add(
 ) (*nanoclient.OrganizationMemberResponse, error) {
 	const op = "Members.Add"
 
-	body := nanoclient.AddOrganizationMemberJSONRequestBody{ProductUserId: productUserID, RoleId: roleID}
+	body := nanoclient.AddOrganizationMemberJSONRequestBody{ProductUserId: productUserID, RoleId: &roleID}
 
 	return retrying(ctx, m.o.c, func(ctx context.Context) (*nanoclient.OrganizationMemberResponse, error) {
 		resp, err := m.o.c.api.AddOrganizationMemberWithResponse(ctx, m.o.c.productID, m.o.id, body)
@@ -94,7 +94,7 @@ func (m Members) SetRole(
 ) (*nanoclient.OrganizationMemberResponse, error) {
 	const op = "Members.SetRole"
 
-	body := nanoclient.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: roleID}
+	body := nanoclient.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: &roleID}
 
 	return retrying(ctx, m.o.c, func(ctx context.Context) (*nanoclient.OrganizationMemberResponse, error) {
 		resp, err := m.o.c.api.UpdateOrganizationMemberRoleWithResponse(

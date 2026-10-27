@@ -521,11 +521,14 @@ func (s *AnchorAPI) GetUserOrganization(
 func mapUserOrgMembershipToResponse(
 	m user.OrganizationMembership, includePermissions bool,
 ) UserOrganizationResponse {
-	role := UserOrganizationRoleResponse{
-		Id:   m.RoleID,
-		Name: m.RoleName,
+	var role *UserOrganizationRoleResponse
+	if m.Role != nil {
+		role = &UserOrganizationRoleResponse{
+			Id:          m.Role.ID,
+			Name:        m.Role.Name,
+			Permissions: includedRolePermissions(m.RolePermissions, includePermissions),
+		}
 	}
-	role.Permissions = includedRolePermissions(m.RolePermissions, includePermissions)
 
 	response := UserOrganizationResponse{
 		JoinedAt: m.JoinedAt,

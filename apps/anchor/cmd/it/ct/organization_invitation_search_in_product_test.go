@@ -24,7 +24,7 @@ func TestSearchInvitationsInProduct_FindsThePendingInvitationsOfAnEmailAcrossOrg
 			otherOrganization := w.newOrganization()
 			second := w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
 				Email:  openapi_types.Email(email),
-				RoleId: w.roleID,
+				RoleId: new(w.roleID),
 			})
 
 			found := w.invitations.PendingFor(email)
@@ -82,13 +82,13 @@ func TestSearchInvitationsInProduct_LeavesOutAcceptedAndExpiredInvitationsWhenAs
 			expiredOrganization := w.newOrganization()
 			expired := w.invitations.Create(expiredOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
 				Email:  openapi_types.Email(email),
-				RoleId: w.roleID,
+				RoleId: new(w.roleID),
 			})
 			w.expire(expired.Id)
 			pendingOrganization := w.newOrganization()
 			pending := w.invitations.Create(pendingOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
 				Email:  openapi_types.Email(email),
-				RoleId: w.roleID,
+				RoleId: new(w.roleID),
 			})
 
 			found := w.invitations.PendingFor(email)

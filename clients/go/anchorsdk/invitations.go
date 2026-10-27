@@ -30,7 +30,7 @@ func (i Invitations) Create(email, roleID string) *InvitationCreateBuilder {
 		o: i.o,
 		req: nanoclient.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(email),
-			RoleId: roleID,
+			RoleId: &roleID,
 		},
 	}
 }
@@ -76,7 +76,7 @@ func (i Invitations) Update(
 ) (*nanoclient.OrganizationInvitationResponse, error) {
 	const op = "Invitations.Update"
 
-	body := nanoclient.UpdateOrganizationInvitationJSONRequestBody{RoleId: roleID, ExpiresAt: expiresAt}
+	body := nanoclient.UpdateOrganizationInvitationJSONRequestBody{RoleId: &roleID, ExpiresAt: expiresAt}
 
 	return retrying(ctx, i.o.c, func(ctx context.Context) (*nanoclient.OrganizationInvitationResponse, error) {
 		resp, err := i.o.c.api.UpdateOrganizationInvitationWithResponse(

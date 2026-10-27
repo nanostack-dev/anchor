@@ -344,7 +344,7 @@ func (b *Builder) Membership(opts MembershipOpts) *Builder {
 		productCtx.ProductID,
 		organization.ID,
 		productUser.ID,
-		role.ID,
+		&role.ID,
 	)
 	require.NoError(b.t, err)
 

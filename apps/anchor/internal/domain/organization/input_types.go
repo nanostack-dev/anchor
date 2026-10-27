@@ -98,7 +98,8 @@ type CreateOrganizationWithMemberInput struct {
 	Name          string  `validate:"required,notblank,min=2,max=100"`
 	Description   *string `validate:"omitempty,max=500"`
 	ProductUserID string  `validate:"required,notblank"`
-	RoleID        string  `validate:"required,notblank"`
+	// Nil makes the founding member a member who holds no role.
+	RoleID *string `validate:"omitempty,notblank"`
 	// Metadata is the caller-supplied key-value metadata. Nil leaves it unset.
 	Metadata map[string]any
 	// Nil leaves the organization unlicensed. Ignored on the idempotent path,

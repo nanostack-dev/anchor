@@ -75,7 +75,7 @@ func TestUpdateInvitation_EmitsTheUpdatedEvent(t *testing.T) {
 		created := w.invite(uniqueEmail())
 
 		w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    w.roleID,
+			RoleId:    new(w.roleID),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 

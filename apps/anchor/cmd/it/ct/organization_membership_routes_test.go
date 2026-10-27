@@ -37,7 +37,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			orgResp.JSON201.Id,
 			ct.AddOrganizationMemberJSONRequestBody{
 				ProductUserId: productUser.ID,
-				RoleId:        role.ID,
+				RoleId:        new(role.ID),
 			},
 		)
 		require.NoError(t, addErr)
@@ -51,7 +51,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			orgResp.JSON201.Id,
 			ct.AddOrganizationMemberJSONRequestBody{
 				ProductUserId: productUser.ID,
-				RoleId:        role.ID,
+				RoleId:        new(role.ID),
 			},
 		)
 		require.NoError(t, dupErr)
@@ -71,7 +71,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			orgResp.JSON201.Id,
 			ct.AddOrganizationMemberJSONRequestBody{
 				ProductUserId: ids.MustNew("pusr"),
-				RoleId:        role.ID,
+				RoleId:        new(role.ID),
 			},
 		)
 		require.NoError(t, addErr)
@@ -93,7 +93,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			ids.MustNew("org"),
 			ct.AddOrganizationMemberJSONRequestBody{
 				ProductUserId: productUser.ID,
-				RoleId:        role.ID,
+				RoleId:        new(role.ID),
 			},
 		)
 		require.NoError(t, addErr)
@@ -111,7 +111,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			orgResp.JSON201.Id,
 			ct.AddOrganizationMemberJSONRequestBody{
 				ProductUserId: productUser.ID,
-				RoleId:        role.ID,
+				RoleId:        new(role.ID),
 			},
 		)
 		require.NoError(t, addErr)
@@ -140,7 +140,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 		requestBody := ct.CreateProductOrganizationJSONRequestBody{Name: "Atomic Create CT"}
 		requestBody.FoundingMember = &ct.FoundingMemberRequest{
 			ProductUserId: productUser.ID,
-			RoleId:        role.ID,
+			RoleId:        new(role.ID),
 		}
 
 		firstResp, firstErr := apiKeyClient.CreateProductOrganizationWithResponse(
@@ -183,7 +183,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			ctx,
 			product.ProductID,
 			org.JSON201.Id,
-			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: memberRole.ID},
+			ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: new(memberRole.ID)},
 		)
 		require.NoError(t, addErr)
 		require.Equal(t, http.StatusCreated, added.StatusCode())
@@ -197,7 +197,7 @@ func TestOrganizationMembershipRoutes(t *testing.T) {
 			product.ProductID,
 			org.JSON201.Id,
 			user.ID,
-			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: otherRole.ID},
+			ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: new(otherRole.ID)},
 		)
 		require.NoError(t, updateErr)
 		require.Equal(t, http.StatusOK, updated.StatusCode())

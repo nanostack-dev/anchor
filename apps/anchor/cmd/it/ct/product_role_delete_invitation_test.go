@@ -49,7 +49,7 @@ func TestDeleteProductRole_IsRefusedWhileAPendingInvitationNamesTheRole(t *testi
 		require.Equal(t, http.StatusConflict, resp.StatusCode(), string(resp.Body))
 		assert.Equal(t, "ROLE_IN_USE", errorCode(t, resp.JSON409.Errors))
 		w.assertRoleExists(w.roleID)
-		assert.Equal(t, w.roleID, w.invitations.Get(w.organizationID, created.Id).RoleId)
+		assert.Equal(t, new(w.roleID), w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
 }
 
@@ -63,14 +63,14 @@ func TestDeleteProductRole_IsAllowedOnceThePendingInvitationChangesRole(t *testi
 		created := w.invite(uniqueEmail())
 		otherRole := w.newRole()
 		w.invitations.Update(w.organizationID, created.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-			RoleId:    otherRole,
+			RoleId:    new(otherRole),
 			ExpiresAt: time.Now().Add(time.Hour),
 		})
 
 		resp := w.deleteRoleRaw(w.roleID)
 
 		require.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, otherRole, w.invitations.Get(w.organizationID, created.Id).RoleId)
+		assert.Equal(t, new(otherRole), w.invitations.Get(w.organizationID, created.Id).RoleId)
 	})
 }
 

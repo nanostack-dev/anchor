@@ -629,7 +629,7 @@ export const zUserOrganizationResponse = z.object({
         description: z.string().nullish(),
         metadata: zMetadata.optional()
     }),
-    role: zUserOrganizationRoleResponse,
+    role: zUserOrganizationRoleResponse.nullable(),
     joined_at: z.iso.datetime()
 });
 
@@ -867,7 +867,7 @@ export const zOrganizationInclude = z.enum(['license', 'workspace']);
 
 export const zFoundingMemberRequest = z.object({
     product_user_id: zKsuid,
-    role_id: zKsuid
+    role_id: zKsuid.optional()
 });
 
 export const zProductOrganizationSearchRequest = zSearchRequest.and(z.object({
@@ -907,6 +907,15 @@ export const zProductWorkspaceListResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
+ * The role a member holds within the organization.
+ */
+export const zOrganizationMemberRoleResponse = z.object({
+    id: zKsuid,
+    name: z.string(),
+    permissions: z.array(z.string()).optional()
+});
+
+/**
  * Represents a member of an organization with their role details.
  */
 export const zOrganizationMemberResponse = z.object({
@@ -914,11 +923,7 @@ export const zOrganizationMemberResponse = z.object({
     email: z.email(),
     name: z.string().nullish(),
     external_id: z.string().nullish(),
-    role: z.object({
-        id: zKsuid,
-        name: z.string(),
-        permissions: z.array(z.string()).optional()
-    }),
+    role: zOrganizationMemberRoleResponse.nullable(),
     joined_at: z.iso.datetime()
 });
 
@@ -934,14 +939,14 @@ export const zOrganizationMemberListResponse = zPagedListResponse.and(z.object({
  */
 export const zOrganizationMemberRequest = z.object({
     product_user_id: zKsuid,
-    role_id: zKsuid
+    role_id: zKsuid.optional()
 });
 
 /**
  * Request body for updating a member's role within an organization.
  */
 export const zOrganizationMemberRoleRequest = z.object({
-    role_id: zKsuid
+    role_id: z.string().regex(/^[a-z_]{2,20}_[0-9a-zA-Z]{27}$/).nullable()
 });
 
 /**
@@ -980,7 +985,7 @@ export const zOrganizationInvitationResponse = z.object({
     id: zKsuid,
     organization_id: zKsuid,
     email: z.email(),
-    role_id: zKsuid,
+    role_id: zKsuid.nullable(),
     status: zOrganizationInvitationStatus,
     expires_at: z.iso.datetime(),
     accepted_at: z.iso.datetime().optional(),
@@ -997,7 +1002,7 @@ export const zOrganizationInvitationListResponse = zPagedListResponse.and(z.obje
  */
 export const zOrganizationInvitationCreateRequest = z.object({
     email: z.email(),
-    role_id: zKsuid,
+    role_id: zKsuid.optional(),
     expires_at: z.iso.datetime().optional()
 });
 
@@ -1005,7 +1010,7 @@ export const zOrganizationInvitationCreateRequest = z.object({
  * Request body for changing an invitation. Only the role and the expiry can change.
  */
 export const zOrganizationInvitationUpdateRequest = z.object({
-    role_id: zKsuid,
+    role_id: z.string().regex(/^[a-z_]{2,20}_[0-9a-zA-Z]{27}$/).nullable(),
     expires_at: z.iso.datetime()
 });
 

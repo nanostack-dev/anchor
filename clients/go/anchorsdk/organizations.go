@@ -131,7 +131,7 @@ func (b *OrgCreateBuilder) Workspace(name string) *OrgCreateBuilder {
 
 // FoundingMember assigns the first member atomically with the organization.
 func (b *OrgCreateBuilder) FoundingMember(productUserID, roleID string) *OrgCreateBuilder {
-	b.req.FoundingMember = &nanoclient.FoundingMemberRequest{ProductUserId: productUserID, RoleId: roleID}
+	b.req.FoundingMember = &nanoclient.FoundingMemberRequest{ProductUserId: productUserID, RoleId: &roleID}
 	return b
 }
 

@@ -41,7 +41,7 @@ func TestConcurrentRoleDeleteAndMemberAdd(t *testing.T) {
 			wg.Go(func() {
 				<-start
 				resp, err := client.AddOrganizationMemberWithResponse(t.Context(), product.ProductID, org.Id,
-					ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: managed.Id})
+					ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID, RoleId: new(managed.Id)})
 				if assert.NoError(t, err) {
 					addStatus, addBody = resp.StatusCode(), resp.Body
 				}

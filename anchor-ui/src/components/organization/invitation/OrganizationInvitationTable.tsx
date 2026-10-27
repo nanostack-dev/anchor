@@ -76,7 +76,13 @@ export function OrganizationInvitationTable({
 			}),
 			columnHelper.accessor("role_id", {
 				header: "Role",
-				cell: (info) => roleNames[info.getValue()] ?? info.getValue(),
+				cell: (info) => {
+					const roleId = info.getValue();
+					if (roleId === null) {
+						return <Box className="text-muted-foreground">No role</Box>;
+					}
+					return roleNames[roleId] ?? roleId;
+				},
 				enableSorting: false,
 			}),
 			columnHelper.accessor("expires_at", {

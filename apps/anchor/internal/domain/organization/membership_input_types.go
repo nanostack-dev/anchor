@@ -6,20 +6,22 @@ import (
 	"anchor/internal/searchx"
 )
 
-// AddMemberInput is the input for adding a product user to an organization with a role.
+// AddMemberInput is the input for adding a product user to an organization.
+// A nil RoleID adds a member who holds no role.
 type AddMemberInput struct {
-	ProductID      string `validate:"required,notblank"`
-	OrganizationID string `validate:"required,notblank"`
-	ProductUserID  string `validate:"required,notblank"`
-	RoleID         string `validate:"required,notblank"`
+	ProductID      string  `validate:"required,notblank"`
+	OrganizationID string  `validate:"required,notblank"`
+	ProductUserID  string  `validate:"required,notblank"`
+	RoleID         *string `validate:"omitempty,notblank"`
 }
 
-// UpdateMemberRoleInput is the input for updating a member's role within an organization.
+// UpdateMemberRoleInput is the input for updating a member's role within an
+// organization. A nil RoleID removes the member's role.
 type UpdateMemberRoleInput struct {
-	ProductID      string `validate:"required,notblank"`
-	OrganizationID string `validate:"required,notblank"`
-	ProductUserID  string `validate:"required,notblank"`
-	RoleID         string `validate:"required,notblank"`
+	ProductID      string  `validate:"required,notblank"`
+	OrganizationID string  `validate:"required,notblank"`
+	ProductUserID  string  `validate:"required,notblank"`
+	RoleID         *string `validate:"omitempty,notblank"`
 }
 
 // RemoveMemberInput is the input for removing a product user from an organization.

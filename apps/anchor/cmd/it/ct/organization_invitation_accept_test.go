@@ -209,7 +209,7 @@ func TestAcceptInvitation_AllowsTheSameProductUserToJoinAnotherOrganization(t *t
 		otherOrganization := w.newOrganization()
 		second := w.invitations.Create(otherOrganization, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 
 		w.accept(first.Id, userID)

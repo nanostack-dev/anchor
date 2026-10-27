@@ -1230,7 +1230,10 @@ export type UserOrganizationResponse = {
          */
         metadata?: Metadata;
     };
-    role: UserOrganizationRoleResponse;
+    /**
+     * The user's role within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
+     */
+    role: UserOrganizationRoleResponse | null;
     /**
      * Timestamp when the user joined this organization.
      */
@@ -1605,9 +1608,9 @@ export type FoundingMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+     * Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding member a member with no role and no permission.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
 };
 
 export type ProductOrganizationResponse = {
@@ -1738,26 +1741,31 @@ export type OrganizationMemberResponse = {
      */
     external_id?: string | null;
     /**
-     * Role assigned to the member within the organization.
+     * Role assigned to the member within the organization. A member may hold no Organization role. They belong to the Organization and hold no permission there, and `role` is null. A client that always names a role when it adds a member never sees null.
      */
-    role: {
-        /**
-         * Unique identifier of the role.
-         */
-        id: Ksuid;
-        /**
-         * Display name of the role.
-         */
-        name: string;
-        /**
-         * Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
-         */
-        permissions?: Array<string>;
-    };
+    role: OrganizationMemberRoleResponse | null;
     /**
      * Timestamp when the user joined this organization.
      */
     joined_at: string;
+};
+
+/**
+ * The role a member holds within the organization.
+ */
+export type OrganizationMemberRoleResponse = {
+    /**
+     * Unique identifier of the role.
+     */
+    id: Ksuid;
+    /**
+     * Display name of the role.
+     */
+    name: string;
+    /**
+     * Product resource permission names assigned to this role (for example "document:read", "file:delete"). Present only when the caller sends `include=role_permissions`. Absent means the caller did not ask for the permissions. Absent never means the role has no permissions.
+     */
+    permissions?: Array<string>;
 };
 
 /**
@@ -1776,9 +1784,9 @@ export type OrganizationMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+     * The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
 };
 
 /**
@@ -1786,9 +1794,9 @@ export type OrganizationMemberRequest = {
  */
 export type OrganizationMemberRoleRequest = {
     /**
-     * The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+     * The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
      */
-    role_id: Ksuid;
+    role_id: string | null;
 };
 
 export type OrganizationMemberSearchRequest = SearchRequest & {
@@ -1857,9 +1865,9 @@ export type OrganizationInvitationResponse = {
      */
     email: string;
     /**
-     * The role the invited person receives on accept.
+     * The role the invited person receives on accept. Null means they join with no role and no permission. A client that always names a role when it invites never sees null.
      */
-    role_id: Ksuid;
+    role_id: Ksuid | null;
     status: OrganizationInvitationStatus;
     /**
      * When the invitation stops being acceptable.
@@ -1886,9 +1894,9 @@ export type OrganizationInvitationCreateRequest = {
      */
     email: string;
     /**
-     * The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+     * The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite a member with no role.
      */
-    role_id: Ksuid;
+    role_id?: Ksuid;
     /**
      * When the invitation expires. It must be in the future. Absent means 7 days from now.
      */
@@ -1900,9 +1908,9 @@ export type OrganizationInvitationCreateRequest = {
  */
 export type OrganizationInvitationUpdateRequest = {
     /**
-     * The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST.
+     * The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The field is required, so leaving it out answers 400.
      */
-    role_id: Ksuid;
+    role_id: string | null;
     /**
      * The new expiry. It must be in the future.
      */

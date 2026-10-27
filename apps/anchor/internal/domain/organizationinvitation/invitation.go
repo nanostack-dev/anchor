@@ -21,12 +21,13 @@ type Invitation struct {
 	ProductID      string
 	OrganizationID string
 	Email          string
-	RoleID         string
-	Status         Status
-	ExpiresAt      time.Time
-	AcceptedAt     *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// RoleID is nil for an invitation to join with no role.
+	RoleID     *string
+	Status     Status
+	ExpiresAt  time.Time
+	AcceptedAt *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 func (i *Invitation) GenerateID() {

@@ -29,7 +29,7 @@ func TestCreateInvitation_ReturnsTheInvitation(t *testing.T) {
 
 		assert.Equal(t, email, string(created.Email))
 		assert.Equal(t, w.organizationID, created.OrganizationId)
-		assert.Equal(t, w.roleID, created.RoleId)
+		assert.Equal(t, new(w.roleID), created.RoleId)
 		assert.Equal(t, ct.Pending, created.Status)
 		assert.Nil(t, created.AcceptedAt)
 		assert.NotEmpty(t, created.Id)
@@ -61,7 +61,7 @@ func TestCreateInvitation_AcceptsExplicitExpiry(t *testing.T) {
 
 		created := w.invitations.Create(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:     openapi_types.Email(uniqueEmail()),
-			RoleId:    w.roleID,
+			RoleId:    new(w.roleID),
 			ExpiresAt: &expiresAt,
 		})
 
@@ -80,7 +80,7 @@ func TestCreateInvitation_RefusesExpiryInThePast(t *testing.T) {
 
 		resp := w.invitations.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:     openapi_types.Email(uniqueEmail()),
-			RoleId:    w.roleID,
+			RoleId:    new(w.roleID),
 			ExpiresAt: &expiresAt,
 		})
 
@@ -158,7 +158,7 @@ func TestCreateInvitation_AllowsSameEmailInAnotherOrganization(t *testing.T) {
 
 		other := w.invitations.Create(w.newOrganization(), ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(email),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 
 		assert.Equal(t, ct.Pending, other.Status)
@@ -211,7 +211,7 @@ func TestCreateInvitation_AllowsEmailOfMemberOfAnotherOrganization(t *testing.T)
 
 		created := w.invitations.Create(w.newOrganization(), ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(email),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 
 		assert.Equal(t, ct.Pending, created.Status)
@@ -228,7 +228,7 @@ func TestCreateInvitation_RefusesUnknownRole(t *testing.T) {
 
 		resp := w.invitations.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: ids.MustNew("product_role"),
+			RoleId: new(ids.MustNew("product_role")),
 		})
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -247,7 +247,7 @@ func TestCreateInvitation_RefusesRoleOfAnotherProduct(t *testing.T) {
 
 		resp := w.invitations.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: foreign.roleID,
+			RoleId: new(foreign.roleID),
 		})
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -265,7 +265,7 @@ func TestCreateInvitation_RefusesUnknownOrganization(t *testing.T) {
 
 		resp := w.invitations.CreateRaw(ids.MustNew("org"), ct.CreateOrganizationInvitationJSONRequestBody{
 			Email:  openapi_types.Email(uniqueEmail()),
-			RoleId: w.roleID,
+			RoleId: new(w.roleID),
 		})
 
 		require.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
@@ -308,7 +308,7 @@ func TestCreateInvitation_HoldsOnePendingPerEmailUnderConcurrentCreates(t *testi
 					t.Context(), w.product.ProductID, w.organizationID,
 					ct.CreateOrganizationInvitationJSONRequestBody{
 						Email:  openapi_types.Email(email),
-						RoleId: w.roleID,
+						RoleId: new(w.roleID),
 					},
 				)
 				if err == nil {

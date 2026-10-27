@@ -74,11 +74,12 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 
 		member, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
 			ProductID: fixture.productID, OrganizationID: fixture.ownerOrgID,
-			ProductUserID: givenProductUser(t, fixture.productID), RoleID: fixture.customID,
+			ProductUserID: givenProductUser(t, fixture.productID), RoleID: &fixture.customID,
 		})
 
 		require.NoError(t, err)
-		assert.Equal(t, fixture.customID, member.RoleID)
+		require.NotNil(t, member.Role)
+		assert.Equal(t, fixture.customID, member.Role.ID)
 	})
 
 	t.Run("A member added in another Organization may not hold the custom role", func(t *testing.T) {
@@ -86,7 +87,7 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 
 		_, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID,
-			ProductUserID: givenProductUser(t, fixture.productID), RoleID: fixture.customID,
+			ProductUserID: givenProductUser(t, fixture.productID), RoleID: &fixture.customID,
 		})
 
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
@@ -97,13 +98,13 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 		userID := givenProductUser(t, fixture.productID)
 		_, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID,
-			ProductUserID: userID, RoleID: fixture.managedID,
+			ProductUserID: userID, RoleID: &fixture.managedID,
 		})
 		require.NoError(t, err)
 
 		_, err = MembershipService.UpdateMemberRole(t.Context(), organization.UpdateMemberRoleInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID,
-			ProductUserID: userID, RoleID: fixture.customID,
+			ProductUserID: userID, RoleID: &fixture.customID,
 		})
 
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
@@ -114,7 +115,7 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 
 		_, err := InvitationService.Create(t.Context(), organizationinvitation.CreateInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID,
-			Email: uuid.NewString() + "@example.com", RoleID: fixture.customID,
+			Email: uuid.NewString() + "@example.com", RoleID: &fixture.customID,
 		})
 
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
@@ -124,13 +125,13 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 		fixture := givenACustomRole(t)
 		invitation, err := InvitationService.Create(t.Context(), organizationinvitation.CreateInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID,
-			Email: uuid.NewString() + "@example.com", RoleID: fixture.managedID,
+			Email: uuid.NewString() + "@example.com", RoleID: &fixture.managedID,
 		})
 		require.NoError(t, err)
 
 		_, err = InvitationService.Update(t.Context(), organizationinvitation.UpdateInput{
 			ProductID: fixture.productID, OrganizationID: fixture.otherOrgID, InvitationID: invitation.ID,
-			RoleID: fixture.customID, ExpiresAt: time.Now().Add(24 * time.Hour),
+			RoleID: &fixture.customID, ExpiresAt: time.Now().Add(24 * time.Hour),
 		})
 
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
@@ -141,7 +142,7 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 
 		_, err := OrganizationService.CreateWithMember(t.Context(), organization.CreateOrganizationWithMemberInput{
 			ProductID: fixture.productID, Name: "Org " + uuid.NewString()[:8],
-			ProductUserID: givenProductUser(t, fixture.productID), RoleID: fixture.customID,
+			ProductUserID: givenProductUser(t, fixture.productID), RoleID: &fixture.customID,
 		})
 
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
@@ -184,7 +185,7 @@ func TestMembersWithoutARoleWrittenByTheNextRelease(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, found.Items, 1)
 		assert.Equal(t, fixture.userID, found.Items[0].ProductUserID)
-		assert.Empty(t, found.Items[0].RoleID)
+		assert.Nil(t, found.Items[0].Role)
 	})
 
 	t.Run("A member with no role holds no permission", func(t *testing.T) {
@@ -196,7 +197,7 @@ func TestMembersWithoutARoleWrittenByTheNextRelease(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Empty(t, member.RoleID)
+		assert.Nil(t, member.Role)
 		assert.Empty(t, member.RolePermissions)
 	})
 
@@ -213,7 +214,7 @@ func TestMembersWithoutARoleWrittenByTheNextRelease(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Empty(t, invitation.RoleID)
+		assert.Nil(t, invitation.RoleID)
 	})
 }
 

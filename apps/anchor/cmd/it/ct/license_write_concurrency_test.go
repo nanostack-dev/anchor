@@ -346,7 +346,10 @@ func TestTemplateUpdateDuringOrganizationCreationReachesTheNewLicense(t *testing
 		w := newLicenseWorld(t)
 		founder := w.FoundingMember()
 		body := organizationBody(itdsl.UniqueOrganizationName(), new(w.TemplateID()))
-		body.FoundingMember = &ct.FoundingMemberRequest{ProductUserId: founder.ProductUserID, RoleId: founder.RoleID}
+		body.FoundingMember = &ct.FoundingMemberRequest{
+			ProductUserId: founder.ProductUserID,
+			RoleId:        new(founder.RoleID),
+		}
 		updatedValues := templateValuesWith("flows", 900)
 		apiClient := w.product.AllScopeAPIKeyClient()
 		releaseRole := holdRowForUpdate(t, "product_roles", founder.RoleID)

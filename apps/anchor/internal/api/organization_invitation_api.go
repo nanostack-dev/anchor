@@ -91,11 +91,16 @@ func (s *AnchorAPI) UpdateOrganizationInvitation(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
+	roleID, err := requiredRoleID(request.Body.RoleId)
+	if err != nil {
+		return nil, err
+	}
+
 	invitation, err := s.OrganizationInvitationService.Update(ctx, organizationinvitation.UpdateInput{
 		ProductID:      request.ProductId,
 		OrganizationID: request.OrganizationId,
 		InvitationID:   request.InvitationId,
-		RoleID:         request.Body.RoleId,
+		RoleID:         roleID,
 		ExpiresAt:      request.Body.ExpiresAt,
 	})
 	if err != nil {

@@ -218,7 +218,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 
 		body := organizationBody(name, new(w.TemplateID()))
 		body.FoundingMember = &ct.FoundingMemberRequest{
-			ProductUserId: founder.ProductUserID, RoleId: founder.RoleID,
+			ProductUserId: founder.ProductUserID, RoleId: new(founder.RoleID),
 		}
 		created := w.Organizations().Create(body)
 
@@ -234,7 +234,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 
 		body := organizationBody(name, new(missingTemplateID()))
 		body.FoundingMember = &ct.FoundingMemberRequest{
-			ProductUserId: founder.ProductUserID, RoleId: founder.RoleID,
+			ProductUserId: founder.ProductUserID, RoleId: new(founder.RoleID),
 		}
 		resp := w.Organizations().CreateRaw(body)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode(), string(resp.Body))
@@ -246,7 +246,7 @@ func TestCreateOrganizationWithLicense(t *testing.T) {
 		retry := itdsl.UniqueOrganizationName()
 		retryBody := organizationBody(retry, nil)
 		retryBody.FoundingMember = &ct.FoundingMemberRequest{
-			ProductUserId: founder.ProductUserID, RoleId: founder.RoleID,
+			ProductUserId: founder.ProductUserID, RoleId: new(founder.RoleID),
 		}
 		second := w.Organizations().Create(retryBody)
 		assert.Equal(t, retry, second.Name)

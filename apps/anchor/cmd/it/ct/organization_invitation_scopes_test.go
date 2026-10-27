@@ -35,7 +35,7 @@ func invitationOperations() []invitationOperation {
 			func(w world, c itdsl.InvitationClient, _ ct.OrganizationInvitationResponse) int {
 				return c.CreateRaw(w.organizationID, ct.CreateOrganizationInvitationJSONRequestBody{
 					Email:  openapi_types.Email(uniqueEmail()),
-					RoleId: w.roleID,
+					RoleId: new(w.roleID),
 				}).StatusCode()
 			},
 		},
@@ -57,7 +57,7 @@ func invitationOperations() []invitationOperation {
 			scopeUpdate,
 			func(w world, c itdsl.InvitationClient, i ct.OrganizationInvitationResponse) int {
 				return c.UpdateRaw(w.organizationID, i.Id, ct.UpdateOrganizationInvitationJSONRequestBody{
-					RoleId:    w.roleID,
+					RoleId:    new(w.roleID),
 					ExpiresAt: time.Now().Add(time.Hour),
 				}).StatusCode()
 			},
