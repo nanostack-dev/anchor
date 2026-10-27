@@ -10,6 +10,7 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/domain/workspace"
 
@@ -56,8 +57,25 @@ func createProduct(t *testing.T, tenantID string) string {
 
 	created, err := repoCtx.ProductRepository.Create(context.Background(), entity)
 	require.NoError(t, err)
+	root := resourcetype.NewOrganization(created.ID)
+	_, err = repoCtx.DB.ExecContext(context.Background(),
+		"INSERT INTO product_resource_types (id, product_id, slug, name) VALUES ($1, $2, $3, $4)",
+		root.ID, root.ProductID, root.Slug, root.Name)
+	require.NoError(t, err)
 
 	return created.ID
+}
+
+// organizationTypeID returns the ID of the organization type createProduct
+// seeds, the scope every role and permission fixture holds.
+func organizationTypeID(t *testing.T, productID string) string {
+	t.Helper()
+
+	var id string
+	require.NoError(t, repoCtx.DB.QueryRowContext(context.Background(),
+		"SELECT id FROM product_resource_types WHERE product_id = $1 AND slug = $2",
+		productID, resourcetype.OrganizationSlug).Scan(&id))
+	return id
 }
 
 // createOrganization inserts an organization fixture under productID and returns its ID.
@@ -97,9 +115,10 @@ func createProductRole(t *testing.T, productID string) string {
 	t.Helper()
 
 	entity := role.ProductRole{
-		ProductID:   productID,
-		Name:        uniqueName(t, "Test Role"),
-		Description: "fixture",
+		ProductID:      productID,
+		Name:           uniqueName(t, "Test Role"),
+		Description:    "fixture",
+		ResourceTypeID: organizationTypeID(t, productID),
 	}
 	entity.GenerateID()
 

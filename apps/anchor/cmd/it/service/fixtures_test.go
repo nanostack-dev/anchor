@@ -11,6 +11,7 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/apikey"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/service"
 )
@@ -108,18 +109,31 @@ func GivenBasicProductResourcePermissions(t *testing.T, productID string) []stri
 		organizationAPIKeyPermissionFileUpdate,
 		organizationAPIKeyPermissionFileDelete,
 	}
+	scope := organizationTypeID(t, productID)
 	for _, perm := range permissions {
 		_, err := ResourcePermissionRepo.Create(
 			t.Context(), resourcepermission.ProductResourcePermission{
-				ProductID:     productID,
-				Name:          perm,
-				Description:   new("Test resource permission"),
-				ScopeModifier: new("GLOBAL"),
+				ProductID:      productID,
+				Name:           perm,
+				Description:    new("Test resource permission"),
+				ScopeModifier:  new("GLOBAL"),
+				ResourceTypeID: scope,
 			},
 		)
 		require.NoError(t, err, "Failed to create resource permission '%s'", perm)
 	}
 	return permissions
+}
+
+// organizationTypeID seeds the product's organization type, as creating a
+// product does, and returns its ID.
+func organizationTypeID(t *testing.T, productID string) string {
+	require.NoError(t, ResourceTypeRepo.EnsureOrganization(t.Context(), productID))
+	types, err := ResourceTypeRepo.FindTree(t.Context(), productID)
+	require.NoError(t, err)
+	root, found := resourcetype.NewTree(types).Organization().Get()
+	require.True(t, found)
+	return root.ID
 }
 
 func GivenOrganizationAPIKeyResourcePermissionSet() organizationAPIKeyResourcePermissions {

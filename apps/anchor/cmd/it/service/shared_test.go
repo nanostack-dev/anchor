@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"database/sql"
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
@@ -29,6 +30,7 @@ var (
 	APIKeyEventSvc         service.OrganizationAPIKeyEventService
 	ProductRoleRepo        repository.ProductRoleRepository
 	ResourceTypeRepo       rtrepository.Repository
+	TestDB                 *sql.DB
 )
 
 func TestMain(m *testing.M) {
@@ -51,6 +53,7 @@ func TestMain(m *testing.M) {
 				&ResourcePermissionRepo,
 				&ProductRoleRepo,
 				&ResourceTypeRepo,
+				&TestDB,
 			},
 		},
 	)

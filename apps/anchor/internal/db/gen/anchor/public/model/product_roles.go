@@ -18,5 +18,5 @@ type ProductRoles struct {
 	Description    *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	ResourceTypeID *string
+	ResourceTypeID string
 }

@@ -8,9 +8,5 @@ import (
 )
 
 func scopeCondition(column postgres.ColumnString, scopes resourcetype.ScopeFilter) postgres.BoolExpression {
-	scoped := column.IN(jetx.ToStringExpressions(scopes.IDs)...)
-	if scopes.IncludeUnscoped {
-		return scoped.OR(column.IS_NULL())
-	}
-	return scoped
+	return column.IN(jetx.ToStringExpressions(scopes.IDs)...)
 }

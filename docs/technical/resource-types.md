@@ -25,12 +25,16 @@ A Product declares a tree of **resource types** under the built-in `organization
 - Role and permission searches filter on `resource_types`.
 - `scope_modifier` is deprecated: it is still accepted and returned, nothing evaluates it, and the cleanup (ADR-0022 G6) removes it.
 
-## Backfill
+<a id="backfill"></a>
 
-Migration `000054` adds the tables and a nullable `resource_type_id` on `product_roles` and `product_resource_permissions`. Public IDs are KSUIDs, which SQL cannot mint, so the backfill is code: on every start, under the `resource_types:organization-backfill` advisory lock, `RegisterOrganizationBackfill` gives each Product its `organization` type and scopes its unscoped roles and permissions to it (ADR-0022 G1). It is idempotent.
+## History
 
-The column stays nullable until the cleanup because a rolling deploy runs the previous release beside this one, and that release still writes unscoped rows. It also checks no permission scopes, so for that window an organization permission could be assigned to a role of another type. Renaming a type stays possible meanwhile; a change to parent types or nesting, on one type or through the tree `PUT`, is refused with `role_ids` until that role is fixed, since it checks every role of the Product. Reads treat a null scope as `organization`, which is what the next start's backfill writes. A Product created by the previous release gets its `organization` type the first time a write or read needs the tree.
+Migration `000054` adds the tables and a nullable `resource_type_id` on `product_roles` and `product_resource_permissions`. Public IDs are KSUIDs, which SQL cannot mint, and a rolling deploy runs the previous release beside the new one, so the release that adds resource types backfilled in code: on every start, a startup job gave each Product its `organization` type and scoped its unscoped roles and permissions to it (ADR-0022 G1).
+
+Once that release runs in production, migration `000058` closes G1. It scopes any role or permission the backfill missed to its Product's `organization` type, then sets `resource_type_id` `NOT NULL`; the backfill and every read that took a null scope for `organization` are gone. A row whose Product has no `organization` type stops the migration. Production starts with `autoFixDirty`, which marks a failed migration as applied, so the resource type module refuses to start while either column is still nullable (`CheckSchema`). To recover, run `migrate force 57`, fix the data, then redeploy.
+
+A role the release before resource types gave an organization permission outside its scope keeps it: renaming a type stays possible, and a change to parent types or nesting, on one type or through the tree `PUT`, is refused with `role_ids` until that role is fixed, since it checks every role of the Product. Creating a Product seeds its `organization` type in the same transaction. A tree read or write still seeds it when a Product lacks it, which also gives the catalog lock its row.
 
 ## Tests
 
-`resource_type_*_test.go` in `apps/anchor/cmd/it/ct` cover every rule above with one test per case, plus the cursor search case in `TestCursorSearches` and the duplicate-slug race in `TestConcurrentSameNameWritesReturnConflict`. `TestOrganizationBackfill` in `apps/anchor/cmd/it/service` covers the backfill, which no route reaches.
+`resource_type_*_test.go` in `apps/anchor/cmd/it/ct` cover every rule above with one test per case, plus the cursor search case in `TestCursorSearches` and the duplicate-slug race in `TestConcurrentSameNameWritesReturnConflict`. `TestResourceTypeSchemaCheck` in `apps/anchor/cmd/it/service` covers the startup schema check.

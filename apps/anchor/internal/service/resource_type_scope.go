@@ -15,14 +15,9 @@ import (
 	"anchor/internal/searchx"
 )
 
-// scopeSlug names the scope a stored role or permission holds. A nil scope is
-// a row a release before resource types wrote during a rolling deploy, which
-// the startup backfill scopes to organization (ADR-0022 G1).
-func scopeSlug(tree resourcetype.Tree, id *string) string {
-	if id == nil {
-		return resourcetype.OrganizationSlug
-	}
-	return tree.ByID(*id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).
+// scopeSlug names the scope a stored role or permission holds.
+func scopeSlug(tree resourcetype.Tree, id string) string {
+	return tree.ByID(id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).
 		OrElse(resourcetype.OrganizationSlug)
 }
 

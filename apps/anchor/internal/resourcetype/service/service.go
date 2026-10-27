@@ -446,11 +446,8 @@ func (s *service) checkReshape(
 		return err
 	}
 	root, _ := next.Organization().Get()
-	scopeOf := func(id *string) string {
-		if id == nil {
-			return resourcetype.OrganizationSlug
-		}
-		return next.ByID(*id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).OrElse(root.Slug)
+	scopeOf := func(id string) string {
+		return next.ByID(id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).OrElse(root.Slug)
 	}
 	var outside []string
 	for _, role := range roles {

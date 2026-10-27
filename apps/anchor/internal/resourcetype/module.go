@@ -17,6 +17,6 @@ func NewModule() fx.Option {
 			service.NewService,
 			events.AsRegistration(EventRegistration),
 		),
-		fx.Invoke(service.RegisterOrganizationBackfill),
+		fx.Invoke(RegisterSchemaCheck),
 	)
 }

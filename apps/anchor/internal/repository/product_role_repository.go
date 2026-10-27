@@ -94,8 +94,7 @@ func productRolesInsertColumns() postgres.ColumnList {
 	)
 }
 
-// productRolesUpdatableColumns leaves the scope out: it never changes, and
-// writing it back could undo the startup backfill of a row read earlier.
+// productRolesUpdatableColumns leaves the scope out: it never changes.
 func productRolesUpdatableColumns() postgres.ColumnList {
 	return table.ProductRoles.AllColumns.Except(
 		table.ProductRoles.CreatedAt, table.ProductRoles.UpdatedAt, table.ProductRoles.ResourceTypeID,

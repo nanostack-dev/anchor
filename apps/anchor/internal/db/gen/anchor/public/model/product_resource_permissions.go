@@ -18,5 +18,5 @@ type ProductResourcePermissions struct {
 	ScopeModifier  *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	ResourceTypeID *string
+	ResourceTypeID string
 }

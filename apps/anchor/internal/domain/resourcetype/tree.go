@@ -59,11 +59,9 @@ func (t Tree) Types() []ResourceType {
 }
 
 // ScopeFilter is a role or permission search filter on scopes, resolved to
-// type IDs. IncludeUnscoped also matches a null scope, which counts as
-// organization.
+// type IDs.
 type ScopeFilter struct {
-	IDs             []string
-	IncludeUnscoped bool
+	IDs []string
 }
 
 // Active reports whether the filter restricts anything.
@@ -83,7 +81,6 @@ func (t Tree) ResolveScopes(slugs []string) ScopeFilter {
 			continue
 		}
 		filter.IDs = append(filter.IDs, found.ID)
-		filter.IncludeUnscoped = filter.IncludeUnscoped || found.BuiltIn()
 	}
 	return filter
 }

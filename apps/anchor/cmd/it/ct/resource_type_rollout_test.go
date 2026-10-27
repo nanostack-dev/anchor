@@ -10,59 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// During a rolling deploy the previous release writes roles and permissions
-// with no scope, and products with no organization type. These tests put such
-// rows in place with SQL scoped to their own product.
-
-func TestUnscopedPermissionReadsAsOrganization(t *testing.T) {
-	t.Parallel()
-	t.Run("A permission with no scope reads, and filters, as organization", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		product.CreateProductResourcePermissions(t, "legacy:read")
-		execSQL(t, "UPDATE product_resource_permissions SET resource_type_id = NULL WHERE product_id = $1",
-			product.ProductID)
-		client := product.OwnerAuthenticatedClient()
-
-		read, err := client.GetProductResourcePermissionWithResponse(t.Context(), product.ProductID, "legacy:read")
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, read.StatusCode())
-		found, err := client.SearchProductResourcePermissionsWithResponse(t.Context(), product.ProductID,
-			ct.SearchProductResourcePermissionsJSONRequestBody{
-				Filter: &ct.ProductResourcePermissionFilter{ResourceTypes: []string{"organization"}},
-			})
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, found.StatusCode())
-
-		assert.Equal(t, "organization", read.JSON200.ResourceType)
-		require.Len(t, found.JSON200.Items, 1)
-		assert.Equal(t, "legacy:read", found.JSON200.Items[0].Name)
-	})
-}
-
-func TestUnscopedRoleReadsAsOrganization(t *testing.T) {
-	t.Parallel()
-	t.Run("A role with no scope reads as organization and holds any permission", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		declareDocumentTree(t, product)
-		product.CreateScopedPermissions(t, "document", "document:view")
-		role := createScopedRole(t, product, "organization")
-		execSQL(t, "UPDATE product_roles SET resource_type_id = NULL WHERE product_id = $1 AND id = $2",
-			product.ProductID, role.Id)
-		client := product.OwnerAuthenticatedClient()
-
-		assigned, err := client.AssignPermissionToProductRoleWithResponse(t.Context(), product.ProductID, role.Id,
-			ct.AssignPermissionToProductRoleJSONRequestBody{PermissionName: "document:view"})
-		require.NoError(t, err)
-		read, err := client.GetProductRoleWithResponse(t.Context(), product.ProductID, role.Id)
-		require.NoError(t, err)
-
-		assert.Equal(t, http.StatusNoContent, assigned.StatusCode(), string(assigned.Body))
-		require.Equal(t, http.StatusOK, read.StatusCode())
-		assert.Equal(t, "organization", read.JSON200.ResourceType)
-	})
-}
+// A product the previous release created has no organization type. These
+// tests put such products in place with SQL scoped to their own product.
 
 func TestProductWithoutOrganizationTypeGetsOne(t *testing.T) {
 	t.Parallel()
