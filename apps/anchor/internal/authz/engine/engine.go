@@ -40,6 +40,7 @@ const (
 	migrationTimeout = time.Minute
 	pingTimeout      = 10 * time.Second
 	unlockTimeout    = 5 * time.Second
+	lockPollInterval = 500 * time.Millisecond
 	migrationLockKey = "openfga-migrations"
 	maxOpenConns     = 10
 	connMaxIdleTime  = 5 * time.Minute
@@ -187,7 +188,7 @@ func (p *provider) migrateExclusively(ctx context.Context) error {
 	}
 	defer conn.Close()
 	key := pglock.KeyHash(migrationLockKey)
-	if _, err = conn.ExecContext(lockCtx, "SELECT pg_advisory_lock($1)", key); err != nil {
+	if err = lockPolling(lockCtx, conn, key); err != nil {
 		return fmt.Errorf("lock openfga migrations: %w", err)
 	}
 	defer unlock(conn, key)
@@ -203,6 +204,26 @@ func (p *provider) migrateExclusively(ctx context.Context) error {
 		return fmt.Errorf("repair openfga indexes: %w", err)
 	}
 	return nil
+}
+
+// lockPolling waits for the session lock between short tries rather than inside
+// pg_advisory_lock: a statement blocked there holds a snapshot, and the lock
+// holder's CREATE INDEX CONCURRENTLY would wait for it until lockCtx expires.
+func lockPolling(ctx context.Context, conn *sql.Conn, key int64) error {
+	for {
+		var acquired bool
+		if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", key).Scan(&acquired); err != nil {
+			return err
+		}
+		if acquired {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(lockPollInterval):
+		}
+	}
 }
 
 // unlock releases the session lock; a connection that can't is dropped, so it
