@@ -34,8 +34,8 @@ type Membership struct {
 
 type RoleGrants struct {
 	RowID string
-	// Owned is true for a role of the Organization itself; a role template a
-	// membership still holds is shared with other Organizations.
+	// Owned is true for a custom role of the Organization; a managed role is
+	// shared with every Organization.
 	Owned       bool
 	Permissions []string
 }

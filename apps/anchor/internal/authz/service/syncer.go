@@ -154,7 +154,7 @@ func (s *syncer) syncProduct(ctx context.Context, productID string) (target, err
 		}
 	}
 	return current, s.locked(ctx, productID, func(txCtx context.Context) error {
-		if heldErr := s.syncHeldTemplates(txCtx, current, productID); heldErr != nil {
+		if heldErr := s.syncManagedRoles(txCtx, current, productID); heldErr != nil {
 			return heldErr
 		}
 		for _, mark := range marks {
@@ -298,8 +298,8 @@ func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, 
 // syncOrganization diffs the tuples an Organization implies with those its
 // store holds. It reads the Organization's object, whose assignment links
 // imply their assignments' tuples, and the roles the Organization owns or its
-// members hold. It never deletes the grants of a role another Organization
-// may hold: a role template a release before copies assigned.
+// members hold. It never deletes the grants of a managed role, which other
+// Organizations may hold.
 func (s *syncer) syncOrganization(ctx context.Context, current target, productID, organizationID string) error {
 	state, err := s.repo.OrganizationState(ctx, productID, organizationID, s.now())
 	if err != nil {
@@ -353,17 +353,17 @@ func (s *syncer) syncOrganization(ctx context.Context, current target, productID
 	return s.apply(ctx, current, model.Diff(stored, desired))
 }
 
-// syncHeldTemplates brings the grants of every role template a membership
-// still holds itself in step: an Organization sync never deletes them, since
-// other Organizations may hold the same template.
-func (s *syncer) syncHeldTemplates(ctx context.Context, current target, productID string) error {
-	templates, err := s.repo.HeldTemplates(ctx, productID)
+// syncManagedRoles brings the grants of every managed role a membership holds
+// in step: an Organization sync never deletes them, since other Organizations
+// may hold the same role.
+func (s *syncer) syncManagedRoles(ctx context.Context, current target, productID string) error {
+	managed, err := s.repo.HeldManagedRoles(ctx, productID)
 	if err != nil {
 		return err
 	}
-	for _, template := range templates {
-		desired := model.OrganizationState{Exists: true, Roles: []model.RoleGrants{template}}.Tuples(current.catalog)
-		stored, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: model.Role(template.RowID)})
+	for _, held := range managed {
+		desired := model.OrganizationState{Exists: true, Roles: []model.RoleGrants{held}}.Tuples(current.catalog)
+		stored, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: model.Role(held.RowID)})
 		if readErr != nil {
 			return readErr
 		}

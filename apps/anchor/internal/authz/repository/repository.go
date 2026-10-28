@@ -65,9 +65,9 @@ type Repository interface {
 	Permissions(ctx context.Context, productID string) ([]PermissionScope, error)
 	// OrganizationIDs lists every Organization of the Product.
 	OrganizationIDs(ctx context.Context, productID string) ([]string, error)
-	// HeldTemplates reads the role templates a membership still holds itself,
-	// as a release before copies wrote, with the permissions each holds.
-	HeldTemplates(ctx context.Context, productID string) ([]model.RoleGrants, error)
+	// HeldManagedRoles reads the managed roles a membership holds, with the
+	// permissions each holds. Every Organization shares them.
+	HeldManagedRoles(ctx context.Context, productID string) ([]model.RoleGrants, error)
 	// OrganizationState reads what the Organization's tuples come from.
 	OrganizationState(
 		ctx context.Context,
@@ -226,10 +226,12 @@ func (r *repositoryImpl) OrganizationState(
 	}
 	state.Exists = true
 
+	// A member without a role holds nothing the store mirrors.
 	memberships, err := transactor.Query[[]dbmodel.OrganizationMemberships](ctx, r.db,
 		table.OrganizationMemberships.SELECT(
 			table.OrganizationMemberships.ProductUserID, table.OrganizationMemberships.ProductRoleID,
-		).WHERE(table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID))),
+		).WHERE(table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).
+			AND(table.OrganizationMemberships.ProductRoleID.IS_NOT_NULL())),
 	).Value()
 	if err != nil {
 		return state, err
@@ -237,9 +239,9 @@ func (r *repositoryImpl) OrganizationState(
 	held := make([]string, 0, len(memberships))
 	for _, m := range memberships {
 		state.Memberships = append(state.Memberships, model.Membership{
-			ProductUserID: m.ProductUserID, RoleRowID: m.ProductRoleID,
+			ProductUserID: m.ProductUserID, RoleRowID: *m.ProductRoleID,
 		})
-		held = append(held, m.ProductRoleID)
+		held = append(held, *m.ProductRoleID)
 	}
 
 	if state.Roles, err = r.roleGrants(ctx, productID, organizationID, held); err != nil {
@@ -249,7 +251,7 @@ func (r *repositoryImpl) OrganizationState(
 	return state, err
 }
 
-func (r *repositoryImpl) HeldTemplates(ctx context.Context, productID string) ([]model.RoleGrants, error) {
+func (r *repositoryImpl) HeldManagedRoles(ctx context.Context, productID string) ([]model.RoleGrants, error) {
 	held, err := transactor.QueryMapSlice(ctx, r.db,
 		table.ProductRoles.SELECT(table.ProductRoles.ID).DISTINCT().
 			FROM(table.ProductRoles.INNER_JOIN(table.OrganizationMemberships,
@@ -264,8 +266,8 @@ func (r *repositoryImpl) HeldTemplates(ctx context.Context, productID string) ([
 	return r.roleGrants(ctx, productID, "", held)
 }
 
-// roleGrants reads the Organization's own roles and every role a membership
-// names, which may still be a role template a release before copies wrote.
+// roleGrants reads the Organization's custom roles and every role a membership
+// names, which may be a managed role.
 func (r *repositoryImpl) roleGrants(
 	ctx context.Context, productID, organizationID string, held []string,
 ) ([]model.RoleGrants, error) {

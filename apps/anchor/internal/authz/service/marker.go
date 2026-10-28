@@ -53,7 +53,7 @@ func staleScope(event events.Event) (string, bool, error) {
 		events.ProductResourcePermissionDeleted,
 		events.ProductResourceTypeCreated, events.ProductResourceTypeUpdated, events.ProductResourceTypeDeleted,
 		events.ProductUserDeleted:
-		// A catalog change reaches every Organization's copies and the model;
+		// A catalog or managed role change reaches every Organization and the model;
 		// a deleted product user leaves memberships cascaded without events.
 		return repository.ProductScope, true, nil
 	case events.OrganizationUpdated,

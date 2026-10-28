@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,43 +18,45 @@ import (
 	"anchor/internal/domain/product/role"
 )
 
-// syncWorld is a product with one permission, a role template holding it,
+// syncWorld is a product with one permission, a managed role holding it,
 // and one organization.
 type syncWorld struct {
 	productID      string
 	permission     string
-	templateID     string
+	managedID      string
 	organizationID string
 }
 
 func givenSyncWorld(t *testing.T) syncWorld {
 	t.Helper()
-	ctx := t.Context()
 	productID := GivenATenantAndProduct(t).Product.ID
 	permission := givenPermission(t, productID)
-	template := role.ProductRole{
-		ProductID:      productID,
-		Name:           "Reader " + uuid.NewString(),
-		ResourceTypeID: organizationTypeID(t, productID),
-	}
-	template.Key = strings.ToLower(template.Name)
-	template.GenerateID()
-	_, err := ProductRoleRepo.Create(ctx, template)
-	require.NoError(t, err)
-	givenRolePermission(t, productID, template.ID, permission)
 	return syncWorld{
-		productID: productID, permission: permission, templateID: template.ID,
+		productID: productID, permission: permission,
+		managedID:      givenManagedRole(t, productID, "Reader", permission),
 		organizationID: givenOrganization(t, productID),
 	}
 }
 
-func givenOrganization(t *testing.T, productID string) string {
+func givenManagedRole(t *testing.T, productID, name, permission string) string {
 	t.Helper()
-	org := organization.Organization{ProductID: productID, Name: "Org " + uuid.NewString()}
-	org.GenerateID()
-	_, err := OrganizationRepo.Create(t.Context(), org)
+	managed := role.NewManaged(productID, name+" "+uuid.NewString(), "")
+	managed.ResourceTypeID = organizationTypeID(t, productID)
+	_, err := ProductRoleRepo.Create(t.Context(), managed)
 	require.NoError(t, err)
-	return org.ID
+	givenRolePermission(t, productID, managed.ID, permission)
+	return managed.ID
+}
+
+func givenSyncCustomRole(t *testing.T, w syncWorld, organizationID, permission string) string {
+	t.Helper()
+	custom := role.NewCustom(w.productID, organizationID, "Auditor "+uuid.NewString(), "")
+	_, err := TestDB.ExecContext(t.Context(), `INSERT INTO product_roles
+		(id, product_id, organization_id, type, name, resource_type_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+		custom.ID, w.productID, organizationID, string(custom.Type), custom.Name, organizationTypeID(t, w.productID))
+	require.NoError(t, err)
+	givenRolePermission(t, w.productID, custom.ID, permission)
+	return custom.ID
 }
 
 func givenMember(t *testing.T, w syncWorld, organizationID, roleID string) string {
@@ -91,7 +92,7 @@ func TestAuthzSync(t *testing.T) {
 
 	t.Run("A member of an organization holds the permissions of their role", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		stranger := givenProductUser(t, w.productID)
 
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
@@ -102,7 +103,7 @@ func TestAuthzSync(t *testing.T) {
 
 	t.Run("A removed member loses the permission at the next sync", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM organization_memberships WHERE organization_id = $1`, w.organizationID)
@@ -115,10 +116,10 @@ func TestAuthzSync(t *testing.T) {
 
 	t.Run("A permission removed from a role leaves its members", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		_, err := TestDB.ExecContext(t.Context(),
-			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, w.templateID)
+			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, w.managedID)
 		require.NoError(t, err)
 
 		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
@@ -135,11 +136,11 @@ func TestAuthzSync(t *testing.T) {
 		assert.True(t, can(t, w.productID, model.APIKey(keyID), w.permission, w.organizationID))
 	})
 
-	t.Run("A role template two organizations still hold keeps granting when one lets it go", func(t *testing.T) {
+	t.Run("A managed role two organizations hold keeps granting when one lets it go", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		other := givenOrganization(t, w.productID)
-		givenMember(t, w, w.organizationID, w.templateID)
-		elsewhere := givenMember(t, w, other, w.templateID)
+		givenMember(t, w, w.organizationID, w.managedID)
+		elsewhere := givenMember(t, w, other, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM organization_memberships WHERE organization_id = $1`, w.organizationID)
@@ -165,7 +166,7 @@ func TestAuthzSync(t *testing.T) {
 
 	t.Run("Syncs of one product at once all finish", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		var wg sync.WaitGroup
 		for range 5 {
 			wg.Go(func() {
@@ -183,7 +184,7 @@ func TestAuthzReconcile(t *testing.T) {
 
 	t.Run("Reconcile removes the grants of a role that no longer exists", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		givenMember(t, w, w.organizationID, w.templateID)
+		givenMember(t, w, w.organizationID, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		found, err := AuthzRepo.FindStore(t.Context(), w.productID)
 		require.NoError(t, err)
@@ -215,7 +216,7 @@ func TestAuthzMarks(t *testing.T) {
 		userID := givenProductUser(t, w.productID)
 
 		_, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
-			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: w.templateID,
+			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
 		})
 		require.NoError(t, err)
 		marks, err := AuthzRepo.Pending(t.Context(), w.productID)
@@ -240,7 +241,7 @@ func TestAuthzReplayAfterCommit(t *testing.T) {
 		ctx, written := authzservice.CollectWrites(t.Context())
 
 		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
-			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: w.templateID,
+			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
 		})
 		require.NoError(t, err)
 		AuthzReplayer.Replay(t.Context(), written())
@@ -261,7 +262,7 @@ func TestAuthzReplayAfterCommit(t *testing.T) {
 			ProductID:      w.productID,
 			OrganizationID: w.organizationID,
 			ProductUserID:  "pusr_missing",
-			RoleID:         w.templateID,
+			RoleID:         &w.managedID,
 		})
 		require.Error(t, err)
 
@@ -313,21 +314,12 @@ func TestAuthzSyncCases(t *testing.T) {
 
 	t.Run("A member who changes role holds only the new role's permissions", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		other := givenPermission(t, w.productID)
-		otherRole := role.ProductRole{
-			ProductID:      w.productID,
-			Name:           "Writer " + uuid.NewString(),
-			ResourceTypeID: organizationTypeID(t, w.productID),
-		}
-		otherRole.Key = strings.ToLower(otherRole.Name)
-		otherRole.GenerateID()
-		_, err := ProductRoleRepo.Create(t.Context(), otherRole)
-		require.NoError(t, err)
-		givenRolePermission(t, w.productID, otherRole.ID, other)
-		_, err = TestDB.ExecContext(t.Context(), `UPDATE organization_memberships SET product_role_id = $1
-			WHERE organization_id = $2`, otherRole.ID, w.organizationID)
+		otherRoleID := givenManagedRole(t, w.productID, "Writer", other)
+		_, err := TestDB.ExecContext(t.Context(), `UPDATE organization_memberships SET product_role_id = $1
+			WHERE organization_id = $2`, otherRoleID, w.organizationID)
 		require.NoError(t, err)
 
 		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
@@ -336,9 +328,50 @@ func TestAuthzSyncCases(t *testing.T) {
 		assert.True(t, can(t, w.productID, model.User(member), other, w.organizationID))
 	})
 
+	t.Run("A custom role grants its permissions in its own organization only", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		audit := givenPermission(t, w.productID)
+		custom := givenSyncCustomRole(t, w, w.organizationID, audit)
+		member := givenMember(t, w, w.organizationID, custom)
+		other := givenOrganization(t, w.productID)
+		elsewhere := givenMember(t, w, other, w.managedID)
+
+		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+
+		assert.True(t, can(t, w.productID, model.User(member), audit, w.organizationID))
+		assert.False(t, can(t, w.productID, model.User(elsewhere), audit, other))
+	})
+
+	t.Run("A permission removed from a custom role leaves its members at its organization's sync", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		audit := givenPermission(t, w.productID)
+		custom := givenSyncCustomRole(t, w, w.organizationID, audit)
+		member := givenMember(t, w, w.organizationID, custom)
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		_, err := TestDB.ExecContext(t.Context(),
+			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, custom)
+		require.NoError(t, err)
+
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+
+		assert.False(t, can(t, w.productID, model.User(member), audit, w.organizationID))
+	})
+
+	t.Run("A member without a role holds nothing", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		userID := givenProductUser(t, w.productID)
+		_, err := TestDB.ExecContext(t.Context(), `INSERT INTO organization_memberships
+			(organization_id, product_user_id) VALUES ($1, $2)`, w.organizationID, userID)
+		require.NoError(t, err)
+
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+
+		assert.False(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
+	})
+
 	t.Run("A deleted organization implies nothing any more", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		_, err := TestDB.ExecContext(t.Context(), `DELETE FROM organizations WHERE id = $1`, w.organizationID)
 		require.NoError(t, err)
@@ -366,9 +399,9 @@ func TestAuthzSyncCases(t *testing.T) {
 
 	t.Run("A deleted permission leaves the model and every grant", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 		kept := givenPermission(t, w.productID)
-		givenRolePermission(t, w.productID, w.templateID, kept)
+		givenRolePermission(t, w.productID, w.managedID, kept)
 		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
 		before, err := AuthzRepo.FindStore(t.Context(), w.productID)
 		require.NoError(t, err)
@@ -386,7 +419,7 @@ func TestAuthzSyncCases(t *testing.T) {
 
 	t.Run("A product never written to gets its store from the reconcile", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		member := givenMember(t, w, w.organizationID, w.templateID)
+		member := givenMember(t, w, w.organizationID, w.managedID)
 
 		require.Eventually(t, func() bool {
 			AuthzSweeper.Sweep(t.Context())

@@ -48,6 +48,7 @@ var uniqueGuardsWithoutMapping = map[string]string{
 		"an update replaces edges after the type row's UPDATE",
 	"authz_stores_pkey":         "inserted with ON CONFLICT (product_id) DO NOTHING",
 	"authz_stores_store_id_key": "OpenFGA generates every store ID",
+	"authz_sync_marks_pkey":     "upserted with ON CONFLICT (product_id, organization_id)",
 }
 
 // retiredUniqueGuards are dropped by a migration but still mapped, because the

@@ -5,11 +5,13 @@
 -- if revision is still the one it read, so a write landing during a sync is
 -- never lost. Revisions come from one sequence, so a mark deleted and made
 -- again never reuses the revision a sync read before.
+SET LOCAL lock_timeout = '5s';
+
 CREATE SEQUENCE authz_sync_mark_revisions;
 
 CREATE TABLE authz_sync_marks (
     product_id VARCHAR(255) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    organization_id VARCHAR(255) NOT NULL DEFAULT '',
+    organization_id VARCHAR(255) NOT NULL,
     revision BIGINT NOT NULL DEFAULT nextval('authz_sync_mark_revisions'),
     marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (product_id, organization_id)
