@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS authz_stores;
+DROP SCHEMA IF EXISTS openfga CASCADE;
