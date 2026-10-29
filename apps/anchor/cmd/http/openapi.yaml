@@ -7700,10 +7700,12 @@ paths:
         identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership,
         role, role assignment, resource, workspace or API key change made through the API usually applies to the next
         call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds.
-        Evaluating an organization API key updates its last_used_at as introspection does.
+        Evaluating an organization API key updates its last_used_at as introspection does. The platform
+        session of the Product's tenant may call it too, as the admin UI's access explainer does.
       operationId: evaluateAccess
       tags: [Access]
       security:
+      - platformBearerAuth: []
       - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
       requestBody:
         required: true
@@ -7792,6 +7794,7 @@ paths:
       operationId: evaluateAccessBatch
       tags: [Access]
       security:
+      - platformBearerAuth: []
       - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
       requestBody:
         required: true

@@ -46,6 +46,7 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/components/card",
 	"@nanostackorg/design-system/components/chart",
 	"@nanostackorg/design-system/components/checkbox",
+	"@nanostackorg/design-system/components/combobox",
 	"@nanostackorg/design-system/components/command",
 	"@nanostackorg/design-system/components/dialog",
 	"@nanostackorg/design-system/components/dropdown-menu",
