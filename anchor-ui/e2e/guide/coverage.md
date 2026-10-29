@@ -9,11 +9,12 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **60 scenarios in 14 spec files**.
+The managed app suite declares **63 scenarios in 15 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
 | [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
+| [access/resource-types.e2e.ts](../features/access/resource-types.e2e.ts) | 3 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 6 |
 | [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
@@ -86,6 +87,7 @@ Specs: [management keys](../features/platform/api-keys.e2e.ts),
 | `PRODUCT_PERMISSIONS` — `/products/permissions` | Built-in catalog search, Name facet, pagination, clear empty search and no create/delete controls. | Software-managed Anchor permission catalog, distinct from resource permissions. | permissions |
 | `PRODUCT_RESOURCES_PERMISSIONS` — `/products/resources/permissions` | Create, Name facet, sort, pagination, search/empty recovery, single/bulk delete and affected-role warning. | API permissions prepare list/bulk data; a role holds a grant for deletion impact. | permissions |
 | `PRODUCT_RESOURCE_PERMISSION_DETAIL` — `/products/resources/permissions/$permissionName` | View, immutable name, description edit/cancel/save/reload and missing-resource recovery. | API checks persisted description and committed deletion. | permissions, roles |
+| `PRODUCT_RESOURCE_TYPES` — `/products/resources/types` | Read-only tree with the locked Organization, self-nesting badge and per-type role/permission counts; edit mode with `+` handle and keyboard naming (Enter keeps, Escape drops, `N` adds, arrows move, Enter renames), parent and nesting changes, delete confirmation, disabled delete with reasons, discard, publish and reload; a refused publish keeps the draft and names the blocking role. | API publishes the starting tree and scoped permissions and roles; API checks the published tree. | resource types |
 | `PRODUCT_ROLES` — `/products/resources/roles` | Create wizard, permission selection, Name facet, sorting, pagination, search, single/bulk delete, assigned-role error and mixed bulk outcomes. | API permissions/membership prepare grants and an assigned role. Failed deletion retains its row. | roles |
 | `PRODUCT_ROLE_DETAIL` — `/products/resources/roles/$roleId` | View, edit/cancel, renamed role and grant replacement, reload and missing-role recovery. | API checks persisted name/grants; permission deletion must leave `permissions: []`. | roles, permissions |
 

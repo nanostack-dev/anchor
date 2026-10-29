@@ -26,7 +26,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [case insensitive identifiers](case-insensitive-identifiers.md)
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context
 - [Product-role permission updates](technical/role-permission-updates.md): omission, empty replacement and generated SDK semantics
-- [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, and the scope rollout
+- [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, the scope rollout and the admin canvas
 - [Managed and custom roles](technical/managed-and-custom-roles.md): roles the Product manages, an Organization's own roles, who may hold each, and their rollout
 - [Authorization engine](technical/authorization-engine.md): OpenFGA running inside Anchor, each Product's store, and the steps that move decisions onto it; [sync flow](technical/authorization-sync-flow.html), a step-by-step view of the tables one membership write changes; [authorization sync](technical/authorization-fgasync.md), the sync engine and how to add a source; [replay middleware](technical/authorization-replay-middleware.html), how a write reaches OpenFGA before its response
 - [engineering best practices](engineering-best-practices.md)

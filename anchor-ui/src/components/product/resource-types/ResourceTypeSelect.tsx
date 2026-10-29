@@ -1,5 +1,8 @@
 import type { ProductResourceTypeResponse } from "@/client";
-import { searchProductResourceTypesOptions } from "@/client/@tanstack/react-query.gen";
+import {
+	searchProductResourceTypesOptions,
+	searchProductResourceTypesQueryKey,
+} from "@/client/@tanstack/react-query.gen";
 import {
 	Select,
 	SelectContent,
@@ -15,12 +18,18 @@ export const ORGANIZATION_RESOURCE_TYPE = "organization";
 // of 100 holds every type.
 const RESOURCE_TYPE_PAGE = 100;
 
+const resourceTypesSearch = (productId: string) => ({
+	path: { product_id: productId },
+	body: { pagination: { limit: RESOURCE_TYPE_PAGE } },
+});
+
+export function resourceTypesQueryKey(productId: string) {
+	return searchProductResourceTypesQueryKey(resourceTypesSearch(productId));
+}
+
 export function useResourceTypes(productId: string) {
 	return useQuery({
-		...searchProductResourceTypesOptions({
-			path: { product_id: productId },
-			body: { pagination: { limit: RESOURCE_TYPE_PAGE } },
-		}),
+		...searchProductResourceTypesOptions(resourceTypesSearch(productId)),
 		select: (data): ProductResourceTypeResponse[] => data.items,
 	});
 }

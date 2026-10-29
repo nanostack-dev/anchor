@@ -12,6 +12,7 @@
 		],
 		"access": [
 			"anchor-ui/e2e/features/access/permissions.e2e.ts",
+			"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 			"anchor-ui/e2e/features/access/roles.e2e.ts",
 			"anchor-ui/e2e/features/access/tenancy.e2e.ts"
 		],
@@ -176,6 +177,7 @@
 			"reason": "Feature-local access test helpers and fixtures select their owning suite.",
 			"provenance": [
 				"anchor-ui/e2e/features/access/permissions.e2e.ts",
+				"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 				"anchor-ui/e2e/features/access/roles.e2e.ts",
 				"anchor-ui/e2e/features/access/tenancy.e2e.ts"
 			]
@@ -257,6 +259,7 @@
 			"paths": [
 				"anchor-ui/src/components/organization/**",
 				"anchor-ui/src/components/product/permissions/**",
+				"anchor-ui/src/components/product/resource-types/**",
 				"anchor-ui/src/components/product/roles/**",
 				"anchor-ui/src/components/product/user/**",
 				"anchor-ui/src/components/product/common/steps/**",
@@ -267,6 +270,7 @@
 				"anchor-ui/src/pages/product-resource-permission-detail.stories.tsx",
 				"anchor-ui/src/pages/product-role-detail.tsx",
 				"anchor-ui/src/pages/product-role-detail.stories.tsx",
+				"anchor-ui/src/pages/product-resource-types.tsx",
 				"anchor-ui/src/pages/product-roles.tsx",
 				"anchor-ui/src/pages/product-users.tsx",
 				"anchor-ui/src/pages/organizations.tsx",
@@ -277,6 +281,7 @@
 				"anchor-ui/src/routes/products/permissions.tsx",
 				"anchor-ui/src/routes/products/product-resource-details.tsx",
 				"anchor-ui/src/routes/products/product-resource-permissions.tsx",
+				"anchor-ui/src/routes/products/product-resource-types.tsx",
 				"anchor-ui/src/routes/products/product-roles-route.tsx",
 				"anchor-ui/src/routes/products/product-users.tsx",
 				"anchor-ui/src/routes/organizations/organization-api-keys.tsx",

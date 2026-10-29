@@ -26,9 +26,13 @@ both the UI and the persisted API resource.
   organization-scoped views. Their fixture APIs create the selected
   organization and related data. Organization invitations expose single/bulk
   deletion; invitation creation/acceptance remain API features.
+- `access.resource-types-*` covers the Resource types canvas: the read-only
+  tree, per-type role and permission counts, disabled delete with reasons, a
+  draft built with the `+` handle and the keyboard, publish, reload, discard
+  and a refused publish that names the blocking role. The API publishes the
+  starting tree and its scoped permissions and roles.
 - `/workspace-memberships` is an implemented placeholder heading. The test
   records that boundary instead of inventing membership controls.
-
 ## Worker login fails with an invalid URL
 
 Symptom: every scenario fails before its first step at `page.goto('/login')`
