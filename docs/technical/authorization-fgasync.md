@@ -250,3 +250,4 @@ allowed, err := store.Check(ctx, "user:pu_ana", model.CanRelation("billing:write
 - **The syncer drops tuples the model does not define.** Sources then never need the catalog: after a permission is deleted, its tuples are simply no longer desired, and the sync deletes them.
 - **One lock per Product, held per key.** A model write and a whole-Product sync must not race with a key's sync. Holding the lock per key, not per Product sync, keeps a write from waiting behind a whole Product.
 - **Seams with two adapters each.** The repository, the lock, the stores and the engine each have a Postgres or OpenFGA adapter and an in-memory one. That is what lets `fgasync` test every rule in milliseconds, without Postgres.
+- **No Go generic methods.** Go 1.27 allows them, but the `Source` interface works on strings and `fga.Tuple` only, so a type parameter would add a name without removing a cast.
