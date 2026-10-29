@@ -1,18 +1,20 @@
 import { deleteProductResourcePermission } from "@/client";
 import type {
-	Options,
-	ProductPermissionResponse,
+	ProductResourcePermissionResponse,
 	ProductResourcePermissionSearchRequest,
-	SearchProductResourcePermissionsData,
+	ProductRoleResponse,
 } from "@/client";
 import { SortDirection } from "@/client";
 import { searchProductResourcePermissionsOptions } from "@/client/@tanstack/react-query.gen";
-import { CreateProductResourcePermissionDialog } from "@/components/product/permissions/CreateProductResourcePermissionDialog";
 import { DeleteProductResourcePermissionDialog } from "@/components/product/permissions/DeleteProductResourcePermissionDialog";
+import { useScopeTypes } from "@/components/product/resource-types/ResourceTypeSelect";
+import { typeName } from "@/components/product/resource-types/resource-type-scope";
+import { useRolesHolding } from "@/components/product/roles/role-queries";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { mapSortingToApiField } from "@/utils/datatable-sorting";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
-import { Button } from "@nanostackorg/design-system/components/button";
+import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -21,21 +23,87 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useDebounce } from "@uidotdev/usehooks";
 import dayjs from "dayjs";
 import { Eye, PenLine, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnchorDataTable } from "../../common/datatable/AnchorDataTable";
 
-const columnHelper = createColumnHelper<ProductPermissionResponse>();
+const columnHelper = createColumnHelper<ProductResourcePermissionResponse>();
+const LISTED_ROLES = 5;
 
-interface ProductPermissionDatatableProps {
+type Holding =
+	| { status: "loading" }
+	| { status: "error" }
+	| { status: "ready"; roles: Map<string, ProductRoleResponse[]> };
+
+function HoldingRoles({
+	holding,
+	permission,
+}: {
+	holding: Holding;
+	permission: string;
+}) {
+	if (holding.status === "loading")
+		return (
+			<Box className="w-24">
+				<Skeleton />
+				<Box as="span" className="sr-only">
+					Loading roles
+				</Box>
+			</Box>
+		);
+	if (holding.status === "error")
+		return (
+			<Box as="span" className="text-muted-foreground text-sm">
+				Couldn't load roles
+			</Box>
+		);
+	const roles = holding.roles.get(permission.toLowerCase()) ?? [];
+	if (roles.length === 0)
+		return (
+			<Box as="span" className="text-muted-foreground text-sm">
+				No roles
+			</Box>
+		);
+	const listed = roles.slice(0, LISTED_ROLES);
+	return (
+		<Box
+			as="ul"
+			className="flex max-w-[16rem] flex-wrap items-center gap-1"
+			aria-label={`Roles holding ${permission}: ${roles.map((role) => role.name).join(", ")}`}
+		>
+			{listed.map((role) => (
+				<Box as="li" key={role.id} className="max-w-full">
+					<Badge variant="outline">
+						<Box
+							as="span"
+							className="block max-w-[10rem] truncate"
+							title={role.name}
+						>
+							{role.name}
+						</Box>
+					</Badge>
+				</Box>
+			))}
+			{roles.length > LISTED_ROLES && (
+				<Box as="li" className="text-muted-foreground text-xs">
+					+{roles.length - LISTED_ROLES} more
+				</Box>
+			)}
+		</Box>
+	);
+}
+
+interface ProductResourcePermissionDatatableProps {
 	productId: string;
+	resourceTypes?: string[];
+	onResourceTypesChange?: (slugs: string[]) => void;
 }
 
 export function ProductResourcePermissionDatatable({
 	productId,
-}: ProductPermissionDatatableProps) {
+	resourceTypes = [],
+	onResourceTypesChange,
+}: ProductResourcePermissionDatatableProps) {
 	const navigate = useNavigate();
-	const [total, setTotal] = useState(0);
-
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
 		pageSize: 10,
@@ -45,55 +113,18 @@ export function ProductResourcePermissionDatatable({
 	]);
 	const [fullTextSearch, setFullTextSearch] = useState("");
 	const debouncedFullTextSearch = useDebounce(fullTextSearch, 300);
-
 	const [nameFilter, setNameFilter] = useState<string[]>([]);
 	const debouncedName = useDebounce(nameFilter, 100);
-	const [
-		searchProductResourcePermissionsOptionsParams,
-		setSearchProductResourcePermissionsOptionsParams,
-	] = useState<Options<SearchProductResourcePermissionsData>>(() => ({
-		path: {
-			product_id: productId,
-		},
-		body: {
-			pagination: {
-				limit: pagination.pageSize,
-				offset: pagination.pageIndex * pagination.pageSize,
-			},
-			sort_by: mapSortingToApiField<
-				ProductResourcePermissionSearchRequest["sort_by"]
-			>("created_at", "created_at"),
-			sort_direction: sorting[0]?.desc ? SortDirection.DESC : SortDirection.ASC,
-			full_text_search: debouncedFullTextSearch || undefined,
-			filter: {
-				names: debouncedName.length > 0 ? debouncedName : undefined,
-			},
-		},
-	}));
-	const {
-		data: productPermissionData,
-		isLoading,
-		isFetching,
-		error,
-		refetch,
-	} = useQuery({
-		...searchProductResourcePermissionsOptions(
-			searchProductResourcePermissionsOptionsParams,
-		),
-		placeholderData: keepPreviousData,
-	});
+	const [localTypes, setLocalTypes] = useState(resourceTypes);
+	const typeFilter = onResourceTypesChange ? resourceTypes : localTypes;
+	const scopeTypes = useScopeTypes(productId);
+	const types = scopeTypes.data ?? [];
+	const typesRef = useRef(types);
+	typesRef.current = types;
 
-	const { items = [], total: fetchedTotal = 0 } = productPermissionData ?? {};
-	useMemo(() => {
-		setTotal(fetchedTotal);
-	}, [fetchedTotal]);
-
-	// Update search options when pagination, sorting, or filters change
-	useEffect(() => {
-		setSearchProductResourcePermissionsOptionsParams({
-			path: {
-				product_id: productId,
-			},
+	const searchOptions = useMemo(
+		() => ({
+			path: { product_id: productId },
 			body: {
 				pagination: {
 					limit: pagination.pageSize,
@@ -108,31 +139,90 @@ export function ProductResourcePermissionDatatable({
 				full_text_search: debouncedFullTextSearch || undefined,
 				filter: {
 					names: debouncedName.length > 0 ? debouncedName : undefined,
+					resource_types: typeFilter.length > 0 ? typeFilter : undefined,
 				},
 			},
-		});
-	}, [productId, pagination, sorting, debouncedFullTextSearch, debouncedName]);
+		}),
+		[
+			productId,
+			pagination,
+			sorting,
+			debouncedFullTextSearch,
+			debouncedName,
+			typeFilter,
+		],
+	);
+	const {
+		data: productPermissionData,
+		isLoading,
+		isFetching,
+		error,
+		refetch,
+	} = useQuery({
+		...searchProductResourcePermissionsOptions(searchOptions),
+		placeholderData: keepPreviousData,
+	});
+	const { items = [], total = 0 } = productPermissionData ?? {};
+	const pageNames = useMemo(() => items.map((item) => item.name), [items]);
+	const rolesQuery = useRolesHolding(productId, pageNames);
+	const holding = useMemo<Holding>(
+		() =>
+			rolesQuery.isError
+				? { status: "error" }
+				: rolesQuery.data
+					? { status: "ready", roles: rolesQuery.data }
+					: { status: "loading" },
+		[rolesQuery.isError, rolesQuery.data],
+	);
+	const holdingRef = useRef(holding);
+	holdingRef.current = holding;
 
 	const columns = useMemo(
 		() => [
 			columnHelper.accessor("name", {
 				header: () => <span>Name</span>,
-				cell: (info) => info.getValue(),
+				cell: (info) => (
+					<Box
+						as="span"
+						className="block max-w-[16rem] whitespace-normal font-mono text-sm break-words"
+					>
+						{info.getValue()}
+					</Box>
+				),
 				enableSorting: true,
+			}),
+			columnHelper.accessor("resource_type", {
+				header: () => <span>Resource type</span>,
+				cell: (info) => (
+					<Box
+						as="span"
+						className="block max-w-[12rem] whitespace-normal break-words"
+					>
+						{typeName(typesRef.current, info.getValue())}
+					</Box>
+				),
+				enableSorting: false,
+			}),
+			columnHelper.display({
+				id: "roles",
+				header: () => <span>Roles</span>,
+				cell: ({ row }) => (
+					<HoldingRoles
+						holding={holdingRef.current}
+						permission={row.original.name}
+					/>
+				),
 			}),
 			columnHelper.accessor("description", {
 				header: () => <span>Description</span>,
-				cell: (info) => {
-					const description = info.getValue();
-					return (
-						<Box
-							as="span"
-							className="text-sm text-muted-foreground max-w-[200px] truncate block"
-						>
-							{description || "No description"}
-						</Box>
-					);
-				},
+				cell: (info) => (
+					<Box
+						as="span"
+						className="block max-w-[200px] truncate text-muted-foreground text-sm"
+					>
+						{info.getValue() || "No description"}
+					</Box>
+				),
 				enableSorting: false,
 			}),
 			columnHelper.accessor("created_at", {
@@ -144,7 +234,7 @@ export function ProductResourcePermissionDatatable({
 				id: "actions",
 				header: () => <span>Actions</span>,
 				cell: ({ row }) => (
-					<Box className={"flex gap-2"}>
+					<Box className="flex gap-2">
 						<ButtonLink
 							aria-label={`View ${row.original.name}`}
 							href={ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_DETAIL.replace(
@@ -178,31 +268,30 @@ export function ProductResourcePermissionDatatable({
 		[productId],
 	);
 
-	// Build name options from current data
 	const nameOptions = useMemo(
 		() =>
-			Array.from(
-				new Set(
-					(items as ProductPermissionResponse[]).map((item) => item.name),
-				),
-			).map((name) => ({ label: name, value: name })),
+			Array.from(new Set(items.map((item) => item.name))).map((name) => ({
+				label: name,
+				value: name,
+			})),
 		[items],
 	);
+	const typeOptions = useMemo(
+		() => types.map((type) => ({ label: type.name, value: type.slug })),
+		[types],
+	);
+	const createHref =
+		typeFilter.length === 1
+			? `${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_NEW}?resource_type=${encodeURIComponent(typeFilter[0])}`
+			: ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_NEW;
 
 	return (
 		<>
-			<Box className="flex items-center justify-between mb-4">
-				<Box className="flex items-center gap-2">
-					<CreateProductResourcePermissionDialog
-						productId={productId}
-						trigger={
-							<Button variant="solid" tone="brand">
-								<Plus />
-								Create Permission
-							</Button>
-						}
-					/>
-				</Box>
+			<Box className="mb-4 flex items-center justify-between">
+				<ButtonLink href={createHref} variant="solid" tone="brand">
+					<Plus />
+					Create Permission
+				</ButtonLink>
 			</Box>
 			<AnchorDataTable
 				columns={columns}
@@ -238,10 +327,24 @@ export function ProductResourcePermissionDatatable({
 						placeholder: "Filter by name",
 						multi: true,
 					},
+					{
+						key: "resource_type",
+						label: "Resource type",
+						type: "select",
+						value: typeFilter,
+						options: typeOptions,
+						placeholder: "Filter by resource type",
+						multi: true,
+					},
 				]}
 				onFiltersChange={(filters) => {
 					setPagination((p) => ({ ...p, pageIndex: 0 }));
 					setNameFilter(Array.isArray(filters.name) ? filters.name : []);
+					const slugs = Array.isArray(filters.resource_type)
+						? filters.resource_type
+						: [];
+					if (onResourceTypesChange) onResourceTypesChange(slugs);
+					else setLocalTypes(slugs);
 				}}
 				getRowId={(row) => row.name}
 				getRowLabel={(row) => row.name}

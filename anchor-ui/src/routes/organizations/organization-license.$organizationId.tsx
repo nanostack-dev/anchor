@@ -3,6 +3,7 @@ import OrganizationLicenseChangesPage from "@/pages/organization-license-changes
 import OrganizationLicenseDetailPage from "@/pages/organization-license-detail";
 import OrganizationLicenseUsagePage from "@/pages/organization-license-usage";
 import OrganizationLicenseValuesPage from "@/pages/organization-license-values";
+import OrganizationRolesPage from "@/pages/organization-roles";
 import { rootRoute } from "@/routes/__root";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { createRoute, redirect } from "@tanstack/react-router";
@@ -38,6 +39,12 @@ export const organizationLicenseValuesRoute = createRoute({
 	getParentRoute: () => organizationLicenseDetailRoute,
 	path: "values",
 	component: OrganizationLicenseValuesPage,
+});
+
+export const organizationRolesRoute = createRoute({
+	getParentRoute: () => organizationLicenseDetailRoute,
+	path: "roles",
+	component: OrganizationRolesPage,
 });
 
 export const organizationLicenseDetailIndexRoute = createRoute({

@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { OrganizationLicenseIdentity } from "@/components/license/OrganizationLicenseIdentity";
 import { OrganizationLicenseTabs } from "@/components/license/OrganizationLicenseTabs";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
+import { OrganizationSectionTabs } from "@/components/organization/OrganizationSectionTabs";
 import { useProduct } from "@/context/product/ProductContext";
 import { allLicenseTemplatesOptions } from "@/hooks/useAllLicenseTemplates";
 import { getErrorDetail } from "@/lib/api-error";
@@ -30,7 +31,7 @@ import {
 	WarningIcon as TriangleAlert,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useLocation } from "@tanstack/react-router";
 
 /**
  * One organization's license, on its own route rather than in a dialog: it is
@@ -43,6 +44,8 @@ import { Outlet } from "@tanstack/react-router";
  */
 export default function OrganizationLicenseDetailPage() {
 	const { organizationId } = organizationLicenseDetailRoute.useParams();
+	const { pathname } = useLocation();
+	const onRoles = pathname.endsWith("/roles");
 	const { currentProduct } = useProduct();
 	const productId = currentProduct?.id;
 
@@ -232,21 +235,35 @@ export default function OrganizationLicenseDetailPage() {
 		<Page
 			breadCrumbLabels={{ [organizationId]: summary.organization_name }}
 			title={summary.organization_name}
-			description="What this organization is allowed, how much of each limit it has used, and every change ever made to its license."
+			description={
+				onRoles
+					? "The roles this organization's members may hold: the roles your product manages and its own custom roles."
+					: "What this organization is allowed, how much of each limit it has used, and every change ever made to its license."
+			}
 			actions={backLink}
 		>
 			<Stack space="xl">
-				{(!summary.license || template?.status === "ARCHIVED") && (
-					<Inline space="sm">
-						{!summary.license && (
-							<StatusBadge tone="neutral">No license</StatusBadge>
+				<OrganizationSectionTabs
+					organizationId={organizationId}
+					active={onRoles ? "roles" : "license"}
+				/>
+				{onRoles ? (
+					<Outlet />
+				) : (
+					<>
+						{(!summary.license || template?.status === "ARCHIVED") && (
+							<Inline space="sm">
+								{!summary.license && (
+									<StatusBadge tone="neutral">No license</StatusBadge>
+								)}
+								{template?.status === "ARCHIVED" && (
+									<StatusBadge tone="warning">Tier withdrawn</StatusBadge>
+								)}
+							</Inline>
 						)}
-						{template?.status === "ARCHIVED" && (
-							<StatusBadge tone="warning">Tier withdrawn</StatusBadge>
-						)}
-					</Inline>
+						{licenseBody()}
+					</>
 				)}
-				{licenseBody()}
 			</Stack>
 		</Page>
 	);
