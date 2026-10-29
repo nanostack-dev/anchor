@@ -1,6 +1,6 @@
 # Resources
 
-A Product registers **resources**, references to its own projects, folders or documents, so a role can later be held on one of them and inherited by everything under it ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) B1–B4, G3). Anchor stores a reference only: its type, the Product's identifier, a display name and its one parent. Members of the resource's Organization hold roles on it through [role assignments](#role-assignments). Access decisions do not read resources yet.
+A Product registers **resources**, references to its own projects, folders or documents, so a role can later be held on one of them and inherited by everything under it ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) B1–B4, G3). Anchor stores a reference only: its type, the Product's identifier, a display name and its one parent. Members of the resource's Organization hold roles on it through [role assignments](#role-assignments). [Access evaluation](access-evaluation.md#resources) checks a registered resource under its stored chain, and an unregistered one under the parent the request names.
 
 The registry is sparse (B1): a Product registers a resource only when a role is held on it, together with the ancestors it hangs from. Any other item is checked by naming its nearest registered ancestor.
 

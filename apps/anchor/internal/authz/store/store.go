@@ -9,10 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/rs/zerolog"
 
@@ -51,13 +53,30 @@ type Opened struct {
 	// Rebuilt reports whether a full rebuild filled the store. Until one does,
 	// it may hold only the keys written since, and would deny the others.
 	Rebuilt bool
+	// refused samples the log of a contextual tuple the model refuses.
+	refused zerolog.Sampler
 }
 
 // Holds answers, for each tuple in order, whether its user holds its relation
-// on its object. A relation the model doesn't define is not held, and is not
-// asked; any check OpenFGA fails on fails the call.
-func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
+// on its object, with the contextual tuples holding for these checks only. A
+// relation the model doesn't define is not held, and is not asked; neither is
+// anything when a contextual tuple is one the model wouldn't accept, which
+// OpenFGA answers with an error rather than a denial. That case is logged:
+// the catalog allows a parent the model doesn't yet. Any check OpenFGA fails
+// on fails the call.
+func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple, contextual ...fga.Tuple) ([]bool, error) {
 	held := make([]bool, len(tuples))
+	for _, t := range contextual {
+		if !o.Relations.Accepts(t) {
+			logger := log.Ctx(ctx).Sample(o.refused)
+			logger.Warn().
+				Str("event", "authz.contextual_tuple_refused").
+				Str("model_id", o.Store.ModelID()).
+				Stringer("tuple", t).
+				Msg("authz.contextual_tuple_refused")
+			return held, nil
+		}
+	}
 	var (
 		asked   []fga.Tuple
 		indexes []int
@@ -68,7 +87,7 @@ func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
 			indexes = append(indexes, i)
 		}
 	}
-	answers, err := o.Store.CheckAll(ctx, asked)
+	answers, err := o.Store.CheckAll(ctx, asked, contextual...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,17 +97,24 @@ func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
 	return held, nil
 }
 
+// refusedLogBurst caps the refused contextual tuples logged a minute.
+const refusedLogBurst = 20
+
 type stores struct {
 	db       *sql.DB
 	provider engine.Provider
 	logger   zerolog.Logger
+	refused  zerolog.Sampler
 	// relations holds, per model ID, what the model defines: a model never
 	// changes once written.
 	relations sync.Map
 }
 
 func New(db *sql.DB, provider engine.Provider, logger zerolog.Logger) Stores {
-	return &stores{db: db, provider: provider, logger: logger.With().Str("component", "authz_store").Logger()}
+	return &stores{
+		db: db, provider: provider, logger: logger.With().Str("component", "authz_store").Logger(),
+		refused: &zerolog.BurstSampler{Burst: refusedLogBurst, Period: time.Minute},
+	}
 }
 
 func (s *stores) StoreID(ctx context.Context, productID string) (string, error) {
@@ -155,6 +181,7 @@ func (s *stores) Open(ctx context.Context, productID string) (functional.Option[
 	opened := Opened{
 		Store:   fga.NewStore(openfga, recorded.StoreID, *recorded.ModelID),
 		Rebuilt: recorded.ReconciledAt != nil,
+		refused: s.refused,
 	}
 	if cached, hit := s.relations.Load(opened.Store.ModelID()); hit {
 		if relations, isRelations := cached.(fga.Relations); isRelations {

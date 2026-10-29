@@ -11,9 +11,11 @@ import (
 	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
+	resourcerepository "anchor/internal/resource/repository"
 	resourceservice "anchor/internal/resource/service"
 	rtrepository "anchor/internal/resourcetype/repository"
 	rtservice "anchor/internal/resourcetype/service"
+	assignmentrepository "anchor/internal/roleassignment/repository"
 	assignmentservice "anchor/internal/roleassignment/service"
 	"anchor/internal/service"
 
@@ -57,6 +59,8 @@ var (
 	ResourceTypeService    rtservice.Service
 	ResourceService        resourceservice.Service
 	RoleAssignmentService  assignmentservice.Service
+	ResourceRepo           resourcerepository.Repository
+	RoleAssignmentRepo     assignmentrepository.Repository
 )
 
 func TestMain(m *testing.M) {
@@ -81,6 +85,8 @@ func TestMain(m *testing.M) {
 				&ResourceTypeRepo,
 				&ResourceTypeService,
 				&ResourceService,
+				&ResourceRepo,
+				&RoleAssignmentRepo,
 				&RoleAssignmentService,
 				&Transactor,
 				&AuthzStores,

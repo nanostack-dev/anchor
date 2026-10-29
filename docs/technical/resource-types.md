@@ -1,6 +1,6 @@
 # Resource types
 
-A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The tree and the scopes are stored now; access decisions do not read them yet, so every existing check answers as before.
+A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The model compiles the tree and the scopes, and [access evaluation](access-evaluation.md#resources) takes any declared type; every check on an organization or a workspace answers as before.
 
 ## The tree
 

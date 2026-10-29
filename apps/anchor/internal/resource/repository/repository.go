@@ -43,6 +43,9 @@ type Repository interface {
 	// beside a registration, a move or a delete.
 	ShareOrganization(ctx context.Context, organizationID string) error
 	Find(ctx context.Context, organizationID, typeID, externalID string) (functional.Option[resource.Resource], error)
+	// RegisteredElsewhere reports whether another Organization of the
+	// Product registered a resource of that type and identifier.
+	RegisteredElsewhere(ctx context.Context, productID, organizationID, typeID, externalID string) (bool, error)
 	Create(ctx context.Context, r resource.Resource) error
 	Update(ctx context.Context, organizationID, rowID, name string, parentRowID *string) error
 	// Ancestors walks up from the resource, itself first, and stops after
@@ -165,6 +168,20 @@ func (r *repositoryImpl) Find(
 			),
 		resourceRow.toDomain,
 	)
+}
+
+func (r *repositoryImpl) RegisteredElsewhere(
+	ctx context.Context, productID, organizationID, typeID, externalID string,
+) (bool, error) {
+	found, err := transactor.QueryOptional[model.Resources](ctx, r.db,
+		table.Resources.SELECT(table.Resources.ID).WHERE(
+			table.Resources.ProductID.EQ(postgres.String(productID)).
+				AND(table.Resources.ResourceTypeID.EQ(postgres.String(typeID))).
+				AND(table.Resources.ExternalID.EQ(postgres.String(externalID))).
+				AND(table.Resources.OrganizationID.NOT_EQ(postgres.String(organizationID))),
+		).LIMIT(1),
+	)
+	return found.IsPresent(), err
 }
 
 func (r *repositoryImpl) Create(ctx context.Context, res resource.Resource) error {

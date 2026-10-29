@@ -9,6 +9,9 @@ import (
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
+	resourcerepository "anchor/internal/resource/repository"
+	rtservice "anchor/internal/resourcetype/service"
+	assignmentrepository "anchor/internal/roleassignment/repository"
 	coresvc "anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -17,16 +20,19 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// driftLogBurst caps the drift lines logged a minute.
-const driftLogBurst = 20
+// logBurst caps the lines each sampled warning logs a minute.
+const logBurst = 20
 
-// Evaluator decides whether a subject may act on an organization or a workspace.
+// Evaluator decides whether a subject may act on an organization, a workspace
+// or a resource of the Product's own types (ADR-0022 E2).
 //
 // Postgres resolves who the subject is: the product user and its membership,
-// or the API key through introspection, and the workspace's organization.
-// Which actions it holds comes from OpenFGA, which a write that changes access
-// usually reaches before its response, and otherwise within seconds, when the
-// sweeper replays its mark (ADR-0022 E5). Nothing is cached.
+// or the API key through introspection; then what the resource is: the
+// workspace's organization, or the registered resource or the parent an
+// unregistered one names. Which actions it holds comes from OpenFGA, which a
+// write that changes access usually reaches before its response, and
+// otherwise within seconds, when the sweeper replays its mark (ADR-0022 E5).
+// Nothing is cached.
 type Evaluator interface {
 	Evaluate(ctx context.Context, request Request) (Decision, error)
 }
@@ -38,8 +44,12 @@ type evaluator struct {
 	workspaces    repository.WorkspaceRepository
 	apiKeys       coresvc.OrganizationAPIKeyService
 	permissions   PermissionChecker
+	resourceTypes rtservice.Service
+	resources     resourcerepository.Repository
+	assignments   assignmentrepository.Repository
 	logger        zerolog.Logger
 	driftSampler  zerolog.Sampler
+	parentSampler zerolog.Sampler
 }
 
 func NewEvaluator(
@@ -49,6 +59,9 @@ func NewEvaluator(
 	workspaces repository.WorkspaceRepository,
 	apiKeys coresvc.OrganizationAPIKeyService,
 	permissions PermissionChecker,
+	resourceTypes rtservice.Service,
+	resources resourcerepository.Repository,
+	assignments assignmentrepository.Repository,
 	logger zerolog.Logger,
 ) Evaluator {
 	return &evaluator{
@@ -58,13 +71,18 @@ func NewEvaluator(
 		workspaces:    workspaces,
 		apiKeys:       apiKeys,
 		permissions:   permissions,
+		resourceTypes: resourceTypes,
+		resources:     resources,
+		assignments:   assignments,
 		logger:        logger.With().Str("component", "access_evaluator").Logger(),
-		driftSampler:  &zerolog.BurstSampler{Burst: driftLogBurst, Period: time.Minute},
+		driftSampler:  &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
+		parentSampler: &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
 	}
 }
 
 // Evaluate walks the subject toward the resource, organization first, then the
-// workspace, and decides the actions with whatever identity it reached.
+// workspace or the resource, and decides the actions with whatever identity
+// it reached.
 func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, error) {
 	if err := validate.ValidateStruct(request); err != nil {
 		return Decision{}, err
@@ -79,16 +97,23 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	if subject, err = e.reachWorkspace(ctx, request, subject); err != nil {
 		return Decision{}, err
 	}
+	target := located{}
+	if subject.stopped == "" {
+		target = located{object: OrganizationObject(subject.identity.OrganizationID)}
+		if subject, target, err = e.reachResource(ctx, request, subject, target); err != nil {
+			return Decision{}, err
+		}
+	}
 	if subject.stopped != "" {
 		return subject.decide(request.Actions, request.Semantic, nil), nil
 	}
 	identity := subject.identity
 	held, err := e.permissions.Holds(ctx, PermissionCheck{
-		ProductID:      request.ProductID,
-		OrganizationID: identity.OrganizationID,
-		ProductUserID:  identity.ProductUserID,
-		APIKeyID:       identity.APIKeyID,
-		Actions:        request.Actions,
+		ProductID:     request.ProductID,
+		ProductUserID: identity.ProductUserID,
+		APIKeyID:      identity.APIKeyID,
+		Object:        target.object,
+		Actions:       request.Actions,
 	})
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -100,13 +125,21 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	case err != nil:
 		return Decision{}, e.unexpected(err, request, "permissions")
 	}
-	e.reportDrift(ctx, request, identity, held)
-	return subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] }), nil
+	if request.Resource.Type.builtIn() {
+		e.reportDrift(ctx, request, identity, held)
+	}
+	decision := subject.decide(request.Actions, request.Semantic, func(action string) bool { return held[action] })
+	if request.Explain {
+		e.explainOrSkip(ctx, request, identity, target, &decision)
+	}
+	return decision, nil
 }
 
 // reportDrift logs, sampled, each action where OpenFGA and the permissions
 // Anchor's tables list for the identity disagree. A write's own replay window
-// can show one; a lasting one is a sync defect.
+// can show one; a lasting one is a sync defect. Only a decision on the
+// Organization or a workspace compares: roles held on a resource grant more
+// than the Organization's role lists.
 func (e *evaluator) reportDrift(ctx context.Context, request Request, identity *Identity, held map[string]bool) {
 	logger := log.Ctx(ctx).Sample(e.driftSampler)
 	for _, action := range request.Actions {

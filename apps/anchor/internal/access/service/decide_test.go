@@ -90,3 +90,19 @@ func TestCheckResource(t *testing.T) {
 	require.NoError(t, accesssvc.CheckResource(key), "an API key defaults to its organization")
 	require.NoError(t, accesssvc.CheckResource(user.InWorkspace("org", "ws")))
 }
+
+func TestCheckResourceOnProductTypes(t *testing.T) {
+	user := accesssvc.Ask("prd").User("user_1")
+	key := accesssvc.Ask("prd").APIKey("key")
+
+	require.Error(t, accesssvc.CheckResource(user.OnResource("org", "document", "")), "a resource needs its id")
+	require.Error(t, accesssvc.CheckResource(user.OnResource("", "document", "doc")),
+		"a user needs the resource's organization")
+	require.Error(t, accesssvc.CheckResource(user.InOrganization("org").Under("folder", "f")),
+		"an organization takes no parent")
+	require.Error(t, accesssvc.CheckResource(user.InWorkspace("org", "ws").Under("folder", "f")),
+		"a workspace takes no parent")
+	require.NoError(t, accesssvc.CheckResource(key.OnResource("", "document", "doc").Under("folder", "f")),
+		"an API key defaults to its organization")
+	require.NoError(t, accesssvc.CheckResource(user.OnResource("org", "document", "doc").Under("folder", "f")))
+}

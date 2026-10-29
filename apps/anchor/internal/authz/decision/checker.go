@@ -50,9 +50,13 @@ func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
 	return &Checker{stores: stores, rebuilder: rebuilder}
 }
 
-// Holds checks every action on the identity's Organization. A permission the
-// model doesn't define is not held. Anything OpenFGA can't answer, or can't
-// answer in time, fails with accessservice.ErrPermissionStoreUnavailable.
+// Holds checks every action on the object. An unregistered resource is
+// checked as an object of its type that exists for the check only, with its
+// parent given as a contextual tuple (ADR-0022 B1). A permission the model
+// doesn't define on the object's type is not held; neither is anything on a
+// type the model lacks, or under a parent its parent relation refuses.
+// Anything OpenFGA can't answer, or can't answer in time, fails with
+// accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
 	held := make(map[string]bool, len(check.Actions))
 	if len(check.Actions) == 0 {
@@ -66,14 +70,13 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	if check.APIKeyID != "" {
 		subject = model.APIKey(check.APIKeyID)
 	}
+	object, contextual := checkedObject(check.Object)
 	tuples := functional.Slice(check.Actions).Map(func(action string) fga.Tuple {
-		return fga.Tuple{
-			Object: model.Organization(check.OrganizationID), Relation: model.CanRelation(action), User: subject,
-		}
+		return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
 	})
 	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
 	defer cancel()
-	answers, err := opened.Holds(ctx, tuples)
+	answers, err := opened.Holds(ctx, tuples, contextual...)
 	if err != nil {
 		return nil, unavailable(err)
 	}
@@ -81,6 +84,25 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 		held[action] = held[action] || answers[i]
 	}
 	return held, nil
+}
+
+// checkedObject names the checked object in the model, and the tuples that
+// hold for its check only.
+func checkedObject(object accessservice.CheckedObject) (string, []fga.Tuple) {
+	if object.Parent == nil {
+		return objectRef(object), nil
+	}
+	unregistered := model.UnregisteredResource(object.Type)
+	return unregistered, []fga.Tuple{
+		{Object: unregistered, Relation: model.RelationParent, User: objectRef(*object.Parent)},
+	}
+}
+
+func objectRef(object accessservice.CheckedObject) string {
+	if object.Type == model.TypeOrganization {
+		return model.Organization(object.ID)
+	}
+	return model.ResourceObject(object.Type, object.ID)
 }
 
 // store returns the Product's store once a full rebuild filled it. The first

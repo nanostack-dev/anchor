@@ -123,19 +123,25 @@ func (s Store) Check(ctx context.Context, user, relation, object string) (bool, 
 }
 
 // CheckAll answers, for each tuple in order, whether its user holds its
-// relation on its object, in BatchChecks of at most 50. Any check OpenFGA
-// fails on fails the call with ErrCheckItem; that includes a relation the model
-// doesn't define, which OpenFGA reports with the code it uses for throttling,
-// so ask only what Relations defines.
-func (s Store) CheckAll(ctx context.Context, tuples []Tuple) ([]bool, error) {
+// relation on its object, in BatchChecks of at most 50. Contextual tuples hold
+// for these checks only, as if they were stored. Any check OpenFGA fails on
+// fails the call with ErrCheckItem; that includes a relation the model doesn't
+// define, which OpenFGA reports with the code it uses for throttling, so ask
+// only what Relations defines.
+func (s Store) CheckAll(ctx context.Context, tuples []Tuple, contextual ...Tuple) ([]bool, error) {
+	var contextualKeys *openfgav1.ContextualTupleKeys
+	if len(contextual) > 0 {
+		contextualKeys = &openfgav1.ContextualTupleKeys{TupleKeys: functional.Slice(contextual).Map(toTupleKey)}
+	}
 	answers := make([]bool, 0, len(tuples))
 	for start := 0; start < len(tuples); start += checkBatch {
 		batch := tuples[start:min(start+checkBatch, len(tuples))]
 		items := make([]*openfgav1.BatchCheckItem, len(batch))
 		for i, t := range batch {
 			items[i] = &openfgav1.BatchCheckItem{
-				CorrelationId: strconv.Itoa(i),
-				TupleKey:      &openfgav1.CheckRequestTupleKey{User: t.User, Relation: t.Relation, Object: t.Object},
+				CorrelationId:    strconv.Itoa(i),
+				TupleKey:         &openfgav1.CheckRequestTupleKey{User: t.User, Relation: t.Relation, Object: t.Object},
+				ContextualTuples: contextualKeys,
 			}
 		}
 		resp, err := s.engine.BatchCheck(ctx, &openfgav1.BatchCheckRequest{
