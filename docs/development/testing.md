@@ -16,6 +16,8 @@ Use [agent workflow](agent-workflow.md) for affected-area local E2E before pushi
 
 Read [implementation rules](agent-rules.md) for parallel CT isolation and [engineering practices](../engineering-best-practices.md) for test SDK ownership. UI `build` does not check types.
 
+Managed browser commands enforce the [preflight gate](../../anchor-ui/e2e/README.md#managed-test-preflight) before execution. Use its reported corrective action for blocked setup or reuse; readiness is not test coverage.
+
 ## Go lint
 
 The repository lint script owns backend lint: it runs in `apps/anchor` with the repository-root `.golangci.yml`, even when invoked by absolute path from another directory. Local commands and backend CI use the exact version in [`.golangci-lint-version`](../../.golangci-lint-version). Installation is in [setup](setup.md#go-linter).

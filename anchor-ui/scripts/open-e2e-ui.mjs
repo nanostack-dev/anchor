@@ -3,6 +3,7 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { assertPreflight } from "./e2e-preflight.mjs";
 import { parseUIOptions, uiHelp, uiLaunchPlan } from "./e2e-ui-options.mjs";
 
 const directory = path.resolve(import.meta.dirname, "..");
@@ -121,6 +122,7 @@ async function assertUIPortAvailable() {
 }
 
 async function openUI(plan) {
+	await assertPreflight({ mode: "auto", ui: true });
 	const [{ frontendFingerprint }, { statusRuntime }] = await Promise.all([
 		import("../e2e/support/fingerprint.ts"),
 		import("./e2e-runtime.mjs"),
