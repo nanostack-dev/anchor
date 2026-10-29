@@ -19,3 +19,12 @@ type Workspace struct {
 func (w *Workspace) GenerateID() {
 	w.ID = ids.MustNew("ws")
 }
+
+// Membership is a row of workspace_memberships: a member holding a product
+// role on a workspace. No route writes them; the workspace migration moves
+// each one it can into a role assignment (ADR-0022 A6, D4).
+type Membership struct {
+	WorkspaceID   string
+	ProductUserID string
+	RoleID        string
+}

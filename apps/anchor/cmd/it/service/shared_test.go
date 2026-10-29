@@ -61,6 +61,7 @@ var (
 	RoleAssignmentService  assignmentservice.Service
 	ResourceRepo           resourcerepository.Repository
 	RoleAssignmentRepo     assignmentrepository.Repository
+	WorkspaceBackfill      *resourceservice.WorkspaceBackfill
 )
 
 func TestMain(m *testing.M) {
@@ -97,6 +98,7 @@ func TestMain(m *testing.M) {
 				&ProductUserRepo,
 				&MembershipRepo,
 				&WorkspaceRepo,
+				&WorkspaceBackfill,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,

@@ -21,6 +21,7 @@ import (
 	"anchor/internal/authz/source"
 	"anchor/internal/authz/store"
 	"anchor/internal/events"
+	resourceservice "anchor/internal/resource/service"
 )
 
 func NewModule() fx.Option {
@@ -43,6 +44,7 @@ func NewModule() fx.Option {
 			newSyncer,
 			events.AsTxObserver(newMarker),
 			newChecker,
+			func(s *fgasync.Syncer) resourceservice.WriteReplay { return s },
 		),
 		fx.Invoke(func(m *fgasync.Syncer, lc fx.Lifecycle) { m.Run(lc) }),
 	)

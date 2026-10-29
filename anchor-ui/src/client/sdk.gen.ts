@@ -1071,7 +1071,10 @@ export const updateProductOrganization = <ThrowOnError extends boolean = false>(
 /**
  * Create Organization Workspace
  *
- * Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
+ * Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
+ * Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
+ *
+ * @deprecated
  */
 export const createOrganizationWorkspace = <ThrowOnError extends boolean = false>(options: Options<CreateOrganizationWorkspaceData, ThrowOnError>) => (options.client ?? client).post<CreateOrganizationWorkspaceResponses, CreateOrganizationWorkspaceErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -1088,6 +1091,9 @@ export const createOrganizationWorkspace = <ThrowOnError extends boolean = false
  *
  * Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
  * Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+ * Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
+ *
+ * @deprecated
  */
 export const searchOrganizationWorkspaces = <ThrowOnError extends boolean = false>(options: Options<SearchOrganizationWorkspacesData, ThrowOnError>) => (options.client ?? client).post<SearchOrganizationWorkspacesResponses, SearchOrganizationWorkspacesErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -1102,7 +1108,10 @@ export const searchOrganizationWorkspaces = <ThrowOnError extends boolean = fals
 /**
  * Delete Organization Workspace
  *
- * Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
+ * Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission. The workspace's resource goes with it, with every resource registered under it and every role assignment on them.
+ * Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
+ *
+ * @deprecated
  */
 export const deleteOrganizationWorkspace = <ThrowOnError extends boolean = false>(options: Options<DeleteOrganizationWorkspaceData, ThrowOnError>) => (options.client ?? client).delete<DeleteOrganizationWorkspaceResponses, DeleteOrganizationWorkspaceErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -1114,6 +1123,9 @@ export const deleteOrganizationWorkspace = <ThrowOnError extends boolean = false
  * Get Organization Workspace
  *
  * Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+ * Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
+ *
+ * @deprecated
  */
 export const getOrganizationWorkspace = <ThrowOnError extends boolean = false>(options: Options<GetOrganizationWorkspaceData, ThrowOnError>) => (options.client ?? client).get<GetOrganizationWorkspaceResponses, GetOrganizationWorkspaceErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -1124,7 +1136,10 @@ export const getOrganizationWorkspace = <ThrowOnError extends boolean = false>(o
 /**
  * Update Organization Workspace
  *
- * Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission.
+ * Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
+ * Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
+ *
+ * @deprecated
  */
 export const updateOrganizationWorkspace = <ThrowOnError extends boolean = false>(options: Options<UpdateOrganizationWorkspaceData, ThrowOnError>) => (options.client ?? client).put<UpdateOrganizationWorkspaceResponses, UpdateOrganizationWorkspaceErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -1317,6 +1332,7 @@ export const getResource = <ThrowOnError extends boolean = false>(options: Optio
  * Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
  * The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
  * Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+ * Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
  */
 export const putResource = <ThrowOnError extends boolean = false>(options: Options<PutResourceData, ThrowOnError>) => (options.client ?? client).put<PutResourceResponses, PutResourceErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],
