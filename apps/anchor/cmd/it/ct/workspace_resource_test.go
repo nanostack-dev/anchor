@@ -4,41 +4,32 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 
 	itshared "anchor/cmd/it/shared"
 	itdsl "anchor/cmd/it/shared/dsl"
 	resourceservice "anchor/internal/resource/service"
 )
 
-const (
-	workspaceType = "workspace"
-	// sweepWait covers a few runs of the sweeper, which replays every 5 s.
-	sweepWait = 30 * time.Second
-	sweepPoll = 100 * time.Millisecond
-)
+const workspaceType = "workspace"
 
-// backfillLog collects a backfill's log lines, so a test can see what it
+// capturedLog collects a service's log lines, so a test can see what it
 // logged about its own product.
-type backfillLog struct {
+type capturedLog struct {
 	mu  sync.Mutex
 	buf bytes.Buffer
 }
 
-func (l *backfillLog) Write(p []byte) (int, error) {
+func (l *capturedLog) Write(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.buf.Write(p)
@@ -47,7 +38,7 @@ func (l *backfillLog) Write(p []byte) (int, error) {
 // logged reports whether a line of the level carries every field and a
 // message containing the text. A number field compares as a float64, as JSON
 // decodes it.
-func (l *backfillLog) logged(t *testing.T, level, text string, fields map[string]any) bool {
+func (l *capturedLog) logged(t *testing.T, level, text string, fields map[string]any) bool {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -69,25 +60,6 @@ func (l *backfillLog) logged(t *testing.T, level, text string, fields map[string
 	return false
 }
 
-// newWorkspaceBackfill builds the startup backfill with its own logger. A test
-// runs it on its own product only, never on every product.
-func newWorkspaceBackfill() (*resourceservice.WorkspaceBackfill, *backfillLog) {
-	log := &backfillLog{}
-	logger := zerolog.New(log)
-	mirror := resourceservice.NewWorkspaces(resourceSvc, resourceRepo, resourceTypeSvc, logger)
-	return resourceservice.NewWorkspaceBackfill(resourceservice.WorkspaceBackfillParams{
-		WorkspaceRepo: workspaceRepo,
-		Workspaces:    mirror,
-		Resources:     resourceSvc,
-		Repo:          resourceRepo,
-		ResourceTypes: resourceTypeSvc,
-		Assignments:   roleAssignmentSvc,
-		Replay:        workspaceReplay,
-		Transactor:    initialWorkspaceTx,
-		Logger:        logger,
-	}), log
-}
-
 // insertWorkspace writes a workspace as a release before the resource mirror
 // did: with no resource.
 func insertWorkspace(t *testing.T, organizationID, name string) string {
@@ -99,167 +71,22 @@ func insertWorkspace(t *testing.T, organizationID, name string) string {
 	return id
 }
 
-func insertWorkspaceMembership(t *testing.T, workspaceID, productUserID, roleID string) {
-	t.Helper()
-	_, err := testDB.ExecContext(t.Context(),
-		`INSERT INTO workspace_memberships (workspace_id, product_user_id, product_role_id) VALUES ($1, $2, $3)`,
-		workspaceID, productUserID, roleID)
-	require.NoError(t, err)
-}
-
-func workspaceMembershipExists(t *testing.T, workspaceID, productUserID string) bool {
-	t.Helper()
-	var count int
-	require.NoError(t, testDB.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM workspace_memberships WHERE workspace_id = $1 AND product_user_id = $2`,
-		workspaceID, productUserID).Scan(&count))
-	return count > 0
-}
-
 // requireWorkspaceResource asserts that the workspace is registered under its
 // Organization with the workspace's name.
 func requireWorkspaceResource(
 	t *testing.T, product *itdsl.ProductContext, organizationID, workspaceID, name string,
-) ct.ResourceResponse {
+) {
 	t.Helper()
 	got := product.Resources(organizationID).Get(workspaceType, workspaceID)
 	assert.Equal(t, workspaceID, got.Id)
 	assert.Equal(t, name, got.Name)
 	assert.Equal(t, ct.ResourceParentRef{Type: "organization", Id: organizationID}, got.Parent)
-	return got
-}
-
-// waitForSweep waits until the product's marks are replayed: the backfill
-// replays them after each commit, and the sweeper retries one that couldn't
-// run.
-func waitForSweep(t *testing.T, productID string) {
-	t.Helper()
-	require.Eventually(t, func() bool {
-		var pending int
-		require.NoError(t, testDB.QueryRowContext(t.Context(),
-			`SELECT count(*) FROM authz_sync_marks WHERE product_id = $1`, productID).Scan(&pending))
-		return pending == 0
-	}, sweepWait, sweepPoll)
 }
 
 func requireNoWorkspaceResource(t *testing.T, product *itdsl.ProductContext, organizationID, workspaceID string) {
 	t.Helper()
 	resp := product.Resources(organizationID).GetRaw(workspaceType, workspaceID)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-}
-
-func TestWorkspaceBackfill(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Workspaces become resources with their IDs and names under their organizations, once", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		sink := product.CaptureEvents()
-		first := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		second := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		payments := insertWorkspace(t, first.Id, "Payments")
-		billing := insertWorkspace(t, second.Id, "Billing")
-		backfill, _ := newWorkspaceBackfill()
-
-		require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-		declared := product.ResourceTypes().BySlug(workspaceType)
-		assert.Equal(t, []string{"organization"}, declared.ParentTypes)
-		assert.False(t, declared.NestsInItself)
-		sink.WaitFor("product.resource_type.created",
-			map[string]string{"resource_type": workspaceType, "resource_type_id": declared.Id})
-		before := []ct.ResourceResponse{
-			requireWorkspaceResource(t, product, first.Id, payments, "Payments"),
-			requireWorkspaceResource(t, product, second.Id, billing, "Billing"),
-		}
-
-		require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-		assert.Equal(t, declared, product.ResourceTypes().BySlug(workspaceType))
-		after := []ct.ResourceResponse{
-			requireWorkspaceResource(t, product, first.Id, payments, "Payments"),
-			requireWorkspaceResource(t, product, second.Id, billing, "Billing"),
-		}
-		assert.Equal(t, before, after)
-		waitForSweep(t, product.ProductID)
-	})
-
-	t.Run("A declared workspace type that sits under the organization is reused", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		product.ResourceTypes().CreateUnder("project", "organization")
-		declared := product.ResourceTypes().CreateUnder(workspaceType, "organization", "project")
-		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		workspaceID := insertWorkspace(t, org.Id, "Payments")
-		backfill, _ := newWorkspaceBackfill()
-
-		require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-		assert.Equal(t, declared.Id, product.ResourceTypes().BySlug(workspaceType).Id)
-		requireWorkspaceResource(t, product, org.Id, workspaceID, "Payments")
-		waitForSweep(t, product.ProductID)
-	})
-
-	t.Run("A workspace type that can't sit under the organization is left alone, and logged once", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		product.ResourceTypes().CreateUnder("project", "organization")
-		product.ResourceTypes().CreateUnder(workspaceType, "project")
-		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		workspaceID := insertWorkspace(t, org.Id, "Payments")
-		backfill, log := newWorkspaceBackfill()
-
-		require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-		assert.Equal(t, []string{"project"}, product.ResourceTypes().BySlug(workspaceType).ParentTypes)
-		requireNoWorkspaceResource(t, product, org.Id, workspaceID)
-		assert.True(t, log.logged(t, "error", "can't sit under the organization",
-			map[string]any{"product_id": product.ProductID}))
-	})
-
-	t.Run("A membership with a workspace role moves to an assignment; one with an organization role stays",
-		func(t *testing.T) {
-			t.Parallel()
-			product := createTestProductContext(t)
-			product.ResourceTypes().CreateUnder(workspaceType, "organization")
-			orgMember := createManagedRole(t, product, ct.CreateProductRoleJSONRequestBody{
-				Name: "Member " + ids.MustNew("ct"),
-			})
-			editor := createManagedRole(t, product, roleOn(workspaceType, "Workspace editor"))
-			org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-			withWorkspaceRole := createDSLProductUser(t, product).ID
-			withOrganizationRole := createDSLProductUser(t, product).ID
-			addMember(t, product, org.Id, withWorkspaceRole, orgMember.Id)
-			addMember(t, product, org.Id, withOrganizationRole, orgMember.Id)
-			workspaceID := insertWorkspace(t, org.Id, "Payments")
-			insertWorkspaceMembership(t, workspaceID, withWorkspaceRole, editor.Id)
-			insertWorkspaceMembership(t, workspaceID, withOrganizationRole, orgMember.Id)
-			sink := product.CaptureEvents()
-			backfill, log := newWorkspaceBackfill()
-
-			require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-			members := product.ResourceMembers(org.Id, workspaceType, workspaceID)
-			held := members.Get(withWorkspaceRole)
-			require.Len(t, held.Roles, 1)
-			assert.Equal(t, editor.Name, held.Roles[0].Name)
-			assert.False(t, workspaceMembershipExists(t, workspaceID, withWorkspaceRole))
-			sink.WaitFor("resource.role_assignment.created", map[string]string{
-				"resource_type": workspaceType, "resource_id": workspaceID, "product_user_id": withWorkspaceRole,
-			})
-			resp := members.GetRaw(withOrganizationRole)
-			assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
-			assert.True(t, workspaceMembershipExists(t, workspaceID, withOrganizationRole))
-			assert.True(t, log.logged(t, "warn", "left in workspace_memberships", map[string]any{
-				"product_id": product.ProductID, "memberships_left": float64(1),
-			}))
-
-			require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
-
-			assert.Equal(t, held, members.Get(withWorkspaceRole))
-			assert.True(t, workspaceMembershipExists(t, workspaceID, withOrganizationRole))
-			waitForSweep(t, product.ProductID)
-		})
 }
 
 func TestDeclareWorkspaceTypeLogsARefusal(t *testing.T) {
@@ -269,7 +96,7 @@ func TestDeclareWorkspaceTypeLogsARefusal(t *testing.T) {
 		product := createTestProductContext(t)
 		product.ResourceTypes().CreateUnder("project", "organization")
 		product.ResourceTypes().CreateUnder(workspaceType, "project")
-		log := &backfillLog{}
+		log := &capturedLog{}
 		mirror := resourceservice.NewWorkspaces(resourceSvc, resourceRepo, resourceTypeSvc, zerolog.New(log))
 
 		for range 2 {
@@ -594,106 +421,6 @@ func TestDeprecatedWorkspaceRoutes(t *testing.T) {
 	})
 }
 
-// answered turns a call that failed or answered another status into an error.
-func answered(resp interface{ StatusCode() int }, err error, want int) error {
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode() != want {
-		return fmt.Errorf("answered %d, want %d", resp.StatusCode(), want)
-	}
-	return nil
-}
-
-// lockWaiters counts the sessions waiting on a lock. Only a serial test reads
-// it, while no other test runs.
-func lockWaiters(t *testing.T) int {
-	t.Helper()
-	var waiting int
-	require.NoError(t, testDB.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'`).Scan(&waiting))
-	return waiting
-}
-
-// The backfill and the workspace routes write the same resources. The test
-// holds the Organization's resource lock until every write and the backfill
-// wait behind it, the creates with their workspace row written, the renames
-// and deletes with theirs changed, then lets them all go at once. Whatever
-// order they take, every workspace ends registered with its own name, and a
-// deleted one ends unregistered.
-//
-// Not parallel: it holds a lock and counts the sessions waiting on locks.
-func TestWorkspaceBackfillRacesWorkspaceRoutes(t *testing.T) {
-	t.Run("Workspace writes queued with a backfill leave every workspace registered as it is", func(t *testing.T) {
-		const writers = 6
-		product := createTestProductContext(t)
-		product.ResourceTypes().CreateUnder(workspaceType, "organization")
-		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		renamed := make([]string, writers)
-		deleted := make([]string, writers/2)
-		for i := range renamed {
-			renamed[i] = insertWorkspace(t, org.Id, "Before "+ids.MustNew("ct"))
-		}
-		for i := range deleted {
-			deleted[i] = insertWorkspace(t, org.Id, "Gone "+ids.MustNew("ct"))
-		}
-		client := product.AllScopeAPIKeyClient()
-		runner, _ := newWorkspaceBackfill()
-		held, err := testDB.BeginTx(t.Context(), nil)
-		require.NoError(t, err)
-		_, err = held.ExecContext(t.Context(), `SELECT pg_advisory_xact_lock($1)`,
-			pglock.KeyHash("resources:"+org.Id))
-		require.NoError(t, err)
-		waitingBefore := lockWaiters(t)
-
-		var group errgroup.Group
-		group.Go(func() error { return runner.RunProduct(t.Context(), product.ProductID) })
-		for range writers {
-			group.Go(func() error {
-				created, createErr := client.CreateOrganizationWorkspaceWithResponse(t.Context(), product.ProductID,
-					org.Id, ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Created " + ids.MustNew("ct")})
-				return answered(created, createErr, http.StatusCreated)
-			})
-		}
-		for _, id := range renamed {
-			group.Go(func() error {
-				resp, renameErr := client.UpdateOrganizationWorkspaceWithResponse(t.Context(), product.ProductID,
-					org.Id, id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Renamed " + ids.MustNew("ct")})
-				return answered(resp, renameErr, http.StatusOK)
-			})
-		}
-		for _, id := range deleted {
-			group.Go(func() error {
-				resp, deleteErr := client.DeleteOrganizationWorkspaceWithResponse(
-					t.Context(), product.ProductID, org.Id, id)
-				return answered(resp, deleteErr, http.StatusNoContent)
-			})
-		}
-		queued := writers + len(renamed) + len(deleted) + 1
-		require.Eventually(t, func() bool { return lockWaiters(t)-waitingBefore >= queued },
-			sweepWait, sweepPoll, "every write and the backfill wait behind the held lock")
-		require.NoError(t, held.Rollback())
-		require.NoError(t, group.Wait())
-		require.NoError(t, runner.RunProduct(t.Context(), product.ProductID))
-
-		remaining := product.Workspaces(org.Id).Search(ct.SearchOrganizationWorkspacesJSONRequestBody{
-			Pagination: &ct.PaginationRequest{Limit: new(int32(50))},
-		})
-		assert.Len(t, remaining.Items, writers+len(renamed))
-		for _, ws := range remaining.Items {
-			requireWorkspaceResource(t, product, org.Id, ws.Id, ws.Name)
-		}
-		for _, id := range deleted {
-			requireNoWorkspaceResource(t, product, org.Id, id)
-		}
-		registered := product.Resources(org.Id).Search(ct.SearchResourcesJSONRequestBody{
-			Filter: &ct.ResourceFilter{ResourceTypes: []string{workspaceType}},
-		})
-		assert.EqualValues(t, writers+len(renamed), registered.Total)
-		waitForSweep(t, product.ProductID)
-	})
-}
-
 func TestWorkspaceDeletedByAnEarlierRelease(t *testing.T) {
 	t.Parallel()
 
@@ -727,11 +454,10 @@ func TestWorkspaceDeletedByAnEarlierRelease(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, refused.StatusCode(), string(refused.Body))
 	})
 
-	t.Run("A workspace deleted without its resource is not in the organization, and the backfill removes the resource",
+	t.Run("A workspace deleted without its resource is not in the organization",
 		func(t *testing.T) {
 			t.Parallel()
 			w := givenWorkspaceAccessWorld(t)
-			sink := w.product.CaptureEvents()
 			_, err := testDB.ExecContext(t.Context(), `DELETE FROM workspaces WHERE id = $1`, w.shared)
 			require.NoError(t, err)
 
@@ -739,18 +465,7 @@ func TestWorkspaceDeletedByAnEarlierRelease(t *testing.T) {
 				requireDenied(t, w.ask(externalID, w.shared).Can(w.viewWorkspace).Decide(),
 					ct.WORKSPACENOTINORGANIZATION)
 			}
-
-			backfill, _ := newWorkspaceBackfill()
-			require.NoError(t, backfill.RunProduct(t.Context(), w.product.ProductID))
-
-			requireNoWorkspaceResource(t, w.product, w.org.Id, w.shared)
-			sink.WaitFor("resource.role_assignment.deleted", map[string]string{
-				"resource_type": workspaceType, "resource_id": w.shared,
-			})
-			requireDenied(t, w.ask(w.adminExternalID, w.shared).Can(w.viewWorkspace).Decide(),
-				ct.WORKSPACENOTINORGANIZATION)
 			requireAllowed(t, w.ask(w.adminExternalID, w.private).Can(w.viewWorkspace).Decide())
-			waitForSweep(t, w.product.ProductID)
 		})
 
 	t.Run("A workspace the product registers again through the resource routes is its own resource",
@@ -763,8 +478,6 @@ func TestWorkspaceDeletedByAnEarlierRelease(t *testing.T) {
 			resources.Put(workspaceType, w.private, "Registered again", resources.Top())
 
 			requireAllowed(t, w.ask(w.adminExternalID, w.private).Can(w.viewWorkspace).Decide())
-			backfill, _ := newWorkspaceBackfill()
-			require.NoError(t, backfill.RunProduct(t.Context(), w.product.ProductID))
 			assert.Equal(t, "Registered again", resources.Get(workspaceType, w.private).Name)
 		})
 }

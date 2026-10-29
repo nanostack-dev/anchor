@@ -16,7 +16,7 @@ Anchor supports organization-scoped workspaces as the third level of the Product
 | A role on a workspace | `PUT …/resources/workspace/{workspace_id}/members/{product_user_id}` with a role scoped to `workspace` ([role assignments](technical/resources.md#role-assignments)) |
 | `workspace.*` events | `resource.role_assignment.*` for roles; resource events stay inside Anchor |
 
-Every existing workspace is already a resource with the **same ID** and its name, under its Organization: the startup migration registered it, and every write through these routes keeps it in step ([resources](technical/resources.md#workspaces)). A Product can therefore switch a workspace to the resource routes without moving data. A workspace's description stays on the workspace: resources carry a name only.
+A workspace is a resource with the **same ID** and its name, under its Organization: the startup migration registered the workspaces that existed then, and every write through these routes registers or updates it. A workspace the previous release created during that deploy is registered by its next update ([resources](technical/resources.md#workspaces)). A Product can therefore switch a workspace to the resource routes without moving data. A workspace's description stays on the workspace: resources carry a name only.
 
 Every response of these routes carries two headers:
 

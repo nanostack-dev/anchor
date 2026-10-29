@@ -70,15 +70,6 @@ type WorkspaceRepository interface {
 		organizationID string,
 		input search.Request[workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace],
 	) (search.Result[workspace.Workspace], error)
-	// ProductIDsInternal lists every product that has a workspace, across
-	// tenants, for the workspace migration (ADR-0022 A6).
-	ProductIDsInternal(ctx context.Context) ([]string, error)
-	// OrganizationIDs lists the product's organizations that have a workspace.
-	OrganizationIDs(ctx context.Context, productID string) ([]string, error)
-	// ListMemberships reads the workspace_memberships rows of the
-	// organization's workspaces.
-	ListMemberships(ctx context.Context, productID, organizationID string) ([]workspace.Membership, error)
-	DeleteMembership(ctx context.Context, productID, organizationID string, membership workspace.Membership) error
 }
 
 // ListByOrganizations reads linked workspaces for a whole organization page in one statement.
@@ -347,52 +338,4 @@ func (r *workspaceRepositoryImpl) mutationScopedWhere(
 	return table.Workspaces.OrganizationID.EQ(table.Organizations.ID).AND(
 		r.scopedWhere(productID, organizationID),
 	)
-}
-
-func (r *workspaceRepositoryImpl) ProductIDsInternal(ctx context.Context) ([]string, error) {
-	stmt := postgres.SELECT(table.Organizations.ProductID).DISTINCT().
-		FROM(r.joinOrganizations()).
-		ORDER_BY(table.Organizations.ProductID)
-	return transactor.QueryMapSlice(ctx, r.db, stmt,
-		func(row model.Organizations) string { return row.ProductID },
-	).Value()
-}
-
-func (r *workspaceRepositoryImpl) OrganizationIDs(ctx context.Context, productID string) ([]string, error) {
-	stmt := postgres.SELECT(table.Workspaces.OrganizationID).DISTINCT().
-		FROM(r.joinOrganizations()).
-		WHERE(table.Organizations.ProductID.EQ(postgres.String(productID))).
-		ORDER_BY(table.Workspaces.OrganizationID)
-	return transactor.QueryMapSlice(ctx, r.db, stmt,
-		func(row model.Workspaces) string { return row.OrganizationID },
-	).Value()
-}
-
-func (r *workspaceRepositoryImpl) ListMemberships(
-	ctx context.Context, productID, organizationID string,
-) ([]workspace.Membership, error) {
-	stmt := postgres.SELECT(table.WorkspaceMemberships.AllColumns).
-		FROM(table.WorkspaceMemberships.
-			INNER_JOIN(table.Workspaces, table.Workspaces.ID.EQ(table.WorkspaceMemberships.WorkspaceID)).
-			INNER_JOIN(table.Organizations, table.Organizations.ID.EQ(table.Workspaces.OrganizationID))).
-		WHERE(r.scopedWhere(productID, organizationID)).
-		ORDER_BY(table.WorkspaceMemberships.WorkspaceID, table.WorkspaceMemberships.ProductUserID)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, func(row model.WorkspaceMemberships) workspace.Membership {
-		return workspace.Membership{
-			WorkspaceID: row.WorkspaceID, ProductUserID: row.ProductUserID, RoleID: row.ProductRoleID,
-		}
-	}).Value()
-}
-
-func (r *workspaceRepositoryImpl) DeleteMembership(
-	ctx context.Context, productID, organizationID string, membership workspace.Membership,
-) error {
-	scoped := table.Workspaces.SELECT(table.Workspaces.ID).
-		FROM(r.joinOrganizations()).
-		WHERE(r.scopedWhere(productID, organizationID).
-			AND(table.Workspaces.ID.EQ(postgres.String(membership.WorkspaceID))))
-	return transactor.Exec(ctx, r.db, table.WorkspaceMemberships.DELETE().WHERE(
-		table.WorkspaceMemberships.WorkspaceID.IN(scoped).
-			AND(table.WorkspaceMemberships.ProductUserID.EQ(postgres.String(membership.ProductUserID))),
-	)).Err()
 }

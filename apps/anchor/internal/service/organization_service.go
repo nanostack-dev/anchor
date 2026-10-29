@@ -769,7 +769,8 @@ func (s *organizationService) checkFoundingRole(
 // registerInitialWorkspace registers an organization's initial workspace as a
 // resource once its create committed, declaring the product's workspace type
 // first (ADR-0022 A6). The organization is already created, so a failure is
-// logged and left to the next start's backfill.
+// logged, and the workspace stays unregistered until its next update through
+// a workspace route, which declares the type and registers it.
 func (s *organizationService) registerInitialWorkspace(
 	ctx context.Context,
 	productID, organizationID, workspaceID string,

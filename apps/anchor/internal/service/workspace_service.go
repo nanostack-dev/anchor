@@ -34,7 +34,8 @@ type WorkspaceService interface {
 	// RegisterResource declares the product's workspace resource type and
 	// registers the workspace as a resource, for a workspace created inside a
 	// caller's transaction, once that transaction committed. Inside a
-	// transaction it does nothing; the next start's backfill registers it.
+	// transaction it does nothing: the workspace stays unregistered until its
+	// next update, which declares the type and registers it.
 	RegisterResource(ctx context.Context, productID, organizationID, workspaceID string) error
 }
 

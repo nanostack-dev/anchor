@@ -99,8 +99,8 @@ and a Product may also register its own through the resource routes. A `"type":
    (`PermissionCheck.Fallback`), so it answers as before workspaces were registered.
    A resource the workspace mirror wrote counts only while its workspace exists: one
    whose workspace a previous release deleted, without its resource, is
-   `WORKSPACE_NOT_IN_ORGANIZATION`, as it was before, until the next start's migration
-   deletes it ([resources](resources.md#mirrored-resources)).
+   `WORKSPACE_NOT_IN_ORGANIZATION`, as it was before. Nothing deletes it until the
+   built-in Workspace is removed ([resources](resources.md#the-migration)).
 2. **A workspace of the workspace routes without a resource**, which happens when the
    Product's `workspace` type can't sit under the Organization or a previous release
    created the workspace during a rolling deploy, is checked on its Organization alone.
@@ -215,6 +215,6 @@ the bottom of a 15-level chain and on an unregistered resource one level below i
 
 ## Not covered
 
-`workspace_memberships` rows are not read: the workspace backfill moves the ones it can
-into role assignments ([resources](resources.md#workspaces)). A product user's
+`workspace_memberships` rows are not read: no role scoped to `workspace` held them, so
+the startup migration left them in place ([resources](resources.md#the-migration)). A product user's
 `INACTIVE` status is not checked, matching what membership listings return today.
