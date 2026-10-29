@@ -1,7 +1,6 @@
 package model_test
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
@@ -108,80 +107,6 @@ func TestRelationNames(t *testing.T) {
 
 		assert.NotEqual(t, colon, underscore)
 		assert.LessOrEqual(t, len(long), 50)
-	})
-}
-
-func TestOrganizationTuples(t *testing.T) {
-	t.Run("Members are assignees of their role's assignment, and the role grants its permissions", func(t *testing.T) {
-		state := model.OrganizationState{
-			OrganizationID: "org_1", Exists: true,
-			Memberships: []model.Membership{
-				{ProductUserID: "pusr_1", RoleRowID: "role_1"},
-				{ProductUserID: "pusr_2", RoleRowID: "role_1"},
-			},
-			Roles:   []model.RoleGrants{{RowID: "role_1", Permissions: []string{"document:view", "removed:perm"}}},
-			APIKeys: []model.APIKeyGrants{{ID: "key_1", Permissions: []string{"billing:read"}}},
-		}
-
-		tuples := state.Tuples(documentCatalog())
-
-		assignment := model.Assignment("org_1", "role_1")
-		assert.ElementsMatch(t, []model.Tuple{
-			{Object: assignment, Relation: model.RelationRole, User: model.Role("role_1")},
-			{Object: assignment, Relation: model.RelationAssignee, User: model.User("pusr_1")},
-			{Object: assignment, Relation: model.RelationAssignee, User: model.User("pusr_2")},
-			{Object: model.Organization("org_1"), Relation: model.RelationAssignment, User: assignment},
-			{Object: model.Role("role_1"), Relation: model.GrantsRelation("document:view"), User: model.AllUsers},
-			{
-				Object:   model.Organization("org_1"),
-				Relation: model.CanRelation("billing:read"),
-				User:     model.APIKey("key_1"),
-			},
-		}, tuples)
-	})
-
-	t.Run("The organization links one assignment per role, however many members hold it", func(t *testing.T) {
-		state := model.OrganizationState{OrganizationID: "org_1", Exists: true}
-		for i := range 1000 {
-			state.Memberships = append(state.Memberships,
-				model.Membership{ProductUserID: "pusr_" + strconv.Itoa(i), RoleRowID: "role_" + strconv.Itoa(i%2)})
-		}
-
-		links := 0
-		for _, tuple := range state.Tuples(documentCatalog()) {
-			if tuple.Object == model.Organization("org_1") && tuple.Relation == model.RelationAssignment {
-				links++
-			}
-		}
-
-		assert.Equal(t, 2, links)
-	})
-
-	t.Run("A deleted organization implies no tuple", func(t *testing.T) {
-		assert.Empty(t, model.OrganizationState{OrganizationID: "org_1"}.Tuples(documentCatalog()))
-	})
-
-	t.Run("An assignment's ID gives back its role tuple", func(t *testing.T) {
-		assignment := model.Assignment("org_1", "role_1")
-
-		roleTuple, ok := model.AssignmentRoleTuple(assignment).Get()
-
-		require.True(t, ok)
-		assert.Equal(t,
-			model.Tuple{Object: assignment, Relation: model.RelationRole, User: model.Role("role_1")}, roleTuple)
-	})
-}
-
-func TestDiff(t *testing.T) {
-	t.Run("Diff writes what is missing and deletes what is left over", func(t *testing.T) {
-		keep := model.Tuple{Object: "a", Relation: "r", User: "u"}
-		drop := model.Tuple{Object: "b", Relation: "r", User: "u"}
-		add := model.Tuple{Object: "c", Relation: "r", User: "u"}
-
-		changes := model.Diff([]model.Tuple{keep, drop, drop}, []model.Tuple{keep, add})
-
-		assert.Equal(t, []model.Tuple{add}, changes.Writes)
-		assert.Equal(t, []model.Tuple{drop}, changes.Deletes)
 	})
 }
 

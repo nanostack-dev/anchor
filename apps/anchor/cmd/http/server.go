@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	authzservice "anchor/internal/authz/service"
+	"anchor/internal/authz/mirror"
 
 	"anchor/internal/api"
 	"anchor/internal/buildinfo"
@@ -51,7 +51,7 @@ type ServerParams struct {
 	Queue          *queue.Client
 	AuthMiddleware *middleware.AuthMiddleware
 	ServerConfig   *ServerConfig
-	AuthzReplayer  *authzservice.Replayer
+	AuthzReplayer  *mirror.Mirror
 }
 
 func RegisterServer(params ServerParams) {
@@ -312,7 +312,7 @@ func startServerGoroutines(params ServerParams, server *http.Server) {
 
 func createHandler(
 	router *chi.Mux, anchorAPI *api.AnchorAPI,
-	errorMiddleware *middleware.ErrorMiddleware, replayer *authzservice.Replayer,
+	errorMiddleware *middleware.ErrorMiddleware, replayer api.AuthzReplayer,
 	middlewares []api.MiddlewareFunc,
 ) http.Handler {
 	return api.HandlerWithOptions(

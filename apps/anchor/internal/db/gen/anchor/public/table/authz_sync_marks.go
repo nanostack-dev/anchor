@@ -17,10 +17,11 @@ type authzSyncMarksTable struct {
 	postgres.Table
 
 	// Columns
-	ProductID      postgres.ColumnString
-	OrganizationID postgres.ColumnString
-	Revision       postgres.ColumnInteger
-	MarkedAt       postgres.ColumnTimestampz
+	ProductID  postgres.ColumnString
+	Projection postgres.ColumnString
+	ScopeKey   postgres.ColumnString
+	Revision   postgres.ColumnInteger
+	MarkedAt   postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -62,23 +63,25 @@ func newAuthzSyncMarksTable(schemaName, tableName, alias string) *AuthzSyncMarks
 
 func newAuthzSyncMarksTableImpl(schemaName, tableName, alias string) authzSyncMarksTable {
 	var (
-		ProductIDColumn      = postgres.StringColumn("product_id")
-		OrganizationIDColumn = postgres.StringColumn("organization_id")
-		RevisionColumn       = postgres.IntegerColumn("revision")
-		MarkedAtColumn       = postgres.TimestampzColumn("marked_at")
-		allColumns           = postgres.ColumnList{ProductIDColumn, OrganizationIDColumn, RevisionColumn, MarkedAtColumn}
-		mutableColumns       = postgres.ColumnList{RevisionColumn, MarkedAtColumn}
-		defaultColumns       = postgres.ColumnList{OrganizationIDColumn, RevisionColumn, MarkedAtColumn}
+		ProductIDColumn  = postgres.StringColumn("product_id")
+		ProjectionColumn = postgres.StringColumn("projection")
+		ScopeKeyColumn   = postgres.StringColumn("scope_key")
+		RevisionColumn   = postgres.IntegerColumn("revision")
+		MarkedAtColumn   = postgres.TimestampzColumn("marked_at")
+		allColumns       = postgres.ColumnList{ProductIDColumn, ProjectionColumn, ScopeKeyColumn, RevisionColumn, MarkedAtColumn}
+		mutableColumns   = postgres.ColumnList{RevisionColumn, MarkedAtColumn}
+		defaultColumns   = postgres.ColumnList{RevisionColumn, MarkedAtColumn}
 	)
 
 	return authzSyncMarksTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ProductID:      ProductIDColumn,
-		OrganizationID: OrganizationIDColumn,
-		Revision:       RevisionColumn,
-		MarkedAt:       MarkedAtColumn,
+		ProductID:  ProductIDColumn,
+		Projection: ProjectionColumn,
+		ScopeKey:   ScopeKeyColumn,
+		Revision:   RevisionColumn,
+		MarkedAt:   MarkedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

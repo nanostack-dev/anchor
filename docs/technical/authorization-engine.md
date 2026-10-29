@@ -5,7 +5,7 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
 | PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
-| PR 5 (this) | The catalog compiler writes each Product's model; tuples follow each write, with marks, a sweeper and a reconcile | no |
+| PR 5 (this) | The catalog compiler writes each Product's model; the [mirror](authorization-mirror.md) keeps its tuples in step with each write, with marks, a replay, a sweeper and a reconcile | no |
 | PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
 | PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
 
@@ -28,7 +28,7 @@ Each replica opens up to 10 OpenFGA connections, beside Anchor's own pool. The p
 
 ## Stores
 
-Each Product gets one OpenFGA store, recorded in `authz_stores` (`product_id` → `store_id`). `store.Stores.StoreID` returns it and creates it on first use. It refuses to run inside a transaction (`ErrInTransaction`), because the OpenFGA store it creates commits on its own and a rollback would leave it unrecorded. When two replicas create one at once, the first insert wins and the others delete the store they made. After an insert that fails in a way that may still have committed, such as a cancelled request, it reads the row again and deletes its store only if that store is not the one recorded. Deleting a Product removes its row; its store is left for the reconcile (PR 5) to remove.
+Each Product gets one OpenFGA store, recorded in `authz_stores` (`product_id` → `store_id`). `store.Stores.StoreID` returns it and creates it on first use. It refuses to run inside a transaction (`ErrInTransaction`), because the OpenFGA store it creates commits on its own and a rollback would leave it unrecorded. When two replicas create one at once, the first insert wins and the others delete the store they made. After an insert that fails in a way that may still have committed, such as a cancelled request, it reads the row again and deletes its store only if that store is not the one recorded. Deleting a Product removes its row; its store is left for the sweeper to remove after its next reconcile pass.
 
 ## The model
 
@@ -46,24 +46,26 @@ Relation names keep a readable part of the permission name and a hash of it, bec
 
 ## Tuples
 
-An Organization implies:
+Three projections of [`internal/authz/projection`](../../apps/anchor/internal/authz/projection) write a Product's tuples. Each owns its own tuples and syncs one key at a time:
 
-| Fact in Anchor's tables | Tuples |
-| --- | --- |
-| A membership: user *U* holds role row *R* in Organization *O* | `role_assignment:O.R # assignee @ user:U`, plus, once per role held in *O*, `role_assignment:O.R # role @ role:R` and `organization:O # assignment @ role_assignment:O.R` |
-| Role row *R* holds permission *P* | `role:R # grants_P @ user:*` |
-| Active, unexpired API key *K* holds *P* | `organization:O # can_P @ api_key:K` |
+| Projection | Key | Fact in Anchor's tables | Tuples |
+| --- | --- | --- | --- |
+| `organization_assignments` | Organization *O* | User *U* holds role row *R* in *O* | `role_assignment:O.R # assignee @ user:U`, plus, once per role held in *O*, `role_assignment:O.R # role @ role:R` and `organization:O # assignment @ role_assignment:O.R` |
+| `role_grants` | Role row *R* | *R* holds permission *P* | `role:R # grants_P @ user:*` |
+| `organization_api_keys` | Organization *O* | Active, unexpired API key *K* of *O* holds *P* | `organization:O # can_P @ api_key:K` |
 
-There is one assignment per role held in an Organization, with every member holding the role as an assignee. A check on the Organization therefore walks its roles, a handful, and looks up the subject among each one's assignees; its cost doesn't grow with the number of members. The ID holds the role, so the role tuple never changes: a member who changes role moves from one assignment's assignees to another's. An Organization sync reads the Organization's object, derives each linked assignment's role tuple from its ID, reads its assignees, and reads the roles the Organization owns or its members hold. It never deletes the grants of a managed role, since other Organizations may hold it; a Product sync brings those in step. A custom role belongs to one Organization, so that Organization's sync keeps its grants in step.
+There is one assignment per role held in an Organization, with every member holding the role as an assignee. A check on the Organization therefore walks its roles, a handful, and looks up the subject among each one's assignees; its cost doesn't grow with the number of members. The ID holds the role, so the role tuple never changes: a member who changes role moves from one assignment's assignees to another's.
+
+A role's grants have one owner, the role, whether it is managed or custom. So an Organization that lets a managed role go deletes only its own assignment links, and every other Organization holding that role keeps its grants.
 
 ## Keeping the store in step
 
-Anchor's tables stay the source of truth (ADR-0022 E5):
+Anchor's tables stay the source of truth (ADR-0022 E5). [`internal/authz/mirror`](../../apps/anchor/internal/authz/mirror) keeps every store in step with them; [the mirror guide](authorization-mirror.md) describes its interface, its rules and how to add a projection.
 
-1. **Mark.** Every write emits its event inside its transaction. `service.Marker`, an event observer, turns an event that changes access into a row of `authz_sync_marks` in the same transaction: the Organization, or the whole Product (`organization_id = ''`) for a catalog change or a deleted product user. A repeated mark bumps its revision.
-2. **Replay after commit.** The API's strict middleware `NewAuthzReplayMiddleware` collects what a request marked and, once the handler returned and its transaction committed, syncs it before the response is written, so the next request already sees the change: each Organization it marked, or the whole Product after a catalog change. A write outside an API request, such as a background job, is left to the sweeper.
-3. **Sweep.** Every 5 s, `service.Sweeper` replays the oldest marks: a Product sync when one is product-scope, else each Organization.
-4. **Reconcile.** Each pass rebuilds the one Product rebuilt longest ago, when that was more than 15 minutes back (`authz_stores.reconciled_at`). A Product never rebuilt comes first, with or without a store, so every Product gets its first mirror without waiting for a write. A rebuild deletes every tuple no Organization implies, such as the grants of a deleted role, and, one page at a time, the stores of deleted Products. With many Products, each is rebuilt about once every *products × 5 s*.
+1. **Mark.** Every write emits its event inside its transaction. `mirror.Marker`, an event observer, asks each projection which keys the event makes stale and upserts one row of `authz_sync_marks` per stale scope, in the same transaction: `(product, projection, key)`, every key of a projection (`key = '*'`) for a cascade, or the whole Product (`projection = ''`) for a catalog change. A repeated mark bumps its revision.
+2. **Replay after commit.** The API's strict middleware `NewAuthzReplayMiddleware` collects what a request marked and, once the handler returned and its transaction committed, calls `Mirror.Replay` before the response is written, so the next request already sees the change. A write outside an API request, such as a background job, is left to the sweeper.
+3. **Sweep.** Every 5 s, `Mirror.Sweep` syncs the oldest marks.
+4. **Reconcile.** Each pass rebuilds the one Product rebuilt longest ago, when that was more than 15 minutes back (`authz_stores.reconciled_at`). A Product never rebuilt comes first, with or without a store, so every Product gets its first mirror without waiting for a write. A rebuild deletes every tuple no projection claims, such as the grants of a role deleted without an event, and, one page at a time, the stores of deleted Products. With many Products, each is rebuilt about once every *products × 5 s*.
 
 Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
 
@@ -73,14 +75,14 @@ Nothing reads the store for decisions yet; PR 6 compares its answers with the cu
 
 A write to Postgres and a write to OpenFGA cannot share one transaction. If Anchor wrote the tuple after its commit, a crash between the two writes would lose the tuple. If it wrote the tuple before its commit, a rollback would leave a tuple for a change that never happened. The mark is a Postgres row, so it commits or rolls back with the write that caused it. This is the transactional outbox pattern.
 
-A mark records **which Organization to read again**, not what changed. A sync then makes the store match Postgres for that Organization (`OrganizationState` → `Tuples` → `Diff` against the stored tuples → `Write`). Anchor does not push each event's delta, because:
+A mark records **which key to read again**, not what changed. A sync then makes the store match Postgres for that key (`Desired` → `fga.Diff` against `Stored` → `Apply`). Anchor does not push each event's delta, because:
 
 - **Two writes can race.** A request removes a member and another adds them back. Both commit, but their deltas could reach the store in the other order and leave it wrong for good. A sync always ends on what Postgres holds.
 - **Cascades emit no events.** Deleting a product user removes its memberships through `ON DELETE CASCADE`. A sync finds them gone; a delta would have nothing to push.
-- **One function maps state to tuples.** Deltas would need one translator per event type, each kept in step with `Tuples`.
-- **A sync can run late or twice.** Order does not matter, many marks for one Organization collapse into one row, and the retry needs no stored payload.
+- **One function maps state to tuples.** Deltas would need one translator per event type, each kept in step with `Desired`.
+- **A sync can run late or twice.** Order does not matter, many marks for one key collapse into one row, and the retry needs no stored payload.
 
-The cost is one Organization read per access-changing write. It grows with the Organization's members and roles, and the engine is in-process, so it adds no network round trip. If it becomes slow, a narrower mark (one member) keeps these properties; a delta does not.
+The cost is one key read per access-changing write. For `organization_assignments` it grows with the Organization's members, and the engine is in-process, so it adds no network round trip. If it becomes slow, a narrower key (one member) keeps these properties; a delta does not.
 
 ### Walkthrough: adding a member
 
@@ -88,27 +90,29 @@ The cost is one Organization read per access-changing write. It grows with the O
 
 | Step | Who | What it writes |
 | --- | --- | --- |
-| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked Organizations on the context (`CollectMarks`) |
+| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked scopes on the context (`mirror.CollectMarks`) |
 | 2 | `AddMember` | Checks the Organization, the product user, the role and that Bob is not a member, outside any transaction |
-| 3 | `applyMembership`, request transaction | `INSERT organization_memberships`; `Emit` queues the webhook in `pgqueue_jobs`; the Marker upserts `authz_sync_marks (product, org_acme)` at revision *n* and adds `org_acme` to the list |
+| 3 | `applyMembership`, request transaction | `INSERT organization_memberships`; `Emit` queues the webhook in `pgqueue_jobs`; the Marker upserts `authz_sync_marks (product, organization_assignments, org_acme)` at revision *n* and adds that scope to the list |
 | 4 | `COMMIT` | The membership, the webhook job and the mark become visible together |
 | 5 | The handler | Returns its `201` as a value; nothing is sent yet |
-| 6 | `Replayer.Replay` | Runs `SyncOrganization` with a 30 s limit that ignores a client disconnect |
-| 7 | Sync transaction | Takes `authz-sync:<product>`, reads the marks (revision *n*), checks the model hash, reads Acme's state and its stored tuples, and diffs them |
+| 6 | `Mirror.Replay` | Syncs the scope with a 30 s limit that ignores a client disconnect |
+| 7 | Sync transaction | Takes `authz-sync:<product>`, reads the marks (revision *n*), checks the model hash, reads Acme's members and the assignment tuples its store holds, and diffs them |
 | 8 | OpenFGA, its own transaction | Writes `role_assignment:org_acme.role_admin # assignee @ user:bob` to `openfga.tuple` and `openfga.changelog`, and commits at once |
 | 9 | Sync transaction | `DELETE authz_sync_marks … AND revision = n`, then `COMMIT`, which releases the lock |
 | 10 | The middleware | Sends the `201`; the next request already sees Bob |
 
-If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is logged and the client still gets its `201`. The mark stays, and the sweeper syncs Acme within 5 s. The OpenFGA write in step 8 is not part of the sync transaction: if the sync fails after it, the tuple stays, which is correct because it matches Postgres.
+If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is logged and the client still gets its `201`. The mark stays, and the sweeper syncs it within 5 s. The OpenFGA write in step 8 is not part of the sync transaction: if the sync fails after it, the tuple stays, which is correct because it matches Postgres.
 
-**A write during a sync.** Carol joins Acme after step 7 read Acme's state. Her transaction moves the mark to revision *n + 1* and commits; it does not wait, because the sync read the mark with a plain `SELECT` and an advisory lock blocks no row writes. Bob's sync writes only Bob's tuple, and its delete of revision *n* removes no row. Carol's replay waits for the lock, reads revision *n + 1*, writes her tuple and deletes the mark.
+**A write during a sync.** Carol joins Acme after step 7 read Acme's members. Her transaction moves the mark to revision *n + 1* and commits; it does not wait, because the sync read the mark with a plain `SELECT` and an advisory lock blocks no row writes. Bob's sync writes only Bob's tuple, and its delete of revision *n* removes no row. Carol's replay waits for the lock, reads revision *n + 1*, writes her tuple and deletes the mark.
 
 ## Known limits
 
 - **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so the shadow (PR 6) never compares it, and the switch (PR 7) must keep that resolution.
 - **One lock per Product.** Writes to different Organizations of one Product queue behind each other's replay, each waiting at most 3 s before leaving its mark to the sweeper. A rebuild holds the lock while it reads the whole store.
 - **A catalog change replays its whole Product** before its response, bounded at 30 s; a batch of catalog writes, such as a Terraform apply, repeats it per write.
+- **A deleted Organization's custom roles keep their grants until a rebuild.** Their rows cascade away without events, but no assignment links to them any more, so they grant nothing.
 
 ## Tests
 
-`TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks`, `TestAuthzReplayAfterCommit` and `TestAuthzOrphanStores` cover each sync rule, the marks and their replay, and `internal/authz/model` has unit tests for the compiler and the tuples. `TestAuthzStores` in `apps/anchor/cmd/it/service` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+- **Unit, no database.** `internal/authz/fga` tests tuples, the diff, batched and idempotent writes, paging and model relations against a real in-memory OpenFGA (`fgatest`). `internal/authz/mirror` tests every sync rule through a toy projection, with `mirrortest`'s in-memory repository and lock: marks and revisions, the race with a write landing mid-sync, every-key and whole-Product scopes, a renamed projection, a busy lock, model writes and the dropping of undefined relations, the replay, the sweeper's postponing, the reconcile and orphan stores. `internal/authz/projection` checks each projection's stale keys, its tuples, that the three own disjoint tuples of one Organization, and that every event type is classified. `internal/authz/model` tests the compiler.
+- **Service, on Postgres.** `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks` and `TestAuthzReplayAfterCommit` in `apps/anchor/cmd/it/service` run each projection against Anchor's tables. `TestAuthzStores` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

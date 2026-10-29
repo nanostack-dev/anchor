@@ -12,8 +12,9 @@ import (
 )
 
 type AuthzSyncMarks struct {
-	ProductID      string `sql:"primary_key"`
-	OrganizationID string `sql:"primary_key"`
-	Revision       int64
-	MarkedAt       time.Time
+	ProductID  string `sql:"primary_key"`
+	Projection string `sql:"primary_key"`
+	ScopeKey   string `sql:"primary_key"`
+	Revision   int64
+	MarkedAt   time.Time
 }

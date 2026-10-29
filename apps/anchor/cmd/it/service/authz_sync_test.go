@@ -12,14 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"anchor/internal/authz/fga"
+	"anchor/internal/authz/mirror"
 	"anchor/internal/authz/model"
-	authzservice "anchor/internal/authz/service"
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/role"
 )
 
 // syncWorld is a product with one permission, a managed role holding it,
-// and one organization.
+// and one organization, all mirrored into the product's store.
 type syncWorld struct {
 	productID      string
 	permission     string
@@ -31,11 +32,14 @@ func givenSyncWorld(t *testing.T) syncWorld {
 	t.Helper()
 	productID := GivenATenantAndProduct(t).Product.ID
 	permission := givenPermission(t, productID)
-	return syncWorld{
+	w := syncWorld{
 		productID: productID, permission: permission,
 		managedID:      givenManagedRole(t, productID, "Reader", permission),
 		organizationID: givenOrganization(t, productID),
 	}
+	// The fixtures write the tables directly, without events.
+	syncProduct(t, productID)
+	return w
 }
 
 func givenManagedRole(t *testing.T, productID, name, permission string) string {
@@ -68,23 +72,57 @@ func givenMember(t *testing.T, w syncWorld, organizationID, roleID string) strin
 	return userID
 }
 
+func givenSyncAPIKey(t *testing.T, w syncWorld, permission string) string {
+	t.Helper()
+	keyID := "orgapikey_" + uuid.NewString()
+	_, err := TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_keys
+		(id, organization_id, name, hashed_value, obfuscated_value, status)
+		VALUES ($1, $2, 'key', $3, 'ob', 'ACTIVE')`, keyID, w.organizationID, uuid.NewString())
+	require.NoError(t, err)
+	_, err = TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_key_permissions
+		(api_key_id, organization_id, product_id, permission_name) VALUES ($1, $2, $3, $4)`,
+		keyID, w.organizationID, w.productID, permission)
+	require.NoError(t, err)
+	return keyID
+}
+
+func syncProduct(t *testing.T, productID string) {
+	t.Helper()
+	require.NoError(t, AuthzMirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+}
+
+func syncKey(t *testing.T, productID, projection, key string) {
+	t.Helper()
+	require.NoError(
+		t,
+		AuthzMirror.Sync(t.Context(), mirror.Scope{ProductID: productID, Projection: projection, Key: key}),
+	)
+}
+
+const (
+	assignments = "organization_assignments"
+	roleGrants  = "role_grants"
+	apiKeys     = "organization_api_keys"
+)
+
+// productStore is the product's store at the model the mirror recorded.
+func productStore(t *testing.T, productID string) fga.Store {
+	t.Helper()
+	storeID, err := AuthzStores.StoreID(t.Context(), productID)
+	require.NoError(t, err)
+	recorded, err := AuthzMarks.RecordedModel(t.Context(), productID)
+	require.NoError(t, err)
+	require.NotEmpty(t, recorded.ID, "the product has no model yet")
+	return fga.NewStore(openFGA(t), storeID, recorded.ID)
+}
+
 // can asks the store directly, under the model the sync wrote.
 func can(t *testing.T, productID, subject, permission, organizationID string) bool {
 	t.Helper()
-	ctx := t.Context()
-	found, err := AuthzRepo.FindStore(ctx, productID)
+	allowed, err := productStore(t, productID).
+		Check(t.Context(), subject, model.CanRelation(permission), model.Organization(organizationID))
 	require.NoError(t, err)
-	stored, ok := found.Get()
-	require.True(t, ok, "the product has no store yet")
-	resp, err := openFGA(t).Check(ctx, &openfgav1.CheckRequest{
-		StoreId:              stored.StoreID,
-		AuthorizationModelId: stored.ModelID,
-		TupleKey: &openfgav1.CheckRequestTupleKey{
-			User: subject, Relation: model.CanRelation(permission), Object: model.Organization(organizationID),
-		},
-	})
-	require.NoError(t, err)
-	return resp.GetAllowed()
+	return allowed
 }
 
 func TestAuthzSync(t *testing.T) {
@@ -95,7 +133,7 @@ func TestAuthzSync(t *testing.T) {
 		member := givenMember(t, w, w.organizationID, w.managedID)
 		stranger := givenProductUser(t, w.productID)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 
 		assert.True(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
 		assert.False(t, can(t, w.productID, model.User(stranger), w.permission, w.organizationID))
@@ -104,12 +142,12 @@ func TestAuthzSync(t *testing.T) {
 	t.Run("A removed member loses the permission at the next sync", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM organization_memberships WHERE organization_id = $1`, w.organizationID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 
 		assert.False(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
 	})
@@ -117,12 +155,12 @@ func TestAuthzSync(t *testing.T) {
 	t.Run("A permission removed from a role leaves its members", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, w.managedID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+		syncKey(t, w.productID, roleGrants, w.managedID)
 
 		assert.False(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
 	})
@@ -131,7 +169,7 @@ func TestAuthzSync(t *testing.T) {
 		w := givenSyncWorld(t)
 		keyID := givenSyncAPIKey(t, w, w.permission)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, apiKeys, w.organizationID)
 
 		assert.True(t, can(t, w.productID, model.APIKey(keyID), w.permission, w.organizationID))
 	})
@@ -141,36 +179,35 @@ func TestAuthzSync(t *testing.T) {
 		other := givenOrganization(t, w.productID)
 		givenMember(t, w, w.organizationID, w.managedID)
 		elsewhere := givenMember(t, w, other, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+		syncProduct(t, w.productID)
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM organization_memberships WHERE organization_id = $1`, w.organizationID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 
 		assert.True(t, can(t, w.productID, model.User(elsewhere), w.permission, other))
 	})
 
 	t.Run("A catalog that did not change keeps its model", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		first, err := AuthzRepo.FindStore(t.Context(), w.productID)
+		first, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncProduct(t, w.productID)
 
-		again, err := AuthzRepo.FindStore(t.Context(), w.productID)
+		again, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
 		require.NoError(t, err)
-		assert.Equal(t, first.Value().ModelID, again.Value().ModelID)
+		assert.Equal(t, first.ID, again.ID)
 	})
 
-	t.Run("Five concurrent syncs of one organization all succeed", func(t *testing.T) {
+	t.Run("Five concurrent syncs of one product all succeed", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
 		var wg sync.WaitGroup
 		for range 5 {
 			wg.Go(func() {
-				assert.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+				assert.NoError(t, AuthzMirror.Sync(t.Context(), mirror.WholeProduct(w.productID)))
 			})
 		}
 		wg.Wait()
@@ -181,14 +218,14 @@ func TestAuthzSync(t *testing.T) {
 	t.Run("A member who changes role holds only the new role's permissions", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
 		other := givenPermission(t, w.productID)
 		otherRoleID := givenManagedRole(t, w.productID, "Writer", other)
+		syncProduct(t, w.productID)
 		_, err := TestDB.ExecContext(t.Context(), `UPDATE organization_memberships SET product_role_id = $1
 			WHERE organization_id = $2`, otherRoleID, w.organizationID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 
 		assert.False(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
 		assert.True(t, can(t, w.productID, model.User(member), other, w.organizationID))
@@ -202,23 +239,23 @@ func TestAuthzSync(t *testing.T) {
 		other := givenOrganization(t, w.productID)
 		elsewhere := givenMember(t, w, other, w.managedID)
 
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+		syncProduct(t, w.productID)
 
 		assert.True(t, can(t, w.productID, model.User(member), audit, w.organizationID))
 		assert.False(t, can(t, w.productID, model.User(elsewhere), audit, other))
 	})
 
-	t.Run("A permission removed from a custom role leaves its members at its organization's sync", func(t *testing.T) {
+	t.Run("A permission removed from a custom role leaves its members at the role's sync", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		audit := givenPermission(t, w.productID)
 		custom := givenSyncCustomRole(t, w, w.organizationID, audit)
 		member := givenMember(t, w, w.organizationID, custom)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncProduct(t, w.productID)
 		_, err := TestDB.ExecContext(t.Context(),
 			`DELETE FROM product_role_resource_permissions WHERE product_role_id = $1`, custom)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, roleGrants, custom)
 
 		assert.False(t, can(t, w.productID, model.User(member), audit, w.organizationID))
 	})
@@ -230,7 +267,7 @@ func TestAuthzSync(t *testing.T) {
 			(organization_id, product_user_id) VALUES ($1, $2)`, w.organizationID, userID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
 
 		assert.False(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
 	})
@@ -238,27 +275,27 @@ func TestAuthzSync(t *testing.T) {
 	t.Run("A deleted organization implies nothing any more", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		keyID := givenSyncAPIKey(t, w, w.permission)
+		syncProduct(t, w.productID)
 		_, err := TestDB.ExecContext(t.Context(), `DELETE FROM organizations WHERE id = $1`, w.organizationID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, assignments, w.organizationID)
+		syncKey(t, w.productID, apiKeys, w.organizationID)
 
 		assert.False(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
+		assert.False(t, can(t, w.productID, model.APIKey(keyID), w.permission, w.organizationID))
 	})
 
 	t.Run("An inactive API key holds nothing", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		keyID := givenSyncAPIKey(t, w, w.permission)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		_, err := TestDB.ExecContext(
-			t.Context(),
-			`UPDATE organization_api_keys SET status = 'INACTIVE' WHERE id = $1`,
-			keyID,
-		)
+		syncKey(t, w.productID, apiKeys, w.organizationID)
+		_, err := TestDB.ExecContext(t.Context(),
+			`UPDATE organization_api_keys SET status = 'INACTIVE' WHERE id = $1`, keyID)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		syncKey(t, w.productID, apiKeys, w.organizationID)
 
 		assert.False(t, can(t, w.productID, model.APIKey(keyID), w.permission, w.organizationID))
 	})
@@ -268,18 +305,18 @@ func TestAuthzSync(t *testing.T) {
 		member := givenMember(t, w, w.organizationID, w.managedID)
 		kept := givenPermission(t, w.productID)
 		givenRolePermission(t, w.productID, w.managedID, kept)
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
-		before, err := AuthzRepo.FindStore(t.Context(), w.productID)
+		syncProduct(t, w.productID)
+		before, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
 		require.NoError(t, err)
 		_, err = TestDB.ExecContext(t.Context(), `DELETE FROM product_resource_permissions
 			WHERE product_id = $1 AND name = $2`, w.productID, w.permission)
 		require.NoError(t, err)
 
-		require.NoError(t, AuthzSyncer.SyncProduct(t.Context(), w.productID))
+		syncProduct(t, w.productID)
 
-		after, err := AuthzRepo.FindStore(t.Context(), w.productID)
+		after, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
 		require.NoError(t, err)
-		assert.NotEqual(t, before.Value().ModelID, after.Value().ModelID)
+		assert.NotEqual(t, before.ID, after.ID)
 		assert.True(t, can(t, w.productID, model.User(member), kept, w.organizationID))
 	})
 }
@@ -289,44 +326,62 @@ func TestAuthzReconcile(t *testing.T) {
 
 	t.Run("Reconcile removes the grants of a role that no longer exists", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		found, err := AuthzRepo.FindStore(t.Context(), w.productID)
-		require.NoError(t, err)
-		orphan := &openfgav1.TupleKey{
+		orphan := fga.Tuple{
 			Object: model.Role("product_role_" + uuid.NewString()), Relation: model.GrantsRelation(w.permission),
 			User: model.AllUsers,
 		}
-		_, err = openFGA(t).Write(t.Context(), &openfgav1.WriteRequest{
-			StoreId: found.Value().StoreID, AuthorizationModelId: found.Value().ModelID,
-			Writes: &openfgav1.WriteRequestWrites{TupleKeys: []*openfgav1.TupleKey{orphan}},
-		})
-		require.NoError(t, err)
+		store := productStore(t, w.productID)
+		require.NoError(t, store.Apply(t.Context(), fga.Changes{Writes: []fga.Tuple{orphan}}))
 
-		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
+		require.NoError(t, AuthzMirror.Reconcile(t.Context(), w.productID))
 
-		read, err := openFGA(t).Read(t.Context(), &openfgav1.ReadRequest{
-			StoreId: found.Value().StoreID, TupleKey: &openfgav1.ReadRequestTupleKey{Object: orphan.GetObject()},
-		})
+		read, err := store.Read(t.Context(), fga.Filter{Object: orphan.Object})
 		require.NoError(t, err)
-		assert.Empty(t, read.GetTuples())
+		assert.Empty(t, read)
 	})
 
-	t.Run("A product never written to gets its store from the reconcile", func(t *testing.T) {
-		w := givenSyncWorld(t)
+	t.Run("A product never written to gets its store from the sweeper's reconcile", func(t *testing.T) {
+		productID := GivenATenantAndProduct(t).Product.ID
+		w := syncWorld{productID: productID, permission: givenPermission(t, productID)}
+		w.managedID = givenManagedRole(t, productID, "Reader", w.permission)
+		w.organizationID = givenOrganization(t, productID)
 		member := givenMember(t, w, w.organizationID, w.managedID)
 
 		require.Eventually(t, func() bool {
-			AuthzSweeper.Sweep(t.Context())
-			found, err := AuthzRepo.FindStore(t.Context(), w.productID)
-			return err == nil && found.IsPresent() && found.Value().ReconciledAt != nil
+			AuthzMirror.Sweep(t.Context())
+			recorded, err := AuthzMarks.RecordedModel(t.Context(), productID)
+			return err == nil && recorded.ID != "" &&
+				can(t, productID, model.User(member), w.permission, w.organizationID)
 		}, 60*time.Second, 10*time.Millisecond)
-		assert.True(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
+	})
+
+	t.Run("A store whose product is gone is deleted by a reconcile pass", func(t *testing.T) {
+		openfga := openFGA(t)
+		orphan, err := openfga.CreateStore(
+			t.Context(),
+			&openfgav1.CreateStoreRequest{Name: "prd_gone_" + uuid.NewString()},
+		)
+		require.NoError(t, err)
+		w := givenSyncWorld(t)
+		// Make this product due, so the next sweep reconciles and removes orphan stores.
+		_, err = TestDB.ExecContext(t.Context(),
+			`UPDATE authz_stores SET reconciled_at = NULL WHERE product_id = $1`, w.productID)
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			AuthzMirror.Sweep(t.Context())
+			_, getErr := openfga.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: orphan.GetId()})
+			return getErr != nil
+		}, 30*time.Second, 10*time.Millisecond)
 	})
 }
 
 func TestAuthzMarks(t *testing.T) {
 	openFGA(t)
+
+	assignmentsOf := func(w syncWorld) mirror.Scope {
+		return mirror.Scope{ProductID: w.productID, Projection: assignments, Key: w.organizationID}
+	}
 
 	t.Run("A membership write leaves a mark that the sweeper replays", func(t *testing.T) {
 		w := givenSyncWorld(t)
@@ -336,33 +391,34 @@ func TestAuthzMarks(t *testing.T) {
 			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
 		})
 		require.NoError(t, err)
-		marks, err := AuthzRepo.Pending(t.Context(), w.productID)
+		marks, err := AuthzMarks.Pending(t.Context(), w.productID)
 		require.NoError(t, err)
-		require.NotEmpty(t, marks)
+		require.Len(t, marks, 1)
+		assert.Equal(t, assignmentsOf(w), marks[0].Scope)
 
-		AuthzSweeper.Sweep(t.Context())
-
+		require.Eventually(t, func() bool {
+			AuthzMirror.Sweep(t.Context())
+			left, pendingErr := AuthzMarks.Pending(t.Context(), w.productID)
+			return pendingErr == nil && len(left) == 0
+		}, 30*time.Second, 10*time.Millisecond)
 		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
-		require.NoError(t, err)
-		assert.Empty(t, left)
 	})
 
-	t.Run("A mark made again after a sync cleared it is not cleared by an older sync", func(t *testing.T) {
+	t.Run("A mark made again after a sync read it is not cleared by that sync", func(t *testing.T) {
 		ctx := t.Context()
 		w := givenSyncWorld(t)
 		require.NoError(t, Transactor.InTx(ctx, func(txCtx context.Context) error {
-			return AuthzRepo.Mark(txCtx, w.productID, w.organizationID)
+			return AuthzMarks.Mark(txCtx, assignmentsOf(w))
 		}))
-		read, err := AuthzRepo.Pending(ctx, w.productID)
+		read, err := AuthzMarks.Pending(ctx, w.productID)
 		require.NoError(t, err)
 		require.Len(t, read, 1)
-		require.NoError(t, AuthzRepo.ClearIfUnchanged(ctx, read[0]))
-		require.NoError(t, AuthzRepo.Mark(ctx, w.productID, w.organizationID))
+		require.NoError(t, AuthzMarks.ClearIfUnchanged(ctx, read[0]))
+		require.NoError(t, AuthzMarks.Mark(ctx, assignmentsOf(w)))
 
-		require.NoError(t, AuthzRepo.ClearIfUnchanged(ctx, read[0]))
+		require.NoError(t, AuthzMarks.ClearIfUnchanged(ctx, read[0]))
 
-		left, err := AuthzRepo.Pending(ctx, w.productID)
+		left, err := AuthzMarks.Pending(ctx, w.productID)
 		require.NoError(t, err)
 		assert.Len(t, left, 1)
 	})
@@ -371,12 +427,12 @@ func TestAuthzMarks(t *testing.T) {
 		ctx := t.Context()
 		failing := givenSyncWorld(t)
 		healthy := givenSyncWorld(t)
-		require.NoError(t, AuthzRepo.Mark(ctx, failing.productID, failing.organizationID))
-		require.NoError(t, AuthzRepo.Mark(ctx, healthy.productID, healthy.organizationID))
+		require.NoError(t, AuthzMarks.Mark(ctx, assignmentsOf(failing)))
+		require.NoError(t, AuthzMarks.Mark(ctx, assignmentsOf(healthy)))
 
-		require.NoError(t, AuthzRepo.PostponeInternal(ctx, failing.productID, time.Now().Add(time.Hour)))
+		require.NoError(t, AuthzMarks.Postpone(ctx, failing.productID, time.Now().Add(time.Hour)))
 
-		oldest, err := AuthzRepo.OldestInternal(ctx, 1000)
+		oldest, err := AuthzMarks.Oldest(ctx, 1000)
 		require.NoError(t, err)
 		position := map[string]int{}
 		for i, mark := range oldest {
@@ -390,14 +446,14 @@ func TestAuthzMarks(t *testing.T) {
 		w := givenSyncWorld(t)
 
 		err := Transactor.InTx(ctx, func(txCtx context.Context) error {
-			if markErr := AuthzRepo.Mark(txCtx, w.productID, w.organizationID); markErr != nil {
+			if markErr := AuthzMarks.Mark(txCtx, assignmentsOf(w)); markErr != nil {
 				return markErr
 			}
 			return errRollback
 		})
 
 		require.ErrorIs(t, err, errRollback)
-		left, err := AuthzRepo.Pending(ctx, w.productID)
+		left, err := AuthzMarks.Pending(ctx, w.productID)
 		require.NoError(t, err)
 		assert.Empty(t, left)
 	})
@@ -406,28 +462,28 @@ func TestAuthzMarks(t *testing.T) {
 func TestAuthzReplayAfterCommit(t *testing.T) {
 	openFGA(t)
 
-	t.Run("A write's request replays its organization right after it commits", func(t *testing.T) {
+	t.Run("A write's request replays what it marked right after it commits", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		userID := givenProductUser(t, w.productID)
-		ctx, written := authzservice.CollectMarks(t.Context())
+		ctx, marked := mirror.CollectMarks(t.Context())
 
 		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
 			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
 		})
 		require.NoError(t, err)
-		AuthzReplayer.Replay(t.Context(), written())
+		AuthzMirror.Replay(t.Context(), marked())
 
-		assert.Equal(t, []authzservice.OrganizationRef{{ProductID: w.productID, OrganizationID: w.organizationID}},
-			written())
+		assert.Equal(t, []mirror.Scope{{ProductID: w.productID, Projection: assignments, Key: w.organizationID}},
+			marked())
 		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
+		left, err := AuthzMarks.Pending(t.Context(), w.productID)
 		require.NoError(t, err)
 		assert.Empty(t, left)
 	})
 
 	t.Run("A member add refused before it writes leaves no mark and collects nothing", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		ctx, written := authzservice.CollectMarks(t.Context())
+		ctx, marked := mirror.CollectMarks(t.Context())
 
 		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
 			ProductID:      w.productID,
@@ -437,49 +493,11 @@ func TestAuthzReplayAfterCommit(t *testing.T) {
 		})
 		require.Error(t, err)
 
-		assert.Empty(t, written())
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
+		assert.Empty(t, marked())
+		left, err := AuthzMarks.Pending(t.Context(), w.productID)
 		require.NoError(t, err)
 		assert.Empty(t, left)
 	})
-}
-
-func TestAuthzOrphanStores(t *testing.T) {
-	openfga := openFGA(t)
-
-	t.Run("A store whose product is gone is deleted by a reconcile pass", func(t *testing.T) {
-		orphan, err := openfga.CreateStore(
-			t.Context(),
-			&openfgav1.CreateStoreRequest{Name: "prd_gone_" + uuid.NewString()},
-		)
-		require.NoError(t, err)
-		w := givenSyncWorld(t)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		// Make this product due, so the next sweep reconciles and removes orphan stores.
-		_, err = TestDB.ExecContext(t.Context(),
-			`UPDATE authz_stores SET reconciled_at = NULL WHERE product_id = $1`, w.productID)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			AuthzSweeper.Sweep(t.Context())
-			_, getErr := openfga.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: orphan.GetId()})
-			return getErr != nil
-		}, 30*time.Second, 10*time.Millisecond)
-	})
-}
-
-func givenSyncAPIKey(t *testing.T, w syncWorld, permission string) string {
-	t.Helper()
-	keyID := "orgapikey_" + uuid.NewString()
-	_, err := TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_keys
-		(id, organization_id, name, hashed_value, obfuscated_value, status)
-		VALUES ($1, $2, 'key', $3, 'ob', 'ACTIVE')`, keyID, w.organizationID, uuid.NewString())
-	require.NoError(t, err)
-	_, err = TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_key_permissions
-		(api_key_id, organization_id, product_id, permission_name) VALUES ($1, $2, $3, $4)`,
-		keyID, w.organizationID, w.productID, permission)
-	require.NoError(t, err)
-	return keyID
 }
 
 var errRollback = errors.New("roll back")
