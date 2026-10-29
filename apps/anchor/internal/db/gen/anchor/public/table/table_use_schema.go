@@ -51,5 +51,6 @@ func UseSchema(schema string) {
 	UsageObservations = UsageObservations.FromSchema(schema)
 	Users = Users.FromSchema(schema)
 	WorkspaceMemberships = WorkspaceMemberships.FromSchema(schema)
+	WorkspaceResources = WorkspaceResources.FromSchema(schema)
 	Workspaces = Workspaces.FromSchema(schema)
 }

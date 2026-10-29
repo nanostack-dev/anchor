@@ -185,6 +185,15 @@ func (s *service) resolveParent(
 	if !ok {
 		return nil, resource.NewParentNotRegisteredError(input.Parent)
 	}
+	// A workspace mirror whose workspace is gone counts as absent, there and
+	// below it.
+	gone, err := s.repo.ChainMirrorsDeletedWorkspace(ctx, input.OrganizationID, parent.RowID)
+	if err != nil {
+		return nil, err
+	}
+	if gone {
+		return nil, resource.NewParentNotRegisteredError(input.Parent)
+	}
 	return &parent.RowID, nil
 }
 

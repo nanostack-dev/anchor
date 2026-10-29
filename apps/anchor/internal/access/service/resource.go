@@ -13,22 +13,96 @@ import (
 // located is the object a decision checks, and the registered resource its
 // chain of ancestors starts at: the resource itself, or the parent an
 // unregistered one names. chainStart is empty when the chain is the
-// Organization alone.
+// Organization alone. fallback, when set, is checked for the actions the
+// model doesn't define on object.
 type located struct {
 	object     CheckedObject
+	fallback   *CheckedObject
 	chainStart string
+}
+
+// locate resolves what the decision checks once the subject reached its
+// Organization.
+func (e *evaluator) locate(ctx context.Context, request Request, subject reach) (reach, located, error) {
+	switch request.Resource.Type {
+	case ResourceOrganization:
+		return subject, located{object: OrganizationObject(subject.identity.OrganizationID)}, nil
+	case ResourceWorkspace:
+		return e.reachWorkspace(ctx, request, subject)
+	default:
+		return e.reachResource(ctx, request, subject)
+	}
+}
+
+// reachWorkspace resolves a workspace through the generic model (ADR-0022
+// A6): the resource registered in the Organization under the product's
+// workspace type, checked on its own object, so Organization roles reach it
+// through its parent and roles assigned on it grant too. An action scoped
+// above the workspace type, such as every Organization-scoped permission, is
+// checked on the Organization, as it was before workspaces were registered.
+//
+// A resource the workspace mirror wrote counts only while its workspace
+// exists: one an earlier release deleted without its resource stops like an
+// unknown workspace. A resource the product registered itself is its own
+// statement that the workspace exists, as for any type. A built-in workspace
+// without a resource, because the product's type refused it or an earlier
+// release created it, is checked on its Organization alone. Unknown and
+// foreign workspaces stop the same way.
+func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, located, error) {
+	organizationID := subject.identity.OrganizationID
+	organization := OrganizationObject(organizationID)
+	registered, found, err := e.workspaceResource(ctx, request, organizationID)
+	if err != nil {
+		return reach{}, located{}, err
+	}
+	if found {
+		if gone, goneErr := e.resources.MirrorsDeletedWorkspace(ctx, registered.RowID); goneErr != nil || gone {
+			return stoppedBy(ReasonWorkspaceNotInOrganization), located{},
+				e.unexpectedOrNil(goneErr, request, "workspace mirror")
+		}
+		return subject, located{
+			object:     CheckedObject{Type: registered.Type, ID: registered.RowID},
+			fallback:   &organization,
+			chainStart: registered.RowID,
+		}, nil
+	}
+	builtIn, err := e.workspaces.FindByID(ctx, request.ProductID, organizationID, request.Resource.ID)
+	if err != nil {
+		return reach{}, located{}, e.unexpected(err, request, "workspace")
+	}
+	if builtIn.IsAbsent() {
+		return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, nil
+	}
+	return subject, located{object: organization}, nil
+}
+
+// workspaceResource finds the resource of the product's workspace type that
+// the request names in the Organization.
+func (e *evaluator) workspaceResource(
+	ctx context.Context, request Request, organizationID string,
+) (resource.Resource, bool, error) {
+	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
+	if err != nil {
+		return resource.Resource{}, false, e.unexpected(err, request, "resource types")
+	}
+	rt, declared := tree.BySlug(resourcetype.WorkspaceSlug).Get()
+	if !declared {
+		return resource.Resource{}, false, nil
+	}
+	found, err := e.resources.Find(ctx, organizationID, rt.ID, request.Resource.ID)
+	if err != nil {
+		return resource.Resource{}, false, e.unexpected(err, request, "workspace resource")
+	}
+	registered, ok := found.Get()
+	registered.Type = rt.Slug
+	return registered, ok, nil
 }
 
 // reachResource resolves a resource of the Product's own types in Postgres,
 // in this order (ADR-0022 B1, E2): its type, the resource registered in the
 // Organization, and, for one the registry lacks, the parent the request
-// names. The built-in organization and workspace keep their own paths.
-func (e *evaluator) reachResource(
-	ctx context.Context, request Request, subject reach, target located,
-) (reach, located, error) {
-	if request.Resource.Type.builtIn() {
-		return subject, target, nil
-	}
+// names.
+func (e *evaluator) reachResource(ctx context.Context, request Request, subject reach) (reach, located, error) {
 	organizationID := subject.identity.OrganizationID
 	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
 	if err != nil {
@@ -43,6 +117,16 @@ func (e *evaluator) reachResource(
 		return reach{}, located{}, e.unexpected(err, request, "resource")
 	}
 	if registered, ok := found.Get(); ok {
+		if gone, goneErr := e.underDeletedWorkspace(
+			ctx,
+			request,
+			tree,
+			organizationID,
+			registered.RowID,
+		); goneErr != nil ||
+			gone {
+			return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, goneErr
+		}
 		e.reportParentMismatch(ctx, request, registered)
 		return subject, located{
 			object:     CheckedObject{Type: rt.Slug, ID: registered.RowID},
@@ -87,10 +171,36 @@ func (e *evaluator) reachParent(
 		reason, lookupErr := e.missingParent(ctx, request, organizationID, parentType.ID, parent.ID)
 		return stoppedBy(reason), located{}, lookupErr
 	}
+	if gone, goneErr := e.underDeletedWorkspace(
+		ctx,
+		request,
+		tree,
+		organizationID,
+		registered.RowID,
+	); goneErr != nil ||
+		gone {
+		return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, goneErr
+	}
 	return subject, located{
 		object:     CheckedObject{Type: rt.Slug, Parent: &CheckedObject{Type: parentType.Slug, ID: registered.RowID}},
 		chainStart: registered.RowID,
 	}, nil
+}
+
+// underDeletedWorkspace reports whether a workspace mirror whose workspace is
+// gone stands at or above the resource: the chain then stops there, as a check
+// on that workspace does.
+func (e *evaluator) underDeletedWorkspace(
+	ctx context.Context, request Request, tree resourcetype.Tree, organizationID, rowID string,
+) (bool, error) {
+	if tree.BySlug(resourcetype.WorkspaceSlug).IsAbsent() {
+		return false, nil
+	}
+	gone, err := e.resources.ChainMirrorsDeletedWorkspace(ctx, organizationID, rowID)
+	if err != nil {
+		return false, e.unexpected(err, request, "workspace mirror")
+	}
+	return gone, nil
 }
 
 // missingParent tells a parent another Organization of the Product registered

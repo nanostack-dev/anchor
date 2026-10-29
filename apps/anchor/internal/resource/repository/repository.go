@@ -31,6 +31,7 @@ type Node struct {
 }
 
 type Repository interface {
+	WorkspaceMirrors
 	// LockOrganization holds the Organization's resources until the
 	// transaction ends, so registrations, moves and deletes in one
 	// Organization run one at a time and each sees the chains the previous

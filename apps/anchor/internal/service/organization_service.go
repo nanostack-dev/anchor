@@ -301,6 +301,7 @@ func (s *organizationService) Create(
 
 	// One transaction so a refused license template leaves no organization behind.
 	var created organization.Organization
+	var initialWorkspace workspace.Workspace
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		template, templateErr := s.resolveLicenseTemplate(
 			txCtx, input.TenantID, input.ProductID, input.LicenseTemplateID,
@@ -333,7 +334,8 @@ func (s *organizationService) Create(
 		}
 		created.License = instantiated
 		if input.Workspace != nil {
-			if _, workspaceErr := s.workspaces.Create(
+			var workspaceErr error
+			if initialWorkspace, workspaceErr = s.workspaces.Create(
 				txCtx,
 				workspace.CreateWorkspaceInput{Name: input.Workspace.Name, Description: input.Workspace.Description,
 					ProductID: input.ProductID, OrganizationID: created.ID,
@@ -347,6 +349,7 @@ func (s *organizationService) Create(
 	}); txErr != nil {
 		return organization.Organization{}, txErr
 	}
+	s.registerInitialWorkspace(ctx, input.ProductID, created.ID, initialWorkspace.ID)
 
 	logger.Info().
 		Str("organization_id", created.ID).
@@ -385,6 +388,7 @@ func (s *organizationService) CreateWithMember(
 
 	var createdOrg organization.Organization
 	var createdMembership organization.Membership
+	var initialWorkspace workspace.Workspace
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
@@ -460,7 +464,8 @@ func (s *organizationService) CreateWithMember(
 		}
 		createdOrg.License = createdLicense
 		if input.Workspace != nil {
-			if _, workspaceErr := s.workspaces.Create(
+			var workspaceErr error
+			if initialWorkspace, workspaceErr = s.workspaces.Create(
 				lockCtx,
 				workspace.CreateWorkspaceInput{
 					Name:           input.Workspace.Name,
@@ -506,6 +511,8 @@ func (s *organizationService) CreateWithMember(
 			"product_user_id": input.ProductUserID,
 		})
 	}
+
+	s.registerInitialWorkspace(ctx, input.ProductID, createdOrg.ID, initialWorkspace.ID)
 
 	logger.Info().
 		Str("product_id", input.ProductID).
@@ -757,4 +764,21 @@ func (s *organizationService) checkFoundingRole(
 		return NewBodyRoleNotFoundError(*roleID)
 	}
 	return nil
+}
+
+// registerInitialWorkspace registers an organization's initial workspace as a
+// resource once its create committed, declaring the product's workspace type
+// first (ADR-0022 A6). The organization is already created, so a failure is
+// logged and left to the next start's backfill.
+func (s *organizationService) registerInitialWorkspace(
+	ctx context.Context,
+	productID, organizationID, workspaceID string,
+) {
+	if workspaceID == "" {
+		return
+	}
+	if err := s.workspaces.RegisterResource(ctx, productID, organizationID, workspaceID); err != nil {
+		s.logger.Error().Err(err).Str("product_id", productID).Str("organization_id", organizationID).
+			Str("workspace_id", workspaceID).Msg("failed to register the initial workspace as a resource")
+	}
 }

@@ -450,6 +450,12 @@ linters:
           - gosec
           - noctx
           - wrapcheck
+      # The built-in workspace routes are deprecated (ADR-0022 A6). The test SDK
+      # and the component tests keep covering them until the cleanup removes
+      # them (G6).
+      - path: 'cmd/it/'
+        text: "SA1019: .* is deprecated: Workspaces are resources of the product's workspace resource type"
+        linters: [ staticcheck ]
       # A component test runs in parallel with the others, but its subtests are
       # ordered steps over one shared fixture, so they stay sequential.
       - path: 'cmd/it/'

@@ -46,9 +46,12 @@ func NewUnknownError(slugs []string) *fault.Error {
 	).Metadata(map[string]any{"resource_types": slugs})
 }
 
+// CodeSlugDuplicate is the code of NewSlugExistsError.
+const CodeSlugDuplicate = "RESOURCE_TYPE_SLUG_DUPLICATE"
+
 func NewSlugExistsError(slug string) *fault.Error {
 	return fault.Conflict(
-		"RESOURCE_TYPE_SLUG_DUPLICATE",
+		CodeSlugDuplicate,
 		"This product already has a resource type with that slug.",
 	).Metadata(map[string]any{metadataSlug: slug})
 }

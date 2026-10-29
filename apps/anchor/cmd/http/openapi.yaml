@@ -37,8 +37,8 @@ tags:
 - name: Organization
   description: Manage Organizations within a Product. (Requires Product API Key)
 - name: Workspace
-  description: Manage Workspaces within an Organization. (Requires Product API 
-    Key)
+  description: Manage Workspaces within an Organization. (Requires Product API
+    Key) Deprecated (ADR-0022 A6) in favour of resources of the product's `workspace` resource type.
 - name: ProductUser
   description: Manage Product Users (end-users). (Requires Product API Key)
 - name: Membership
@@ -2763,10 +2763,12 @@ components:
     AccessResourceType:
       type: string
       description: >-
-        `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`.
-        A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the
-        generic resource model, `workspace` always names the built-in workspace, even when the product declares a
-        type of that slug.
+        `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the
+        product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's
+        `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it
+        through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on
+        its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown
+        or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
       examples: ["document"]
     AccessResourceProperties:
       type: object
@@ -7998,8 +8000,17 @@ paths:
     - $ref: "#/components/parameters/OrganizationIdParameter"
     post:
       summary: Create Organization Workspace
-      description: Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
+      description: >-
+        Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
+        The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and
+        name, under the organization; the product gets that type on its first workspace.
+
+        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`
+        and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
       operationId: createOrganizationWorkspace
+      deprecated: true
+      x-deprecated-reason: >-
+        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
       tags: [Workspace]
       security:
       - productApiKeyAuth: ["workspace:create"]
@@ -8037,7 +8048,12 @@ paths:
         Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
 
         Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+
+        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
       operationId: searchOrganizationWorkspaces
+      deprecated: true
+      x-deprecated-reason: >-
+        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
       tags: [Workspace]
       security:
       - platformBearerAuth: []
@@ -8073,8 +8089,15 @@ paths:
     - $ref: "#/components/parameters/WorkspaceIdParameter"
     get:
       summary: Get Organization Workspace
-      description: Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
+      description: >-
+        Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API
+        Key callers require `workspace:read` permission.
+
+        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
       operationId: getOrganizationWorkspace
+      deprecated: true
+      x-deprecated-reason: >-
+        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
       tags: [Workspace]
       security:
       - platformBearerAuth: []
@@ -8094,8 +8117,15 @@ paths:
           $ref: "#/components/responses/NotFound"
     put:
       summary: Update Organization Workspace
-      description: Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission.
+      description: >-
+        Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission.
+        A new name is also written to the workspace's resource.
+
+        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
       operationId: updateOrganizationWorkspace
+      deprecated: true
+      x-deprecated-reason: >-
+        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
       tags: [Workspace]
       security:
       - productApiKeyAuth: ["workspace:update"]
@@ -8125,8 +8155,16 @@ paths:
           $ref: '#/components/responses/Conflict'
     delete:
       summary: Delete Organization Workspace
-      description: Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
+      description: >-
+        Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
+        The workspace's resource goes with it, with every resource registered under it and every role assignment on
+        them.
+
+        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
       operationId: deleteOrganizationWorkspace
+      deprecated: true
+      x-deprecated-reason: >-
+        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
       tags: [Workspace]
       security:
       - productApiKeyAuth: ["workspace:delete"]
@@ -8543,6 +8581,12 @@ paths:
         Emits `resource.created` or `resource.updated`, which stay inside
         Anchor and are never delivered to the product's event endpoint.
         Requires Product API Key with resource:write.
+
+        Each workspace of the deprecated workspace routes is a resource of the
+        `workspace` type with the workspace's ID. Those routes write it too:
+        a workspace create or rename sets its name and puts it back under its
+        Organization, and a workspace delete removes it with its subtree.
+        This route never creates a workspace of those routes.
       operationId: putResource
       tags: [Resource]
       security:
