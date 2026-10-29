@@ -108,14 +108,42 @@ func TestStore(t *testing.T) {
 
 		assert.Len(t, readme, 150)
 	})
-}
 
-func TestRelations(t *testing.T) {
-	t.Run("A model defines the relations of each of its types, and no others", func(t *testing.T) {
-		relations := fga.RelationsOf(fgatest.Model(t, docsModel))
+	t.Run("CheckAll answers more checks than one BatchCheck takes, in order", func(t *testing.T) {
+		store := fgatest.StoreWithModel(t, engine, docsModel)
+		require.NoError(t, store.Apply(t.Context(), fga.Changes{Writes: []fga.Tuple{ownerOf("readme", "ana")}}))
+		var checks []fga.Tuple
+		for i := range 55 {
+			checks = append(
+				checks,
+				fga.Tuple{Object: fmt.Sprintf("doc:d%02d", i), Relation: "viewer", User: "user:ana"},
+			)
+		}
+		checks = append(checks, fga.Tuple{Object: "doc:readme", Relation: "viewer", User: "user:ana"})
 
+		answers, err := store.CheckAll(t.Context(), checks)
+
+		require.NoError(t, err)
+		require.Len(t, answers, 56)
+		assert.NotContains(t, answers[:55], true)
+		assert.True(t, answers[55])
+	})
+
+	t.Run("CheckAll fails on a relation the model doesn't define", func(t *testing.T) {
+		store := fgatest.StoreWithModel(t, engine, docsModel)
+
+		_, err := store.CheckAll(t.Context(), []fga.Tuple{{Object: "doc:readme", Relation: "editor", User: "user:ana"}})
+
+		require.ErrorIs(t, err, fga.ErrCheckItem)
+	})
+
+	t.Run("Relations reads what the store's model defines", func(t *testing.T) {
+		store := fgatest.StoreWithModel(t, engine, docsModel)
+
+		relations, err := store.Relations(t.Context())
+
+		require.NoError(t, err)
 		assert.True(t, relations.Defines(ownerOf("readme", "ana")))
 		assert.False(t, relations.Defines(fga.Tuple{Object: "doc:readme", Relation: "editor", User: "user:ana"}))
-		assert.False(t, relations.Defines(fga.Tuple{Object: "folder:x", Relation: "owner", User: "user:ana"}))
 	})
 }

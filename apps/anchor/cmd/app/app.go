@@ -59,6 +59,7 @@ func startAnchor(target ...any) {
 		repository.NewModule(),
 		resourcetype.NewModule(),
 		authz.NewModule(),
+		authz.ShadowDecisions(),
 		service.NewModule(),
 		integration.NewModule(),
 		email.NewModule(),

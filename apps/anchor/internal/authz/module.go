@@ -1,12 +1,14 @@
 // Package authz keeps each Product's OpenFGA store, running inside Anchor on
 // Anchor's Postgres, in step with Anchor's tables (ADR-0021; ADR-0022 E3 and
-// E5). The tables stay the source of truth; the store mirrors them. Nothing
-// reads the store for decisions yet.
+// E5). The tables stay the source of truth; the store holds the tuples they
+// imply. Decisions still come from the tables; shadow compares each one with
+// the store.
 //
 // The pieces: engine runs OpenFGA; store gives each Product its store; fga is
 // the generic OpenFGA surface; fgasync is the sync engine; source holds
 // Anchor's sources, one per slice of the tables; model compiles a
-// Product's catalog into its authorization model.
+// Product's catalog into its authorization model; shadow runs every decision
+// on OpenFGA too.
 package authz
 
 import (
@@ -15,6 +17,7 @@ import (
 
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/fgasync"
+	"anchor/internal/authz/shadow"
 	"anchor/internal/authz/source"
 	"anchor/internal/authz/store"
 	"anchor/internal/events"
@@ -37,6 +40,7 @@ func NewModule() fx.Option {
 			fgasync.AsSource(source.NewAPIKeyGrants),
 			newSyncer,
 			events.AsTxObserver(newMarker),
+			shadow.NewStats,
 		),
 		fx.Invoke(func(m *fgasync.Syncer, lc fx.Lifecycle) { m.Run(lc) }),
 	)
@@ -53,4 +57,11 @@ func newSyncer(params fgasync.Params, logger zerolog.Logger) (*fgasync.Syncer, e
 		Engines: params.Engines, Stores: params.Stores, Repository: params.Repository, Locker: params.Locker,
 		Models: params.Models, Sources: params.Sources, Logger: logger,
 	})
+}
+
+// ShadowDecisions runs every access decision on both evaluators and logs any
+// difference, keeping the current evaluator's answer (ADR-0022 G4, PR 6). It
+// goes at the application's root, so every consumer of the evaluator gets it.
+func ShadowDecisions() fx.Option {
+	return fx.Decorate(shadow.Decorate)
 }

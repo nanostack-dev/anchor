@@ -8,13 +8,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/rs/zerolog"
 
 	"anchor/internal/authz/engine"
+	"anchor/internal/authz/fga"
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 )
@@ -35,12 +38,53 @@ type Stores interface {
 	// Two replicas creating one at once keep one store and delete the other.
 	// It must run outside any transaction.
 	StoreID(ctx context.Context, productID string) (string, error)
+	// Open returns the Product's store at the model it follows, or none while
+	// either is not recorded yet. It never creates a store. Until the engine is
+	// up it answers engine.ErrNotReady.
+	Open(ctx context.Context, productID string) (functional.Option[Opened], error)
+}
+
+// Opened is a Product's store at the model it follows.
+type Opened struct {
+	Store     fga.Store
+	Relations fga.Relations
+	// Rebuilt reports whether a full rebuild filled the store. Until one does,
+	// it may hold only the keys written since, and would deny the others.
+	Rebuilt bool
+}
+
+// Holds answers, for each tuple in order, whether its user holds its relation
+// on its object. A relation the model doesn't define is not held, and is not
+// asked; any check OpenFGA fails on fails the call.
+func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
+	held := make([]bool, len(tuples))
+	var (
+		asked   []fga.Tuple
+		indexes []int
+	)
+	for i, t := range tuples {
+		if o.Relations.Defines(t) {
+			asked = append(asked, t)
+			indexes = append(indexes, i)
+		}
+	}
+	answers, err := o.Store.CheckAll(ctx, asked)
+	if err != nil {
+		return nil, err
+	}
+	for n, i := range indexes {
+		held[i] = answers[n]
+	}
+	return held, nil
 }
 
 type stores struct {
 	db       *sql.DB
 	provider engine.Provider
 	logger   zerolog.Logger
+	// relations holds, per model ID, what the model defines: a model never
+	// changes once written.
+	relations sync.Map
 }
 
 func New(db *sql.DB, provider engine.Provider, logger zerolog.Logger) Stores {
@@ -90,6 +134,39 @@ func (s *stores) StoreID(ctx context.Context, productID string) (string, error) 
 		return "", err
 	}
 	return winner, nil
+}
+
+func (s *stores) Open(ctx context.Context, productID string) (functional.Option[Opened], error) {
+	openfga, err := s.provider.Get()
+	if err != nil {
+		return functional.None[Opened](), err
+	}
+	found, err := transactor.QueryOptional[model.AuthzStores](ctx, s.db,
+		table.AuthzStores.SELECT(table.AuthzStores.StoreID, table.AuthzStores.ModelID, table.AuthzStores.ReconciledAt).
+			WHERE(table.AuthzStores.ProductID.EQ(postgres.String(productID))),
+	)
+	if err != nil {
+		return functional.None[Opened](), err
+	}
+	recorded, ok := found.Get()
+	if !ok || recorded.ModelID == nil || *recorded.ModelID == "" {
+		return functional.None[Opened](), nil
+	}
+	opened := Opened{
+		Store:   fga.NewStore(openfga, recorded.StoreID, *recorded.ModelID),
+		Rebuilt: recorded.ReconciledAt != nil,
+	}
+	if cached, hit := s.relations.Load(opened.Store.ModelID()); hit {
+		if relations, isRelations := cached.(fga.Relations); isRelations {
+			opened.Relations = relations
+			return functional.Some(opened), nil
+		}
+	}
+	if opened.Relations, err = opened.Store.Relations(ctx); err != nil {
+		return functional.None[Opened](), err
+	}
+	s.relations.Store(opened.Store.ModelID(), opened.Relations)
+	return functional.Some(opened), nil
 }
 
 func (s *stores) find(ctx context.Context, productID string) (string, error) {

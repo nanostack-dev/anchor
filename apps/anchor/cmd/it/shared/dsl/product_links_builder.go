@@ -3,6 +3,7 @@ package itdsl
 import (
 	"cmp"
 	"context"
+	"net/http"
 
 	"github.com/stretchr/testify/require"
 
@@ -334,19 +335,16 @@ func (b *Builder) Membership(opts MembershipOpts) *Builder {
 		opts.RoleAlias,
 	)
 
-	require.NotNil(
-		b.t,
-		itshared.OrgMembershipRepository,
-		"organization membership repository is not available in test setup",
-	)
-	_, err := itshared.OrgMembershipRepository.Create(
+	// Through the API, as a product adds a member, so every effect of the
+	// write follows it: its event, and the relationship store's sync.
+	resp, err := productCtx.AllScopeAPIKeyClient().AddOrganizationMemberWithResponse(
 		context.Background(),
 		productCtx.ProductID,
 		organization.ID,
-		productUser.ID,
-		&role.ID,
+		nanostackClient.AddOrganizationMemberJSONRequestBody{ProductUserId: productUser.ID, RoleId: &role.ID},
 	)
 	require.NoError(b.t, err)
+	require.Equal(b.t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
 
 	b.memberships[opts.Alias] = &OrganizationMembership{
 		ProductAlias:      opts.ProductAlias,
