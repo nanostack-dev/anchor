@@ -278,8 +278,9 @@ func (s *Syncer) syncOne(ctx context.Context, current target, p Source, productI
 	return current.store.Apply(ctx, fga.Diff(stored, desired))
 }
 
-// desired is what the key implies, less what the model does not define: a
-// permission deleted from the catalog leaves no relation to hold it.
+// desired is what the key implies, less what the model does not accept: a
+// permission deleted from the catalog leaves no relation to hold it, and a
+// parent type removed from a resource type no longer takes its parent tuple.
 func (s *Syncer) desired(
 	ctx context.Context,
 	current target,
@@ -290,7 +291,7 @@ func (s *Syncer) desired(
 	if err != nil {
 		return nil, fmt.Errorf("authz source %s: desired tuples of %q: %w", p.Name(), key, err)
 	}
-	return functional.Slice(desired).Filter(current.relations.Defines), nil
+	return functional.Slice(desired).Filter(current.relations.Accepts), nil
 }
 
 func (s *Syncer) clearCovered(ctx context.Context, marks []Mark, covering Scope) error {

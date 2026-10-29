@@ -46,8 +46,10 @@ func ResourceType(slug string) string {
 	if slug == TypeOrganization {
 		return slug
 	}
-	return "rt_" + slug
+	return resourceTypePrefix + slug
 }
+
+const resourceTypePrefix = "rt_"
 
 // CanRelation answers whether a subject holds a permission on an object.
 func CanRelation(permission string) string {
@@ -95,6 +97,22 @@ func APIKey(apiKeyID string) string { return TypeAPIKey + ":" + apiKeyID }
 func Role(roleRowID string) string { return TypeRole + ":" + roleRowID }
 
 func Organization(organizationID string) string { return TypeOrganization + ":" + organizationID }
+
+// ResourceObject names a registered resource by its row ID. A product's own
+// identifier is unique only in its Organization and type, so two
+// Organizations would share an object in the Product's one store.
+func ResourceObject(slug, rowID string) string { return ResourceType(slug) + ":" + rowID }
+
+// ParseResourceObject splits a resource object back into its type slug and
+// its row ID. It refuses an object of a fixed type, such as an Organization.
+func ParseResourceObject(object string) (string, string, bool) {
+	objectType, rowID, found := strings.Cut(object, ":")
+	slug, prefixed := strings.CutPrefix(objectType, resourceTypePrefix)
+	if !found || !prefixed || slug == "" || rowID == "" {
+		return "", "", false
+	}
+	return slug, rowID, true
+}
 
 // Assignment names the assignment of one role in one Organization; every
 // member holding the role is one of its assignees. A check on the

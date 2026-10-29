@@ -27,9 +27,18 @@ const preview: Preview = {
 			},
 		},
 		a11y: {
-			// Report violations without failing the run. Promote to "error" once
-			// the owned components are clean.
 			test: "error",
+			config: {
+				rules: [
+					{
+						// Base UI's focus guards are aria-hidden with tabindex 0 by
+						// design: they catch Tab to keep focus inside an open popup.
+						// axe flags them whenever a check lands while one is mounted.
+						id: "aria-hidden-focus",
+						selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+					},
+				],
+			},
 		},
 	},
 };

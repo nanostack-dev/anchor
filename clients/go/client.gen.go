@@ -1455,6 +1455,62 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id} (the `UpdateOrganizationMemberRole` operationId).
 	UpdateOrganizationMemberRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid, body UpdateOrganizationMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchResourcesWithBody Search Resources
+	//
+	// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+	SearchResourcesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchResources Search Resources
+	//
+	// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+	SearchResources(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteResource Delete Resource
+	//
+	// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
+	DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetResource Get Resource
+	//
+	// Reads a registered resource by its type and the product's identifier. Requires Platform Bearer token or Product API Key with resource:read.
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `GetResource` operationId).
+	GetResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutResourceWithBody Register Resource
+	//
+	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+	PutResourceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutResource Register Resource
+	//
+	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+	PutResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateOrganizationRoleWithBody Create Organization Custom Role
 	//
 	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
@@ -1821,7 +1877,7 @@ type ClientInterface interface {
 
 	// ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1830,7 +1886,7 @@ type ClientInterface interface {
 
 	// ReplaceProductResourceTypes Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1859,7 +1915,7 @@ type ClientInterface interface {
 
 	// DeleteProductResourceType Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 	DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4795,6 +4851,122 @@ func (c *Client) UpdateOrganizationMemberRole(ctx context.Context, productId Pro
 	return c.Client.Do(req)
 }
 
+// SearchResourcesWithBody Search Resources
+//
+// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+func (c *Client) SearchResourcesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourcesRequestWithBody(c.Server, productId, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchResources Search Resources
+//
+// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+func (c *Client) SearchResources(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchResourcesRequest(c.Server, productId, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteResource Delete Resource
+//
+// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
+func (c *Client) DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteResourceRequest(c.Server, productId, organizationId, resourceType, resourceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetResource Get Resource
+//
+// Reads a registered resource by its type and the product's identifier. Requires Platform Bearer token or Product API Key with resource:read.
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `GetResource` operationId).
+func (c *Client) GetResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourceRequest(c.Server, productId, organizationId, resourceType, resourceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutResourceWithBody Register Resource
+//
+// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+func (c *Client) PutResourceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutResourceRequestWithBody(c.Server, productId, organizationId, resourceType, resourceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutResource Register Resource
+//
+// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+func (c *Client) PutResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutResourceRequest(c.Server, productId, organizationId, resourceType, resourceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateOrganizationRoleWithBody Create Organization Custom Role
 //
 // Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
@@ -5550,7 +5722,7 @@ func (c *Client) CreateProductResourceType(ctx context.Context, productId Produc
 
 // ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5569,7 +5741,7 @@ func (c *Client) ReplaceProductResourceTypesWithBody(ctx context.Context, produc
 
 // ReplaceProductResourceTypes Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5628,7 +5800,7 @@ func (c *Client) SearchProductResourceTypes(ctx context.Context, productId Produ
 
 // DeleteProductResourceType Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 func (c *Client) DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10432,6 +10604,265 @@ func NewUpdateOrganizationMemberRoleRequestWithBody(server string, productId Pro
 	return req, nil
 }
 
+// NewSearchResourcesRequest calls the generic SearchResources builder with application/json body
+func NewSearchResourcesRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchResourcesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchResourcesRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
+}
+
+// NewSearchResourcesRequestWithBody constructs an http.Request for the SearchResources method, with any body, and a specified content type
+func NewSearchResourcesRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/search", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteResourceRequest constructs an http.Request for the DeleteResource method
+func NewDeleteResourceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cascade != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cascade", *params.Cascade, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetResourceRequest constructs an http.Request for the GetResource method
+func NewGetResourceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutResourceRequest calls the generic PutResource builder with application/json body
+func NewPutResourceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutResourceRequestWithBody(server, productId, organizationId, resourceType, resourceId, "application/json", bodyReader)
+}
+
+// NewPutResourceRequestWithBody constructs an http.Request for the PutResource method, with any body, and a specified content type
+func NewPutResourceRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resource_type", resourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "resource_id", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/resources/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateOrganizationRoleRequest calls the generic CreateOrganizationRole builder with application/json body
 func NewCreateOrganizationRoleRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationRoleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -13780,6 +14211,66 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/members/{product_user_id} (the `UpdateOrganizationMemberRole` operationId).
 	UpdateOrganizationMemberRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, productUserId Ksuid, body UpdateOrganizationMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationMemberRoleResponse, error)
 
+	// SearchResourcesWithBodyWithResponse Search Resources
+	//
+	// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+	SearchResourcesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error)
+
+	// SearchResourcesWithResponse Search Resources
+	//
+	// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+	SearchResourcesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error)
+
+	// DeleteResourceWithResponse Delete Resource
+	//
+	// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
+	DeleteResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*DeleteResourceResponse, error)
+
+	// GetResourceWithResponse Get Resource
+	//
+	// Reads a registered resource by its type and the product's identifier. Requires Platform Bearer token or Product API Key with resource:read.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `GetResource` operationId).
+	GetResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
+
+	// PutResourceWithBodyWithResponse Register Resource
+	//
+	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+	PutResourceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutResourceResponse, error)
+
+	// PutResourceWithResponse Register Resource
+	//
+	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+	PutResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PutResourceResponse, error)
+
 	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 	//
 	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
@@ -14168,7 +14659,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14177,7 +14668,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14206,7 +14697,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductResourceTypeWithResponse Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -20892,6 +21383,275 @@ func (r UpdateOrganizationMemberRoleResponse) ContentType() string {
 	return ""
 }
 
+type SearchResourcesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceListResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchResourcesResponse) GetJSON200() *ResourceListResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchResourcesResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchResourcesResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchResourcesResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchResourcesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchResourcesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchResourcesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchResourcesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiErrorResponse
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteResourceResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteResourceResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteResourceResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteResourceResponse) GetJSON409() *ApiErrorResponse {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetResourceResponse) GetJSON200() *ResourceResponse {
+	return r.JSON200
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetResourceResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetResourceResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetResourceResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ResourceResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiErrorResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *Forbidden
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiErrorResponse
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiErrorResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutResourceResponse) GetJSON200() *ResourceResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PutResourceResponse) GetJSON400() *ApiErrorResponse {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PutResourceResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PutResourceResponse) GetJSON403() *Forbidden {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PutResourceResponse) GetJSON404() *ApiErrorResponse {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutResourceResponse) GetJSON409() *ApiErrorResponse {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r PutResourceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutResourceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateOrganizationRoleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -25734,6 +26494,102 @@ func (c *ClientWithResponses) UpdateOrganizationMemberRoleWithResponse(ctx conte
 	return ParseUpdateOrganizationMemberRoleResponse(rsp)
 }
 
+// SearchResourcesWithBodyWithResponse Search Resources
+//
+// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+func (c *ClientWithResponses) SearchResourcesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error) {
+	rsp, err := c.SearchResourcesWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourcesResponse(rsp)
+}
+
+// SearchResourcesWithResponse Search Resources
+//
+// Searches the resources registered in an Organization. Filter by resource type, by parent, by product identifier, or by part of the name. Requires Platform Bearer token or Product API Key with resource:read.
+// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/resources/search (the `SearchResources` operationId).
+func (c *ClientWithResponses) SearchResourcesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchResourcesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchResourcesResponse, error) {
+	rsp, err := c.SearchResources(ctx, productId, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchResourcesResponse(rsp)
+}
+
+// DeleteResourceWithResponse Delete Resource
+//
+// Deletes a registered resource. A resource with registered children answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource and its whole subtree in one transaction. Emits one `resource.deleted` per deleted resource, deepest first; these events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
+func (c *ClientWithResponses) DeleteResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*DeleteResourceResponse, error) {
+	rsp, err := c.DeleteResource(ctx, productId, organizationId, resourceType, resourceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteResourceResponse(rsp)
+}
+
+// GetResourceWithResponse Get Resource
+//
+// Reads a registered resource by its type and the product's identifier. Requires Platform Bearer token or Product API Key with resource:read.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `GetResource` operationId).
+func (c *ClientWithResponses) GetResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, reqEditors ...RequestEditorFn) (*GetResourceResponse, error) {
+	rsp, err := c.GetResource(ctx, productId, organizationId, resourceType, resourceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourceResponse(rsp)
+}
+
+// PutResourceWithBodyWithResponse Register Resource
+//
+// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+func (c *ClientWithResponses) PutResourceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutResourceResponse, error) {
+	rsp, err := c.PutResourceWithBody(ctx, productId, organizationId, resourceType, resourceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutResourceResponse(rsp)
+}
+
+// PutResourceWithResponse Register Resource
+//
+// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
+// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
+// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `PutResource` operationId).
+func (c *ClientWithResponses) PutResourceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, body PutResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*PutResourceResponse, error) {
+	rsp, err := c.PutResource(ctx, productId, organizationId, resourceType, resourceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutResourceResponse(rsp)
+}
+
 // CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 //
 // Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
@@ -26356,7 +27212,7 @@ func (c *ClientWithResponses) CreateProductResourceTypeWithResponse(ctx context.
 
 // ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -26371,7 +27227,7 @@ func (c *ClientWithResponses) ReplaceProductResourceTypesWithBodyWithResponse(ct
 
 // ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -26418,7 +27274,7 @@ func (c *ClientWithResponses) SearchProductResourceTypesWithResponse(ctx context
 
 // DeleteProductResourceTypeWithResponse Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, or that roles or permissions are scoped to, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -31857,6 +32713,218 @@ func ParseUpdateOrganizationMemberRoleResponse(rsp *http.Response) (*UpdateOrgan
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchResourcesResponse parses an HTTP response from a SearchResourcesWithResponse call
+func ParseSearchResourcesResponse(rsp *http.Response) (*SearchResourcesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchResourcesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteResourceResponse parses an HTTP response from a DeleteResourceWithResponse call
+func ParseDeleteResourceResponse(rsp *http.Response) (*DeleteResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetResourceResponse parses an HTTP response from a GetResourceWithResponse call
+func ParseGetResourceResponse(rsp *http.Response) (*GetResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutResourceResponse parses an HTTP response from a PutResourceWithResponse call
+func ParsePutResourceResponse(rsp *http.Response) (*PutResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -53,6 +53,18 @@ func GeneratePermissions() []permission.ProductPermission {
 			Name:        "email:send",
 			Description: new("Allow sending transactional email for the product"),
 		},
+		permission.ProductPermission{
+			Name:        "resource:read",
+			Description: new("Allow reading the resources registered in the product's organizations"),
+		},
+		permission.ProductPermission{
+			Name:        "resource:write",
+			Description: new("Allow registering, renaming and moving resources in the product's organizations"),
+		},
+		permission.ProductPermission{
+			Name:        "resource:delete",
+			Description: new("Allow deleting registered resources in the product's organizations"),
+		},
 	)
 
 	return permissions

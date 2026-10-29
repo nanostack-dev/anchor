@@ -22,7 +22,9 @@ import (
 )
 
 func sources() []fgasync.Source {
-	return []fgasync.Source{source.Assignments{}, source.RoleGrants{}, source.APIKeyGrants{}}
+	return []fgasync.Source{
+		source.Assignments{}, source.RoleGrants{}, source.APIKeyGrants{}, source.ResourceParents{},
+	}
 }
 
 // eventWithEveryField carries every data field, so a source that reads
@@ -32,7 +34,7 @@ func eventWithEveryField(eventType events.Type) events.Event {
 		events.FieldOrganizationID: "org_acme", events.FieldProductUserID: "pu_ana",
 		events.FieldWorkspaceID: "ws_1", events.FieldInvitationID: "inv_1", events.FieldAPIKeyID: "key_ci",
 		events.FieldRoleID: "role_admin", events.FieldPermissionName: "billing:write",
-		events.FieldResourceTypeID: "rt_1", events.FieldResourceType: "project",
+		events.FieldResourceTypeID: "rt_1", events.FieldResourceType: "project", events.FieldResourceRowID: "res_1",
 	}}
 }
 
@@ -92,6 +94,23 @@ func TestStale(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("A resource write makes its own object stale", func(t *testing.T) {
+		keys, err := source.ResourceParents{}.Stale(eventWithEveryField(events.ResourceUpdated))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{model.ResourceObject("project", "res_1")}, keys)
+	})
+
+	t.Run("A resource event without its row fails the write", func(t *testing.T) {
+		_, err := source.ResourceParents{}.Stale(events.Event{
+			Type:      events.ResourceCreated,
+			ProductID: "prod_tasks",
+			Data:      events.Data{events.FieldResourceType: "project"},
+		})
+
+		require.Error(t, err)
+	})
+
 	t.Run("A permission change rewrites the model", func(t *testing.T) {
 		assert.True(t, source.ChangesModel(eventWithEveryField(events.ProductResourcePermissionDeleted)))
 		assert.False(t, source.ChangesModel(eventWithEveryField(events.ProductRoleUpdated)))
@@ -124,6 +143,15 @@ func TestTuples(t *testing.T) {
 		assert.False(t, source.AssignmentRoleTuple("role_assignment:broken").IsPresent())
 	})
 
+	t.Run("A resource sits under its parent, or under its Organization at the top", func(t *testing.T) {
+		assert.Equal(t,
+			fga.Tuple{Object: "rt_project:res_1", Relation: model.RelationParent, User: "organization:org_acme"},
+			source.ResourceParentTuple("org_acme", "project", "res_1", "", ""))
+		assert.Equal(t,
+			fga.Tuple{Object: "rt_folder:res_2", Relation: model.RelationParent, User: "rt_project:res_1"},
+			source.ResourceParentTuple("org_acme", "folder", "res_2", "project", "res_1"))
+	})
+
 	t.Run("A role grants each of its permissions to every user", func(t *testing.T) {
 		assert.Equal(t, []fga.Tuple{
 			{Object: "role:role_admin", Relation: model.GrantsRelation("billing:write"), User: model.AllUsers},
@@ -134,7 +162,10 @@ func TestTuples(t *testing.T) {
 func TestOwnership(t *testing.T) {
 	t.Run("The sources own disjoint tuples of one Organization", func(t *testing.T) {
 		compiled, err := model.Compile(model.Catalog{
-			Types:       []model.Type{{Slug: model.TypeOrganization}},
+			Types: []model.Type{
+				{Slug: model.TypeOrganization},
+				{Slug: "project", ParentTypes: []string{model.TypeOrganization}},
+			},
 			Permissions: []model.Permission{{Name: "billing:write", Scope: model.TypeOrganization}},
 		})
 		require.NoError(t, err)
@@ -149,7 +180,10 @@ func TestOwnership(t *testing.T) {
 		keys := []fga.Tuple{{
 			Object: "organization:org_acme", Relation: model.CanRelation("billing:write"), User: "api_key:key_ci",
 		}}
-		require.NoError(t, store.Apply(t.Context(), fga.Changes{Writes: slices.Concat(assignments, grants, keys)}))
+		parents := []fga.Tuple{source.ResourceParentTuple("org_acme", "project", "res_1", "", "")}
+		require.NoError(t, store.Apply(t.Context(), fga.Changes{
+			Writes: slices.Concat(assignments, grants, keys, parents),
+		}))
 
 		storedAssignments, err := source.Assignments{}.Stored(t.Context(), store, "org_acme")
 		require.NoError(t, err)
@@ -160,7 +194,11 @@ func TestOwnership(t *testing.T) {
 
 		assert.ElementsMatch(t, assignments, storedAssignments)
 		assert.ElementsMatch(t, grants, storedGrants)
+		storedParents, err := source.ResourceParents{}.Stored(t.Context(), store, "rt_project:res_1")
+		require.NoError(t, err)
+
 		assert.ElementsMatch(t, keys, storedKeys)
+		assert.ElementsMatch(t, parents, storedParents)
 	})
 }
 

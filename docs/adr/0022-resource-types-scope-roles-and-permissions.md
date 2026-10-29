@@ -1778,6 +1778,8 @@ Anchor still enforces the scope rules (D1) when it writes the rows; the model fo
 
 The semantics don't depend on OpenFGA. If ADR-0021 is rejected, the same walk is a short recursive query in Postgres.
 
+> **Implementation note (M4, PR 11).** A resource's object is `rt_<slug>:<Anchor row id>`, not the product's identifier. OpenFGA objects are at most 256 characters, and a product's identifier is unique only in its Organization and type, so it can't name an object in the Product's one store. See [Resources](../technical/resources.md).
+
 <details>
 <summary>The problem it solves, with numbers</summary>
 
@@ -1934,6 +1936,8 @@ The product then lists its own documents whose folder is Design or below.
 **When a write reaches OpenFGA.** Right after its transaction commits, the request that changed access replays its Organization's sync marks: the same diff the sweeper runs, under the same lock. The next request already sees the change. If the tuple write fails or the process stops, the mark stays, and the sweeper replays it within 5 s; a full reconcile every 15 min catches anything else. Decisions never look for marks.
 
 This replaces the proof of concept's check before each decision (ADR-0021). That check cost every decision one more query to protect writes, which are far rarer.
+
+> **Implementation note (M4, PR 11).** A resource write marks its own object (`rt_<slug>:<Anchor row id>`), not its Organization, and its replay syncs only that object, so the cost of a write never grows with the Organization's registry. See [Authorization engine](../technical/authorization-engine.md#resource-tuples).
 
 <details>
 <summary>📌 Who owns what</summary>

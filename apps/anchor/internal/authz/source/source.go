@@ -6,6 +6,7 @@
 //	organization_assignments   Organization  organization:O # assignment, role_assignment:O.R # role and # assignee
 //	role_grants                role row      role:R # grants_<permission>
 //	organization_api_keys      Organization  organization:O # can_<permission> @ api_key:K
+//	resource_parents           resource      rt_<slug>:<row> # parent
 //
 // Catalog is the model source: a change to a resource type or a permission
 // rewrites the Product's model and resyncs every source.
@@ -45,7 +46,7 @@ func WithoutAccess() []events.Type {
 	}
 }
 
-// Tables reads the tables sources fgasync.
+// Tables reads the tables the sources sync.
 type Tables struct {
 	db  *sql.DB
 	now func() time.Time

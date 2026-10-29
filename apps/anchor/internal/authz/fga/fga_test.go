@@ -147,3 +147,28 @@ func TestStore(t *testing.T) {
 		assert.False(t, relations.Defines(fga.Tuple{Object: "doc:readme", Relation: "editor", User: "user:ana"}))
 	})
 }
+
+func TestRelations(t *testing.T) {
+	relations := fga.RelationsOf(fgatest.Model(t, docsModel))
+	doc := func(relation, user string) fga.Tuple {
+		return fga.Tuple{Object: "doc:readme", Relation: relation, User: user}
+	}
+
+	t.Run("A relation accepts the user types it takes directly", func(t *testing.T) {
+		assert.True(t, relations.Accepts(doc("owner", "user:ana")))
+		assert.True(t, relations.Accepts(doc("owner", "team:core#member")))
+		assert.True(t, relations.Accepts(doc("viewer", "user:*")))
+	})
+
+	t.Run("A relation refuses a user type, wildcard or userset it doesn't take", func(t *testing.T) {
+		assert.False(t, relations.Accepts(doc("owner", "team:core")))
+		assert.False(t, relations.Accepts(doc("owner", "user:*")))
+		assert.False(t, relations.Accepts(doc("viewer", "user:ana")))
+		assert.False(t, relations.Accepts(doc("editor", "user:ana")))
+	})
+
+	t.Run("A relation is defined for checks of a user type it doesn't take", func(t *testing.T) {
+		assert.True(t, relations.Defines(doc("viewer", "user:ana")))
+		assert.False(t, relations.Defines(doc("editor", "user:ana")))
+	})
+}

@@ -1080,6 +1080,24 @@ func (e ProductWorkspaceSearchRequestSortBy) Valid() bool {
 	}
 }
 
+// Defines values for ResourceSortField.
+const (
+	ResourceSortFieldCreatedAt ResourceSortField = "created_at"
+	ResourceSortFieldName      ResourceSortField = "name"
+)
+
+// Valid indicates whether the value is a known member of the ResourceSortField enum.
+func (e ResourceSortField) Valid() bool {
+	switch e {
+	case ResourceSortFieldCreatedAt:
+		return true
+	case ResourceSortFieldName:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SmtpIntegrationConfigAuthMethod.
 const (
 	SmtpIntegrationConfigAuthMethodLOGIN SmtpIntegrationConfigAuthMethod = "LOGIN"
@@ -3815,9 +3833,11 @@ type ProductResourceTypeUpdateRequest struct {
 	AllowsCustomRoles *bool   `json:"allows_custom_roles,omitempty"`
 	Description       *string `json:"description,omitempty"`
 	Name              *string `json:"name,omitempty"`
-	NestsInItself     *bool   `json:"nests_in_itself,omitempty"`
 
-	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope.
+	// NestsInItself Turning it off while a registered resource of this type sits under another of the same type answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources`.
+	NestsInItself *bool `json:"nests_in_itself,omitempty"`
+
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
 	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
 }
 
@@ -4204,6 +4224,103 @@ type RegisterRequest struct {
 	// Examples: Acme Corporation
 	TenantName *string `json:"tenant_name,omitempty"`
 }
+
+// ResourceExternalId The product's own identifier of a resource, such as its database ID. It is unique in its Organization and resource type, and fixed once registered. It holds 1 to 200 characters from letters, digits, `.`, `_`, `~` and `-`, so it fits a URL path segment as is; `.` and `..` alone are refused. Any other value answers 400 INVALID_RESOURCE_ID.
+//
+// Examples: 3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60
+type ResourceExternalId = string
+
+// ResourceFilter defines model for ResourceFilter.
+type ResourceFilter struct {
+	// Ids Keeps resources with these product identifiers, of any type unless `resource_types` narrows it.
+	Ids []ResourceExternalId `json:"ids,omitempty"`
+
+	// NameContains Keeps resources whose name contains this text, regardless of case. `%` and `_` match themselves.
+	NameContains *string `json:"name_contains,omitempty"`
+
+	// Parent The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+	Parent *ResourceParentRef `json:"parent,omitempty"`
+
+	// ResourceTypes Keeps resources of these types. A slug the product has not declared matches nothing.
+	ResourceTypes []ResourceTypeSlug `json:"resource_types,omitempty"`
+}
+
+// ResourceListResponse defines model for ResourceListResponse.
+type ResourceListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                `json:"count"`
+	Items []ResourceResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// ResourceParentRef The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+type ResourceParentRef struct {
+	// Id The parent's `id`, or the Organization's ID when `type` is `organization`.
+	//
+	// Examples: 9f1c2a4e-6b3d-4c8e-a1f0-2d7e5b9c3a11
+	Id string `json:"id"`
+
+	// Type The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Type ResourceTypeSlug `json:"type"`
+}
+
+// ResourcePutRequest The resource's name and its parent. Both are required on every call, whether it creates, renames or moves the resource: Anchor never picks a parent.
+type ResourcePutRequest struct {
+	// Name A display name, not unique. Send it again when the resource is renamed in the product; it is shown to people and never decides access.
+	//
+	// Examples: Design
+	Name string `json:"name"`
+
+	// Parent The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+	Parent ResourceParentRef `json:"parent"`
+}
+
+// ResourceResponse A registered resource, named by the product's own identifier. Anchor's own row ID is never exposed.
+type ResourceResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id The product's own identifier of a resource, such as its database ID. It is unique in its Organization and resource type, and fixed once registered. It holds 1 to 200 characters from letters, digits, `.`, `_`, `~` and `-`, so it fits a URL path segment as is; `.` and `..` alone are refused. Any other value answers 400 INVALID_RESOURCE_ID.
+	//
+	// Examples: 3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60
+	Id   ResourceExternalId `json:"id"`
+	Name string             `json:"name"`
+
+	// OrganizationId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: org_2qL9aC3mE8xP1rT6vN4bK2sJ
+	OrganizationId Ksuid `json:"organization_id"`
+
+	// Parent The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
+	Parent ResourceParentRef `json:"parent"`
+
+	// Type The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
+	//
+	// Examples: folder
+	Type      ResourceTypeSlug `json:"type"`
+	UpdatedAt time.Time        `json:"updated_at"`
+}
+
+// ResourceSearchRequest defines model for ResourceSearchRequest.
+type ResourceSearchRequest struct {
+	Filter     *ResourceFilter    `json:"filter,omitempty"`
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. Every order ends with `id`, then with Anchor's row, so ties keep a stable order.
+	SortBy *ResourceSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ResourceSortField Field to sort by. Every order ends with `id`, then with Anchor's row, so ties keep a stable order.
+type ResourceSortField string
 
 // ResourceTypeSlug The resource type's slug, unique in its product. It names the type in API calls and in the access model, so it never changes after creation. `organization` is the built-in root type of every product; declaring it again answers 409 BUILT_IN_RESOURCE_TYPE.
 //
@@ -4598,6 +4715,9 @@ type ProductUserIdParameter = Ksuid
 // ProviderTypeParameter The type of integration provider.
 type ProviderTypeParameter = IntegrationProviderType
 
+// ResourceIdParameter Examples: 3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60
+type ResourceIdParameter = string
+
 // ResourcePermissionNameParameter Examples: file:read
 type ResourcePermissionNameParameter = string
 
@@ -4605,6 +4725,9 @@ type ResourcePermissionNameParameter = string
 //
 // Examples: rtype_2qLCf0ld3r2nT8vK5xR1
 type ResourceTypeIdParameter = Ksuid
+
+// ResourceTypePathParameter Examples: folder
+type ResourceTypePathParameter = string
 
 // WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
 //
@@ -4704,6 +4827,12 @@ type GetOrganizationUsageSeriesParams struct {
 type GetOrganizationMemberParams struct {
 	// Include Related resources to read alongside each organization member, comma separated — `?include=role_permissions`. A resource not named is left out of the response entirely, which says nothing about whether the member has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per member.
 	Include *OrganizationMemberIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
+}
+
+// DeleteResourceParams defines parameters for DeleteResource.
+type DeleteResourceParams struct {
+	// Cascade `true` also deletes every registered descendant. Absent means `false`.
+	Cascade *bool `form:"cascade,omitempty" json:"cascade,omitempty"`
 }
 
 // CreateProductUserJSONBody defines parameters for CreateProductUser.
@@ -4906,6 +5035,12 @@ type SearchOrganizationMembersJSONRequestBody = OrganizationMemberSearchRequest
 
 // UpdateOrganizationMemberRoleJSONRequestBody defines body for UpdateOrganizationMemberRole for application/json ContentType.
 type UpdateOrganizationMemberRoleJSONRequestBody = OrganizationMemberRoleRequest
+
+// SearchResourcesJSONRequestBody defines body for SearchResources for application/json ContentType.
+type SearchResourcesJSONRequestBody = ResourceSearchRequest
+
+// PutResourceJSONRequestBody defines body for PutResource for application/json ContentType.
+type PutResourceJSONRequestBody = ResourcePutRequest
 
 // CreateOrganizationRoleJSONRequestBody defines body for CreateOrganizationRole for application/json ContentType.
 type CreateOrganizationRoleJSONRequestBody = ProductRoleCreateRequest

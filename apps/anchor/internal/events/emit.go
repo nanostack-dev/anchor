@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -79,7 +80,20 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 	if tx == nil {
 		return errEmitRequiresTx
 	}
+	if e.catalog.IsDeliverable(event.Type) {
+		if err := e.enqueue(ctx, tx, event); err != nil {
+			return err
+		}
+	}
+	for _, observer := range e.observers {
+		if err := observer.ObserveTx(ctx, event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+func (e *emitter) enqueue(ctx context.Context, tx *sql.Tx, event Event) error {
 	dataJSON, err := json.Marshal(event.Data)
 	if err != nil {
 		return err
@@ -103,17 +117,10 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 		return err
 	}
 
-	if _, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
+	_, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 		QueueName:   queueName,
 		Payload:     payload,
 		MaxAttempts: eventQueueMaxAttempts,
-	}); err != nil {
-		return err
-	}
-	for _, observer := range e.observers {
-		if err = observer.ObserveTx(ctx, event); err != nil {
-			return err
-		}
-	}
-	return nil
+	})
+	return err
 }

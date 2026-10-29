@@ -29,6 +29,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Resource types](technical/resource-types.md): a product's tree of resource types, the scope of every role and permission, the scope rollout and the admin canvas
 - [Managed and custom roles](technical/managed-and-custom-roles.md): roles the Product manages, an Organization's own roles, who may hold each, and their rollout
 - [Authorization engine](technical/authorization-engine.md): OpenFGA running inside Anchor, each Product's store, and the steps that move decisions onto it; [sync flow](technical/authorization-sync-flow.html), a step-by-step view of the tables one membership write changes; [authorization sync](technical/authorization-fgasync.md), the sync engine and how to add a source; [replay middleware](technical/authorization-replay-middleware.html), how a write reaches OpenFGA before its response
+- [Resources](technical/resources.md): the registry of a product's own resources, their parent rules, locks, internal events and parent tuples
 - [engineering best practices](engineering-best-practices.md)
 - [organization workspaces](organization-workspaces.md)
 - [product events spec](product-events-spec.md)
