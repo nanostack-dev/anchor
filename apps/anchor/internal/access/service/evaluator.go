@@ -20,8 +20,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// driftLogBurst caps the drift lines logged a minute.
-const driftLogBurst = 20
+// logBurst caps the lines each sampled warning logs a minute.
+const logBurst = 20
 
 // Evaluator decides whether a subject may act on an organization, a workspace
 // or a resource of the Product's own types (ADR-0022 E2).
@@ -75,8 +75,8 @@ func NewEvaluator(
 		resources:     resources,
 		assignments:   assignments,
 		logger:        logger.With().Str("component", "access_evaluator").Logger(),
-		driftSampler:  &zerolog.BurstSampler{Burst: driftLogBurst, Period: time.Minute},
-		parentSampler: &zerolog.BurstSampler{Burst: driftLogBurst, Period: time.Minute},
+		driftSampler:  &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
+		parentSampler: &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
 	}
 }
 

@@ -19,7 +19,7 @@ type Request struct {
 	Actions   []string `validate:"dive,required,notblank"`
 	Semantic  Semantic `validate:"omitempty,oneof=execute_all deny_on_first_deny permit_on_first_permit"`
 	// Explain asks what granted each allowed action (Anchor's extension of
-	// AuthZEN). It costs two more reads per decision, none without it.
+	// AuthZEN). It costs at most two more reads per decision, none without it.
 	Explain bool
 }
 

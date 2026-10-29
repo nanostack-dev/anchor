@@ -118,8 +118,9 @@ func itemDecision(item accesssvc.ItemDecision) AccessItemDecision {
 	return AccessItemDecision{Decision: true}
 }
 
-// grantedBy is nil when the request asked for no explanation, so the field is
-// left out, and an empty list when the tables show no grant yet.
+// grantedBy is nil when the request asked for no explanation, or when the
+// explanation failed, so the field is left out; it is an empty list when the
+// tables show no grant yet.
 func grantedBy(item accesssvc.ItemDecision) *[]AccessGrant {
 	if item.GrantedBy == nil {
 		return nil

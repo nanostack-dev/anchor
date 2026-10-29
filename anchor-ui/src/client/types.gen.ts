@@ -1622,7 +1622,7 @@ export type AccessAction = {
 };
 
 /**
- * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is another organization. It reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
  */
 export enum AccessDenyReason {
     SUBJECT_NOT_SYNCED = 'SUBJECT_NOT_SYNCED',
@@ -1680,14 +1680,14 @@ export type AccessDecisionContext = {
      */
     permissions?: Array<string>;
     /**
-     * Set only on an allowed decision of a request with `options.explain` true (an Anchor extension that AuthZEN clients ignore): the roles, or the API key, that granted the action, nearest first, from the resource up through its registered ancestors to the organization. Absent means the caller did not ask for it. It is read from Anchor's tables after the decision, not from the relationship store that made it, so right after a write it can briefly be empty or differ from the grant the store used. When Anchor's tables can't be read, the decision is answered without it.
+     * Set only on an allowed decision of a request with `options.explain` true (an Anchor extension that AuthZEN clients ignore): the roles, or the API key, that granted the action, nearest first, from the resource up through its registered ancestors to the organization. Absent when the caller did not ask for it, or when Anchor's tables can't be read; the decision stands either way. It is read from Anchor's tables after the decision, not from the relationship store that made it, so right after a write it can briefly be empty or differ from the grant the store used.
      */
     granted_by?: Array<AccessGrant>;
 };
 
 export type AccessEvaluationOptions = {
     /**
-     * `true` adds `granted_by` to the context of each allowed decision (an Anchor extension of AuthZEN). It costs two more reads per call, whatever the number of actions; without it a decision costs no more.
+     * `true` adds `granted_by` to the context of each allowed decision (an Anchor extension of AuthZEN). It costs at most two more reads per call, whatever the number of actions; without it a decision costs no more.
      */
     explain?: boolean;
 };

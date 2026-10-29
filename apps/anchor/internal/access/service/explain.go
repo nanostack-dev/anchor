@@ -22,9 +22,6 @@ func (e *evaluator) explainOrSkip(
 	if err == nil {
 		return
 	}
-	for i := range decision.Items {
-		decision.Items[i].GrantedBy = nil
-	}
 	log.Ctx(ctx).Warn().Err(err).
 		Str("event", "access.explain_failed").
 		Str("product_id", request.ProductID).
