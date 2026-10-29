@@ -69,6 +69,40 @@ Every sync runs under the Product's transaction-scoped advisory lock (`authz-syn
 
 Nothing reads the store for decisions yet; PR 6 compares its answers with the current evaluator.
 
+### Why a mark, not a tuple write
+
+A write to Postgres and a write to OpenFGA cannot share one transaction. If Anchor wrote the tuple after its commit, a crash between the two writes would lose the tuple. If it wrote the tuple before its commit, a rollback would leave a tuple for a change that never happened. The mark is a Postgres row, so it commits or rolls back with the write that caused it. This is the transactional outbox pattern.
+
+A mark records **which Organization to read again**, not what changed. A sync then makes the store match Postgres for that Organization (`OrganizationState` → `Tuples` → `Diff` against the stored tuples → `Write`). Anchor does not push each event's delta, because:
+
+- **Two writes can race.** A request removes a member and another adds them back. Both commit, but their deltas could reach the store in the other order and leave it wrong for good. A sync always ends on what Postgres holds.
+- **Cascades emit no events.** Deleting a product user removes its memberships through `ON DELETE CASCADE`. A sync finds them gone; a delta would have nothing to push.
+- **One function maps state to tuples.** Deltas would need one translator per event type, each kept in step with `Tuples`.
+- **A sync can run late or twice.** Order does not matter, many marks for one Organization collapse into one row, and the retry needs no stored payload.
+
+The cost is one Organization read per access-changing write. It grows with the Organization's members and roles, and the engine is in-process, so it adds no network round trip. If it becomes slow, a narrower mark (one member) keeps these properties; a delta does not.
+
+### Walkthrough: adding a member
+
+[`authorization-sync-flow.html`](authorization-sync-flow.html) steps through this flow table by table, row by row, with a second scenario for a write that lands during a sync. In short, for `POST …/organizations/org_acme/members` that adds Bob as `role_admin`:
+
+| Step | Who | What it writes |
+| --- | --- | --- |
+| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked Organizations on the context (`CollectWrites`) |
+| 2 | `AddMember` | Checks the Organization, the product user, the role and that Bob is not a member, outside any transaction |
+| 3 | `applyMembership`, request transaction | `INSERT organization_memberships`; `Emit` queues the webhook in `pgqueue_jobs`; the Marker upserts `authz_sync_marks (product, org_acme)` at revision *n* and adds `org_acme` to the list |
+| 4 | `COMMIT` | The membership, the webhook job and the mark become visible together |
+| 5 | The handler | Returns its `201` as a value; nothing is sent yet |
+| 6 | `Replayer.Replay` | Runs `SyncOrganization` with a 30 s limit that ignores a client disconnect |
+| 7 | Sync transaction | Takes `authz-sync:<product>`, reads the marks (revision *n*), checks the model hash, reads Acme's state and its stored tuples, and diffs them |
+| 8 | OpenFGA, its own transaction | Writes `role_assignment:org_acme.role_admin # assignee @ user:bob` to `openfga.tuple` and `openfga.changelog`, and commits at once |
+| 9 | Sync transaction | `DELETE authz_sync_marks … AND revision = n`, then `COMMIT`, which releases the lock |
+| 10 | The middleware | Sends the `201`; the next request already sees Bob |
+
+If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is logged and the client still gets its `201`. The mark stays, and the sweeper syncs Acme within 5 s. The OpenFGA write in step 8 is not part of the sync transaction: if the sync fails after it, the tuple stays, which is correct because it matches Postgres.
+
+**A write during a sync.** Carol joins Acme after step 7 read Acme's state. Her transaction moves the mark to revision *n + 1* and commits; it does not wait, because the sync read the mark with a plain `SELECT` and an advisory lock blocks no row writes. Bob's sync writes only Bob's tuple, and its delete of revision *n* removes no row. Carol's replay waits for the lock, reads revision *n + 1*, writes her tuple and deletes the mark.
+
 ## Known limits
 
 - **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so the shadow (PR 6) never compares it, and the switch (PR 7) must keep that resolution.

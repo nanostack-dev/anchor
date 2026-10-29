@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Membership Sync Flow</title>
+<style>
+:root {
+  --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1dc;
+  --code-bg: #f1efea;
+  --req: #2f6fdb; --req-bg: #e6eefc;
+  --sync: #7a4bd1; --sync-bg: #efe8fb;
+  --fga: #0e8a7a; --fga-bg: #e1f4f1;
+  --carol: #c96a12; --carol-bg: #fbeedd;
+  --ok: #1f8a4c; --ok-bg: #e2f3e8;
+  --del: #c23b3b; --del-bg: #fbe5e5;
+  --read: #2f6fdb; --read-bg: #e9f0fd;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --card: #1f1f1d; --ink: #ecebe7; --muted: #9b9a95; --line: #34332f;
+    --code-bg: #262623;
+    --req: #78a6f5; --req-bg: #1d2a42;
+    --sync: #b192f0; --sync-bg: #2b2340;
+    --fga: #4cc8b6; --fga-bg: #15322e;
+    --carol: #f0a35b; --carol-bg: #3a2a18;
+    --ok: #5fcf8c; --ok-bg: #183324;
+    --del: #f08080; --del-bg: #3b1d1d;
+    --read: #78a6f5; --read-bg: #1d2a42;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --card: #1f1f1d; --ink: #ecebe7; --muted: #9b9a95; --line: #34332f;
+  --code-bg: #262623;
+  --req: #78a6f5; --req-bg: #1d2a42;
+  --sync: #b192f0; --sync-bg: #2b2340;
+  --fga: #4cc8b6; --fga-bg: #15322e;
+  --carol: #f0a35b; --carol-bg: #3a2a18;
+  --ok: #5fcf8c; --ok-bg: #183324;
+  --del: #f08080; --del-bg: #3b1d1d;
+  --read: #78a6f5; --read-bg: #1d2a42;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+code, pre, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 20px 16px 96px; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin-top: 2px; }
+.tabs { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 7px; cursor: pointer; font: inherit; }
+.tabs button.on { background: var(--ink); color: var(--bg); }
+.layout { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.steps { padding: 6px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+.steps button { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; color: var(--ink);
+  padding: 7px 8px; border-radius: 8px; cursor: pointer; font: inherit; align-items: baseline; }
+.steps button:hover { background: var(--code-bg); }
+.steps button.on { background: var(--code-bg); font-weight: 600; }
+.steps .n { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 18px; }
+.steps .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; transform: translateY(-1px); }
+.detail { padding: 16px 18px; margin-bottom: 16px; }
+.detail .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+.detail h2 { font-size: 17px; margin: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.note { margin: 8px 0 10px; max-width: 900px; }
+.note li { margin: 2px 0; }
+pre { background: var(--code-bg); border-radius: 8px; padding: 10px 12px; margin: 0; overflow-x: auto; white-space: pre; }
+.board { display: grid; gap: 12px; }
+.row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.panel { padding: 10px 12px; min-width: 0; }
+.panel h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.schema { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--code-bg); color: var(--muted); text-transform: none; letter-spacing: 0; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.empty { color: var(--muted); font-style: italic; font-size: 13px; }
+.txn { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; margin-bottom: 5px; font-size: 13px; }
+.txn b { font-weight: 600; }
+.txn .st { margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.lock { padding: 8px; border-radius: 8px; font-size: 13px; }
+.section-label { font-size: 12px; color: var(--muted); margin: 6px 2px -4px; display: flex; gap: 8px; align-items: center; }
+.section-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+tr:last-child td { border-bottom: 0; }
+.tw { overflow-x: auto; }
+tr.pending td { background: var(--pbg); border-top: 1px dashed var(--pc); border-bottom: 1px dashed var(--pc); }
+tr.pending td:first-child { box-shadow: inset 3px 0 0 var(--pc); }
+tr.new td { background: var(--ok-bg); }
+tr.new td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+tr.changed td { background: var(--carol-bg); }
+tr.changed td:first-child { box-shadow: inset 3px 0 0 var(--carol); }
+tr.read td { background: var(--read-bg); }
+tr.read td:first-child { box-shadow: inset 3px 0 0 var(--read); }
+tr.delpending td { text-decoration: line-through; color: var(--muted); background: var(--pbg); }
+tr.delpending td:first-child { box-shadow: inset 3px 0 0 var(--pc); }
+tr.deleted td { text-decoration: line-through; background: var(--del-bg); color: var(--del); }
+tr.deleted td:first-child { box-shadow: inset 3px 0 0 var(--del); }
+.tag { font-family: ui-sans-serif, -apple-system, sans-serif; font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
+.seq { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.seq b { color: var(--ink); font-family: ui-monospace, Menlo, monospace; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 4px 2px 0; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.list { margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.list li { font-family: ui-monospace, Menlo, monospace; padding: 2px 0; overflow-wrap: anywhere; }
+.list li.w { color: var(--ok); font-weight: 600; }
+.nav { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line); padding: 10px 16px; display: flex; justify-content: center; gap: 10px; align-items: center; }
+.nav button { font: inherit; padding: 7px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.nav button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.nav button:disabled { opacity: .4; cursor: default; }
+.nav .count { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 70px; text-align: center; }
+.resp { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 5px; }
+@media (max-width: 1100px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; }
+  .steps { position: static; max-height: 220px; }
+  .row4 { grid-template-columns: 1fr; }
+  .tables { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Add Bob to Acme: every table, step by step</h1>
+      <div class="sub">Product <code>prod_tasks</code> · Organization <code>org_acme</code> · Alice already holds <code>role_admin</code>. Use ← → to step.</div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-s="happy" class="on">Bob joins</button>
+      <button data-s="race">Carol joins during Bob's sync</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="card steps" id="steps"></nav>
+    <main>
+      <section class="card detail">
+        <div class="top"><h2 id="title"></h2><span class="chip" id="actor"></span></div>
+        <div class="note" id="note"></div>
+        <pre id="code"></pre>
+      </section>
+
+      <div class="board">
+        <div class="row4">
+          <div class="card panel"><h3>Requests <span class="schema">in memory</span></h3><div id="mem"></div></div>
+          <div class="card panel"><h3>Transactions</h3><div id="tx"></div></div>
+          <div class="card panel"><h3>Advisory lock</h3><div id="lock"></div></div>
+          <div class="card panel"><h3>Sync working set <span class="schema">in memory</span></h3><div id="work"></div></div>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--req-bg);outline:1px dashed var(--req)"></i>written, not committed (colour = transaction)</span>
+          <span><i class="sw" style="background:var(--ok-bg)"></i>just committed</span>
+          <span><i class="sw" style="background:var(--carol-bg)"></i>changed by Carol's request</span>
+          <span><i class="sw" style="background:var(--read-bg)"></i>read in this step</span>
+          <span><i class="sw" style="background:var(--del-bg)"></i>deleted</span>
+        </div>
+        <div class="section-label">Postgres · schema <code>public</code> (Anchor's tables, the source of truth)</div>
+        <div class="tables" id="public"></div>
+        <div class="section-label">Postgres · schema <code>openfga</code> (written only by the embedded OpenFGA engine)</div>
+        <div class="tables" id="openfga"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="nav">
+  <button id="prev">← Back</button>
+  <span class="count" id="count"></span>
+  <button id="next" class="primary">Next →</button>
+</div>
+
+<script>
+const TX = {
+  req:   { label: "Bob's request tx",   c: "--req",   bg: "--req-bg" },
+  sync:  { label: "Bob's sync tx",      c: "--sync",  bg: "--sync-bg" },
+  fga:   { label: "OpenFGA write tx",   c: "--fga",   bg: "--fga-bg" },
+  carol: { label: "Carol's request tx", c: "--carol", bg: "--carol-bg" },
+  csync: { label: "Carol's sync tx",    c: "--carol", bg: "--carol-bg" },
+};
+const ACTOR = {
+  state:   { label: "Starting state",        c: "--muted" },
+  mw:      { label: "API middleware",        c: "--req" },
+  svc:     { label: "AddMember service",     c: "--req" },
+  emit:    { label: "events.Emitter",        c: "--req" },
+  marker:  { label: "Marker.ObserveTx",      c: "--req" },
+  replay:  { label: "Replayer → Syncer",     c: "--sync" },
+  fga:     { label: "OpenFGA engine",        c: "--fga" },
+  carol:   { label: "Carol's request",       c: "--carol" },
+};
+
+const TABLES = {
+  memberships: { schema: "public",  name: "organization_memberships", cols: ["organization_id", "product_user_id", "product_role_id"] },
+  jobs:        { schema: "public",  name: "pgqueue_jobs",             cols: ["queue_name", "payload.type", "status"] },
+  marks:       { schema: "public",  name: "authz_sync_marks",         cols: ["product_id", "organization_id", "revision", "marked_at"] },
+  stores:      { schema: "public",  name: "authz_stores",             cols: ["product_id", "store_id", "model_id", "model_hash"] },
+  tuple:       { schema: "openfga", name: "openfga.tuple",            cols: ["store", "object_type", "object_id", "relation", "_user"] },
+  changelog:   { schema: "openfga", name: "openfga.changelog",        cols: ["object_type", "object_id", "relation", "_user", "operation"] },
+};
+
+const R = (cells, extra = {}) => ({ cells, st: "", ...extra });
+const tup = (ot, oid, rel, user) => ["01JSTORE", ot, oid, rel, user];
+
+const initial = {
+  t: {
+    memberships: [R(["org_acme", "pu_alice", "role_admin"])],
+    jobs: [],
+    marks: [],
+    stores: [R(["prod_tasks", "01JSTORE", "01JMODEL", "9f3c…"])],
+    tuple: [
+      R(tup("organization", "org_acme", "assignment", "role_assignment:org_acme.role_admin")),
+      R(tup("role_assignment", "org_acme.role_admin", "role", "role:role_admin")),
+      R(tup("role_assignment", "org_acme.role_admin", "assignee", "user:pu_alice")),
+      R(tup("role", "role_admin", "grants_billing_write", "user:*")),
+    ],
+    changelog: [],
+  },
+  seq: 7,
+  tx: [],
+  lock: { holder: null, waiters: [] },
+  mem: { bob: null, carol: null },
+  work: null,
+};
+
+const DESIRED_BOB = [
+  "organization:org_acme # assignment @ role_assignment:org_acme.role_admin",
+  "role_assignment:org_acme.role_admin # role @ role:role_admin",
+  "role_assignment:org_acme.role_admin # assignee @ user:pu_alice",
+  "role_assignment:org_acme.role_admin # assignee @ user:pu_bob",
+  "role:role_admin # grants_billing_write @ user:*",
+];
+const BOB_TUPLE = "role_assignment:org_acme.role_admin # assignee @ user:pu_bob";
+const CAROL_TUPLE = "role_assignment:org_acme.role_admin # assignee @ user:pu_carol";
+
+// helpers that mutate a state
+const rows = (s, t) => s.t[t];
+const markRead = (s, t, pred = () => true) => rows(s, t).forEach(r => { if (pred(r) && r.st === "") r.st = "read"; });
+const add = (s, t, cells, st, tx) => rows(s, t).push(R(cells, { st, tx }));
+const openTx = (s, id) => s.tx.push({ id, st: "open" });
+function commit(s, id) {
+  for (const t of Object.keys(s.t)) {
+    for (const r of s.t[t]) {
+      if (r.tx !== id) continue;
+      if (r.st === "pending") r.st = "new";
+      if (r.st === "delpending") r.st = "deleted";
+      delete r.tx;
+    }
+  }
+  const x = s.tx.find(x => x.id === id);
+  if (x) x.st = "committed"; else s.tx.push({ id, st: "committed" });
+}
+function reset(prev) {
+  const s = structuredClone(prev);
+  for (const t of Object.keys(s.t)) {
+    s.t[t] = s.t[t].filter(r => r.st !== "deleted");
+    s.t[t].forEach(r => { if (["new", "read", "changed"].includes(r.st)) r.st = ""; });
+  }
+  s.tx = s.tx.filter(x => x.st !== "committed");
+  return s;
+}
+
+const common = [
+  {
+    title: "Before the request", actor: "state", dot: "--muted",
+    note: `<ul><li>Alice is a member of Acme with <code>role_admin</code>.</li>
+<li>Acme's OpenFGA store holds 4 tuples: one assignment for <code>role_admin</code>, its role link, Alice as assignee, and the role's grant.</li>
+<li>No marks wait. The store matches Postgres.</li></ul>`,
+    code: `-- The revision sequence was last used for revision 7.\nSELECT last_value FROM authz_sync_mark_revisions;  -- 7`,
+    apply: s => {},
+  },
+  {
+    title: "The request arrives", actor: "mw", dot: "--req",
+    note: `<ul><li>The replay middleware wraps the handler.</li>
+<li>It puts an empty list on the context. The Marker adds every Organization it marks to this list.</li></ul>`,
+    code: `// internal/api/authz_replay.go\nPOST /products/prod_tasks/organizations/org_acme/members\n{ "product_user_id": "pu_bob", "role_id": "role_admin" }\n\ncollectCtx, written := authzservice.CollectWrites(ctx)\nresponse, err := f(collectCtx, w, r, request)   // the handler runs now`,
+    apply: s => { s.mem.bob = { collected: [], response: "building" }; },
+  },
+  {
+    title: "Checks, outside any transaction", actor: "svc", dot: "--req",
+    note: `<ul><li><code>AddMember</code> checks the input before it opens a transaction.</li>
+<li>The last check finds no membership for Bob, so the request continues.</li></ul>`,
+    code: `SELECT 1 FROM organizations  WHERE product_id = 'prod_tasks' AND id = 'org_acme';    -- found\nSELECT 1 FROM product_users  WHERE product_id = 'prod_tasks' AND id = 'pu_bob';      -- found\nSELECT 1 FROM product_roles  WHERE product_id = 'prod_tasks' AND id = 'role_admin';  -- found\nSELECT 1 FROM organization_memberships\n WHERE organization_id = 'org_acme' AND product_user_id = 'pu_bob';                    -- 0 rows`,
+    apply: s => {},
+  },
+  {
+    title: "BEGIN · insert the membership", actor: "svc", dot: "--req",
+    note: `<ul><li><code>applyMembership</code> opens the request transaction.</li>
+<li>Only this transaction can see Bob's row now.</li></ul>`,
+    code: `BEGIN;\nINSERT INTO organization_memberships (organization_id, product_user_id, product_role_id)\nVALUES ('org_acme', 'pu_bob', 'role_admin');`,
+    apply: s => { openTx(s, "req"); add(s, "memberships", ["org_acme", "pu_bob", "role_admin"], "pending", "req"); },
+  },
+  {
+    title: "Emit · queue the webhook event", actor: "emit", dot: "--req",
+    note: `<ul><li><code>emitMembership</code> calls <code>Emit</code> with the same transaction.</li>
+<li>The emitter first queues the webhook event. A worker sends it later. This part is not about OpenFGA.</li></ul>`,
+    code: `-- events.Emitter.Emit → queue.EnqueueTx(ctx, tx, …)\nINSERT INTO pgqueue_jobs (queue_name, payload, …)\nVALUES ('product-events', '{"type":"organization.membership.created", …}', …);`,
+    apply: s => { add(s, "jobs", ["product-events", "organization.membership.created", "pending"], "pending", "req"); },
+  },
+  {
+    title: "Marker · mark Acme as out of date", actor: "marker", dot: "--req",
+    note: `<ul><li>The emitter then calls every transaction observer. The Marker is one of them.</li>
+<li><code>staleScope(MembershipCreated)</code> returns <code>org_acme</code>.</li>
+<li>The Marker upserts one mark row in the <b>same</b> transaction, and adds <code>org_acme</code> to the request's list.</li>
+<li><code>nextval</code> is not transactional: if this transaction rolls back, revision 8 is skipped, and that does no harm.</li></ul>`,
+    code: `INSERT INTO authz_sync_marks (product_id, organization_id)          -- revision DEFAULT nextval(…) → 8\nVALUES ('prod_tasks', 'org_acme')\nON CONFLICT (product_id, organization_id) DO UPDATE\n  SET revision  = nextval('authz_sync_mark_revisions'),\n      marked_at = NOW();\n\nwritten.add("prod_tasks", "org_acme")`,
+    apply: s => {
+      s.seq = 8;
+      add(s, "marks", ["prod_tasks", "org_acme", "8", "10:15:02.120"], "pending", "req");
+      s.mem.bob.collected = ["org_acme"];
+    },
+  },
+  {
+    title: "COMMIT the request", actor: "svc", dot: "--req",
+    note: `<ul><li>The membership, the webhook job and the mark become visible together. Either all three exist, or none does.</li>
+<li>Postgres now says Bob is a member. OpenFGA does not have him yet, and the mark records that difference.</li></ul>`,
+    code: `COMMIT;`,
+    apply: s => commit(s, "req"),
+  },
+  {
+    title: "The handler returns the 201", actor: "svc", dot: "--req",
+    note: `<ul><li>The handler returns the response as a Go value.</li>
+<li>Nothing goes to the client yet. The strict server writes the response only when the middleware returns.</li></ul>`,
+    code: `return api.AddOrganizationMember201JSONResponse{…}, nil\n// back in the middleware:\nif err == nil {\n    replayer.Replay(ctx, written())   // written() = [{prod_tasks, org_acme}]\n}`,
+    apply: s => { s.mem.bob.response = "held"; },
+  },
+  {
+    title: "Replay starts · find the store", actor: "replay", dot: "--sync",
+    note: `<ul><li>The replay context ignores a client disconnect (<code>WithoutCancel</code>) and has its own 30 s limit.</li>
+<li><code>SyncOrganization</code> first finds the Product's store, outside any transaction.</li></ul>`,
+    code: `replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)\nsyncer.SyncOrganization(replayCtx, "prod_tasks", "org_acme")\n\nSELECT store_id FROM authz_stores WHERE product_id = 'prod_tasks';   -- 01JSTORE`,
+    apply: s => { markRead(s, "stores"); },
+  },
+  {
+    title: "BEGIN · take the Product's lock", actor: "replay", dot: "--sync",
+    note: `<ul><li>The sync opens its own transaction and tries the advisory lock for the Product.</li>
+<li>It is a transaction lock, so <code>COMMIT</code> or <code>ROLLBACK</code> releases it. A crash cannot leave it held.</li>
+<li>If the lock is busy, the sync retries with backoff for up to 3 s.</li></ul>`,
+    code: `BEGIN;\nSELECT pg_try_advisory_xact_lock(<hash of 'authz-sync:prod_tasks'>);   -- true`,
+    apply: s => { openTx(s, "sync"); s.lock.holder = "sync"; },
+  },
+  {
+    title: "Read the marks and the model", actor: "replay", dot: "--sync",
+    note: `<ul><li>The sync reads the Product's pending marks and remembers <b>revision 8</b>.</li>
+<li><code>ensureModel</code> compares the stored model hash with the catalog's hash. They match, so the sync uses the current model.</li></ul>`,
+    code: `SELECT * FROM authz_sync_marks WHERE product_id = 'prod_tasks';        -- (org_acme, revision 8)\nSELECT model_id, model_hash FROM authz_stores WHERE product_id = 'prod_tasks';\n-- model_hash = Hash(catalog) → keep model 01JMODEL`,
+    apply: s => { markRead(s, "marks"); markRead(s, "stores"); s.work = { rev: 8 }; },
+  },
+  {
+    title: "Read Acme's state from Postgres", actor: "replay", dot: "--sync",
+    note: `<ul><li><code>OrganizationState</code> reads what Acme holds now: members with a role, those roles' permissions, and active API keys.</li>
+<li><code>Tuples(catalog)</code> turns that state into the 5 tuples the store must hold.</li></ul>`,
+    code: `SELECT product_user_id, product_role_id FROM organization_memberships\n WHERE organization_id = 'org_acme' AND product_role_id IS NOT NULL;   -- alice, bob\n-- + the roles' permissions, + Acme's active API keys\n\ndesired := state.Tuples(current.catalog)   // 5 tuples`,
+    apply: s => { markRead(s, "memberships"); s.work.desired = DESIRED_BOB; },
+  },
+];
+
+const happy = [
+  {
+    title: "Read Acme's tuples from OpenFGA · diff", actor: "replay", dot: "--sync",
+    note: `<ul><li>The sync reads the tuples the store holds for Acme, its assignments and its roles.</li>
+<li><code>Diff(stored, desired)</code> finds one tuple to write and none to delete.</li></ul>`,
+    code: `Read(object: "organization:org_acme")\nRead(object: "role_assignment:org_acme.role_admin", relation: "assignee")\nRead(object: "role:role_admin")\n\nmodel.Diff(stored, desired)\n// Writes:  [role_assignment:org_acme.role_admin # assignee @ user:pu_bob]\n// Deletes: []`,
+    apply: s => { markRead(s, "tuple"); s.work.stored = 4; s.work.writes = [BOB_TUPLE]; },
+  },
+  {
+    title: "OpenFGA Write · Bob's tuple", actor: "fga", dot: "--fga",
+    note: `<ul><li>The engine writes on its own connection, in its own transaction, which commits at once.</li>
+<li>This write is <b>not</b> part of the sync transaction. If the sync fails after this step, the tuple stays. That is correct, because it matches Postgres.</li>
+<li><code>OnDuplicate: "ignore"</code> makes a second identical write harmless.</li></ul>`,
+    code: `engine.Write({ StoreId: "01JSTORE", AuthorizationModelId: "01JMODEL",\n  Writes: [role_assignment:org_acme.role_admin # assignee @ user:pu_bob], OnDuplicate: "ignore" })\n\n-- inside OpenFGA:\nBEGIN;\nINSERT INTO openfga.tuple (store, object_type, object_id, relation, _user, user_type, ulid, inserted_at)\nVALUES ('01JSTORE', 'role_assignment', 'org_acme.role_admin', 'assignee', 'user:pu_bob', 'user', '01JT…', NOW());\nINSERT INTO openfga.changelog (…, operation) VALUES (…, 0);   -- 0 = WRITE\nCOMMIT;`,
+    apply: s => {
+      add(s, "tuple", tup("role_assignment", "org_acme.role_admin", "assignee", "user:pu_bob"), "new");
+      add(s, "changelog", ["role_assignment", "org_acme.role_admin", "assignee", "user:pu_bob", "0 WRITE"], "new");
+      s.tx.push({ id: "fga", st: "committed" });
+    },
+  },
+  {
+    title: "Clear the mark · only revision 8", actor: "replay", dot: "--sync",
+    note: `<ul><li>The sync deletes the mark only if its revision is still 8, the one it read.</li>
+<li>No write happened since, so the delete removes 1 row. The delete commits with the sync transaction.</li></ul>`,
+    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND organization_id = 'org_acme' AND revision = 8;   -- DELETE 1`,
+    apply: s => { const m = rows(s, "marks")[0]; m.st = "delpending"; m.tx = "sync"; },
+  },
+  {
+    title: "COMMIT the sync · release the lock", actor: "replay", dot: "--sync",
+    note: `<ul><li>The mark is gone, and the commit releases the Product's lock.</li>
+<li>Postgres and OpenFGA now agree: both have Bob.</li></ul>`,
+    code: `COMMIT;   -- releases pg_advisory_xact_lock('authz-sync:prod_tasks')`,
+    apply: s => { commit(s, "sync"); s.lock.holder = null; s.work = null; },
+  },
+  {
+    title: "Send the 201", actor: "mw", dot: "--req",
+    note: `<ul><li>The middleware returns, and the server writes the response.</li>
+<li>The client's next request, for example "can Bob write billing?", already finds Bob in the store.</li>
+<li>The sweeper runs every 5 s and finds no mark for Acme, so it does nothing.</li></ul>`,
+    code: `return response, err   // 201 { "organization_id": "org_acme", "product_user_id": "pu_bob", … }`,
+    apply: s => { s.mem.bob.response = "sent"; },
+  },
+];
+
+const race = [
+  {
+    title: "Meanwhile: Carol joins Acme", actor: "carol", dot: "--carol",
+    note: `<ul><li>A second request adds Carol and commits. Bob's sync has already read Acme's state, so it does not know about Carol.</li>
+<li>Her mark upsert does not wait. The sync read the mark with a plain <code>SELECT</code>, and an advisory lock blocks no row writes.</li>
+<li>The upsert moves the mark from <b>revision 8 to 9</b>.</li></ul>`,
+    code: `BEGIN;\nINSERT INTO organization_memberships VALUES ('org_acme', 'pu_carol', 'role_admin');\nINSERT INTO pgqueue_jobs (…) VALUES ('product-events', '{"type":"organization.membership.created"…}');\nINSERT INTO authz_sync_marks (product_id, organization_id) VALUES ('prod_tasks', 'org_acme')\nON CONFLICT (product_id, organization_id) DO UPDATE\n  SET revision = nextval('authz_sync_mark_revisions'), marked_at = NOW();   -- revision 9\nCOMMIT;`,
+    apply: s => {
+      s.seq = 9;
+      add(s, "memberships", ["org_acme", "pu_carol", "role_admin"], "changed");
+      add(s, "jobs", ["product-events", "organization.membership.created", "pending"], "changed");
+      const m = rows(s, "marks")[0]; m.cells = ["prod_tasks", "org_acme", "9", "10:15:02.180"]; m.st = "changed";
+      s.tx.push({ id: "carol", st: "committed" });
+      s.mem.carol = { collected: ["org_acme"], response: "held" };
+    },
+  },
+  {
+    title: "Carol's replay waits for the lock", actor: "carol", dot: "--carol",
+    note: `<ul><li>Carol's handler has returned. Her middleware starts its replay for <code>org_acme</code>.</li>
+<li>Bob's sync holds the Product's lock, so her try fails. She retries with backoff for up to 3 s.</li></ul>`,
+    code: `BEGIN;\nSELECT pg_try_advisory_xact_lock(<hash of 'authz-sync:prod_tasks'>);   -- false\nROLLBACK;   -- wait, then try again`,
+    apply: s => { s.lock.waiters = ["csync"]; s.mem.carol.response = "held, replay waiting"; },
+  },
+  {
+    title: "Bob's sync: diff and write", actor: "fga", dot: "--fga",
+    note: `<ul><li>Bob's sync diffs with the state it read before Carol committed. It writes only Bob's tuple.</li>
+<li>The store does not have Carol yet. That is fine, because her mark still waits.</li></ul>`,
+    code: `model.Diff(stored, desired)   // Writes: [… # assignee @ user:pu_bob]\nengine.Write(…)               // its own transaction, committed at once`,
+    apply: s => {
+      markRead(s, "tuple");
+      s.work.stored = 4; s.work.writes = [BOB_TUPLE];
+      add(s, "tuple", tup("role_assignment", "org_acme.role_admin", "assignee", "user:pu_bob"), "new");
+      add(s, "changelog", ["role_assignment", "org_acme.role_admin", "assignee", "user:pu_bob", "0 WRITE"], "new");
+      s.tx.push({ id: "fga", st: "committed" });
+    },
+  },
+  {
+    title: "Clear the mark · revision 8 is gone", actor: "replay", dot: "--sync",
+    note: `<ul><li>The sync tries to delete revision 8, but the mark is at revision 9 now. The delete removes <b>0 rows</b>.</li>
+<li>Without the revision check, this delete would remove Carol's mark, and nothing would add her to the store until the 15-minute reconcile.</li></ul>`,
+    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND organization_id = 'org_acme' AND revision = 8;   -- DELETE 0`,
+    apply: s => { markRead(s, "marks"); },
+  },
+  {
+    title: "COMMIT Bob's sync · Bob's 201 is sent", actor: "replay", dot: "--sync",
+    note: `<ul><li>The commit releases the lock, and Carol's waiting replay takes it on its next try.</li>
+<li>Bob's middleware returns, and Bob's client gets its 201.</li></ul>`,
+    code: `COMMIT;                  -- Bob's sync: lock released\nreturn response, err     // Bob's 201\n\n-- Carol's retry:\nBEGIN;\nSELECT pg_try_advisory_xact_lock(<hash of 'authz-sync:prod_tasks'>);   -- true`,
+    apply: s => {
+      commit(s, "sync"); s.work = null;
+      s.lock.holder = "csync"; s.lock.waiters = [];
+      s.tx.push({ id: "csync", st: "open" });
+      s.mem.bob.response = "sent"; s.mem.carol.response = "held, replay running";
+    },
+  },
+  {
+    title: "Carol's sync reads revision 9 and writes Carol", actor: "carol", dot: "--carol",
+    note: `<ul><li>Carol's sync reads the mark at revision 9 and reads Acme's state again: Alice, Bob and Carol.</li>
+<li>Bob's tuple is already in the store, so the diff has only Carol's tuple.</li>
+<li>The delete now matches revision 9 and removes the mark.</li></ul>`,
+    code: `SELECT * FROM authz_sync_marks WHERE product_id = 'prod_tasks';   -- (org_acme, revision 9)\nOrganizationState → alice, bob, carol\nmodel.Diff → Writes: [… # assignee @ user:pu_carol]\nengine.Write(…)\nDELETE FROM authz_sync_marks WHERE … AND revision = 9;   -- DELETE 1`,
+    apply: s => {
+      markRead(s, "memberships");
+      s.work = { rev: 9, desired: [...DESIRED_BOB, CAROL_TUPLE], stored: 5, writes: [CAROL_TUPLE] };
+      add(s, "tuple", tup("role_assignment", "org_acme.role_admin", "assignee", "user:pu_carol"), "new");
+      add(s, "changelog", ["role_assignment", "org_acme.role_admin", "assignee", "user:pu_carol", "0 WRITE"], "new");
+      s.tx.push({ id: "fga", st: "committed" });
+      const m = rows(s, "marks")[0]; m.st = "delpending"; m.tx = "csync";
+    },
+  },
+  {
+    title: "COMMIT Carol's sync · Carol's 201 is sent", actor: "carol", dot: "--carol",
+    note: `<ul><li>Both members are in Postgres and in the store, and no mark waits.</li>
+<li>Bob's sync ran before Carol committed, and no step was lost. The revision kept her mark alive.</li></ul>`,
+    code: `COMMIT;                -- mark gone, lock released\nreturn response, err   // Carol's 201`,
+    apply: s => { commit(s, "csync"); s.lock.holder = null; s.work = null; s.mem.carol.response = "sent"; },
+  },
+];
+
+function build(steps) {
+  const states = [];
+  let s = structuredClone(initial);
+  for (const step of steps) { s = reset(s); step.apply(s); states.push(s); }
+  return states;
+}
+const SCEN = {
+  happy: { steps: [...common, ...happy] },
+  race:  { steps: [...common, ...race] },
+};
+for (const k in SCEN) SCEN[k].states = build(SCEN[k].steps);
+
+let scen = "happy", idx = 0;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const v = name => `var(${name})`;
+
+function txTag(id) {
+  const t = TX[id];
+  return `<span class="tag" style="color:${v(t.c)};background:${v(t.bg)}">${t.label}</span>`;
+}
+
+function renderTable(key, s) {
+  const def = TABLES[key];
+  const list = s.t[key];
+  let body;
+  if (!list.length) {
+    body = `<tr><td colspan="${def.cols.length}" class="empty" style="font-family:inherit">no rows</td></tr>`;
+  } else {
+    body = list.map(r => {
+      const style = r.tx ? `style="--pc:${v(TX[r.tx].c)};--pbg:${v(TX[r.tx].bg)}"` : "";
+      const tag = r.tx ? txTag(r.tx) : "";
+      const cells = r.cells.map((c, i) => `<td>${esc(c)}${i === r.cells.length - 1 ? tag : ""}</td>`).join("");
+      return `<tr class="${r.st}" ${style}>${cells}</tr>`;
+    }).join("");
+  }
+  let extra = "";
+  if (key === "marks") extra = `<div class="seq">sequence <code>authz_sync_mark_revisions</code> last_value = <b>${s.seq}</b></div>`;
+  if (key === "changelog") extra = `<div class="seq">Earlier rows are hidden. <code>operation</code>: 0 = WRITE, 1 = DELETE.</div>`;
+  if (key === "jobs") extra = `<div class="seq">The webhook worker reads these later. They play no part in the sync.</div>`;
+  return `<div class="card panel"><h3>${def.name} <span class="schema">${list.length} row${list.length === 1 ? "" : "s"}</span></h3>
+    <div class="tw"><table><thead><tr>${def.cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>${extra}</div>`;
+}
+
+function respChip(r) {
+  const map = {
+    building: ["handler running", "--req", "--req-bg"],
+    held: ["201 held, not sent", "--carol", "--carol-bg"],
+    "held, replay waiting": ["201 held · replay waits for lock", "--carol", "--carol-bg"],
+    "held, replay running": ["201 held · replay running", "--carol", "--carol-bg"],
+    sent: ["201 sent to client", "--ok", "--ok-bg"],
+  };
+  const [label, c, bg] = map[r];
+  return `<span class="resp" style="color:${v(c)};background:${v(bg)}">${label}</span>`;
+}
+
+function renderMem(s) {
+  const part = (who, m) => !m ? "" : `<div style="margin-bottom:8px"><b>${who}</b>
+    <div class="kv" style="margin-top:3px"><span>marked</span><span class="mono">${m.collected.length ? m.collected.join(", ") : "[ ]"}</span>
+    <span>response</span><span>${respChip(m.response)}</span></div></div>`;
+  const out = part("Bob's request", s.mem.bob) + part("Carol's request", s.mem.carol);
+  return out || `<div class="empty">no request yet</div>`;
+}
+
+function renderTx(s) {
+  if (!s.tx.length) return `<div class="empty">none open</div>`;
+  return s.tx.map(x => {
+    const t = TX[x.id];
+    const st = x.st === "open" ? "OPEN" : "COMMITTED";
+    return `<div class="txn" style="background:${v(t.bg)};color:${v(t.c)}"><b>${t.label}</b><span class="st">${st}</span></div>`;
+  }).join("");
+}
+
+function renderLock(s) {
+  const key = `<div class="mono" style="color:var(--muted);margin-bottom:6px">authz-sync:prod_tasks</div>`;
+  if (!s.lock.holder) return key + `<div class="lock" style="background:var(--code-bg);color:var(--muted)">free</div>`;
+  const t = TX[s.lock.holder];
+  const waiters = s.lock.waiters.map(w => `<div class="lock" style="margin-top:5px;border:1px dashed ${v(TX[w].c)};color:${v(TX[w].c)}">waiting: ${TX[w].label}</div>`).join("");
+  return key + `<div class="lock" style="background:${v(t.bg)};color:${v(t.c)}"><b>held by</b> ${t.label}</div>` + waiters;
+}
+
+function renderWork(s) {
+  const w = s.work;
+  if (!w) return `<div class="empty">no sync running</div>`;
+  let h = `<div class="kv"><span>mark revision read</span><span class="mono">${w.rev}</span>`;
+  if (w.desired) h += `<span>desired (Postgres)</span><span class="mono">${w.desired.length} tuples</span>`;
+  if (w.stored != null) h += `<span>stored (OpenFGA)</span><span class="mono">${w.stored} tuples</span>`;
+  h += `</div>`;
+  if (w.writes) h += `<div style="margin-top:6px;font-size:12px;color:var(--muted)">Diff → writes</div><ul class="list">${w.writes.map(x => `<li class="w">+ ${esc(x)}</li>`).join("")}</ul><div style="font-size:12px;color:var(--muted)">deletes: none</div>`;
+  return h;
+}
+
+function render() {
+  const S = SCEN[scen];
+  const step = S.steps[idx], s = S.states[idx];
+  $("steps").innerHTML = S.steps.map((st, i) =>
+    `<button class="${i === idx ? "on" : ""}" data-i="${i}"><span class="n">${i + 1}</span><i class="dot" style="background:${v(st.dot)}"></i><span>${st.title}</span></button>`).join("");
+  $("title").textContent = `${idx + 1}. ${step.title}`;
+  const a = ACTOR[step.actor];
+  $("actor").innerHTML = `<i style="background:${v(a.c)}"></i>${a.label}`;
+  $("note").innerHTML = step.note;
+  $("code").textContent = step.code;
+  $("mem").innerHTML = renderMem(s);
+  $("tx").innerHTML = renderTx(s);
+  $("lock").innerHTML = renderLock(s);
+  $("work").innerHTML = renderWork(s);
+  $("public").innerHTML = ["memberships", "jobs", "marks", "stores"].map(k => renderTable(k, s)).join("");
+  $("openfga").innerHTML = ["tuple", "changelog"].map(k => renderTable(k, s)).join("");
+  $("count").textContent = `${idx + 1} / ${S.steps.length}`;
+  $("prev").disabled = idx === 0;
+  $("next").disabled = idx === S.steps.length - 1;
+}
+
+$("steps").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { idx = +b.dataset.i; render(); } });
+$("prev").onclick = () => { if (idx > 0) { idx--; render(); } };
+$("next").onclick = () => { if (idx < SCEN[scen].steps.length - 1) { idx++; render(); } };
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  scen = b.dataset.s;
+  idx = Math.min(idx, SCEN[scen].steps.length - 1);
+  if (idx >= common.length) idx = common.length;  // land on the first step where the scenarios differ
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  render();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") $("next").click();
+  if (e.key === "ArrowLeft") $("prev").click();
+});
+render();
+</script>
+</body>
+</html>
