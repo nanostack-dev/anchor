@@ -23,9 +23,12 @@ export const ROUTE_PATHS = {
 	PRODUCT_USERS: "/products/users",
 	PRODUCT_RESOURCE_TYPES: "/products/resources/types",
 	PRODUCT_ROLES: "/products/resources/roles",
+	PRODUCT_ROLE_NEW: "/products/resources/roles/new",
 	PRODUCT_ROLE_DETAIL: "/products/resources/roles/$roleId",
 	PRODUCT_PERMISSIONS: "/products/permissions",
 	PRODUCT_RESOURCES_PERMISSIONS: "/products/resources/permissions",
+	// Outside /permissions/ because a permission may be named "new".
+	PRODUCT_RESOURCE_PERMISSION_NEW: "/products/resources/new-permission",
 	PRODUCT_RESOURCE_PERMISSION_DETAIL:
 		"/products/resources/permissions/$permissionName",
 	PRODUCT_EDIT: "/products/$productId/edit",
@@ -38,6 +41,7 @@ export const ROUTE_PATHS = {
 	PRODUCT_LICENSE_TEMPLATE_DETAIL: "/products/licensing/templates/$templateId",
 	ORGANIZATION_LICENSE: "/organizations/license",
 	ORGANIZATION_LICENSE_DETAIL: "/organizations/license/$organizationId",
+	ORGANIZATION_ROLES: "/organizations/license/$organizationId/roles",
 
 	// Organization routes
 	ORGANIZATIONS: "/organizations",

@@ -16,9 +16,7 @@ export const paths = {
 };
 
 export const row = (page: Page, name: string) =>
-	page
-		.getByRole("row")
-		.filter({ has: page.getByRole("cell", { name, exact: true }) });
+	page.getByRole("row").filter({ has: page.getByText(name, { exact: true }) });
 
 export async function permission(world: World, prefix = "document:read") {
 	return world.api.post<ProductResourcePermissionResponse>(

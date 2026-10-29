@@ -88,6 +88,10 @@ In the domain, `organization.Membership.Role` and `user.OrganizationMembership.R
 
 A resource type that a custom role is scoped to is in use (`CountUsage`), and a tree change checks custom roles' permission scopes as it checks managed ones (`FindRoleBundles`).
 
+## Admin UI
+
+An Organization's page in the admin UI has a read-only *Roles* section that lists the roles its members may hold, each marked managed or custom ([Resource types](resource-types.md#roles-and-permissions-pages)). The admin UI never changes custom roles: the Product calls the routes above from its own settings page.
+
 ## Rollout
 
 This ships in steps, because a rolling deploy runs the previous release beside the next one:

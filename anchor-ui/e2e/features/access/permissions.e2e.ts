@@ -91,7 +91,7 @@ test("access.permission-list: sorting, pagination, name facets and empty search 
 	await expect(page.getByText("12 total", { exact: true })).toBeVisible();
 });
 
-// Covers: PRODUCT_RESOURCES_PERMISSIONS, PRODUCT_RESOURCE_PERMISSION_DETAIL
+// Covers: PRODUCT_RESOURCES_PERMISSIONS, PRODUCT_RESOURCE_PERMISSION_NEW, PRODUCT_RESOURCE_PERMISSION_DETAIL
 test("access.permission-lifecycle: create, view, cancel edit, persist description and delete permission", async ({
 	page,
 	world,
@@ -100,30 +100,33 @@ test("access.permission-lifecycle: create, view, cancel edit, persist descriptio
 	await selectProduct(page, world.product);
 	await page.goto(paths.permissions);
 	await page
-		.getByRole("button", { name: "Create Permission", exact: true })
+		.getByRole("link", { name: "Create Permission", exact: true })
 		.click();
-	const create = page.getByRole("dialog", {
-		name: "Create Product Permission",
+	await expect(
+		page.getByRole("heading", { name: "New permission", exact: true }),
+	).toBeVisible();
+	const resourceType = page.getByRole("combobox", {
+		name: "Resource type",
+		exact: true,
 	});
+	await expect(resourceType).toContainText("Choose a resource type");
 	await expect(
-		create.getByRole("button", { name: "Create Permission", exact: true }),
+		page.getByRole("button", { name: "Create permission", exact: true }),
 	).toBeDisabled();
-	await create.getByLabel("Name", { exact: true }).fill(name);
-	await expect(
-		create.getByRole("combobox", { name: "Resource type", exact: true }),
-	).toContainText("Organization");
-	await create
+	await resourceType.click();
+	await page.getByRole("option", { name: "Organization", exact: true }).click();
+	await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+		"organization:",
+	);
+	await page.getByLabel("Name", { exact: true }).fill(name);
+	await page
 		.getByLabel("Description", { exact: true })
 		.fill("Initial description");
 	await captureReviewCheckpoint(page, testInfo, "permission-resource-type");
-	await create
-		.getByRole("button", { name: "Create Permission", exact: true })
+	await page
+		.getByRole("button", { name: "Create permission", exact: true })
 		.click();
-	await expect(create).toHaveCount(0);
-	await expect(row(page, name)).toBeVisible();
-	await row(page, name)
-		.getByRole("link", { name: `View ${name}`, exact: true })
-		.click();
+	await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 	await expect(
 		page.getByRole("region", { name: "Resource permission details" }),
 	).toContainText("Initial description");

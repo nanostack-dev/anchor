@@ -5,6 +5,8 @@ import {
 	updateProductResourcePermissionMutation,
 } from "@/client/@tanstack/react-query.gen";
 import { Page } from "@/components/common/Page";
+import { useScopeTypes } from "@/components/product/resource-types/ResourceTypeSelect";
+import { typeName } from "@/components/product/resource-types/resource-type-scope";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
@@ -35,6 +37,10 @@ export function ProductResourcePermissionDetailView({
 	onSaved,
 }: ProductResourcePermissionDetailViewProps) {
 	const queryClient = useQueryClient();
+	const scopeName = typeName(
+		useScopeTypes(productId).data ?? [],
+		permission.resource_type,
+	);
 	const [description, setDescription] = useState(permission.description ?? "");
 	const updateMutation = useMutation({
 		...updateProductResourcePermissionMutation(),
@@ -118,6 +124,18 @@ export function ProductResourcePermissionDetailView({
 						</Box>
 					</Box>
 					<Box className="space-y-2">
+						<Label htmlFor="permission-resource-type">Resource type</Label>
+						<Input
+							id="permission-resource-type"
+							value={scopeName}
+							readOnly
+							disabled
+						/>
+						<Box as="p" className="text-sm text-muted-foreground">
+							A permission's resource type never changes.
+						</Box>
+					</Box>
+					<Box className="space-y-2">
 						<Label htmlFor="permission-description">Description</Label>
 						<Textarea
 							id="permission-description"
@@ -156,6 +174,10 @@ export function ProductResourcePermissionDetailView({
 						<div>
 							<dt className="text-sm text-muted-foreground">Name</dt>
 							<dd className="mt-1 font-medium">{permission.name}</dd>
+						</div>
+						<div>
+							<dt className="text-sm text-muted-foreground">Resource type</dt>
+							<dd className="mt-1 [overflow-wrap:anywhere]">{scopeName}</dd>
 						</div>
 						<div>
 							<dt className="text-sm text-muted-foreground">Description</dt>

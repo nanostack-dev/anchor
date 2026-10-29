@@ -1,7 +1,12 @@
-import { type ProductRoleResponse, ProductRoleType, client } from "@/client";
+import { type ProductRoleResponse, ProductRoleType } from "@/client";
 import { RouterLink } from "@/components/layout/router-link";
 import { ProductRoleDatatable } from "@/components/product/roles/ProductRoleDatatable";
 import { ProductProvider } from "@/context/product/ProductContext";
+import {
+	mockAccessBackend,
+	storyPermission,
+	storyType,
+} from "@/lib/storybook/access-backend";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -20,7 +25,7 @@ import ProductRoleDetailPage from "./product-role-detail";
 
 const ROLE: ProductRoleResponse = {
 	id: "role_test",
-	product_id: "prd_test",
+	product_id: "prd_2Nq8xKf3pLmR",
 	name: "Editor",
 	description: "Edit customer invoices",
 	resource_type: "organization",
@@ -56,7 +61,7 @@ function RoleRouteHarness({ initialPath }: { initialPath: string }) {
 		const list = createRoute({
 			getParentRoute: () => root,
 			path: LIST_PATH,
-			component: () => <ProductRoleDatatable productId="prd_test" />,
+			component: () => <ProductRoleDatatable productId="prd_2Nq8xKf3pLmR" />,
 		});
 		const detail = createRoute({
 			getParentRoute: () => root,
@@ -87,67 +92,15 @@ const meta = {
 	component: RoleRouteHarness,
 	args: { initialPath: LIST_PATH },
 	parameters: { layout: "fullscreen", saveStatus: 200 },
-	beforeEach: ({ parameters }) => {
-		const previous = client.getConfig();
-		let saved = ROLE;
-		client.setConfig({
-			baseUrl: window.location.origin,
-			fetch: async (request) => {
-				if (!(request instanceof Request)) throw new Error("Expected Request");
-				const path = decodeURIComponent(new URL(request.url).pathname);
-				if (path === "/v1/products/search")
-					return Response.json({
-						items: [
-							{
-								id: "prd_test",
-								tenant_id: "tenant_test",
-								name: "Echopoint",
-								created_at: ROLE.created_at,
-								updated_at: ROLE.updated_at,
-							},
-						],
-						total: 1,
-					});
-				if (path.endsWith("/roles/search"))
-					return Response.json({ items: [saved], total: 1 });
-				if (path.endsWith("/resource-permissions/search"))
-					return Response.json({
-						items: [
-							{
-								product_id: "prd_test",
-								name: "invoices:read",
-								description: "Read invoices",
-								created_at: ROLE.created_at,
-								updated_at: ROLE.updated_at,
-							},
-						],
-						total: 1,
-					});
-				if (path.endsWith("/roles/role_test")) {
-					if (request.method === "PUT") {
-						if (parameters.saveStatus !== 200)
-							return Response.json(
-								{ message: "Update failed" },
-								{ status: parameters.saveStatus },
-							);
-						const body = await request.json();
-						saved = {
-							...saved,
-							...body,
-							permissions: body.permissions.map((permission_name: string) => ({
-								product_id: "prd_test",
-								product_role_id: "role_test",
-								permission_name,
-							})),
-						};
-					}
-					return Response.json(saved);
-				}
-				throw new Error(`Unexpected request: ${request.method} ${path}`);
-			},
-		});
-		return () => client.setConfig(previous);
-	},
+	beforeEach: ({ parameters }) =>
+		mockAccessBackend({
+			types: [storyType("organization", "Organization")],
+			roles: [ROLE],
+			permissions: [
+				storyPermission("invoices:read", "organization", "Read invoices"),
+			],
+			saveStatus: parameters.saveStatus,
+		}).restore,
 } satisfies Meta<typeof RoleRouteHarness>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -192,7 +145,7 @@ async function advanceToReview(canvasElement: HTMLElement) {
 		await canvas.findByRole("button", { name: "Continue" }),
 	);
 	await expect(
-		await canvas.findByRole("button", { name: "Save Changes" }),
+		await canvas.findByRole("button", { name: "Save changes" }),
 	).toBeVisible();
 }
 
@@ -200,11 +153,11 @@ export const SaveReturnsToView: Story = {
 	args: { initialPath: `${DETAIL_PATH}?edit=true` },
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		const name = await canvas.findByRole("textbox", { name: /Role Name/ });
+		const name = await canvas.findByRole("textbox", { name: "Name" });
 		await userEvent.clear(name);
 		await userEvent.type(name, "Senior Editor");
 		await advanceToReview(canvasElement);
-		await userEvent.click(canvas.getByRole("button", { name: "Save Changes" }));
+		await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
 		await waitFor(() =>
 			expect(
 				canvas.getByRole("heading", { name: "Senior Editor", level: 1 }),
@@ -219,11 +172,11 @@ export const FailedSaveKeepsDraft: Story = {
 	parameters: { saveStatus: 500 },
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
-		const name = await canvas.findByRole("textbox", { name: /Role Name/ });
+		const name = await canvas.findByRole("textbox", { name: "Name" });
 		await userEvent.clear(name);
 		await userEvent.type(name, "Unsent Editor");
 		await advanceToReview(canvasElement);
-		await userEvent.click(canvas.getByRole("button", { name: "Save Changes" }));
+		await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
 		await expect(await canvas.findByRole("alert")).toBeVisible();
 		await expect(
 			canvas.getByRole("heading", { name: "Edit Editor", level: 1 }),

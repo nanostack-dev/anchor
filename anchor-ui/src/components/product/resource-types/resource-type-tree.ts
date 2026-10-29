@@ -15,6 +15,7 @@ export interface TreeType {
 	description?: string | null;
 	parents: string[];
 	nestsInItself: boolean;
+	customRoles: boolean;
 	builtIn: boolean;
 	published: boolean;
 	slugEdited: boolean;
@@ -38,6 +39,7 @@ export function treeFromResponse(
 			return key ? [key] : [];
 		}),
 		nestsInItself: type.nests_in_itself,
+		customRoles: type.allows_custom_roles,
 		builtIn: type.built_in,
 		published: true,
 		slugEdited: false,
@@ -180,6 +182,7 @@ export function addChild(
 			name: "",
 			parents: [parentKey],
 			nestsInItself: false,
+			customRoles: false,
 			builtIn: false,
 			published: false,
 			slugEdited: false,
@@ -280,6 +283,7 @@ export interface DraftSummary {
 	renamed: number;
 	changed: number;
 	deleted: number;
+	switched: number;
 }
 
 const sameSet = (left: string[], right: string[]) =>
@@ -291,7 +295,7 @@ export function summarizeDraft(
 ): DraftSummary {
 	const before = new Map(published.map((type) => [type.key, type]));
 	const after = new Set(draft.map((type) => type.key));
-	const summary = { added: 0, renamed: 0, changed: 0, deleted: 0 };
+	const summary = { added: 0, renamed: 0, changed: 0, deleted: 0, switched: 0 };
 	for (const type of draft) {
 		const previous = before.get(type.key);
 		if (!previous) {
@@ -304,6 +308,7 @@ export function summarizeDraft(
 			!sameSet(previous.parents, type.parents)
 		)
 			summary.changed++;
+		if (previous.customRoles !== type.customRoles) summary.switched++;
 	}
 	for (const type of published) if (!after.has(type.key)) summary.deleted++;
 	return summary;
@@ -311,7 +316,12 @@ export function summarizeDraft(
 
 export function hasChanges(summary: DraftSummary) {
 	return (
-		summary.added + summary.renamed + summary.changed + summary.deleted > 0
+		summary.added +
+			summary.renamed +
+			summary.changed +
+			summary.deleted +
+			summary.switched >
+		0
 	);
 }
 
@@ -322,10 +332,28 @@ export function describeDraft(summary: DraftSummary) {
 		summary.renamed && `${summary.renamed} renamed`,
 		summary.changed && `${summary.changed} changed`,
 		summary.deleted && `${summary.deleted} deleted`,
+		summary.switched &&
+			`custom roles switched on ${summary.switched} ${summary.switched === 1 ? "type" : "types"}`,
 	].filter(Boolean);
 	return parts.length ? parts.join(", ") : "No changes yet";
 }
 
 export function plural(count: number, one: string, many: string) {
 	return `${count} ${count === 1 ? one : many}`;
+}
+
+/** The published types whose custom roles switch the draft changes: Anchor saves the switch per type, outside the tree. */
+export function switchChanges(published: TreeType[], draft: TreeType[]) {
+	const before = new Map(published.map((type) => [type.key, type]));
+	return draft.filter((type) => {
+		const previous = before.get(type.key);
+		return previous && previous.customRoles !== type.customRoles;
+	});
+}
+
+/** True when the draft changes the tree itself, not only custom roles switches. */
+export function treeChanged(summary: DraftSummary) {
+	return (
+		summary.added + summary.renamed + summary.changed + summary.deleted > 0
+	);
 }

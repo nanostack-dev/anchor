@@ -14,6 +14,7 @@
 			"anchor-ui/e2e/features/access/permissions.e2e.ts",
 			"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 			"anchor-ui/e2e/features/access/roles.e2e.ts",
+			"anchor-ui/e2e/features/access/scoped-roles.e2e.ts",
 			"anchor-ui/e2e/features/access/tenancy.e2e.ts"
 		],
 		"licensing": [
@@ -179,6 +180,7 @@
 				"anchor-ui/e2e/features/access/permissions.e2e.ts",
 				"anchor-ui/e2e/features/access/resource-types.e2e.ts",
 				"anchor-ui/e2e/features/access/roles.e2e.ts",
+				"anchor-ui/e2e/features/access/scoped-roles.e2e.ts",
 				"anchor-ui/e2e/features/access/tenancy.e2e.ts"
 			]
 		},
@@ -268,12 +270,15 @@
 				"anchor-ui/src/pages/resource-permissions.tsx",
 				"anchor-ui/src/pages/product-resource-permission-detail.tsx",
 				"anchor-ui/src/pages/product-resource-permission-detail.stories.tsx",
+				"anchor-ui/src/pages/product-resource-permission-new.tsx",
 				"anchor-ui/src/pages/product-role-detail.tsx",
 				"anchor-ui/src/pages/product-role-detail.stories.tsx",
+				"anchor-ui/src/pages/product-role-new.tsx",
 				"anchor-ui/src/pages/product-resource-types.tsx",
 				"anchor-ui/src/pages/product-roles.tsx",
 				"anchor-ui/src/pages/product-users.tsx",
 				"anchor-ui/src/pages/organizations.tsx",
+				"anchor-ui/src/pages/organization-roles.tsx",
 				"anchor-ui/src/pages/organization-memberships.tsx",
 				"anchor-ui/src/pages/organization-api-keys.tsx",
 				"anchor-ui/src/pages/workspaces.tsx",

@@ -2,6 +2,7 @@ import { type ProductResourcePermissionResponse, client } from "@/client";
 import { RouterLink } from "@/components/layout/router-link";
 import { ProductResourcePermissionDatatable } from "@/components/product/permissions/ProductResourcePermissionDatatable";
 import { ProductProvider } from "@/context/product/ProductContext";
+import { storyType } from "@/lib/storybook/access-backend";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { DesignSystemProvider } from "@nanostackorg/design-system/provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -98,7 +99,7 @@ const meta = {
 							{
 								id: "prd_test",
 								tenant_id: "tenant_test",
-								name: "Echopoint",
+								name: "Lumen Docs",
 								created_at: PERMISSION.created_at,
 								updated_at: PERMISSION.updated_at,
 							},
@@ -107,6 +108,13 @@ const meta = {
 					});
 				if (path.endsWith("/resource-permissions/search"))
 					return Response.json({ items: [saved], total: 1 });
+				if (path.endsWith("/resource-types/search"))
+					return Response.json({
+						items: [storyType("organization", "Organization")],
+						total: 1,
+					});
+				if (path.endsWith("/roles/search"))
+					return Response.json({ items: [], total: 0 });
 				if (path.endsWith("/resource-permissions/invoices:read")) {
 					if (request.method === "PUT") {
 						if (parameters.saveStatus !== 200)

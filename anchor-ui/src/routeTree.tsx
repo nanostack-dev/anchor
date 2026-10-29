@@ -8,6 +8,7 @@ import {
 	organizationLicenseDetailRoute,
 	organizationLicenseUsageRoute,
 	organizationLicenseValuesRoute,
+	organizationRolesRoute,
 } from "@/routes/organizations/organization-license.$organizationId";
 import { organizationMembershipsRoute } from "@/routes/organizations/organization-memberships";
 import { organizationsRoute } from "@/routes/organizations/organizations";
@@ -40,7 +41,9 @@ import { productApiKeysRoute } from "@/routes/products/product-api-keys";
 import { productEventsRoute } from "@/routes/products/product-events";
 import {
 	productResourcePermissionDetailRoute,
+	productResourcePermissionNewRoute,
 	productRoleDetailRoute,
+	productRoleNewRoute,
 } from "@/routes/products/product-resource-details";
 import { productResourcePermissionsRoute } from "@/routes/products/product-resource-permissions";
 import { productResourceTypesRoute } from "@/routes/products/product-resource-types";
@@ -65,8 +68,10 @@ const routeTree = rootRoute.addChildren([
 	productUsersRoute,
 	productResourceTypesRoute,
 	productRolesRoute,
+	productRoleNewRoute,
 	productRoleDetailRoute,
 	productResourcePermissionsRoute,
+	productResourcePermissionNewRoute,
 	productResourcePermissionDetailRoute,
 	productPermissionsRoute,
 	organizationsRoute,
@@ -78,6 +83,7 @@ const routeTree = rootRoute.addChildren([
 		organizationLicenseUsageRoute,
 		organizationLicenseChangesRoute,
 		organizationLicenseValuesRoute,
+		organizationRolesRoute,
 	]),
 	workspacesRoute,
 	workspaceMembershipsRoute,

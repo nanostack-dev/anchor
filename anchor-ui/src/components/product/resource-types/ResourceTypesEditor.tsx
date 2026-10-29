@@ -1,8 +1,10 @@
+import { updateProductResourceType } from "@/client";
 import {
 	replaceProductResourceTypesMutation,
 	searchProductResourcePermissionsOptions,
 	searchProductRolesOptions,
 } from "@/client/@tanstack/react-query.gen";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { ConfirmDialog } from "@nanostackorg/design-system/blocks/confirm-dialog";
 import {
 	Alert,
@@ -40,7 +42,9 @@ import {
 	rename,
 	setSlug,
 	summarizeDraft,
+	switchChanges,
 	toggleParent,
+	treeChanged,
 	treeFromResponse,
 	treeRequest,
 	updateType,
@@ -273,6 +277,58 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			toast.add({ type: "success", title: "Resource types published" });
 		},
 	});
+	const switches = useMutation({
+		mutationFn: async (changed: TreeType[]) => {
+			for (const type of changed)
+				await updateProductResourceType({
+					path: { product_id: productId, resource_type_id: type.key },
+					body: { allows_custom_roles: type.customRoles },
+					throwOnError: true,
+				});
+		},
+		onSettled: () =>
+			queryClient.invalidateQueries({
+				queryKey: resourceTypesQueryKey(productId),
+			}),
+	});
+	const closeDraft = (announcement: string) => {
+		setState((current) => ({
+			...current,
+			draft: null,
+			naming: null,
+			fresh: null,
+			entering: new Set(),
+			instant: true,
+			toolbarFocus: current.toolbarFocus + 1,
+			announcement,
+		}));
+		toast.add({ type: "success", title: "Resource types published" });
+	};
+	const publishDraft = async () => {
+		const draft = state.draft;
+		if (!draft) return;
+		const changedSwitches = switchChanges(published, draft);
+		const changedTree = treeChanged(summarizeDraft(published, draft));
+		if (changedSwitches.length) {
+			try {
+				await switches.mutateAsync(changedSwitches);
+			} catch {
+				return;
+			}
+			if (changedTree)
+				toast.add({
+					type: "success",
+					title: "Custom roles saved",
+					description: "Publishing the tree next.",
+				});
+		}
+		if (changedTree)
+			publish.mutate({
+				path: { product_id: productId },
+				body: { resource_types: treeRequest(draft) },
+			});
+		else closeDraft("Custom roles saved.");
+	};
 	const announce = useCallback((announcement: string) => {
 		setState((current) => ({ ...current, announcement }));
 	}, []);
@@ -402,6 +458,7 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 
 	const startEditing = () => {
 		publish.reset();
+		switches.reset();
 		setState((current) => {
 			const target =
 				published.find((type) => type.key === current.selected)?.key ??
@@ -420,6 +477,7 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 
 	const discard = () => {
 		publish.reset();
+		switches.reset();
 		setState((current) => ({
 			...current,
 			draft: null,
@@ -496,7 +554,14 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			JSON.stringify(treeRequest(state.draft))
 			? publishProblems(publish.error, nameOf)
 			: [];
-	const locked = editing && publish.isPending;
+	const publishing = publish.isPending || switches.isPending;
+	const locked = editing && publishing;
+	const switchFailure =
+		switches.isError &&
+		state.draft &&
+		switchChanges(published, state.draft).length > 0
+			? (getApiErrorMessage(switches.error) ?? "Try again in a moment.")
+			: undefined;
 	const deletingType = types.find((type) => type.key === state.deleting?.key);
 	if (deletingType) lastDeleting.current = deletingType;
 	const dialogType = deletingType ?? lastDeleting.current;
@@ -526,30 +591,20 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 				<Box ref={toolbar}>
 					{editing ? (
 						<Inline space="sm">
-							<Button
-								variant="outline"
-								onClick={discard}
-								disabled={publish.isPending}
-							>
+							<Button variant="outline" onClick={discard} disabled={publishing}>
 								Discard
 							</Button>
 							<Button
 								variant="solid"
 								tone="brand"
-								loading={publish.isPending}
+								loading={publishing}
 								disabled={
 									!summary ||
 									!hasChanges(summary) ||
 									problems.length > 0 ||
 									state.naming !== null
 								}
-								onClick={() =>
-									state.draft &&
-									publish.mutate({
-										path: { product_id: productId },
-										body: { resource_types: treeRequest(state.draft) },
-									})
-								}
+								onClick={() => void publishDraft()}
 							>
 								Publish
 							</Button>
@@ -567,6 +622,13 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 					Hover or select a type, then use + to add a type under it. Keys:
 					arrows move, Enter renames, N adds a type under, Delete removes.
 				</Text>
+			)}
+
+			{switchFailure && (
+				<Alert tone="critical" icon={WarningCircleIcon}>
+					<AlertTitle>Anchor didn't save the custom roles switch</AlertTitle>
+					<AlertDescription>{switchFailure}</AlertDescription>
+				</Alert>
 			)}
 
 			{failures.length > 0 && (
@@ -656,6 +718,15 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 							updateType(draft, selected.key, (type) => ({
 								...type,
 								nestsInItself: nests,
+							})),
+						)
+					}
+					onCustomRolesChange={(on) =>
+						selected &&
+						changeDraft((draft) =>
+							updateType(draft, selected.key, (type) => ({
+								...type,
+								customRoles: on,
 							})),
 						)
 					}
