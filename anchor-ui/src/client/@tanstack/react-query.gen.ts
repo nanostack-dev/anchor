@@ -1758,7 +1758,7 @@ export const searchOrganizationRolesOptions = (options: Options<SearchOrganizati
 /**
  * Create Organization Custom Role
  *
- * Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+ * Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
  */
 export const createOrganizationRoleMutation = (options?: Partial<Options<CreateOrganizationRoleData>>): UseMutationOptions<CreateOrganizationRoleResponse, CreateOrganizationRoleError, Options<CreateOrganizationRoleData>> => {
     const mutationOptions: UseMutationOptions<CreateOrganizationRoleResponse, CreateOrganizationRoleError, Options<CreateOrganizationRoleData>> = {

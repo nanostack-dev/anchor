@@ -1569,7 +1569,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRoleWithBody Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1578,7 +1578,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRole Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5141,7 +5141,7 @@ func (c *Client) PutResourceMember(ctx context.Context, productId ProductIdParam
 
 // CreateOrganizationRoleWithBody Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5160,7 +5160,7 @@ func (c *Client) CreateOrganizationRoleWithBody(ctx context.Context, productId P
 
 // CreateOrganizationRole Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -14772,7 +14772,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14781,7 +14781,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithResponse Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -27442,7 +27442,7 @@ func (c *ClientWithResponses) PutResourceMemberWithResponse(ctx context.Context,
 
 // CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27457,7 +27457,7 @@ func (c *ClientWithResponses) CreateOrganizationRoleWithBodyWithResponse(ctx con
 
 // CreateOrganizationRoleWithResponse Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

@@ -38,7 +38,7 @@ Managed role names are unique in their Product, regardless of case (`idx_product
 
 ## Custom roles
 
-An Organization creates its own roles through `/v1/products/{product_id}/organizations/{organization_id}/roles` (D9 phase 1), when the Product turns on `allows_custom_roles` on the `organization` resource type. The switch is off for every type at first; any other type answers `400 CUSTOM_ROLES_NOT_AVAILABLE` for now.
+An Organization creates its own roles through `/v1/products/{product_id}/organizations/{organization_id}/roles` (D9), scoped to a resource type whose `allows_custom_roles` the Product turned on. The switch is off for every type at first, and each switch opens custom roles of its own type only: with `project` on and `organization` off, a project custom role is created and an organization one answers `400 CUSTOM_ROLES_DISABLED`. The limit of 50 custom roles per Organization counts every type together.
 
 ```http
 PATCH /v1/products/prd_1/resource-types/rtype_org

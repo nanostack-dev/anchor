@@ -1549,6 +1549,8 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 </details>
 
 > **Implementation note (PR 3).** The switch is `allows_custom_roles`: nullable with no default, so a type the previous release writes during the deploy reads as off. Turning it off keeps the existing custom roles and the access they grant; the Organization can still delete them but not create or change them (`400 CUSTOM_ROLES_DISABLED`). See [managed and custom roles](../technical/managed-and-custom-roles.md#custom-roles).
+>
+> **Implementation note (PR 14).** Phase 2 is in: every resource type of the Product accepts `allows_custom_roles: true`, and `CUSTOM_ROLES_NOT_AVAILABLE` is gone. Each switch opens custom roles scoped to its own type only, under the same scope rule as any role (D1). The 50 custom roles of an Organization (D10) count every type together. The admin UI enables the switch on every published type.
 
 > **Q-D9.1** Is Organization behind the same switch, or always open to custom roles? *(recommended: behind the switch, off by default; each Product decides whether its customers write roles at all)*
 >

@@ -417,6 +417,48 @@ export const PublishError: Story = {
 	},
 };
 
+/** Roles Organizations own block a publish too; the admin UI can't change them, so it counts them apart. */
+export const PublishErrorOrganizationRoles: Story = {
+	parameters: {
+		backend: {
+			types: DOCUMENT_TREE,
+			roles: [{ id: "role_1", name: "Project editor" }],
+			publish: {
+				status: 409,
+				body: {
+					errors: [
+						{
+							code: "RESOURCE_TYPE_IN_USE",
+							message: "Roles would hold permissions outside their scope.",
+							metadata: {
+								blocked_by: { roles: 3 },
+								role_ids: ["role_1", "orole_2", "orole_3"],
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await startEditing(canvasElement);
+		await userEvent.click(await typeNode(canvasElement, "Document"));
+		await userEvent.click(
+			inspector(canvasElement).getByRole("checkbox", { name: "Folder" }),
+		);
+		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
+		await expect(
+			await canvas.findByText("Role to fix: Project editor."),
+		).toBeVisible();
+		await expect(
+			canvas.getByText(
+				"2 roles that Organizations created also need changing. Each Organization changes its own roles.",
+			),
+		).toBeVisible();
+	},
+};
+
 /** Anchor refuses to take away a parent type that resources still sit under. */
 export const PublishErrorResourcesUnderParent: Story = {
 	parameters: {
@@ -684,21 +726,23 @@ export const LinksToScopedPages: Story = {
 	},
 };
 
-/** Organization's custom roles switch is part of the draft; publishing saves it on its own, without the tree call. */
+/** Every type's custom roles switch is part of the draft; publishing saves each one on its own, without the tree call. */
 export const CustomRolesSwitch: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await startEditing(canvasElement);
 		await userEvent.click(await typeNode(canvasElement, "Folder"));
-		await expect(
-			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
-		).toHaveAttribute("aria-disabled", "true");
+		const folderSwitch = inspector(canvasElement).getByRole("switch", {
+			name: "Custom roles",
+		});
+		await expect(folderSwitch).not.toHaveAttribute("aria-disabled", "true");
+		await userEvent.click(folderSwitch);
 		await userEvent.click(await typeNode(canvasElement, "Organization"));
 		await userEvent.click(
 			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
 		);
 		await expect(
-			canvas.getByText("Draft: custom roles switched on 1 type"),
+			canvas.getByText("Draft: custom roles switched on 2 types"),
 		).toBeVisible();
 		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
 		await expect(
@@ -706,12 +750,41 @@ export const CustomRolesSwitch: Story = {
 		).toBeVisible();
 		await expect(published).toEqual([
 			{ patch: "rtype_organization", allows_custom_roles: true },
+			{ patch: "rtype_folder", allows_custom_roles: true },
 		]);
 		await waitFor(() =>
 			expect(
 				inspector(canvasElement).getByText("Custom roles on"),
 			).toBeVisible(),
 		);
+		await userEvent.click(await typeNode(canvasElement, "Folder"));
+		await expect(
+			inspector(canvasElement).getByText("Custom roles on"),
+		).toBeVisible();
+	},
+};
+
+/** A type the draft adds has no switch to save until it is published: the tree call doesn't carry it. */
+export const CustomRolesOnNewType: Story = {
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await startEditing(canvasElement);
+		await userEvent.click(await typeNode(canvasElement, "Folder"));
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Add a type under Folder" }),
+		);
+		await userEvent.type(
+			canvas.getByRole("textbox", { name: "New type name" }),
+			"Section{Enter}",
+		);
+		await expect(
+			inspector(canvasElement).getByRole("switch", { name: "Custom roles" }),
+		).toHaveAttribute("aria-disabled", "true");
+		await expect(
+			inspector(canvasElement).getByText(
+				"Publish this type first, then turn on its custom roles.",
+			),
+		).toBeVisible();
 	},
 };
 

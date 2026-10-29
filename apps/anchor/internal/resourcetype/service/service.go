@@ -197,9 +197,6 @@ func (s *service) Update(
 		if current.BuiltIn() && !onlySwitchChanged(current, changed) {
 			return resourcetype.ErrBuiltIn
 		}
-		if changed.AllowsCustomRoles && !current.AllowsCustomRoles && !current.BuiltIn() {
-			return resourcetype.ErrCustomRolesNotAvailable
-		}
 		if reshapes(current, changed) {
 			if err = s.checkReshape(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
 				return err

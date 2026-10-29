@@ -128,16 +128,16 @@ func TestCustomRoleSwitch(t *testing.T) {
 		requireAPIError(t, resp, resp.Body, http.StatusConflict, "BUILT_IN_RESOURCE_TYPE")
 	})
 
-	t.Run("A type of the product's own refuses custom roles", func(t *testing.T) {
+	t.Run("A type of the product's own accepts custom roles", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		project := product.ResourceTypes().CreateUnder("project", "organization")
 
-		resp := product.ResourceTypes().UpdateRaw(project.Id, ct.UpdateProductResourceTypeJSONRequestBody{
+		updated := product.ResourceTypes().Update(project.Id, ct.UpdateProductResourceTypeJSONRequestBody{
 			AllowsCustomRoles: new(true),
 		})
 
-		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "CUSTOM_ROLES_NOT_AVAILABLE")
+		assert.True(t, updated.AllowsCustomRoles)
 	})
 
 	t.Run("Turning the switch off keeps a custom role and the access it grants", func(t *testing.T) {

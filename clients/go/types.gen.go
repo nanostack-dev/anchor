@@ -3885,7 +3885,7 @@ type ProductResourceTypeTreeResponse struct {
 
 // ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
 type ProductResourceTypeUpdateRequest struct {
-	// AllowsCustomRoles Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
+	// AllowsCustomRoles Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Every type of the product accepts it, `organization` included, and each switch opens custom roles of its own type only. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
 	AllowsCustomRoles *bool   `json:"allows_custom_roles,omitempty"`
 	Description       *string `json:"description,omitempty"`
 	Name              *string `json:"name,omitempty"`

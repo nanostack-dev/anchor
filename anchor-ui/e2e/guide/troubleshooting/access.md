@@ -37,8 +37,8 @@ both the UI and the persisted API resource.
   with a link to a pre-scoped permission. `access.scoped-tables` checks the scope
   column, permission counts, the roles holding each
   permission and the canvas links filtered to a type.
-  `access.custom-roles-switch` publishes Organization's `allows_custom_roles` switch
-  with the draft; other types show it disabled. `access.organization-roles`
+  `access.custom-roles-switch` publishes the `allows_custom_roles` switch of
+  Organization and of a product's own type with the draft. `access.organization-roles`
   reads an organization's roles, read-only, marked managed or custom. The API
   sets the switch and creates the custom role, because those are the product's
   own settings calls.
