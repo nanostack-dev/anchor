@@ -41,12 +41,18 @@ type RecordedModel struct {
 	Hash string
 }
 
-// Locker serializes the syncs of one Product, across replicas.
+// Locker orders the syncs of one Product, across replicas. Each call runs fn
+// in a transaction the Repository's calls in fn join, and reports false at
+// once, without running fn, when a lock it needs is taken.
 type Locker interface {
-	// TryLocked runs fn while holding the Product's sync lock, in a
-	// transaction the Repository's calls in fn join. It reports false at once,
-	// without running fn, when another holder has the lock.
+	// TryLocked holds the Product's sync lock exclusively: a model write, a
+	// whole-Product step and a rebuild wait for every key sync of the Product,
+	// and hold them off.
 	TryLocked(ctx context.Context, productID string, fn func(context.Context) error) (bool, error)
+	// TryKeyLocked holds the Product's sync lock in share mode and the key's
+	// exclusively, so syncs of different keys run side by side and two syncs
+	// of one key never do.
+	TryKeyLocked(ctx context.Context, productID, key string, fn func(context.Context) error) (bool, error)
 	// TrySweep runs fn unless another replica is sweeping.
 	TrySweep(ctx context.Context, fn func(context.Context) error) (bool, error)
 }

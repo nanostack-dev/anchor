@@ -8,7 +8,6 @@ import (
 	accessservice "anchor/internal/access/service"
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/fgasync"
-	"anchor/internal/authz/shadow"
 	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
@@ -48,8 +47,10 @@ var (
 	AuthzEngines           authzengine.Provider
 	AuthzMarks             fgasync.Repository
 	AuthzSyncer            *fgasync.Syncer
-	ShadowStats            *shadow.Stats
 	Evaluator              accessservice.Evaluator
+	ProductUserRepo        repository.ProductUserRepository
+	MembershipRepo         repository.OrganizationMembershipRepository
+	WorkspaceRepo          repository.WorkspaceRepository
 )
 
 func TestMain(m *testing.M) {
@@ -77,8 +78,10 @@ func TestMain(m *testing.M) {
 				&AuthzEngines,
 				&AuthzMarks,
 				&AuthzSyncer,
-				&ShadowStats,
 				&Evaluator,
+				&ProductUserRepo,
+				&MembershipRepo,
+				&WorkspaceRepo,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,

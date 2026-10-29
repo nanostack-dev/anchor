@@ -29,6 +29,9 @@ var (
 	ErrLockBusy = errors.New("authz sync lock busy")
 	// ErrInvalidScope is returned for a stale key that is empty.
 	ErrInvalidScope = errors.New("invalid authz sync scope")
+	// errModelStale reports a catalog that changed since the store's model; a
+	// key sync then writes the model under the exclusive lock first.
+	errModelStale = errors.New("authz model stale")
 )
 
 // Deps is what a Syncer needs. Every field is required except Now.
@@ -130,7 +133,7 @@ func (s *Syncer) Reconcile(ctx context.Context, productID string) error {
 	if err != nil {
 		return err
 	}
-	return s.locked(ctx, productID, func(txCtx context.Context) error {
+	return s.exclusive(ctx, productID, func(txCtx context.Context) error {
 		current, lockedErr := s.ensureModel(txCtx, engine, storeID, productID)
 		if lockedErr != nil {
 			return lockedErr
@@ -171,19 +174,21 @@ type target struct {
 	relations fga.Relations
 }
 
-// syncKey syncs one key. It reads the marks before it reads the key, so a write
-// landing meanwhile bumps the revision and ClearIfUnchanged keeps its mark.
+// syncKey syncs one key beside the syncs of the Product's other keys. It reads
+// the marks before it reads the key, so a write landing meanwhile bumps the
+// revision and ClearIfUnchanged keeps its mark. A model to write first gets
+// its own exclusive step.
 func (s *Syncer) syncKey(ctx context.Context, p Source, scope Scope) error {
 	engine, storeID, err := s.open(ctx, scope.ProductID)
 	if err != nil {
 		return err
 	}
-	return s.locked(ctx, scope.ProductID, func(txCtx context.Context) error {
+	sync := func(txCtx context.Context) error {
 		marks, lockedErr := s.repo.Pending(txCtx, scope.ProductID)
 		if lockedErr != nil {
 			return lockedErr
 		}
-		current, lockedErr := s.ensureModel(txCtx, engine, storeID, scope.ProductID)
+		current, lockedErr := s.currentModel(txCtx, engine, storeID, scope.ProductID)
 		if lockedErr != nil {
 			return lockedErr
 		}
@@ -191,12 +196,23 @@ func (s *Syncer) syncKey(ctx context.Context, p Source, scope Scope) error {
 			return lockedErr
 		}
 		return s.clearCovered(txCtx, marks, scope)
-	})
+	}
+	err = s.keyLocked(ctx, scope, sync)
+	if !errors.Is(err, errModelStale) {
+		return err
+	}
+	if err = s.exclusive(ctx, scope.ProductID, func(txCtx context.Context) error {
+		_, modelErr := s.ensureModel(txCtx, engine, storeID, scope.ProductID)
+		return modelErr
+	}); err != nil {
+		return err
+	}
+	return s.keyLocked(ctx, scope, sync)
 }
 
-// syncAll syncs every key of the sources, each under its own hold of the
-// lock so no write waits behind a whole Product, then clears the marks the
-// covering scope covers among those it read first. Keys come from the tables
+// syncAll syncs every key of the sources, each under its own key lock so no
+// write waits behind a whole Product, then clears the marks the covering scope
+// covers among those it read first. Keys come from the tables
 // and from the marks, since a deleted key is gone from the tables.
 func (s *Syncer) syncAll(ctx context.Context, productID string, sources []Source, covering Scope) error {
 	engine, storeID, err := s.open(ctx, productID)
@@ -205,7 +221,7 @@ func (s *Syncer) syncAll(ctx context.Context, productID string, sources []Source
 	}
 	var marks []Mark
 	var current target
-	if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+	if err = s.exclusive(ctx, productID, func(txCtx context.Context) error {
 		var lockedErr error
 		if marks, lockedErr = s.repo.Pending(txCtx, productID); lockedErr != nil {
 			return lockedErr
@@ -221,14 +237,15 @@ func (s *Syncer) syncAll(ctx context.Context, productID string, sources []Source
 			return keysErr
 		}
 		for _, key := range keys {
-			if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+			keyScope := Scope{ProductID: productID, Source: p.Name(), Key: key}
+			if err = s.keyLocked(ctx, keyScope, func(txCtx context.Context) error {
 				return s.syncOne(txCtx, current, p, productID, key)
 			}); err != nil {
 				return err
 			}
 		}
 	}
-	return s.locked(ctx, productID, func(txCtx context.Context) error {
+	return s.exclusive(ctx, productID, func(txCtx context.Context) error {
 		return s.clearCovered(txCtx, marks, covering)
 	})
 }
@@ -288,13 +305,25 @@ func (s *Syncer) clearCovered(ctx context.Context, marks []Mark, covering Scope)
 	return nil
 }
 
-// locked runs fn holding the Product's sync lock, retrying a busy lock with a
-// growing backoff, outside any transaction, until the wait runs out.
-func (s *Syncer) locked(ctx context.Context, productID string, fn func(context.Context) error) error {
+// exclusive runs fn holding the Product's sync lock exclusively.
+func (s *Syncer) exclusive(ctx context.Context, productID string, fn func(context.Context) error) error {
+	return s.retryLock(ctx, func() (bool, error) { return s.locker.TryLocked(ctx, productID, fn) })
+}
+
+// keyLocked runs fn holding the key's lock, beside the Product's other keys.
+func (s *Syncer) keyLocked(ctx context.Context, scope Scope, fn func(context.Context) error) error {
+	return s.retryLock(ctx, func() (bool, error) {
+		return s.locker.TryKeyLocked(ctx, scope.ProductID, scope.Source+":"+scope.Key, fn)
+	})
+}
+
+// retryLock retries a busy lock with a growing backoff, outside any
+// transaction, until the wait runs out.
+func (s *Syncer) retryLock(ctx context.Context, try func() (bool, error)) error {
 	deadline := time.Now().Add(s.timing.lockWait)
 	backoff := s.timing.lockRetryMin
 	for {
-		acquired, err := s.locker.TryLocked(ctx, productID, fn)
+		acquired, err := try()
 		if err != nil || acquired {
 			return err
 		}
@@ -321,18 +350,36 @@ func (s *Syncer) open(ctx context.Context, productID string) (fga.Engine, string
 	return engine, storeID, err
 }
 
-// ensureModel writes the Product's model when it changed since the model the
-// store follows.
-func (s *Syncer) ensureModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
-	source, err := s.models.Model(ctx, productID)
-	if err != nil {
-		return target{}, fmt.Errorf("authz model of %s: %w", productID, err)
-	}
-	compiled, err := s.compiled.get(source)
+// currentModel returns the target a key sync writes under, or errModelStale
+// when the model changed since the one the store follows.
+func (s *Syncer) currentModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
+	source, compiled, recorded, err := s.modelState(ctx, productID)
 	if err != nil {
 		return target{}, err
 	}
+	if recorded.Hash != source.Hash || recorded.ID == "" {
+		return target{}, errModelStale
+	}
+	return target{store: fga.NewStore(engine, storeID, recorded.ID), relations: compiled.relations}, nil
+}
+
+func (s *Syncer) modelState(ctx context.Context, productID string) (Model, compiledModel, RecordedModel, error) {
+	source, err := s.models.Model(ctx, productID)
+	if err != nil {
+		return Model{}, compiledModel{}, RecordedModel{}, fmt.Errorf("authz model of %s: %w", productID, err)
+	}
+	compiled, err := s.compiled.get(source)
+	if err != nil {
+		return Model{}, compiledModel{}, RecordedModel{}, err
+	}
 	recorded, err := s.repo.RecordedModel(ctx, productID)
+	return source, compiled, recorded, err
+}
+
+// ensureModel writes the Product's model when it changed since the model the
+// store follows. It runs under the exclusive lock.
+func (s *Syncer) ensureModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
+	source, compiled, recorded, err := s.modelState(ctx, productID)
 	if err != nil {
 		return target{}, err
 	}

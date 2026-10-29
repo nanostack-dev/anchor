@@ -4611,6 +4611,9 @@ type ResourceTypeIdParameter = Ksuid
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 type WorkspaceIdParameter = Ksuid
 
+// AccessDecisionsUnavailable defines model for AccessDecisionsUnavailable.
+type AccessDecisionsUnavailable = ApiErrorResponse
+
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorResponse
 

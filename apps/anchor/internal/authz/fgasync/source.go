@@ -22,6 +22,7 @@ package fgasync
 
 import (
 	"context"
+	"time"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 
@@ -108,4 +109,7 @@ func (s Scope) covers(other Scope) bool {
 type Mark struct {
 	Scope
 	Revision int64
+	// MarkedAt is when a write last made the scope stale, or when a failed
+	// sync postponed it.
+	MarkedAt time.Time
 }

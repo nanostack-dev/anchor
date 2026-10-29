@@ -1,7 +1,5 @@
 package service
 
-import "slices"
-
 // reach is how far a subject got toward the resource: its identity there, or
 // the reason it stopped. A stopped subject is denied every action.
 type reach struct {
@@ -13,11 +11,11 @@ func reached(identity *Identity) reach { return reach{identity: identity} }
 
 func stoppedBy(reason DenyReason) reach { return reach{stopped: reason} }
 
-func (r reach) decide(actions []string, semantic Semantic) Decision {
+func (r reach) decide(actions []string, semantic Semantic, holds func(string) bool) Decision {
 	if r.stopped != "" {
 		return denyAll(actions, r.stopped)
 	}
-	return r.identity.decide(actions, semantic)
+	return r.identity.decide(actions, semantic, holds)
 }
 
 func denyAll(actions []string, reason DenyReason) Decision {
@@ -29,13 +27,13 @@ func denyAll(actions []string, reason DenyReason) Decision {
 }
 
 // decide checks each action against the permissions the identity holds.
-func (identity *Identity) decide(actions []string, semantic Semantic) Decision {
+func (identity *Identity) decide(actions []string, semantic Semantic, holds func(string) bool) Decision {
 	decision := Decision{Allowed: true, Identity: identity, Items: []ItemDecision{}}
 	skipRest := false
 	for _, action := range actions {
 		item := ItemDecision{Reason: ReasonNotEvaluated}
 		if !skipRest {
-			item = identity.check(action)
+			item = check(action, holds)
 			skipRest = semantic.stopsAfter(item)
 		}
 		decision.record(action, item)
@@ -43,8 +41,8 @@ func (identity *Identity) decide(actions []string, semantic Semantic) Decision {
 	return decision
 }
 
-func (identity *Identity) check(action string) ItemDecision {
-	if slices.Contains(identity.Permissions, action) {
+func check(action string, holds func(string) bool) ItemDecision {
+	if holds(action) {
 		return ItemDecision{Allowed: true}
 	}
 	return ItemDecision{Reason: ReasonMissingPermission}

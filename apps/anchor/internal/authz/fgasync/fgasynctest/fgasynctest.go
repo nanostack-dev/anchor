@@ -73,7 +73,7 @@ func (r *Repository) Pending(_ context.Context, productID string) ([]fgasync.Mar
 	var pending []fgasync.Mark
 	for scope, row := range r.marks {
 		if scope.ProductID == productID {
-			pending = append(pending, fgasync.Mark{Scope: scope, Revision: row.revision})
+			pending = append(pending, fgasync.Mark{Scope: scope, Revision: row.revision, MarkedAt: row.markedAt})
 		}
 	}
 	slices.SortFunc(pending, func(a, b fgasync.Mark) int { return int(a.Revision - b.Revision) })
@@ -98,7 +98,9 @@ func (r *Repository) Oldest(_ context.Context, limit int) ([]fgasync.Mark, error
 	}
 	var all []aged
 	for scope, row := range r.marks {
-		all = append(all, aged{mark: fgasync.Mark{Scope: scope, Revision: row.revision}, at: row.markedAt})
+		all = append(all, aged{
+			mark: fgasync.Mark{Scope: scope, Revision: row.revision, MarkedAt: row.markedAt}, at: row.markedAt,
+		})
 	}
 	slices.SortFunc(all, func(a, b aged) int {
 		if c := a.at.Compare(b.at); c != 0 {
@@ -176,20 +178,48 @@ func (r *Repository) Marks() []fgasync.Scope {
 	return scopes
 }
 
-// Locker is a per-Product mutex. Hold makes a Product's lock busy from the test.
+// Locker is a per-Product read-write lock with a mutex per key. Hold and
+// HoldKey make a lock busy from the test.
 type Locker struct {
-	mu    sync.Mutex
-	held  map[string]bool
-	sweep sync.Mutex
+	mu     sync.Mutex
+	held   map[string]bool
+	shared map[string]int
+	keys   map[string]bool
+	sweep  sync.Mutex
 }
 
-func NewLocker() *Locker { return &Locker{held: map[string]bool{}} }
+func NewLocker() *Locker {
+	return &Locker{held: map[string]bool{}, shared: map[string]int{}, keys: map[string]bool{}}
+}
 
 func (l *Locker) TryLocked(ctx context.Context, productID string, fn func(context.Context) error) (bool, error) {
-	if !l.acquire(productID) {
+	if !l.Hold(productID) {
 		return false, nil
 	}
 	defer l.Release(productID)
+	return true, fn(ctx)
+}
+
+func (l *Locker) TryKeyLocked(
+	ctx context.Context,
+	productID, key string,
+	fn func(context.Context) error,
+) (bool, error) {
+	l.mu.Lock()
+	keyID := productID + ":" + key
+	if l.held[productID] || l.keys[keyID] {
+		l.mu.Unlock()
+		return false, nil
+	}
+	l.shared[productID]++
+	l.keys[keyID] = true
+	l.mu.Unlock()
+	defer func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		l.shared[productID]--
+		delete(l.keys, keyID)
+	}()
 	return true, fn(ctx)
 }
 
@@ -201,8 +231,17 @@ func (l *Locker) TrySweep(ctx context.Context, fn func(context.Context) error) (
 	return true, fn(ctx)
 }
 
-// Hold takes the Product's lock as another sync would; Release frees it.
-func (l *Locker) Hold(productID string) bool { return l.acquire(productID) }
+// Hold takes the Product's lock exclusively, as a model write would; Release
+// frees it. It fails while any sync holds the Product's lock.
+func (l *Locker) Hold(productID string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.held[productID] || l.shared[productID] > 0 {
+		return false
+	}
+	l.held[productID] = true
+	return true
+}
 
 func (l *Locker) Release(productID string) {
 	l.mu.Lock()
@@ -210,14 +249,22 @@ func (l *Locker) Release(productID string) {
 	delete(l.held, productID)
 }
 
-func (l *Locker) acquire(productID string) bool {
+// HoldKey takes one key's lock, as a sync of that key would; ReleaseKey frees it.
+func (l *Locker) HoldKey(productID, key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.held[productID] {
+	keyID := productID + ":" + key
+	if l.keys[keyID] {
 		return false
 	}
-	l.held[productID] = true
+	l.keys[keyID] = true
 	return true
+}
+
+func (l *Locker) ReleaseKey(productID, key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.keys, productID+":"+key)
 }
 
 // Stores creates one store per Product on the engine, named after it.

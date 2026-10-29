@@ -20,7 +20,10 @@ const (
 	// replayTimeout bounds the replay that follows a request's commit; a model
 	// change replays its whole Product.
 	replayTimeout = 30 * time.Second
-	storesPage    = 100
+	// staleMarkAge is how late a replay is logged as authz.mark_stale: until
+	// it runs, decisions see the access from before the write.
+	staleMarkAge = time.Minute
+	storesPage   = 100
 )
 
 // timing holds the waits a test may shorten.
@@ -109,6 +112,10 @@ func (s *Syncer) syncOldestMarks(ctx context.Context) {
 	}
 	scopes := make([]Scope, 0, len(marks))
 	for _, mark := range marks {
+		if age := s.now().Sub(mark.MarkedAt); age > staleMarkAge {
+			s.logger.Warn().Str("event", "authz.mark_stale").Str("product_id", mark.ProductID).
+				Str("source", mark.Source).Str("key", mark.Key).Dur("age", age).Msg("authz.mark_stale")
+		}
 		scopes = append(scopes, mark.Scope)
 	}
 	for _, scope := range smallestCover(scopes) {
