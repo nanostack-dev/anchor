@@ -71,7 +71,7 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 		return Endpoint{}, err
 	}
 	for _, eventType := range input.Events {
-		if !s.catalog.IsKnown(Type(eventType)) {
+		if !s.catalog.IsDeliverable(Type(eventType)) {
 			return Endpoint{}, unknownTypeError(Type(eventType))
 		}
 	}

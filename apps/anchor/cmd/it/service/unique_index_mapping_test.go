@@ -26,6 +26,8 @@ var uniqueGuardsWithoutMapping = map[string]string{
 	"users_external_id_key":          "nothing writes users.external_id",
 	"platform_invitations_code_key":  "the code is 32 random bytes",
 	"workspace_memberships_pkey":     "nothing writes workspace_memberships",
+	"resources_organization_type_external_id_key": "a resource PUT reads the resource under the Organization's " +
+		"resource lock, held exclusively, before it creates one",
 	"product_api_key_permissions_pkey": "permission names are deduplicated; a create inserts under a new key " +
 		"and a replace runs after the key row's UPDATE, which serializes writers",
 	"product_api_key_permissions_api_key_id_product_id_permissio_key": "same rows as product_api_key_permissions_pkey",

@@ -11,7 +11,9 @@ import (
 	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
+	resourceservice "anchor/internal/resource/service"
 	rtrepository "anchor/internal/resourcetype/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	"anchor/internal/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -51,6 +53,8 @@ var (
 	ProductUserRepo        repository.ProductUserRepository
 	MembershipRepo         repository.OrganizationMembershipRepository
 	WorkspaceRepo          repository.WorkspaceRepository
+	ResourceTypeService    rtservice.Service
+	ResourceService        resourceservice.Service
 )
 
 func TestMain(m *testing.M) {
@@ -73,6 +77,8 @@ func TestMain(m *testing.M) {
 				&ResourcePermissionRepo,
 				&ProductRoleRepo,
 				&ResourceTypeRepo,
+				&ResourceTypeService,
+				&ResourceService,
 				&Transactor,
 				&AuthzStores,
 				&AuthzEngines,

@@ -56,3 +56,37 @@ func TestCatalogRegistrationAndGrouping(t *testing.T) {
 		t.Fatal("mock webhook provider events must be in catalog")
 	}
 }
+
+func TestCatalogUndeliveredEvents(t *testing.T) {
+	t.Parallel()
+
+	catalog := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{
+		events.RegisterInternal("Test",
+			events.Definition{Type: "test.delivered"},
+			events.Definition{Type: "test.kept", Undelivered: true},
+		),
+	}})
+
+	t.Run("An undelivered event can be emitted but never delivered", func(t *testing.T) {
+		t.Parallel()
+		if !catalog.IsKnown("test.kept") {
+			t.Fatal("test.kept should be known, so it can be emitted")
+		}
+		if catalog.IsDeliverable("test.kept") {
+			t.Fatal("test.kept should not be deliverable")
+		}
+		if !catalog.IsDeliverable("test.delivered") {
+			t.Fatal("test.delivered should be deliverable")
+		}
+	})
+
+	t.Run("The catalog lists only the events an endpoint may receive", func(t *testing.T) {
+		t.Parallel()
+		if got := catalog.AllEventTypesStrings(); len(got) != 1 || got[0] != "test.delivered" {
+			t.Fatalf("expected only test.delivered, got %v", got)
+		}
+		if got := catalog.All(); len(got) != 1 || got[0].Type != "test.delivered" {
+			t.Fatalf("expected only test.delivered, got %v", got)
+		}
+	})
+}

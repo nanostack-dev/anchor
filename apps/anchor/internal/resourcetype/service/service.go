@@ -204,6 +204,9 @@ func (s *service) Update(
 			if err = s.checkReshape(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
 				return err
 			}
+			if err = s.checkResourceParents(txCtx, tree, current, changed); err != nil {
+				return err
+			}
 		}
 		if err = s.repo.Update(txCtx, changed); err != nil {
 			return err
@@ -285,6 +288,12 @@ func (s *service) ReplaceTree(
 		}
 		for _, removed := range plan.removed {
 			if err = s.checkUnused(txCtx, removed, false); err != nil {
+				return err
+			}
+		}
+		for _, updated := range plan.updated {
+			current, _ := tree.BySlug(updated.Slug).Get()
+			if err = s.checkResourceParents(txCtx, tree, current, updated); err != nil {
 				return err
 			}
 		}
@@ -484,8 +493,40 @@ func (s *service) checkReshape(
 	return nil
 }
 
-// checkUnused refuses to delete a type that roles or permissions are scoped
-// to. withChildren also counts child types; a whole-tree replacement leaves
+// checkResourceParents refuses a change that takes a parent type away from
+// registered resources of the type (ADR-0022 A5): a parent type removed, or
+// nesting turned off, while a resource still sits under one.
+func (s *service) checkResourceParents(
+	ctx context.Context, tree resourcetype.Tree, before, after resourcetype.ResourceType,
+) error {
+	var removed []string
+	for _, parent := range before.ParentTypes {
+		if !slices.Contains(after.ParentTypes, parent) {
+			removed = append(removed, parent)
+		}
+	}
+	if before.NestsInItself && !after.NestsInItself {
+		removed = append(removed, before.Slug)
+	}
+	slices.Sort(removed)
+	for _, slug := range removed {
+		parent, found := tree.BySlug(slug).Get()
+		if !found {
+			continue
+		}
+		count, err := s.repo.CountResourcesUnder(ctx, before.ProductID, before.ID, parent)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return resourcetype.NewResourcesUnderParentError(before.Slug, slug, count)
+		}
+	}
+	return nil
+}
+
+// checkUnused refuses to delete a type that roles, permissions or registered
+// resources use. withChildren also counts child types; a whole-tree replacement leaves
 // them to the tree validation, because its removed children go with it.
 func (s *service) checkUnused(ctx context.Context, rt resourcetype.ResourceType, withChildren bool) error {
 	usage, err := s.repo.CountUsage(ctx, rt.ProductID, rt.ID)

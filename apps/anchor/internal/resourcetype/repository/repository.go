@@ -54,6 +54,9 @@ type Repository interface {
 		request search.Request[resourcetype.Filter, resourcetype.SortField],
 	) (search.Result[resourcetype.ResourceType], error)
 	CountUsage(ctx context.Context, productID, id string) (resourcetype.Usage, error)
+	// CountResourcesUnder counts the registered resources of a type whose
+	// parent is of the given type; organization counts those at the top.
+	CountResourcesUnder(ctx context.Context, productID, id string, parent resourcetype.ResourceType) (int, error)
 	FindRolePermissionScopes(ctx context.Context, productID string) ([]RolePermissionScopes, error)
 }
 
@@ -316,7 +319,37 @@ func (r *repositoryImpl) CountUsage(ctx context.Context, productID, id string) (
 	if err != nil {
 		return resourcetype.Usage{}, err
 	}
-	return resourcetype.Usage{ChildTypes: int(children), Roles: int(roles), Permissions: int(permissions)}, nil
+	resources, err := transactor.QueryCount(ctx, r.db,
+		table.Resources.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.Resources.ProductID.EQ(postgres.String(productID)).
+				AND(table.Resources.ResourceTypeID.EQ(postgres.String(id))),
+		),
+	).Value()
+	if err != nil {
+		return resourcetype.Usage{}, err
+	}
+	return resourcetype.Usage{
+		ChildTypes: int(children), Roles: int(roles), Permissions: int(permissions), Resources: int(resources),
+	}, nil
+}
+
+func (r *repositoryImpl) CountResourcesUnder(
+	ctx context.Context, productID, id string, parent resourcetype.ResourceType,
+) (int, error) {
+	where := table.Resources.ProductID.EQ(postgres.String(productID)).
+		AND(table.Resources.ResourceTypeID.EQ(postgres.String(id)))
+	if parent.BuiltIn() {
+		where = where.AND(table.Resources.ParentResourceID.IS_NULL())
+	} else {
+		parents := table.Resources.AS("parent")
+		where = where.AND(table.Resources.ParentResourceID.IN(
+			parents.SELECT(parents.ID).WHERE(parents.ResourceTypeID.EQ(postgres.String(parent.ID))),
+		))
+	}
+	count, err := transactor.QueryCount(ctx, r.db,
+		table.Resources.SELECT(postgres.COUNT(postgres.STAR)).WHERE(where),
+	).Value()
+	return int(count), err
 }
 
 type rolePermissionScopesRow struct {

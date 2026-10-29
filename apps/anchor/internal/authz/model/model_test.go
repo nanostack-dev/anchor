@@ -122,3 +122,15 @@ func section(dsl, header string) string {
 	}
 	return rest
 }
+
+func TestResourceObjects(t *testing.T) {
+	t.Run("A resource object parses back into its type and row", func(t *testing.T) {
+		slug, rowID, ok := model.ParseResourceObject(model.ResourceObject("folder", "res_1"))
+
+		assert.True(t, ok)
+		assert.Equal(t, "folder", slug)
+		assert.Equal(t, "res_1", rowID)
+		_, _, ok = model.ParseResourceObject(model.Organization("org_1"))
+		assert.False(t, ok)
+	})
+}

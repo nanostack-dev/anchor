@@ -417,6 +417,48 @@ export const PublishError: Story = {
 	},
 };
 
+/** Anchor refuses to take away a parent type that resources still sit under. */
+export const PublishErrorResourcesUnderParent: Story = {
+	parameters: {
+		backend: {
+			types: DOCUMENT_TREE,
+			publish: {
+				status: 409,
+				body: {
+					errors: [
+						{
+							code: "RESOURCE_TYPE_IN_USE",
+							message:
+								"2 registered resources of type document sit under one of type project.",
+							metadata: {
+								slug: "document",
+								parent_type: "project",
+								blocked_by: { resources: 2 },
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await startEditing(canvasElement);
+		await userEvent.click(await typeNode(canvasElement, "Document"));
+		await userEvent.click(
+			inspector(canvasElement).getByRole("checkbox", { name: "Project" }),
+		);
+		await expect(canvas.getByText("Draft: 1 changed")).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
+		await expect(
+			await canvas.findByText(
+				"Document can't lose Project as a parent type: 2 registered resources sit under a Project. Move them first.",
+			),
+		).toBeVisible();
+		await expect(canvas.getByText("Draft: 1 changed")).toBeVisible();
+	},
+};
+
 /** The + handle inserts a child in a naming state; Enter keeps it. */
 export const AddWithPointer: Story = {
 	play: async ({ canvasElement }) => {

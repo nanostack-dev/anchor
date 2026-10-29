@@ -24,11 +24,13 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
+	"anchor/internal/domain/resource"
 	"anchor/internal/domain/workspace"
 	emailrepository "anchor/internal/email/repository"
 	invitationrepository "anchor/internal/invitation/repository"
 	licenserepository "anchor/internal/license/repository"
 	"anchor/internal/repository"
+	resourcerepository "anchor/internal/resource/repository"
 )
 
 // unknownSort asks for a sort field no search maps.
@@ -64,6 +66,11 @@ func TestSearchRepositoriesRefuseASortTheyDoNotMap(t *testing.T) {
 					resourcepermission.SearchProductResourcePermissionFilter,
 					resourcepermission.SortFieldProductResourcePermission,
 				]())
+			return err
+		},
+		"searchResources": func() error {
+			_, err := resourcerepository.NewRepository(nil).Search(
+				ctx, "product", "organization", unknownSort[resource.Filter, resource.SortField]())
 			return err
 		},
 		"searchProductPermissions": func() error {

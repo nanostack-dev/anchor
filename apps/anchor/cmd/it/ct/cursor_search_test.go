@@ -55,6 +55,7 @@ func TestCursorSearches(t *testing.T) {
 		"searchEmailSends":                     emailSendsCursorCase,
 		"searchLicenseTemplates":               licenseTemplatesCursorCase,
 		"searchOrganizationLicenseHistory":     licenseHistoryCursorCase,
+		"searchResources":                      resourcesCursorCase,
 	}
 
 	for name, build := range cases {
@@ -290,6 +291,40 @@ func resourceTypesCursorCase(t *testing.T) cursorCase {
 				body,
 			)
 			return httpCall(response, err, func(r *ct.SearchProductResourceTypesResponse) []byte { return r.Body })
+		},
+	}
+}
+
+func resourcesCursorCase(t *testing.T) cursorCase {
+	product := createTestProductContext(t)
+	product.ResourceTypes().CreateUnder("project", "organization")
+	organization := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+	resources := product.Resources(organization.Id)
+	for i := range cursorFixtureRows {
+		resources.Put("project", ids.MustNew("ext"), fmt.Sprintf("Project %d", i%2), resources.Top())
+	}
+	execSQL(t, "UPDATE resources SET created_at = $1 WHERE organization_id = $2", tiedAt(), organization.Id)
+
+	client := product.OwnerAuthenticatedClient()
+	return cursorCase{
+		rows: orderedRows{
+			from: "resources", where: "organization_id = $1", args: []any{organization.Id}, idExpr: "external_id",
+			defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "created_at"},
+				{name: "name", expr: "name"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"resource_types": []string{"no_such_type"}}},
+		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
+			response, err := client.SearchResourcesWithBodyWithResponse(
+				ctx,
+				product.ProductID,
+				organization.Id,
+				"application/json",
+				body,
+			)
+			return httpCall(response, err, func(r *ct.SearchResourcesResponse) []byte { return r.Body })
 		},
 	}
 }

@@ -74,6 +74,7 @@ That sentence is the boundary. The two verbs are deliberately distinct, because 
 | **custom role** | A role one Organization owns. Only members of that Organization may hold it. `type` `CUSTOM`. | Not a copy of a managed role. |
 | **resource type** | A kind of thing a Product protects, declared in its catalog and placed in a tree under the built-in `organization` type (`project`, `folder`, `document`). Not "resource" — that is one instance. |
 | **scope** | The resource type a permission or a role belongs to. It never changes. Not `scope_modifier`, which is deprecated. |
+| **resource** | One instance of a resource type that a Product registers in an Organization (a project, a folder): a reference named by the Product's own identifier, with a name and one parent. Anchor never stores the Product's record itself. |
 | **external ID** | A Product User's ID in its identity provider, unique within the Product and case-sensitive. The Product sends it when it creates the user, or Clerk ingest sets it. Access evaluation names a user by it. It never changes once set ([ADR-0023](docs/adr/0023-a-product-can-be-its-own-identity-provider.md)). |
 
 ## Membership
