@@ -6,11 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/authz/engine"
+	"anchor/internal/authz/fga"
+	"anchor/internal/authz/model"
 	"anchor/internal/authz/store"
 )
 
@@ -39,6 +42,50 @@ func TestAuthzStores(t *testing.T) {
 
 		assert.NotEmpty(t, first)
 		assert.Equal(t, first, again)
+	})
+
+	t.Run(
+		"Open returns the store at its model once rebuilt, and Holds skips an undefined permission",
+		func(t *testing.T) {
+			w := givenSyncWorld(t)
+			userID := givenMember(t, w, w.organizationID, w.managedID)
+			rebuild(t, w.productID)
+
+			found, err := AuthzStores.Open(t.Context(), w.productID)
+
+			require.NoError(t, err)
+			opened, ok := found.Get()
+			require.True(t, ok)
+			assert.Equal(t, mustStoreID(t, w.productID), opened.Store.ID())
+			assert.True(t, opened.Rebuilt)
+			held, err := opened.Holds(t.Context(), []fga.Tuple{
+				{
+					Object:   model.Organization(w.organizationID),
+					Relation: model.CanRelation(w.permission),
+					User:     model.User(userID),
+				},
+				{
+					Object:   model.Organization(w.organizationID),
+					Relation: model.CanRelation("undeclared:x"),
+					User:     model.User(userID),
+				},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, []bool{true, false}, held)
+		},
+	)
+
+	t.Run("Open finds nothing for a product without a store, and creates none", func(t *testing.T) {
+		productID := "product_" + uuid.NewString()
+
+		opened, err := AuthzStores.Open(t.Context(), productID)
+
+		require.NoError(t, err)
+		assert.True(t, opened.IsAbsent())
+		var stores int
+		require.NoError(t, TestDB.QueryRowContext(t.Context(),
+			`SELECT count(*) FROM authz_stores WHERE product_id = $1`, productID).Scan(&stores))
+		assert.Zero(t, stores)
 	})
 
 	t.Run("Replicas asking at once keep one store", func(t *testing.T) {
@@ -141,4 +188,11 @@ func TestAuthzStores(t *testing.T) {
 		assert.True(t, allowed.GetAllowed())
 		assert.False(t, denied.GetAllowed())
 	})
+}
+
+func mustStoreID(t *testing.T, productID string) string {
+	t.Helper()
+	id, err := AuthzStores.StoreID(t.Context(), productID)
+	require.NoError(t, err)
+	return id
 }

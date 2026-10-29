@@ -5,8 +5,8 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
 | PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
-| PR 5 (this) | The catalog compiler writes each Product's model; the [syncer](authorization-fgasync.md) keeps its tuples in step with each write, with marks, a replay, a sweeper and a reconcile | no |
-| PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
+| PR 5 | The catalog compiler writes each Product's model; the [syncer](authorization-fgasync.md) keeps its tuples in step with each write, with marks, a replay, a sweeper and a reconcile | no |
+| PR 6 (this) | Shadow: every decision runs on both evaluators and logs any difference | logged only |
 | PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
 
 ## The engine
@@ -69,8 +69,6 @@ Anchor's tables stay the source of truth (ADR-0022 E5). [`internal/authz/fgasync
 
 Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
 
-Nothing reads the store for decisions yet; PR 6 compares its answers with the current evaluator.
-
 ### Why a mark, not a tuple write
 
 A write to Postgres and a write to OpenFGA cannot share one transaction. If Anchor wrote the tuple after its commit, a crash between the two writes would lose the tuple. If it wrote the tuple before its commit, a rollback would leave a tuple for a change that never happened. The mark is a Postgres row, so it commits or rolls back with the write that caused it. This is the transactional outbox pattern.
@@ -105,6 +103,23 @@ If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is log
 
 **A write during a sync.** Carol joins Acme after step 7 read Acme's members. Her transaction moves the mark to revision *n + 1* and commits; it does not wait, because the sync read the mark with a plain `SELECT` and an advisory lock blocks no row writes. Bob's sync writes only Bob's tuple, and its delete of revision *n* removes no row. Carol's replay waits for the lock, reads revision *n + 1*, writes her tuple and deletes the mark.
 
+## Shadow decisions
+
+`shadow.Decorate` (`internal/authz/shadow`), put around the access evaluator at the application's root (`authz.ShadowDecisions`), runs every decision on both evaluators. The decision always comes from the current evaluator, and is returned before OpenFGA is asked. Once that evaluator reaches an identity in the Organization, a member or an Organization API key, OpenFGA answers every action it evaluated, through `fga.Store.CheckAll`, in `BatchCheck`s of at most 50, on `organization:<id>`:
+
+- The comparison runs off the request path, at most 8 at a time, with a 500 ms budget. A decision that finds all 8 busy is not compared and is counted as dropped.
+- An answer that differs is logged at warn level with `"event": "authz.shadow_mismatch"`, the request's log fields, the product, resource, Organization, subject, permission and both answers. Mismatch lines are sampled at 20 a minute; `shadow.Stats` counts every one.
+- The store comes from `store.Stores.Open`. Its `Holds` answers a permission the model doesn't define as not held without asking OpenFGA, which reports it with the code it uses for throttling; so any error OpenFGA gives counts as failed. The engine not being ready, or a Product with no model yet, is counted as skipped.
+- A subject the evaluator stops earlier (an unknown user, an invalid or inactive key, a non-member, an unknown Organization or workspace) is not compared. The switch (PR 7) keeps every one of those steps in Postgres, so OpenFGA never answers for such a subject.
+- A workspace decision is compared on its Organization, since today's workspace permissions are its Organization role's.
+
+The component suite checks two things once its tests pass (`CheckAfterRun` in `cmd/it/ct/shared_test.go`):
+
+1. **The shadow** compared at least one action and counted no difference, failure or drop.
+2. **The tables.** After one sweep, every member's role permissions and every active key's permissions in Anchor's tables are compared with OpenFGA's answer for every permission of the Product (`cmd/it/ct/authz_sync_check_test.go`). Most writes in the suite are never followed by a decision, so the shadow alone would not see their drift.
+
+Decisions move to OpenFGA (PR 7) only once the suite and dev show no difference.
+
 ## Known limits
 
 - **API key expiry writes nothing.** A key that expires by time keeps its tuples until a rebuild. Decisions resolve a key through introspection in Postgres first, which refuses an expired key, so the shadow (PR 6) never compares it, and the switch (PR 7) must keep that resolution.
@@ -116,3 +131,4 @@ If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is log
 
 - **Unit, no database.** `internal/authz/fga` tests tuples, the diff, batched and idempotent writes, paging and model relations against a real in-memory OpenFGA (`fgatest`). `internal/authz/fgasync` tests every sync rule through a toy source, with `fgasynctest`'s in-memory repository and lock: marks and revisions, the race with a write landing mid-sync, every-key and whole-Product scopes, a renamed source, a busy lock, model writes and the dropping of undefined relations, the replay, the sweeper's postponing, the reconcile and orphan stores. `internal/authz/source` checks each source's stale keys, its tuples, that the three own disjoint tuples of one Organization, and that every event type is classified. `internal/authz/model` tests the compiler.
 - **Service, on Postgres.** `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks` and `TestAuthzReplayAfterCommit` in `apps/anchor/cmd/it/service` run each source against Anchor's tables. `TestAuthzStores` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+- **Shadow.** `TestAuthzShadow` in `apps/anchor/cmd/it/service` covers an agreeing and a disagreeing decision, and more actions than one `BatchCheck` takes. After the component suite passes, it fails on any shadow mismatch or failure, and compares every member's and active key's permissions in the tables with OpenFGA (`cmd/it/ct/authz_sync_check_test.go`).

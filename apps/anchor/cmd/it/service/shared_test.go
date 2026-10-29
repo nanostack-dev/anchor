@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	itshared "anchor/cmd/it/shared"
+	accessservice "anchor/internal/access/service"
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/fgasync"
+	"anchor/internal/authz/shadow"
 	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
@@ -46,6 +48,8 @@ var (
 	AuthzEngines           authzengine.Provider
 	AuthzMarks             fgasync.Repository
 	AuthzSyncer            *fgasync.Syncer
+	ShadowStats            *shadow.Stats
+	Evaluator              accessservice.Evaluator
 )
 
 func TestMain(m *testing.M) {
@@ -73,6 +77,8 @@ func TestMain(m *testing.M) {
 				&AuthzEngines,
 				&AuthzMarks,
 				&AuthzSyncer,
+				&ShadowStats,
+				&Evaluator,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,

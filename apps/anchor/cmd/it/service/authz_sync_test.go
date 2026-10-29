@@ -91,6 +91,13 @@ func syncProduct(t *testing.T, productID string) {
 	require.NoError(t, AuthzSyncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 }
 
+// rebuild reconciles the Product, as the sweeper does: decisions read a store
+// only once a rebuild filled it.
+func rebuild(t *testing.T, productID string) {
+	t.Helper()
+	require.NoError(t, AuthzSyncer.Reconcile(t.Context(), productID))
+}
+
 func syncKey(t *testing.T, productID, source, key string) {
 	t.Helper()
 	require.NoError(
