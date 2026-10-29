@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replay Middleware</title>
+<style>
+:root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--mute:#78716c;--line:#e7e5e4;--pg:#2563eb;--fga:#7c3aed;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--code:#f5f5f4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c0a09;--card:#1c1917;--ink:#f5f5f4;--mute:#a8a29e;--line:#292524;--pg:#60a5fa;--fga:#a78bfa;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;--code:#292524}}
+:root[data-theme="dark"]{--bg:#0c0a09;--card:#1c1917;--ink:#f5f5f4;--mute:#a8a29e;--line:#292524;--pg:#60a5fa;--fga:#a78bfa;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;--code:#292524}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:18px;margin:36px 0 10px}
+p.lead{color:var(--mute);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:720px){.grid{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;margin-bottom:8px}
+.tag.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.tag.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--ink);font:12px ui-sans-serif,system-ui,sans-serif}
+svg .m{fill:var(--mute)}
+svg .life{stroke:var(--line);stroke-width:2}
+svg .arr{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .pg{stroke:var(--pg)} svg .fga{stroke:var(--fga)} svg .bad{stroke:var(--bad)} svg .ok{stroke:var(--ok)}
+svg .tpg{fill:var(--pg)} svg .tfga{fill:var(--fga)} svg .tbad{fill:var(--bad)} svg .tok{fill:var(--ok)} svg .twarn{fill:var(--warn)}
+svg .box{fill:var(--card);stroke:var(--line)}
+svg .band{fill:color-mix(in srgb,var(--warn) 12%,transparent)}
+svg .bandok{fill:color-mix(in srgb,var(--ok) 10%,transparent)}
+pre{background:var(--code);border-radius:8px;padding:12px;overflow-x:auto;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+ul{margin:6px 0;padding-left:20px} li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;margin-right:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>The replay middleware</h1>
+<p class="lead">It does one thing: it makes the write reach OpenFGA <b>before</b> the client gets its response.</p>
+
+<h2>The problem it solves</h2>
+<p>An admin adds Ana to Acme, then the browser loads Ana's page at once. OpenFGA only learns about Ana when somebody syncs the mark.</p>
+
+<div class="grid">
+<div class="card">
+<span class="tag bad">Without the middleware</span>
+<svg viewBox="0 0 440 380">
+  <text x="40" y="20" text-anchor="middle">Client</text>
+  <text x="170" y="20" text-anchor="middle">Anchor</text>
+  <text x="290" y="20" text-anchor="middle">Postgres</text>
+  <text x="400" y="20" text-anchor="middle">OpenFGA</text>
+  <line class="life" x1="40" y1="30" x2="40" y2="370"/><line class="life" x1="170" y1="30" x2="170" y2="370"/>
+  <line class="life" x1="290" y1="30" x2="290" y2="370"/><line class="life" x1="400" y1="30" x2="400" y2="370"/>
+  <line class="arr" x1="40" y1="55" x2="166" y2="55" marker-end="url(#a)"/><text x="104" y="49" text-anchor="middle">POST add Ana</text>
+  <line class="arr pg" x1="170" y1="85" x2="286" y2="85" marker-end="url(#a)"/><text x="230" y="79" text-anchor="middle" class="tpg">membership + mark</text>
+  <text x="230" y="102" text-anchor="middle" class="m">COMMIT</text>
+  <line class="arr" x1="170" y1="125" x2="44" y2="125" marker-end="url(#a)"/><text x="104" y="119" text-anchor="middle">201</text>
+  <rect class="band" x="44" y="140" width="392" height="150" rx="6"/>
+  <text x="240" y="158" text-anchor="middle" class="twarn">stale window: up to 5 s</text>
+  <line class="arr" x1="40" y1="185" x2="166" y2="185" marker-end="url(#a)"/><text x="104" y="179" text-anchor="middle">GET Ana's page</text>
+  <line class="arr fga" x1="170" y1="215" x2="396" y2="215" marker-end="url(#a)"/><text x="285" y="209" text-anchor="middle" class="tfga">Check ana member acme?</text>
+  <line class="arr bad" x1="396" y1="240" x2="174" y2="240" marker-end="url(#a)"/><text x="285" y="256" text-anchor="middle" class="tbad">false: no tuple yet</text>
+  <line class="arr bad" x1="170" y1="275" x2="44" y2="275" marker-end="url(#a)"/><text x="104" y="269" text-anchor="middle" class="tbad">403</text>
+  <text x="170" y="318" text-anchor="middle" class="m">… sweeper, 5 s later …</text>
+  <line class="arr fga" x1="170" y1="345" x2="396" y2="345" marker-end="url(#a)"/><text x="285" y="339" text-anchor="middle" class="tfga">write ana member acme</text>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="fill:var(--ink)"/></marker></defs>
+</svg>
+</div>
+
+<div class="card">
+<span class="tag ok">With the middleware</span>
+<svg viewBox="0 0 440 380">
+  <text x="40" y="20" text-anchor="middle">Client</text>
+  <text x="170" y="20" text-anchor="middle">Anchor</text>
+  <text x="290" y="20" text-anchor="middle">Postgres</text>
+  <text x="400" y="20" text-anchor="middle">OpenFGA</text>
+  <line class="life" x1="40" y1="30" x2="40" y2="370"/><line class="life" x1="170" y1="30" x2="170" y2="370"/>
+  <line class="life" x1="290" y1="30" x2="290" y2="370"/><line class="life" x1="400" y1="30" x2="400" y2="370"/>
+  <line class="arr" x1="40" y1="55" x2="166" y2="55" marker-end="url(#b)"/><text x="104" y="49" text-anchor="middle">POST add Ana</text>
+  <line class="arr pg" x1="170" y1="85" x2="286" y2="85" marker-end="url(#b)"/><text x="230" y="79" text-anchor="middle" class="tpg">membership + mark</text>
+  <text x="230" y="102" text-anchor="middle" class="m">COMMIT</text>
+  <rect class="bandok" x="110" y="112" width="326" height="98" rx="6"/>
+  <text x="120" y="128" class="tok">middleware: Replay</text>
+  <line class="arr pg" x1="170" y1="148" x2="286" y2="148" marker-end="url(#b)"/><text x="230" y="142" text-anchor="middle" class="tpg">read Acme members</text>
+  <line class="arr fga" x1="170" y1="178" x2="396" y2="178" marker-end="url(#b)"/><text x="285" y="172" text-anchor="middle" class="tfga">write ana member acme</text>
+  <text x="230" y="200" text-anchor="middle" class="m">clear mark</text>
+  <line class="arr" x1="170" y1="230" x2="44" y2="230" marker-end="url(#b)"/><text x="104" y="224" text-anchor="middle">201</text>
+  <line class="arr" x1="40" y1="270" x2="166" y2="270" marker-end="url(#b)"/><text x="104" y="264" text-anchor="middle">GET Ana's page</text>
+  <line class="arr fga" x1="170" y1="300" x2="396" y2="300" marker-end="url(#b)"/><text x="285" y="294" text-anchor="middle" class="tfga">Check ana member acme?</text>
+  <line class="arr ok" x1="396" y1="325" x2="174" y2="325" marker-end="url(#b)"/><text x="285" y="341" text-anchor="middle" class="tok">true</text>
+  <line class="arr ok" x1="170" y1="360" x2="44" y2="360" marker-end="url(#b)"/><text x="104" y="354" text-anchor="middle" class="tok">200</text>
+  <defs><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink)"/></marker></defs>
+</svg>
+</div>
+</div>
+<p>This is "read your own writes": once the client has its 201, every later check already agrees with Postgres. PR 7 needs this before checks can move from Postgres to OpenFGA.</p>
+
+<h2>The code, line by line</h2>
+<div class="card">
+<pre>func NewAuthzReplayMiddleware(replayer AuthzReplayer) StrictMiddlewareFunc {
+  return func(f StrictHandlerFunc, _ string) StrictHandlerFunc {
+    return func(ctx, w, r, request) (any, error) {
+<span class="n">1</span>    collectCtx, marked := fgasync.CollectMarks(ctx)
+<span class="n">2</span>    response, err := f(collectCtx, w, r, request)
+<span class="n">3</span>    if err == nil {
+<span class="n">4</span>      replayer.Replay(ctx, marked())
+       }
+<span class="n">5</span>    return response, err
+    }
+  }
+}</pre>
+<table style="margin-top:12px">
+<tr><th>#</th><th>What happens</th><th>Ana's example</th></tr>
+<tr><td>1</td><td>Put an empty basket in the context. The basket collects the scopes this request marks.</td><td>basket = []</td></tr>
+<tr><td>2</td><td>Run the handler. The service opens its transaction, writes, emits its event and commits. Inside the transaction, <code>Marker.ObserveTx</code> writes the mark row <b>and</b> drops the same scope into the basket.</td><td>row <code>(prod_1, organization_assignments, org_acme)</code> committed<br>basket = [org_acme]</td></tr>
+<tr><td>3</td><td>If the handler failed, the transaction rolled back, so no mark exists. Do nothing.</td><td>—</td></tr>
+<tr><td>4</td><td>The transaction has committed. Sync each scope in the basket: read Postgres, diff with OpenFGA, apply, clear the mark.</td><td>writes <code>organization:org_acme#member@user:ana</code></td></tr>
+<tr><td>5</td><td>Only now the response goes to the client.</td><td>201</td></tr>
+</table>
+</div>
+
+<h2>Why a middleware, and not the service?</h2>
+<div class="card">
+<ul>
+<li><b>The sync must run after the commit.</b> <code>Desired</code> reads Postgres from another connection. Before the commit it does not see Ana's row, so it would write nothing. The middleware wraps the handler, so when <code>f</code> returns, the commit is done.</li>
+<li><b>One place for every write.</b> Members, roles, API keys and the catalog all emit events. No service has to know about OpenFGA or call a sync.</li>
+<li><b>The basket tells the middleware what to sync.</b> Without it, the middleware would have to query <code>authz_sync_marks</code> and could pick up other requests' marks.</li>
+</ul>
+</div>
+
+<h2>What if something goes wrong?</h2>
+<div class="card">
+<table>
+<tr><th>Case</th><th>Result</th></tr>
+<tr><td>The handler returns an error</td><td>The transaction rolled back, with its mark. No replay.</td></tr>
+<tr><td>The replay fails (OpenFGA down, lock busy)</td><td>A warning is logged and the client still gets its 201. The mark row stays in Postgres, so the sweeper retries it within 5 s.</td></tr>
+<tr><td>The client disconnects during the replay</td><td>The replay uses <code>context.WithoutCancel</code>, so it finishes anyway.</td></tr>
+<tr><td>A catalog change marks the whole Product</td><td>The replay can be long. It stops after 30 s, and the sweeper finishes it.</td></tr>
+<tr><td>A request that changes no access</td><td>The basket is empty, so <code>Replay</code> returns at once. The cost is zero.</td></tr>
+<tr><td>A background job writes (no HTTP request)</td><td>No basket exists. The mark is still written, and the sweeper syncs it.</td></tr>
+</table>
+</div>
+
+<h2>The two paths, side by side</h2>
+<div class="card">
+<table>
+<tr><th></th><th>Replay middleware</th><th>Sweeper</th></tr>
+<tr><td>When</td><td>Right after the commit, before the response</td><td>Every 5 s</td></tr>
+<tr><td>What it syncs</td><td>Only this request's basket</td><td>The oldest marks in the table (100 at a time)</td></tr>
+<tr><td>Role</td><td>Fast path: no stale window</td><td>Safety net: nothing is ever lost</td></tr>
+</table>
+</div>
+</main>
+</body>
+</html>

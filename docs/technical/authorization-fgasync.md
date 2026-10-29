@@ -91,6 +91,38 @@ The syncer does the rest:
 - It deletes before it writes, in batches of 100, and treats a tuple already there or already gone as done.
 - It compiles a model once per hash per process, and writes it only when the hash differs from the one recorded in `authz_stores`.
 
+## The replay middleware
+
+The replay middleware syncs a write into OpenFGA **before** the client gets its response. A client that gets its 201 therefore sees the change on its next request: it reads its own writes. [`authorization-replay-middleware.html`](authorization-replay-middleware.html) shows the timeline with and without it.
+
+Without it, only the sweeper syncs marks. An admin adds Ana to Acme and gets a 201. The browser loads Ana's page at once, the check asks OpenFGA, and Ana gets a 403 until the next sweep, up to 5 s later.
+
+[`api.NewAuthzReplayMiddleware`](../../apps/anchor/internal/api/authz_replay.go) wraps every strict handler:
+
+```go
+collectCtx, marked := fgasync.CollectMarks(ctx) // 1. an empty basket in the context
+response, err := f(collectCtx, w, r, request)   // 2. the handler writes and commits; the Marker adds org_acme to the basket
+if err == nil {
+	replayer.Replay(ctx, marked())              // 3. sync org_acme: read Postgres, diff, apply, clear the mark
+}
+return response, err                            // 4. only now the client gets its 201
+```
+
+- **It runs after the commit, because the sync must.** `Desired` reads Postgres on another connection, so it sees Ana's row only once the write commits. When the handler returns, its transaction has committed.
+- **It syncs only what this request marked.** `Marker.ObserveTx` writes the mark row and also adds the scope to the request's basket. The middleware never reads `authz_sync_marks`, so it never syncs another request's marks.
+- **No service calls a sync.** Every write that emits an access event gets the replay.
+
+| Case | Result |
+| --- | --- |
+| The handler returns an error | The transaction rolled back with its mark. Nothing is replayed. |
+| The replay fails (OpenFGA down, lock busy) | A warning is logged and the client still gets its response. The mark stays, so the sweeper retries it within 5 s. |
+| The client disconnects during the replay | The replay ignores the cancellation (`context.WithoutCancel`) and finishes. |
+| A catalog change marks the whole Product | The replay stops after 30 s. The sweeper finishes the rest. |
+| The request changes no access | The basket is empty and `Replay` returns at once. |
+| A background job writes, outside a request | No basket exists. The mark is still written, and the sweeper syncs it. |
+
+The replay is the fast path and the sweeper is the safety net. A mark is cleared only by a sync that covers it, so a failed replay never loses a change.
+
 ## Adding a source
 
 This example syncs which Organization owns each project, for a model where `rt_project` has `define parent: [organization]`. The table and the events are an illustration.
