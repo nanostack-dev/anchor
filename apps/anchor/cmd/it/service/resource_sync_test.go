@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +19,8 @@ import (
 )
 
 const (
-	resourceParents = "resource_parents"
+	resourceParents     = "resource_parents"
+	resourceAssignments = "resource_assignments"
 	// syncedResources is the registry size the sync cost is measured at.
 	syncedResources = 1000
 	// projectsEvery puts one project at the top for this many resources.
@@ -66,23 +68,25 @@ func (w registryWorld) deleteCollected(t *testing.T, r resource.Resource, cascad
 	return resourceKeys(marked())
 }
 
-// resourceKeys lists the resource objects among a request's marks, in the
-// order they were marked.
+// resourceKeys lists the resource objects among a request's marks, once
+// each, in the order they were first marked.
 func resourceKeys(marked []fgasync.Scope) []string {
 	var objects []string
 	for _, scope := range marked {
-		if scope.Source == resourceParents {
+		if (scope.Source == resourceParents || scope.Source == resourceAssignments) &&
+			!slices.Contains(objects, scope.Key) {
 			objects = append(objects, scope.Key)
 		}
 	}
 	return objects
 }
 
-// syncResources syncs each resource's key, as the request's replay does.
+// syncResources syncs each resource's keys, as the request's replay does.
 func (w registryWorld) syncResources(t *testing.T, resources ...resource.Resource) {
 	t.Helper()
 	for _, object := range objectsOf(resources...) {
 		syncKey(t, w.productID, resourceParents, object)
+		syncKey(t, w.productID, resourceAssignments, object)
 	}
 }
 
@@ -98,8 +102,8 @@ func (w registryWorld) pendingResources(t *testing.T) []string {
 	t.Helper()
 	var objects []string
 	rows, err := TestDB.QueryContext(t.Context(),
-		`SELECT scope_key FROM authz_sync_marks WHERE product_id = $1 AND source = $2 ORDER BY scope_key`,
-		w.productID, resourceParents)
+		`SELECT DISTINCT scope_key FROM authz_sync_marks WHERE product_id = $1 AND source IN ($2, $3)
+		ORDER BY scope_key`, w.productID, resourceParents, resourceAssignments)
 	require.NoError(t, err)
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {

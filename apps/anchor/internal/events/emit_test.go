@@ -61,3 +61,21 @@ func TestEmitterKeepsUndeliveredEventsInside(t *testing.T) {
 		require.Equal(t, []events.Type{"test.kept"}, observer.seen)
 	})
 }
+
+func TestDeliveredData(t *testing.T) {
+	t.Parallel()
+
+	t.Run("A delivered event leaves out Anchor's resource row ID and keeps every other field", func(t *testing.T) {
+		t.Parallel()
+		data := events.Data{
+			events.FieldOrganizationID: "org_1",
+			events.FieldResourceID:     "ext-1",
+			events.FieldResourceRowID:  "res_1",
+		}
+
+		delivered := events.DeliveredDataForTest(data)
+
+		require.Equal(t, events.Data{events.FieldOrganizationID: "org_1", events.FieldResourceID: "ext-1"}, delivered)
+		require.Equal(t, "res_1", data[events.FieldResourceRowID], "the observers still read it")
+	})
+}

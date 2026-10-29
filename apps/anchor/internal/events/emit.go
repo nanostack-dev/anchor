@@ -94,7 +94,7 @@ func (e *emitter) Emit(ctx context.Context, event Event) error {
 }
 
 func (e *emitter) enqueue(ctx context.Context, tx *sql.Tx, event Event) error {
-	dataJSON, err := json.Marshal(event.Data)
+	dataJSON, err := json.Marshal(deliveredData(event.Data))
 	if err != nil {
 		return err
 	}
@@ -123,4 +123,19 @@ func (e *emitter) enqueue(ctx context.Context, tx *sql.Tx, event Event) error {
 		MaxAttempts: eventQueueMaxAttempts,
 	})
 	return err
+}
+
+// deliveredData is what a product endpoint receives: Anchor's resource row ID
+// is for the observers only.
+func deliveredData(data Data) Data {
+	if _, internal := data[FieldResourceRowID]; !internal {
+		return data
+	}
+	delivered := make(Data, len(data)-1)
+	for field, value := range data {
+		if field != FieldResourceRowID {
+			delivered[field] = value
+		}
+	}
+	return delivered
 }

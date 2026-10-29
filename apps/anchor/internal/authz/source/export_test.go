@@ -4,6 +4,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/authz/fga"
+	"anchor/internal/authz/model"
 )
 
 // Holder is a product user and the role they hold in an Organization.
@@ -18,6 +19,15 @@ func AssignmentTuples(organizationID string, holders ...Holder) []fga.Tuple {
 		members = append(members, member{productUserID: h.ProductUserID, roleRowID: h.RoleRowID})
 	}
 	return assignmentTuples(organizationID, members)
+}
+
+// ResourceAssignmentTuples are the assignments held on a resource.
+func ResourceAssignmentTuples(slug, rowID string, holders ...Holder) []fga.Tuple {
+	members := make([]member, 0, len(holders))
+	for _, h := range holders {
+		members = append(members, member{productUserID: h.ProductUserID, roleRowID: h.RoleRowID})
+	}
+	return linkedAssignments(model.ResourceObject(slug, rowID), rowID, members)
 }
 
 func AssignmentRoleTuple(assignment string) functional.Option[fga.Tuple] {

@@ -7,6 +7,7 @@
 //	role_grants                role row      role:R # grants_<permission>
 //	organization_api_keys      Organization  organization:O # can_<permission> @ api_key:K
 //	resource_parents           resource      rt_<slug>:<row> # parent
+//	resource_assignments       resource      rt_<slug>:<row> # assignment, role_assignment:<row>.R # role and # assignee
 //
 // Catalog is the model source: a change to a resource type or a permission
 // rewrites the Product's model and resyncs every source.

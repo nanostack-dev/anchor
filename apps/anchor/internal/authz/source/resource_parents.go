@@ -32,15 +32,7 @@ func (ResourceParents) Stale(event events.Event) ([]string, error) {
 	if !isOneOf(event, events.ResourceCreated, events.ResourceUpdated, events.ResourceDeleted) {
 		return nil, nil
 	}
-	slug, err := keyOf(event, events.FieldResourceType)
-	if err != nil {
-		return nil, err
-	}
-	rowID, err := keyOf(event, events.FieldResourceRowID)
-	if err != nil {
-		return nil, err
-	}
-	return []string{model.ResourceObject(slug[0], rowID[0])}, nil
+	return resourceKey(event)
 }
 
 func (r ResourceParents) Keys(ctx context.Context, productID string) ([]string, error) {

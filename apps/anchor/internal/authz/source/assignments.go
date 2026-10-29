@@ -52,12 +52,14 @@ func (a Assignments) Desired(ctx context.Context, productID, organizationID stri
 	return assignmentTuples(organizationID, members), nil
 }
 
-// Stored reads the Organization's assignment links, derives each one's role
-// tuple from its ID, and reads its assignees.
 func (Assignments) Stored(ctx context.Context, store fga.Reader, organizationID string) ([]fga.Tuple, error) {
-	links, err := store.Read(ctx, fga.Filter{
-		Object: model.Organization(organizationID), Relation: model.RelationAssignment,
-	})
+	return storedAssignments(ctx, store, model.Organization(organizationID))
+}
+
+// storedAssignments reads the holder's assignment links, derives each one's
+// role tuple from its ID, and reads its assignees.
+func storedAssignments(ctx context.Context, store fga.Reader, holder string) ([]fga.Tuple, error) {
+	links, err := store.Read(ctx, fga.Filter{Object: holder, Relation: model.RelationAssignment})
 	if err != nil {
 		return nil, err
 	}
@@ -82,19 +84,23 @@ type member struct {
 }
 
 func assignmentTuples(organizationID string, members []member) []fga.Tuple {
+	return linkedAssignments(model.Organization(organizationID), organizationID, members)
+}
+
+// linkedAssignments is one assignment per role held on the holder, an
+// Organization or a resource, linked once, with every member holding the role
+// there as an assignee. holderID names the assignments: the Organization's ID
+// or the resource's row ID, both prefixed KSUIDs, so the two never share one.
+func linkedAssignments(holder, holderID string, members []member) []fga.Tuple {
 	var tuples []fga.Tuple
 	linked := map[string]bool{}
 	for _, m := range members {
-		assignment := model.Assignment(organizationID, m.roleRowID)
+		assignment := model.Assignment(holderID, m.roleRowID)
 		if !linked[m.roleRowID] {
 			linked[m.roleRowID] = true
 			tuples = append(
 				tuples,
-				fga.Tuple{
-					Object:   model.Organization(organizationID),
-					Relation: model.RelationAssignment,
-					User:     assignment,
-				},
+				fga.Tuple{Object: holder, Relation: model.RelationAssignment, User: assignment},
 				fga.Tuple{Object: assignment, Relation: model.RelationRole, User: model.Role(m.roleRowID)},
 			)
 		}

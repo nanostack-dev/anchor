@@ -20,6 +20,7 @@ import (
 	orgrepository "anchor/internal/repository"
 	"anchor/internal/resource/repository"
 	rtservice "anchor/internal/resourcetype/service"
+	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 )
 
@@ -36,6 +37,7 @@ type service struct {
 	repo          repository.Repository
 	organizations orgrepository.OrganizationRepository
 	resourceTypes rtservice.Service
+	assignments   assignments.Service
 	transactor    transactor.Transactor
 	events        events.Emitter
 	logger        zerolog.Logger
@@ -45,6 +47,7 @@ func NewService(
 	repo repository.Repository,
 	organizations orgrepository.OrganizationRepository,
 	resourceTypes rtservice.Service,
+	roleAssignments assignments.Service,
 	tx transactor.Transactor,
 	emitter events.Emitter,
 	logger zerolog.Logger,
@@ -53,6 +56,7 @@ func NewService(
 		repo:          repo,
 		organizations: organizations,
 		resourceTypes: resourceTypes,
+		assignments:   roleAssignments,
 		transactor:    tx,
 		events:        emitter,
 		logger:        logger.With().Str("component", "resource_service").Logger(),
@@ -72,7 +76,7 @@ func (s *service) Put(ctx context.Context, input resource.PutInput) (resource.Re
 		if err != nil {
 			return err
 		}
-		rt, err := registrableType(tree, input.Type)
+		rt, err := resource.RegistrableType(tree, input.Type)
 		if err != nil {
 			return err
 		}
@@ -197,7 +201,7 @@ func (s *service) Get(
 	if err != nil {
 		return resource.Resource{}, s.unexpected(err, productID, "get")
 	}
-	rt, err := registrableType(tree, resourceType)
+	rt, err := resource.RegistrableType(tree, resourceType)
 	if err != nil {
 		return resource.Resource{}, err
 	}
@@ -222,7 +226,7 @@ func (s *service) Delete(
 		if err != nil {
 			return err
 		}
-		rt, err := registrableType(tree, resourceType)
+		rt, err := resource.RegistrableType(tree, resourceType)
 		if err != nil {
 			return err
 		}
@@ -238,16 +242,19 @@ func (s *service) Delete(
 			return resource.ErrNotFound
 		}
 		if !cascade {
-			children, countErr := s.repo.CountChildren(txCtx, organizationID, target.RowID)
-			if countErr != nil {
-				return countErr
-			}
-			if children > 0 {
-				return resource.NewInUseError(children, 0)
+			if err = s.refuseInUse(txCtx, organizationID, target.RowID); err != nil {
+				return err
 			}
 		}
 		subtree, err := s.repo.Subtree(txCtx, organizationID, target.RowID)
 		if err != nil {
+			return err
+		}
+		// The rows go with the resources through their foreign key; their
+		// events are emitted first, while the rows can still be read.
+		if err = s.assignments.ReleaseResources(txCtx, productID, organizationID,
+			functional.Slice(subtree).Map(func(n repository.Node) string { return n.RowID }),
+		); err != nil {
 			return err
 		}
 		if err = s.repo.Delete(txCtx, organizationID, target.RowID); err != nil {
@@ -270,6 +277,23 @@ func (s *service) Delete(
 	return s.unexpected(err, productID, "delete")
 }
 
+// refuseInUse refuses a delete without cascade while the resource has
+// registered children or role assignments.
+func (s *service) refuseInUse(txCtx context.Context, organizationID, rowID string) error {
+	children, err := s.repo.CountChildren(txCtx, organizationID, rowID)
+	if err != nil {
+		return err
+	}
+	held, err := s.assignments.CountOnResource(txCtx, rowID)
+	if err != nil {
+		return err
+	}
+	if children > 0 || held > 0 {
+		return resource.NewInUseError(children, held)
+	}
+	return nil
+}
+
 func (s *service) Search(
 	ctx context.Context, input resource.SearchInput,
 ) (search.Result[resource.Resource], error) {
@@ -284,19 +308,6 @@ func (s *service) Search(
 		return search.Result[resource.Resource]{}, s.unexpected(err, input.ProductID, "search")
 	}
 	return result, nil
-}
-
-// registrableType resolves the type a path names. Organization is the root
-// of every chain, never a registered resource.
-func registrableType(tree resourcetype.Tree, slug string) (resourcetype.ResourceType, error) {
-	rt, ok := tree.BySlug(slug).Get()
-	if !ok {
-		return resourcetype.ResourceType{}, resource.NewTypeNotFoundError(slug)
-	}
-	if rt.BuiltIn() {
-		return resourcetype.ResourceType{}, resource.ErrTypeNotRegistrable
-	}
-	return rt, nil
 }
 
 // allowedParentType checks the parent's type against the type's parent types

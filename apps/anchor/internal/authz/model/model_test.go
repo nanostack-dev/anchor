@@ -134,3 +134,24 @@ func TestResourceObjects(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+func TestAssignmentIDs(t *testing.T) {
+	t.Run("A resource's assignment is named by the resource row and the role row", func(t *testing.T) {
+		assignment := model.Assignment("res_1", "role_1")
+
+		parts, ok := model.ParseAssignment(assignment)
+
+		require.True(t, ok)
+		assert.Equal(t, "role_assignment:res_1.role_1", assignment)
+		assert.Equal(t, model.AssignmentParts{ObjectID: "res_1", RoleRowID: "role_1"}, parts)
+		assert.NotEqual(t, model.Assignment("org_1", "role_1"), assignment)
+	})
+
+	t.Run("A reference that is not an assignment does not parse", func(t *testing.T) {
+		for _, object := range []string{"role:role_1", "role_assignment:res_1", "role_assignment:.role_1",
+			"role_assignment:res_1.", "role_assignment:res_1.role.1"} {
+			_, ok := model.ParseAssignment(object)
+			assert.False(t, ok, object)
+		}
+	})
+}

@@ -380,6 +380,52 @@ export const zResourceListResponse = zPagedListResponse.and(z.object({
 }));
 
 /**
+ * The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
+ */
+export const zResourceMemberPutRequest = z.object({
+    role_ids: z.array(zKsuid).min(1).max(10)
+});
+
+/**
+ * A role the member holds on the resource.
+ */
+export const zResourceMemberRole = z.object({
+    id: zKsuid,
+    name: z.string()
+});
+
+/**
+ * A member of the Organization and the roles they hold on one resource.
+ */
+export const zResourceMemberResponse = z.object({
+    product_user_id: zKsuid,
+    roles: z.array(zResourceMemberRole),
+    created_at: z.iso.datetime(),
+    updated_at: z.iso.datetime()
+});
+
+export const zResourceMemberFilter = z.object({
+    product_user_ids: z.array(zKsuid).max(100).optional(),
+    role_ids: z.array(zKsuid).max(50).optional()
+});
+
+/**
+ * Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+ */
+export const zResourceMemberSortField = z.enum(['created_at', 'product_user_id']).default('created_at');
+
+export const zResourceMemberSearchRequest = z.object({
+    pagination: zPaginationRequest.optional(),
+    filter: zResourceMemberFilter.optional(),
+    sort_by: zResourceMemberSortField.optional(),
+    sort_direction: zSortDirection.optional()
+});
+
+export const zResourceMemberListResponse = zPagedListResponse.and(z.object({
+    items: z.array(zResourceMemberResponse)
+}));
+
+/**
  * Request body for defining a new domain-resource permission for the product's own application resources. For example, if you are building a Google Drive-like product you might define permissions such as "document:read", "document:create", or "file:delete". These permissions are later assigned to ProductRoles, which are attached to end-user organization memberships.
  */
 export const zCreateProductResourcePermissionRequest = z.object({
@@ -3078,6 +3124,61 @@ export const zPutResourcePath = z.object({
  * The resource after the call, whether it was created, renamed, moved or left as it was.
  */
 export const zPutResourceResponse = zResourceResponse;
+
+export const zSearchResourceMembersBody = zResourceMemberSearchRequest;
+
+export const zSearchResourceMembersPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string()
+});
+
+/**
+ * Matching members.
+ */
+export const zSearchResourceMembersResponse = zResourceMemberListResponse;
+
+export const zDeleteResourceMemberPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string(),
+    product_user_id: zKsuid
+});
+
+/**
+ * The member's roles on the resource are removed.
+ */
+export const zDeleteResourceMemberResponse = z.void();
+
+export const zGetResourceMemberPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string(),
+    product_user_id: zKsuid
+});
+
+/**
+ * The member's roles on the resource.
+ */
+export const zGetResourceMemberResponse = zResourceMemberResponse;
+
+export const zPutResourceMemberBody = zResourceMemberPutRequest;
+
+export const zPutResourceMemberPath = z.object({
+    product_id: zKsuid,
+    organization_id: zKsuid,
+    resource_type: z.string(),
+    resource_id: z.string(),
+    product_user_id: zKsuid
+});
+
+/**
+ * The member's roles on the resource after the call.
+ */
+export const zPutResourceMemberResponse = zResourceMemberResponse;
 
 export const zCreateOrganizationInvitationBody = zOrganizationInvitationCreateRequest;
 

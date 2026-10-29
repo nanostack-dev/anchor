@@ -11,6 +11,7 @@ import (
 	"anchor/internal/searchx"
 
 	"anchor/internal/repository"
+	assignments "anchor/internal/roleassignment/service"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -53,6 +54,7 @@ var ErrProductUserExternalIDAlreadyExists = fault.Conflict(
 type productUserService struct {
 	productUserRepo   repository.ProductUserRepository
 	orgMembershipRepo repository.OrganizationMembershipRepository
+	roleAssignments   assignments.Service
 	transactor        transactor.Transactor
 	events            events.Emitter
 	logger            zerolog.Logger
@@ -61,6 +63,7 @@ type productUserService struct {
 func NewProductUserService(
 	productUserRepo repository.ProductUserRepository,
 	orgMembershipRepo repository.OrganizationMembershipRepository,
+	roleAssignments assignments.Service,
 	transactor transactor.Transactor,
 	eventEmitter events.Emitter,
 	logger zerolog.Logger,
@@ -68,6 +71,7 @@ func NewProductUserService(
 	return &productUserService{
 		productUserRepo:   productUserRepo,
 		orgMembershipRepo: orgMembershipRepo,
+		roleAssignments:   roleAssignments,
 		transactor:        transactor,
 		events:            eventEmitter,
 		logger:            logger.With().Str("component", "product_user_service").Logger(),
@@ -199,6 +203,11 @@ func (s *productUserService) Delete(
 
 	var deleted bool
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// Its role assignments on resources go with its memberships through
+		// the foreign keys, each with its event.
+		if releaseErr := s.roleAssignments.ReleaseUser(txCtx, input.ProductID, input.ProductUserID); releaseErr != nil {
+			return releaseErr
+		}
 		var delErr error
 		deleted, delErr = s.productUserRepo.DeleteByID(txCtx, input.ProductID, input.ProductUserID)
 		if delErr != nil {

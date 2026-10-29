@@ -28,6 +28,8 @@ var uniqueGuardsWithoutMapping = map[string]string{
 	"workspace_memberships_pkey":     "nothing writes workspace_memberships",
 	"resources_organization_type_external_id_key": "a resource PUT reads the resource under the Organization's " +
 		"resource lock, held exclusively, before it creates one",
+	"resource_role_assignments_pkey": "an assignment PUT reads the member's roles on the resource under its " +
+		"per-member advisory lock, and inserts only the roles they don't hold",
 	"product_api_key_permissions_pkey": "permission names are deduplicated; a create inserts under a new key " +
 		"and a replace runs after the key row's UPDATE, which serializes writers",
 	"product_api_key_permissions_api_key_id_product_id_permissio_key": "same rows as product_api_key_permissions_pkey",

@@ -473,7 +473,17 @@ func (r *productRoleRepositoryImpl) CountMembershipAssignments(
 		return 0, err
 	}
 
-	return int(orgCount + workspaceCount), nil
+	resourceCount, err := transactor.QueryCount(
+		ctx, r.db,
+		table.ResourceRoleAssignments.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
+			table.ResourceRoleAssignments.RoleID.EQ(postgres.String(roleID)),
+		),
+	).Value()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(orgCount + workspaceCount + resourceCount), nil
 }
 
 func (r *productRoleRepositoryImpl) diffRolePermissions(
