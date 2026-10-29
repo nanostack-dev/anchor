@@ -2,7 +2,7 @@
 // tables (ADR-0022 E5). A write leaves a mark in its own transaction; right
 // after it commits, the request replays its Organization's marks, so the next
 // request already sees the change. The sweeper replays what is left within
-// seconds and rebuilds one Product in full every 15 minutes.
+// seconds and rebuilds each Product in full every 15 minutes.
 package service
 
 import (
@@ -79,8 +79,8 @@ func NewSyncer(
 	}
 }
 
-// target is a Product's store and the model its tuples follow.
-type target struct {
+// fgaStore is a Product's store and the model its tuples follow.
+type fgaStore struct {
 	openfga engine.Engine
 	storeID string
 	modelID string
@@ -88,28 +88,31 @@ type target struct {
 }
 
 func (s *syncer) SyncOrganization(ctx context.Context, productID, organizationID string) error {
-	openfga, storeID, storeErr := s.store(ctx, productID)
+	openfga, storeID, storeErr := s.openStore(ctx, productID)
 	if storeErr != nil {
 		return storeErr
 	}
 	return s.locked(ctx, productID, func(txCtx context.Context) error {
+		// Read before syncing: a write landing meanwhile bumps the revision,
+		// so ClearIfUnchanged keeps its mark.
 		marks, err := s.repo.Pending(txCtx, productID)
 		if err != nil {
 			return err
 		}
-		current, err := s.ensureModel(txCtx, openfga, storeID, productID)
+		fga, err := s.ensureModel(txCtx, openfga, storeID, productID)
 		if err != nil {
 			return err
 		}
-		if err = s.syncOrganization(txCtx, current, productID, organizationID); err != nil {
+		if err = s.syncOrganization(txCtx, fga, productID, organizationID); err != nil {
 			return err
 		}
-		for _, mark := range marks {
-			if mark.OrganizationID == organizationID {
-				return s.repo.Clear(txCtx, mark)
-			}
+		mark, found := functional.Slice(marks).FindFirst(func(m repository.Mark) bool {
+			return m.OrganizationID == organizationID
+		}).Get()
+		if !found {
+			return nil
 		}
-		return nil
+		return s.repo.ClearIfUnchanged(txCtx, mark)
 	})
 }
 
@@ -120,45 +123,40 @@ func (s *syncer) SyncProduct(ctx context.Context, productID string) error {
 
 // syncProduct syncs every Organization, each under its own hold of the lock so
 // no write waits behind a whole Product, then clears the marks it read first.
-func (s *syncer) syncProduct(ctx context.Context, productID string) (target, error) {
-	openfga, storeID, err := s.store(ctx, productID)
+func (s *syncer) syncProduct(ctx context.Context, productID string) (fgaStore, error) {
+	openfga, storeID, err := s.openStore(ctx, productID)
 	if err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
 	var marks []repository.Mark
-	var current target
+	var fga fgaStore
 	if err = s.locked(ctx, productID, func(txCtx context.Context) error {
 		var lockedErr error
 		if marks, lockedErr = s.repo.Pending(txCtx, productID); lockedErr != nil {
 			return lockedErr
 		}
-		current, lockedErr = s.ensureModel(txCtx, openfga, storeID, productID)
+		fga, lockedErr = s.ensureModel(txCtx, openfga, storeID, productID)
 		return lockedErr
 	}); err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
-	organizations, err := s.repo.OrganizationIDs(ctx, productID)
+	existing, err := s.repo.OrganizationIDs(ctx, productID)
 	if err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
-	for _, mark := range marks {
-		if mark.OrganizationID != repository.ProductScope && !slices.Contains(organizations, mark.OrganizationID) {
-			organizations = append(organizations, mark.OrganizationID)
-		}
-	}
-	for _, organizationID := range organizations {
+	for _, organizationID := range organizationsToSync(existing, marks) {
 		if err = s.locked(ctx, productID, func(txCtx context.Context) error {
-			return s.syncOrganization(txCtx, current, productID, organizationID)
+			return s.syncOrganization(txCtx, fga, productID, organizationID)
 		}); err != nil {
-			return target{}, err
+			return fgaStore{}, err
 		}
 	}
-	return current, s.locked(ctx, productID, func(txCtx context.Context) error {
-		if heldErr := s.syncManagedRoles(txCtx, current, productID); heldErr != nil {
+	return fga, s.locked(ctx, productID, func(txCtx context.Context) error {
+		if heldErr := s.syncManagedRoles(txCtx, fga, productID); heldErr != nil {
 			return heldErr
 		}
 		for _, mark := range marks {
-			if clearErr := s.repo.Clear(txCtx, mark); clearErr != nil {
+			if clearErr := s.repo.ClearIfUnchanged(txCtx, mark); clearErr != nil {
 				return clearErr
 			}
 		}
@@ -166,29 +164,41 @@ func (s *syncer) syncProduct(ctx context.Context, productID string) (target, err
 	})
 }
 
+// organizationsToSync adds the Organizations only a mark names: a deleted
+// Organization is gone from the table, and its tuples must go too.
+func organizationsToSync(existing []string, marks []repository.Mark) []string {
+	organizations := slices.Clone(existing)
+	for _, mark := range marks {
+		if !mark.CoversProduct() && !slices.Contains(organizations, mark.OrganizationID) {
+			organizations = append(organizations, mark.OrganizationID)
+		}
+	}
+	return organizations
+}
+
 func (s *syncer) Reconcile(ctx context.Context, productID string) error {
 	exists, existsErr := s.repo.ProductExists(ctx, productID)
 	if existsErr != nil || !exists {
 		return existsErr
 	}
-	current, syncErr := s.syncProduct(ctx, productID)
+	fga, syncErr := s.syncProduct(ctx, productID)
 	if syncErr != nil {
 		return syncErr
 	}
 	return s.locked(ctx, productID, func(txCtx context.Context) error {
-		desired, err := s.productTuples(txCtx, current, productID)
+		desired, err := s.productTuples(txCtx, fga, productID)
 		if err != nil {
 			return err
 		}
-		stored, err := s.readAll(txCtx, current, nil)
+		stored, err := s.readAll(txCtx, fga, nil)
 		if err != nil {
 			return err
 		}
 		changes := model.Diff(stored, desired)
-		if err = s.apply(txCtx, current, changes); err != nil {
+		if err = s.apply(txCtx, fga, changes); err != nil {
 			return err
 		}
-		if len(changes.Writes)+len(changes.Deletes) > 0 {
+		if !changes.IsEmpty() {
 			s.logger.Info().Str("product_id", productID).Int("writes", len(changes.Writes)).
 				Int("deletes", len(changes.Deletes)).Msg("reconcile repaired the relationship store")
 		}
@@ -225,9 +235,9 @@ func (s *syncer) locked(ctx context.Context, productID string, fn func(context.C
 	}
 }
 
-// store returns the engine and the Product's store, outside any transaction:
-// a store created here commits on its own.
-func (s *syncer) store(ctx context.Context, productID string) (engine.Engine, string, error) {
+// openStore returns the engine and the Product's store, outside any
+// transaction: a store created here commits on its own.
+func (s *syncer) openStore(ctx context.Context, productID string) (engine.Engine, string, error) {
 	openfga, err := s.engines.Get()
 	if err != nil {
 		return nil, "", err
@@ -240,22 +250,24 @@ func (s *syncer) store(ctx context.Context, productID string) (engine.Engine, st
 // model the store follows.
 func (s *syncer) ensureModel(
 	ctx context.Context, openfga engine.Engine, storeID, productID string,
-) (target, error) {
+) (fgaStore, error) {
 	catalog, err := s.catalog(ctx, productID)
 	if err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
 	found, err := s.repo.FindStore(ctx, productID)
 	if err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
-	current := found.OrElse(repository.Store{})
-	if current.ModelHash == model.Hash(catalog) && current.ModelID != "" {
-		return target{openfga: openfga, storeID: storeID, modelID: current.ModelID, catalog: catalog}, nil
+	fga := fgaStore{openfga: openfga, storeID: storeID, catalog: catalog}
+	recorded := found.OrElse(repository.Store{})
+	if recorded.ModelHash == model.Hash(catalog) && recorded.ModelID != "" {
+		fga.modelID = recorded.ModelID
+		return fga, nil
 	}
 	compiled, err := model.Compile(catalog)
 	if err != nil {
-		return target{}, err
+		return fgaStore{}, err
 	}
 	written, err := openfga.WriteAuthorizationModel(ctx, &openfgav1.WriteAuthorizationModelRequest{
 		StoreId:         storeID,
@@ -264,12 +276,10 @@ func (s *syncer) ensureModel(
 		Conditions:      compiled.Proto.GetConditions(),
 	})
 	if err != nil {
-		return target{}, fmt.Errorf("write authorization model: %w", err)
+		return fgaStore{}, fmt.Errorf("write authorization model: %w", err)
 	}
-	if err = s.repo.SetModel(ctx, productID, written.GetAuthorizationModelId(), compiled.Hash); err != nil {
-		return target{}, err
-	}
-	return target{openfga: openfga, storeID: storeID, modelID: written.GetAuthorizationModelId(), catalog: catalog}, nil
+	fga.modelID = written.GetAuthorizationModelId()
+	return fga, s.repo.SetModel(ctx, productID, fga.modelID, compiled.Hash)
 }
 
 func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, error) {
@@ -296,78 +306,94 @@ func (s *syncer) catalog(ctx context.Context, productID string) (model.Catalog, 
 }
 
 // syncOrganization diffs the tuples an Organization implies with those its
-// store holds. It reads the Organization's object, whose assignment links
-// imply their assignments' tuples, and the roles the Organization owns or its
-// members hold. It never deletes the grants of a managed role, which other
-// Organizations may hold.
-func (s *syncer) syncOrganization(ctx context.Context, current target, productID, organizationID string) error {
+// store holds, and writes the difference.
+func (s *syncer) syncOrganization(ctx context.Context, fga fgaStore, productID, organizationID string) error {
 	state, err := s.repo.OrganizationState(ctx, productID, organizationID, s.now())
 	if err != nil {
 		return err
 	}
-	desired := state.Tuples(current.catalog)
-
-	stored, err := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{
-		Object: model.Organization(organizationID),
-	})
+	desired := state.Tuples(fga.catalog)
+	stored, err := s.storedOrganizationTuples(ctx, fga, state, desired)
 	if err != nil {
 		return err
 	}
+	return s.apply(ctx, fga, model.Diff(stored, desired))
+}
+
+// storedOrganizationTuples reads what the store holds for the Organization:
+// its object, whose assignment links imply their role tuples, each
+// assignment's assignees, and the grants of the roles it owns or its members
+// hold. A managed role's grants are kept only where desired, since other
+// Organizations may hold that role and an Organization sync must not delete them.
+func (s *syncer) storedOrganizationTuples(
+	ctx context.Context, fga fgaStore, state model.OrganizationState, desired []model.Tuple,
+) ([]model.Tuple, error) {
+	links, err := s.readAll(ctx, fga, &openfgav1.ReadRequestTupleKey{
+		Object: model.Organization(state.OrganizationID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	stored := slices.Clone(links)
 	roles := map[string]bool{}
-	for _, tuple := range stored {
-		if tuple.Relation != model.RelationAssignment {
+	for _, link := range links {
+		if link.Relation != model.RelationAssignment {
 			continue
 		}
-		implied := model.AssignmentTuples(tuple.User)
-		stored = append(stored, implied...)
-		for _, t := range implied {
-			roles[model.ObjectID(t.User)] = true
+		if roleTuple, ok := model.AssignmentRoleTuple(link.User).Get(); ok {
+			stored = append(stored, roleTuple)
+			roles[model.ObjectID(roleTuple.User)] = true
 		}
-		assignees, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{
-			Object: tuple.User, Relation: model.RelationAssignee,
+		assignees, readErr := s.readAll(ctx, fga, &openfgav1.ReadRequestTupleKey{
+			Object: link.User, Relation: model.RelationAssignee,
 		})
 		if readErr != nil {
-			return readErr
+			return nil, readErr
 		}
 		stored = append(stored, assignees...)
 	}
 	owned := map[string]bool{}
 	for _, role := range state.Roles {
 		roles[role.RowID] = true
-		if role.Owned {
-			owned[role.RowID] = true
-		}
+		owned[role.RowID] = role.Owned
 	}
 	for roleRowID := range roles {
-		grants, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: model.Role(roleRowID)})
+		grants, readErr := s.roleGrants(ctx, fga, roleRowID, owned[roleRowID], desired)
 		if readErr != nil {
-			return readErr
-		}
-		if !owned[roleRowID] {
-			grants = functional.Slice(grants).Filter(func(t model.Tuple) bool {
-				return slices.Contains(desired, t)
-			})
+			return nil, readErr
 		}
 		stored = append(stored, grants...)
 	}
-	return s.apply(ctx, current, model.Diff(stored, desired))
+	return stored, nil
+}
+
+// roleGrants reads a role's stored grants. For a role the Organization does
+// not own, it keeps only the desired ones, so the diff never deletes the rest.
+func (s *syncer) roleGrants(
+	ctx context.Context, fga fgaStore, roleRowID string, owned bool, desired []model.Tuple,
+) ([]model.Tuple, error) {
+	grants, err := s.readAll(ctx, fga, &openfgav1.ReadRequestTupleKey{Object: model.Role(roleRowID)})
+	if err != nil || owned {
+		return grants, err
+	}
+	return functional.Slice(grants).Filter(func(t model.Tuple) bool { return slices.Contains(desired, t) }), nil
 }
 
 // syncManagedRoles brings the grants of every managed role a membership holds
 // in step: an Organization sync never deletes them, since other Organizations
 // may hold the same role.
-func (s *syncer) syncManagedRoles(ctx context.Context, current target, productID string) error {
+func (s *syncer) syncManagedRoles(ctx context.Context, fga fgaStore, productID string) error {
 	managed, err := s.repo.HeldManagedRoles(ctx, productID)
 	if err != nil {
 		return err
 	}
 	for _, held := range managed {
-		desired := model.OrganizationState{Exists: true, Roles: []model.RoleGrants{held}}.Tuples(current.catalog)
-		stored, readErr := s.readAll(ctx, current, &openfgav1.ReadRequestTupleKey{Object: model.Role(held.RowID)})
+		desired := model.OrganizationState{Exists: true, Roles: []model.RoleGrants{held}}.Tuples(fga.catalog)
+		stored, readErr := s.readAll(ctx, fga, &openfgav1.ReadRequestTupleKey{Object: model.Role(held.RowID)})
 		if readErr != nil {
 			return readErr
 		}
-		if err = s.apply(ctx, current, model.Diff(stored, desired)); err != nil {
+		if err = s.apply(ctx, fga, model.Diff(stored, desired)); err != nil {
 			return err
 		}
 	}
@@ -375,7 +401,7 @@ func (s *syncer) syncManagedRoles(ctx context.Context, current target, productID
 }
 
 // productTuples is every tuple the Product's Organizations imply.
-func (s *syncer) productTuples(ctx context.Context, current target, productID string) ([]model.Tuple, error) {
+func (s *syncer) productTuples(ctx context.Context, fga fgaStore, productID string) ([]model.Tuple, error) {
 	organizations, err := s.repo.OrganizationIDs(ctx, productID)
 	if err != nil {
 		return nil, err
@@ -386,19 +412,19 @@ func (s *syncer) productTuples(ctx context.Context, current target, productID st
 		if stateErr != nil {
 			return nil, stateErr
 		}
-		desired = append(desired, state.Tuples(current.catalog)...)
+		desired = append(desired, state.Tuples(fga.catalog)...)
 	}
 	return desired, nil
 }
 
 func (s *syncer) readAll(
-	ctx context.Context, current target, key *openfgav1.ReadRequestTupleKey,
+	ctx context.Context, fga fgaStore, key *openfgav1.ReadRequestTupleKey,
 ) ([]model.Tuple, error) {
 	var tuples []model.Tuple
 	token := ""
 	for {
-		resp, err := current.openfga.Read(ctx, &openfgav1.ReadRequest{
-			StoreId:           current.storeID,
+		resp, err := fga.openfga.Read(ctx, &openfgav1.ReadRequest{
+			StoreId:           fga.storeID,
 			TupleKey:          key,
 			PageSize:          wrapperspb.Int32(readPage),
 			ContinuationToken: token,
@@ -420,13 +446,13 @@ func (s *syncer) readAll(
 // apply writes the changes in batches, deletes first. A tuple already there,
 // or already gone, is not an error: a sync that ran halfway before is
 // replayed whole.
-func (s *syncer) apply(ctx context.Context, current target, changes model.Changes) error {
-	for len(changes.Writes) > 0 || len(changes.Deletes) > 0 {
+func (s *syncer) apply(ctx context.Context, fga fgaStore, changes model.Changes) error {
+	for !changes.IsEmpty() {
 		// Deletes go first, so a sync cut short never leaves a subject with
 		// both its old and its new grants.
 		deletes := take(&changes.Deletes, writeBatch)
 		writes := take(&changes.Writes, writeBatch-len(deletes))
-		request := &openfgav1.WriteRequest{StoreId: current.storeID, AuthorizationModelId: current.modelID}
+		request := &openfgav1.WriteRequest{StoreId: fga.storeID, AuthorizationModelId: fga.modelID}
 		if len(writes) > 0 {
 			request.Writes = &openfgav1.WriteRequestWrites{
 				TupleKeys:   functional.Slice(writes).Map(toTupleKey),
@@ -439,7 +465,7 @@ func (s *syncer) apply(ctx context.Context, current target, changes model.Change
 				OnMissing: "ignore",
 			}
 		}
-		if _, err := current.openfga.Write(ctx, request); err != nil {
+		if _, err := fga.openfga.Write(ctx, request); err != nil {
 			return fmt.Errorf("write tuples: %w", err)
 		}
 	}

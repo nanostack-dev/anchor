@@ -164,7 +164,7 @@ func TestAuthzSync(t *testing.T) {
 		assert.Equal(t, first.Value().ModelID, again.Value().ModelID)
 	})
 
-	t.Run("Syncs of one product at once all finish", func(t *testing.T) {
+	t.Run("Five concurrent syncs of one organization all succeed", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		member := givenMember(t, w, w.organizationID, w.managedID)
 		var wg sync.WaitGroup
@@ -177,140 +177,6 @@ func TestAuthzSync(t *testing.T) {
 
 		assert.True(t, can(t, w.productID, model.User(member), w.permission, w.organizationID))
 	})
-}
-
-func TestAuthzReconcile(t *testing.T) {
-	openFGA(t)
-
-	t.Run("Reconcile removes the grants of a role that no longer exists", func(t *testing.T) {
-		w := givenSyncWorld(t)
-		givenMember(t, w, w.organizationID, w.managedID)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		found, err := AuthzRepo.FindStore(t.Context(), w.productID)
-		require.NoError(t, err)
-		orphan := &openfgav1.TupleKey{
-			Object: model.Role("product_role_" + uuid.NewString()), Relation: model.GrantsRelation(w.permission),
-			User: model.AllUsers,
-		}
-		_, err = openFGA(t).Write(t.Context(), &openfgav1.WriteRequest{
-			StoreId: found.Value().StoreID, AuthorizationModelId: found.Value().ModelID,
-			Writes: &openfgav1.WriteRequestWrites{TupleKeys: []*openfgav1.TupleKey{orphan}},
-		})
-		require.NoError(t, err)
-
-		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
-
-		read, err := openFGA(t).Read(t.Context(), &openfgav1.ReadRequest{
-			StoreId: found.Value().StoreID, TupleKey: &openfgav1.ReadRequestTupleKey{Object: orphan.GetObject()},
-		})
-		require.NoError(t, err)
-		assert.Empty(t, read.GetTuples())
-	})
-}
-
-func TestAuthzMarks(t *testing.T) {
-	openFGA(t)
-
-	t.Run("A membership write leaves a mark that the sweeper replays", func(t *testing.T) {
-		w := givenSyncWorld(t)
-		userID := givenProductUser(t, w.productID)
-
-		_, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
-			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
-		})
-		require.NoError(t, err)
-		marks, err := AuthzRepo.Pending(t.Context(), w.productID)
-		require.NoError(t, err)
-		require.NotEmpty(t, marks)
-
-		AuthzSweeper.Sweep(t.Context())
-
-		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
-		require.NoError(t, err)
-		assert.Empty(t, left)
-	})
-}
-
-func TestAuthzReplayAfterCommit(t *testing.T) {
-	openFGA(t)
-
-	t.Run("A write's request replays its organization right after it commits", func(t *testing.T) {
-		w := givenSyncWorld(t)
-		userID := givenProductUser(t, w.productID)
-		ctx, written := authzservice.CollectWrites(t.Context())
-
-		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
-			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
-		})
-		require.NoError(t, err)
-		AuthzReplayer.Replay(t.Context(), written())
-
-		assert.Equal(t, []authzservice.OrganizationRef{{ProductID: w.productID, OrganizationID: w.organizationID}},
-			written())
-		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
-		require.NoError(t, err)
-		assert.Empty(t, left)
-	})
-
-	t.Run("A member add refused before it writes leaves no mark and collects nothing", func(t *testing.T) {
-		w := givenSyncWorld(t)
-		ctx, written := authzservice.CollectWrites(t.Context())
-
-		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
-			ProductID:      w.productID,
-			OrganizationID: w.organizationID,
-			ProductUserID:  "pusr_missing",
-			RoleID:         &w.managedID,
-		})
-		require.Error(t, err)
-
-		assert.Empty(t, written())
-		left, err := AuthzRepo.Pending(t.Context(), w.productID)
-		require.NoError(t, err)
-		assert.Empty(t, left)
-	})
-}
-
-func TestAuthzOrphanStores(t *testing.T) {
-	openfga := openFGA(t)
-
-	t.Run("A store whose product is gone is deleted by a reconcile pass", func(t *testing.T) {
-		orphan, err := openfga.CreateStore(
-			t.Context(),
-			&openfgav1.CreateStoreRequest{Name: "prd_gone_" + uuid.NewString()},
-		)
-		require.NoError(t, err)
-		w := givenSyncWorld(t)
-		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
-		_, err = TestDB.ExecContext(t.Context(), `UPDATE authz_stores SET reconciled_at = NULL`)
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			AuthzSweeper.Sweep(t.Context())
-			_, getErr := openfga.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: orphan.GetId()})
-			return getErr != nil
-		}, 30*time.Second, 10*time.Millisecond)
-	})
-}
-
-func givenSyncAPIKey(t *testing.T, w syncWorld, permission string) string {
-	t.Helper()
-	keyID := "orgapikey_" + uuid.NewString()
-	_, err := TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_keys
-		(id, organization_id, name, hashed_value, obfuscated_value, status)
-		VALUES ($1, $2, 'key', $3, 'ob', 'ACTIVE')`, keyID, w.organizationID, uuid.NewString())
-	require.NoError(t, err)
-	_, err = TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_key_permissions
-		(api_key_id, organization_id, product_id, permission_name) VALUES ($1, $2, $3, $4)`,
-		keyID, w.organizationID, w.productID, permission)
-	require.NoError(t, err)
-	return keyID
-}
-
-func TestAuthzSyncCases(t *testing.T) {
-	openFGA(t)
 
 	t.Run("A member who changes role holds only the new role's permissions", func(t *testing.T) {
 		w := givenSyncWorld(t)
@@ -416,6 +282,35 @@ func TestAuthzSyncCases(t *testing.T) {
 		assert.NotEqual(t, before.Value().ModelID, after.Value().ModelID)
 		assert.True(t, can(t, w.productID, model.User(member), kept, w.organizationID))
 	})
+}
+
+func TestAuthzReconcile(t *testing.T) {
+	openFGA(t)
+
+	t.Run("Reconcile removes the grants of a role that no longer exists", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		givenMember(t, w, w.organizationID, w.managedID)
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		found, err := AuthzRepo.FindStore(t.Context(), w.productID)
+		require.NoError(t, err)
+		orphan := &openfgav1.TupleKey{
+			Object: model.Role("product_role_" + uuid.NewString()), Relation: model.GrantsRelation(w.permission),
+			User: model.AllUsers,
+		}
+		_, err = openFGA(t).Write(t.Context(), &openfgav1.WriteRequest{
+			StoreId: found.Value().StoreID, AuthorizationModelId: found.Value().ModelID,
+			Writes: &openfgav1.WriteRequestWrites{TupleKeys: []*openfgav1.TupleKey{orphan}},
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
+
+		read, err := openFGA(t).Read(t.Context(), &openfgav1.ReadRequest{
+			StoreId: found.Value().StoreID, TupleKey: &openfgav1.ReadRequestTupleKey{Object: orphan.GetObject()},
+		})
+		require.NoError(t, err)
+		assert.Empty(t, read.GetTuples())
+	})
 
 	t.Run("A product never written to gets its store from the reconcile", func(t *testing.T) {
 		w := givenSyncWorld(t)
@@ -430,7 +325,29 @@ func TestAuthzSyncCases(t *testing.T) {
 	})
 }
 
-func TestAuthzMarkRevisions(t *testing.T) {
+func TestAuthzMarks(t *testing.T) {
+	openFGA(t)
+
+	t.Run("A membership write leaves a mark that the sweeper replays", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		userID := givenProductUser(t, w.productID)
+
+		_, err := MembershipService.AddMember(t.Context(), organization.AddMemberInput{
+			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
+		})
+		require.NoError(t, err)
+		marks, err := AuthzRepo.Pending(t.Context(), w.productID)
+		require.NoError(t, err)
+		require.NotEmpty(t, marks)
+
+		AuthzSweeper.Sweep(t.Context())
+
+		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
+		left, err := AuthzRepo.Pending(t.Context(), w.productID)
+		require.NoError(t, err)
+		assert.Empty(t, left)
+	})
+
 	t.Run("A mark made again after a sync cleared it is not cleared by an older sync", func(t *testing.T) {
 		ctx := t.Context()
 		w := givenSyncWorld(t)
@@ -440,10 +357,10 @@ func TestAuthzMarkRevisions(t *testing.T) {
 		read, err := AuthzRepo.Pending(ctx, w.productID)
 		require.NoError(t, err)
 		require.Len(t, read, 1)
-		require.NoError(t, AuthzRepo.Clear(ctx, read[0]))
+		require.NoError(t, AuthzRepo.ClearIfUnchanged(ctx, read[0]))
 		require.NoError(t, AuthzRepo.Mark(ctx, w.productID, w.organizationID))
 
-		require.NoError(t, AuthzRepo.Clear(ctx, read[0]))
+		require.NoError(t, AuthzRepo.ClearIfUnchanged(ctx, read[0]))
 
 		left, err := AuthzRepo.Pending(ctx, w.productID)
 		require.NoError(t, err)
@@ -484,6 +401,85 @@ func TestAuthzMarkRevisions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, left)
 	})
+}
+
+func TestAuthzReplayAfterCommit(t *testing.T) {
+	openFGA(t)
+
+	t.Run("A write's request replays its organization right after it commits", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		userID := givenProductUser(t, w.productID)
+		ctx, written := authzservice.CollectMarks(t.Context())
+
+		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
+			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
+		})
+		require.NoError(t, err)
+		AuthzReplayer.Replay(t.Context(), written())
+
+		assert.Equal(t, []authzservice.OrganizationRef{{ProductID: w.productID, OrganizationID: w.organizationID}},
+			written())
+		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
+		left, err := AuthzRepo.Pending(t.Context(), w.productID)
+		require.NoError(t, err)
+		assert.Empty(t, left)
+	})
+
+	t.Run("A member add refused before it writes leaves no mark and collects nothing", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		ctx, written := authzservice.CollectMarks(t.Context())
+
+		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
+			ProductID:      w.productID,
+			OrganizationID: w.organizationID,
+			ProductUserID:  "pusr_missing",
+			RoleID:         &w.managedID,
+		})
+		require.Error(t, err)
+
+		assert.Empty(t, written())
+		left, err := AuthzRepo.Pending(t.Context(), w.productID)
+		require.NoError(t, err)
+		assert.Empty(t, left)
+	})
+}
+
+func TestAuthzOrphanStores(t *testing.T) {
+	openfga := openFGA(t)
+
+	t.Run("A store whose product is gone is deleted by a reconcile pass", func(t *testing.T) {
+		orphan, err := openfga.CreateStore(
+			t.Context(),
+			&openfgav1.CreateStoreRequest{Name: "prd_gone_" + uuid.NewString()},
+		)
+		require.NoError(t, err)
+		w := givenSyncWorld(t)
+		require.NoError(t, AuthzSyncer.SyncOrganization(t.Context(), w.productID, w.organizationID))
+		// Make this product due, so the next sweep reconciles and removes orphan stores.
+		_, err = TestDB.ExecContext(t.Context(),
+			`UPDATE authz_stores SET reconciled_at = NULL WHERE product_id = $1`, w.productID)
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			AuthzSweeper.Sweep(t.Context())
+			_, getErr := openfga.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: orphan.GetId()})
+			return getErr != nil
+		}, 30*time.Second, 10*time.Millisecond)
+	})
+}
+
+func givenSyncAPIKey(t *testing.T, w syncWorld, permission string) string {
+	t.Helper()
+	keyID := "orgapikey_" + uuid.NewString()
+	_, err := TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_keys
+		(id, organization_id, name, hashed_value, obfuscated_value, status)
+		VALUES ($1, $2, 'key', $3, 'ob', 'ACTIVE')`, keyID, w.organizationID, uuid.NewString())
+	require.NoError(t, err)
+	_, err = TestDB.ExecContext(t.Context(), `INSERT INTO organization_api_key_permissions
+		(api_key_id, organization_id, product_id, permission_name) VALUES ($1, $2, $3, $4)`,
+		keyID, w.organizationID, w.productID, permission)
+	require.NoError(t, err)
+	return keyID
 }
 
 var errRollback = errors.New("roll back")

@@ -34,8 +34,8 @@ const (
 	migrationAuthzSyncMarks       = 69
 )
 
-// roleSchemaFact is one thing the role migrations (000059 to 000069) must
-// leave true. holds is a query that returns one boolean. Without a recovery,
+// roleSchemaFact is one thing the migrations from 000059 to 000069 (roles,
+// then the authorization store) must leave true. holds is a query that returns one boolean. Without a recovery,
 // the recovery is to force the version before and redeploy.
 type roleSchemaFact struct {
 	holds    string

@@ -278,7 +278,7 @@ const common = [
     title: "The request arrives", actor: "mw", dot: "--req",
     note: `<ul><li>The replay middleware wraps the handler.</li>
 <li>It puts an empty list on the context. The Marker adds every Organization it marks to this list.</li></ul>`,
-    code: `// internal/api/authz_replay.go\nPOST /products/prod_tasks/organizations/org_acme/members\n{ "product_user_id": "pu_bob", "role_id": "role_admin" }\n\ncollectCtx, written := authzservice.CollectWrites(ctx)\nresponse, err := f(collectCtx, w, r, request)   // the handler runs now`,
+    code: `// internal/api/authz_replay.go\nPOST /products/prod_tasks/organizations/org_acme/members\n{ "product_user_id": "pu_bob", "role_id": "role_admin" }\n\ncollectCtx, marked := authzservice.CollectMarks(ctx)\nresponse, err := f(collectCtx, w, r, request)   // the handler runs now`,
     apply: s => { s.mem.bob = { collected: [], response: "building" }; },
   },
   {
@@ -308,7 +308,7 @@ const common = [
 <li><code>staleScope(MembershipCreated)</code> returns <code>org_acme</code>.</li>
 <li>The Marker upserts one mark row in the <b>same</b> transaction, and adds <code>org_acme</code> to the request's list.</li>
 <li><code>nextval</code> is not transactional: if this transaction rolls back, revision 8 is skipped, and that does no harm.</li></ul>`,
-    code: `INSERT INTO authz_sync_marks (product_id, organization_id)          -- revision DEFAULT nextval(…) → 8\nVALUES ('prod_tasks', 'org_acme')\nON CONFLICT (product_id, organization_id) DO UPDATE\n  SET revision  = nextval('authz_sync_mark_revisions'),\n      marked_at = NOW();\n\nwritten.add("prod_tasks", "org_acme")`,
+    code: `INSERT INTO authz_sync_marks (product_id, organization_id)          -- revision DEFAULT nextval(…) → 8\nVALUES ('prod_tasks', 'org_acme')\nON CONFLICT (product_id, organization_id) DO UPDATE\n  SET revision  = nextval('authz_sync_mark_revisions'),\n      marked_at = NOW();\n\ncollector.add(OrganizationRef{"prod_tasks", "org_acme"})`,
     apply: s => {
       s.seq = 8;
       add(s, "marks", ["prod_tasks", "org_acme", "8", "10:15:02.120"], "pending", "req");
@@ -326,7 +326,7 @@ const common = [
     title: "The handler returns the 201", actor: "svc", dot: "--req",
     note: `<ul><li>The handler returns the response as a Go value.</li>
 <li>Nothing goes to the client yet. The strict server writes the response only when the middleware returns.</li></ul>`,
-    code: `return api.AddOrganizationMember201JSONResponse{…}, nil\n// back in the middleware:\nif err == nil {\n    replayer.Replay(ctx, written())   // written() = [{prod_tasks, org_acme}]\n}`,
+    code: `return api.AddOrganizationMember201JSONResponse{…}, nil\n// back in the middleware:\nif err == nil {\n    replayer.Replay(ctx, marked())   // marked() = [{prod_tasks, org_acme}]\n}`,
     apply: s => { s.mem.bob.response = "held"; },
   },
   {

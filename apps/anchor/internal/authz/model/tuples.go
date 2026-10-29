@@ -3,6 +3,8 @@ package model
 import (
 	"cmp"
 	"slices"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 // Tuple is one relationship: User holds Relation on Object.
@@ -60,7 +62,9 @@ func (s OrganizationState) Tuples(catalog Catalog) []Tuple {
 		assignment := Assignment(s.OrganizationID, member.RoleRowID)
 		if !held[member.RoleRowID] {
 			held[member.RoleRowID] = true
-			tuples = append(tuples, AssignmentTuples(assignment)...)
+			if roleTuple, ok := AssignmentRoleTuple(assignment).Get(); ok {
+				tuples = append(tuples, roleTuple)
+			}
 			tuples = append(tuples, Tuple{Object: organization, Relation: RelationAssignment, User: assignment})
 		}
 		tuples = append(tuples, Tuple{Object: assignment, Relation: RelationAssignee, User: User(member.ProductUserID)})
@@ -88,15 +92,14 @@ func (s OrganizationState) Tuples(catalog Catalog) []Tuple {
 	return tuples
 }
 
-// AssignmentTuples is the role tuple an assignment's ID implies, so a sync
-// that finds an assignment link it no longer wants removes it too without
-// reading it. Its assignees are read.
-func AssignmentTuples(assignment string) []Tuple {
+// AssignmentRoleTuple is the role link encoded in an assignment's ID, so a
+// sync can delete it without reading it.
+func AssignmentRoleTuple(assignment string) functional.Option[Tuple] {
 	parts, ok := ParseAssignment(assignment)
 	if !ok {
-		return nil
+		return functional.None[Tuple]()
 	}
-	return []Tuple{{Object: assignment, Relation: RelationRole, User: Role(parts.RoleRowID)}}
+	return functional.Some(Tuple{Object: assignment, Relation: RelationRole, User: Role(parts.RoleRowID)})
 }
 
 // Changes is what turns the stored tuples into the desired ones.

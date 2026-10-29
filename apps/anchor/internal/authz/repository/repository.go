@@ -6,6 +6,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -29,6 +30,8 @@ type Mark struct {
 	Revision       int64
 }
 
+func (m Mark) CoversProduct() bool { return m.OrganizationID == ProductScope }
+
 // Store is a Product's OpenFGA store and the model its tuples follow.
 type Store struct {
 	StoreID      string
@@ -43,8 +46,8 @@ type Repository interface {
 	Mark(ctx context.Context, productID, organizationID string) error
 	// Pending lists a Product's marks.
 	Pending(ctx context.Context, productID string) ([]Mark, error)
-	// Clear deletes a mark only if no write bumped it since it was read.
-	Clear(ctx context.Context, mark Mark) error
+	// ClearIfUnchanged deletes a mark only if no write bumped it since it was read.
+	ClearIfUnchanged(ctx context.Context, mark Mark) error
 	// OldestInternal lists the oldest marks of every Product, for the sweeper.
 	OldestInternal(ctx context.Context, limit int64) ([]Mark, error)
 	// PostponeInternal moves a Product's marks behind every other's, after a
@@ -113,7 +116,7 @@ func (r *repositoryImpl) Pending(ctx context.Context, productID string) ([]Mark,
 	).Value()
 }
 
-func (r *repositoryImpl) Clear(ctx context.Context, mark Mark) error {
+func (r *repositoryImpl) ClearIfUnchanged(ctx context.Context, mark Mark) error {
 	return transactor.Exec(ctx, r.db, table.AuthzSyncMarks.DELETE().WHERE(
 		table.AuthzSyncMarks.ProductID.EQ(postgres.String(mark.ProductID)).
 			AND(table.AuthzSyncMarks.OrganizationID.EQ(postgres.String(mark.OrganizationID))).
@@ -244,8 +247,15 @@ func (r *repositoryImpl) OrganizationState(
 		held = append(held, *m.ProductRoleID)
 	}
 
-	if state.Roles, err = r.roleGrants(ctx, productID, organizationID, held); err != nil {
+	custom, err := r.customRoleIDs(ctx, productID, organizationID)
+	if err != nil {
 		return state, err
+	}
+	if state.Roles, err = r.rolesWithGrants(ctx, append(held, custom...)); err != nil {
+		return state, err
+	}
+	for i := range state.Roles {
+		state.Roles[i].Owned = slices.Contains(custom, state.Roles[i].RowID)
 	}
 	state.APIKeys, err = r.apiKeyGrants(ctx, productID, organizationID, now)
 	return state, err
@@ -263,28 +273,26 @@ func (r *repositoryImpl) HeldManagedRoles(ctx context.Context, productID string)
 	if err != nil || len(held) == 0 {
 		return nil, err
 	}
-	return r.roleGrants(ctx, productID, "", held)
+	return r.rolesWithGrants(ctx, held)
 }
 
-// roleGrants reads the Organization's custom roles and every role a membership
-// names, which may be a managed role.
-func (r *repositoryImpl) roleGrants(
-	ctx context.Context, productID, organizationID string, held []string,
-) ([]model.RoleGrants, error) {
-	owned := table.ProductRoles.OrganizationID.EQ(postgres.String(organizationID))
-	if len(held) > 0 {
-		owned = owned.OR(table.ProductRoles.ID.IN(jetx.ToStringExpressions(functional.Distinct(held))...))
-	}
-	roles, err := transactor.Query[[]dbmodel.ProductRoles](ctx, r.db,
-		table.ProductRoles.SELECT(table.ProductRoles.ID, table.ProductRoles.OrganizationID).WHERE(
-			table.ProductRoles.ProductID.EQ(postgres.String(productID)).AND(owned),
-		).ORDER_BY(table.ProductRoles.ID.ASC()),
+func (r *repositoryImpl) customRoleIDs(ctx context.Context, productID, organizationID string) ([]string, error) {
+	return transactor.QueryMapSlice(ctx, r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID).WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductRoles.OrganizationID.EQ(postgres.String(organizationID))),
+		),
+		func(row dbmodel.ProductRoles) string { return row.ID },
 	).Value()
-	if err != nil || len(roles) == 0 {
-		return nil, err
+}
+
+// rolesWithGrants returns each role with the permissions it holds, sorted by
+// ID. A role that holds none is still returned, so a sync deletes its grants.
+func (r *repositoryImpl) rolesWithGrants(ctx context.Context, roleIDs []string) ([]model.RoleGrants, error) {
+	roleIDs = functional.Sorted(functional.Distinct(roleIDs))
+	if len(roleIDs) == 0 {
+		return nil, nil
 	}
-	roleIDs := functional.Slice(roles).Map(func(row dbmodel.ProductRoles) string { return row.ID })
-	ownedBy := functional.Slice(roles).ToMap(func(row dbmodel.ProductRoles) string { return row.ID })
 	grants, err := transactor.Query[[]dbmodel.ProductRoleResourcePermissions](ctx, r.db,
 		table.ProductRoleResourcePermissions.SELECT(
 			table.ProductRoleResourcePermissions.ProductRoleID, table.ProductRoleResourcePermissions.PermissionName,
@@ -299,7 +307,6 @@ func (r *repositoryImpl) roleGrants(
 	return functional.Slice(roleIDs).Map(func(id string) model.RoleGrants {
 		return model.RoleGrants{
 			RowID: id,
-			Owned: functional.FromPtr(ownedBy[id].OrganizationID).OrElse("") == organizationID,
 			Permissions: functional.Slice(byRole[id]).Map(
 				func(g dbmodel.ProductRoleResourcePermissions) string { return g.PermissionName },
 			),

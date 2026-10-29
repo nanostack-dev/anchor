@@ -88,7 +88,7 @@ The cost is one Organization read per access-changing write. It grows with the O
 
 | Step | Who | What it writes |
 | --- | --- | --- |
-| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked Organizations on the context (`CollectWrites`) |
+| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked Organizations on the context (`CollectMarks`) |
 | 2 | `AddMember` | Checks the Organization, the product user, the role and that Bob is not a member, outside any transaction |
 | 3 | `applyMembership`, request transaction | `INSERT organization_memberships`; `Emit` queues the webhook in `pgqueue_jobs`; the Marker upserts `authz_sync_marks (product, org_acme)` at revision *n* and adds `org_acme` to the list |
 | 4 | `COMMIT` | The membership, the webhook job and the mark become visible together |

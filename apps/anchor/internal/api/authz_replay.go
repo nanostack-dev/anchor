@@ -15,10 +15,10 @@ import (
 func NewAuthzReplayMiddleware(replayer *authzservice.Replayer) StrictMiddlewareFunc {
 	return func(f StrictHandlerFunc, _ string) StrictHandlerFunc {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-			collectCtx, written := authzservice.CollectWrites(ctx)
+			collectCtx, marked := authzservice.CollectMarks(ctx)
 			response, err := f(collectCtx, w, r, request)
 			if err == nil {
-				replayer.Replay(ctx, written())
+				replayer.Replay(ctx, marked())
 			}
 			return response, err
 		}

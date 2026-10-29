@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/authz/engine"
@@ -99,7 +100,9 @@ func (s *Sweeper) sweepAlone(ctx context.Context) {
 // Sweep runs one pass; tests call it directly.
 func (s *Sweeper) Sweep(ctx context.Context) {
 	s.replayMarks(ctx)
-	s.reconcileOverdue(ctx)
+	if s.reconcileOverdue(ctx) {
+		s.removeOrphanStores(ctx)
+	}
 }
 
 func (s *Sweeper) replayMarks(ctx context.Context) {
@@ -108,29 +111,21 @@ func (s *Sweeper) replayMarks(ctx context.Context) {
 		s.logger.Error().Err(err).Msg("list authz sync marks")
 		return
 	}
-	byProduct := map[string][]repository.Mark{}
-	var order []string
-	for _, mark := range marks {
-		if _, seen := byProduct[mark.ProductID]; !seen {
-			order = append(order, mark.ProductID)
+	refs := functional.Slice(marks).Map(func(m repository.Mark) OrganizationRef {
+		return OrganizationRef{ProductID: m.ProductID, OrganizationID: m.OrganizationID}
+	})
+	syncMarked(ctx, s.syncer, refs, func(ref OrganizationRef, err error) {
+		step := "replay organization"
+		if ref.CoversProduct() {
+			step = "replay product"
 		}
-		byProduct[mark.ProductID] = append(byProduct[mark.ProductID], mark)
-	}
-	for _, productID := range order {
-		if hasProductScope(byProduct[productID]) {
-			s.report(ctx, productID, "replay product", s.syncer.SyncProduct(ctx, productID))
-			continue
-		}
-		for _, mark := range byProduct[productID] {
-			s.report(ctx, productID, "replay organization",
-				s.syncer.SyncOrganization(ctx, productID, mark.OrganizationID))
-		}
-	}
+		s.postponeAfterFailure(ctx, ref.ProductID, step, err)
+	})
 }
 
-// report logs a failed step and postpones the Product's marks, so the next
-// sweep reaches the other Products first.
-func (s *Sweeper) report(ctx context.Context, productID, step string, err error) {
+// postponeAfterFailure logs a failed step and postpones the Product's marks, so
+// the next sweep reaches the other Products first.
+func (s *Sweeper) postponeAfterFailure(ctx context.Context, productID, step string, err error) {
 	if err == nil || ctx.Err() != nil {
 		return
 	}
@@ -141,25 +136,20 @@ func (s *Sweeper) report(ctx context.Context, productID, step string, err error)
 	}
 }
 
-func hasProductScope(marks []repository.Mark) bool {
-	for _, mark := range marks {
-		if mark.OrganizationID == repository.ProductScope {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Sweeper) reconcileOverdue(ctx context.Context) {
+// reconcileOverdue rebuilds the Product rebuilt longest ago, if it is due, and
+// reports whether it ran.
+func (s *Sweeper) reconcileOverdue(ctx context.Context) bool {
 	due, err := s.repo.DueForReconcileInternal(ctx, s.now().Add(-reconcileInterval))
 	if err != nil {
 		s.logger.Error().Err(err).Msg("find product due for authz reconcile")
-		return
+		return false
 	}
-	if productID, ok := due.Get(); ok {
-		s.report(ctx, productID, "reconcile", s.syncer.Reconcile(ctx, productID))
-		s.removeOrphanStores(ctx)
+	productID, ok := due.Get()
+	if !ok {
+		return false
 	}
+	s.postponeAfterFailure(ctx, productID, "reconcile", s.syncer.Reconcile(ctx, productID))
+	return true
 }
 
 // removeOrphanStores deletes, one page per reconcile, the stores whose Product
@@ -199,9 +189,8 @@ func NewReplayer(syncer Syncer, logger zerolog.Logger) *Replayer {
 	return &Replayer{syncer: syncer, logger: logger.With().Str("component", "authz_replayer").Logger()}
 }
 
-// Replay syncs what the request marked: the whole Product after a catalog
-// change, else each Organization. It runs detached from the request, so a
-// client that hangs up does not cut a sync short; a failure leaves the mark
+// Replay syncs what the request marked. It runs detached from the request, so
+// a client that hangs up does not cut a sync short; a failure leaves the mark
 // for the sweeper.
 func (r *Replayer) Replay(ctx context.Context, marked []OrganizationRef) {
 	if len(marked) == 0 {
@@ -209,29 +198,38 @@ func (r *Replayer) Replay(ctx context.Context, marked []OrganizationRef) {
 	}
 	replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayTimeout)
 	defer cancel()
-	wholeProduct := map[string]bool{}
-	for _, ref := range marked {
-		if ref.OrganizationID == repository.ProductScope {
-			wholeProduct[ref.ProductID] = true
-		}
-	}
-	for productID := range wholeProduct {
-		r.report(productID, "", r.syncer.SyncProduct(replayCtx, productID))
-	}
-	for _, ref := range marked {
-		if !wholeProduct[ref.ProductID] {
-			r.report(
-				ref.ProductID,
-				ref.OrganizationID,
-				r.syncer.SyncOrganization(replayCtx, ref.ProductID, ref.OrganizationID),
-			)
-		}
-	}
+	syncMarked(replayCtx, r.syncer, marked, r.logFailure)
 }
 
-func (r *Replayer) report(productID, organizationID string, err error) {
-	if err != nil {
-		r.logger.Warn().Err(err).Str("product_id", productID).Str("organization_id", organizationID).
-			Msg("authz replay after commit failed; the sweeper retries it")
+func (r *Replayer) logFailure(ref OrganizationRef, err error) {
+	r.logger.Warn().Err(err).Str("product_id", ref.ProductID).Str("organization_id", ref.OrganizationID).
+		Msg("authz replay after commit failed; the sweeper retries it")
+}
+
+// syncMarked syncs each marked Product in the order it first appears: the
+// whole Product when one of its refs covers it, else each marked Organization.
+// onFailure gets the ref whose sync failed.
+func syncMarked(ctx context.Context, syncer Syncer, refs []OrganizationRef, onFailure func(OrganizationRef, error)) {
+	byProduct := map[string][]OrganizationRef{}
+	var order []string
+	for _, ref := range refs {
+		if _, seen := byProduct[ref.ProductID]; !seen {
+			order = append(order, ref.ProductID)
+		}
+		byProduct[ref.ProductID] = append(byProduct[ref.ProductID], ref)
+	}
+	for _, productID := range order {
+		marked := functional.Slice(byProduct[productID])
+		if whole, ok := marked.FindFirst(OrganizationRef.CoversProduct).Get(); ok {
+			if err := syncer.SyncProduct(ctx, productID); err != nil {
+				onFailure(whole, err)
+			}
+			continue
+		}
+		for _, ref := range marked {
+			if err := syncer.SyncOrganization(ctx, ref.ProductID, ref.OrganizationID); err != nil {
+				onFailure(ref, err)
+			}
+		}
 	}
 }

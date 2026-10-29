@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+
 	"anchor/internal/authz/repository"
 	"anchor/internal/events"
 )
@@ -22,22 +24,27 @@ func NewMarker(repo repository.Repository) *Marker {
 }
 
 func (m *Marker) ObserveTx(ctx context.Context, event events.Event) error {
-	scope, stale, err := staleScope(event)
-	if err != nil || !stale {
+	found, err := staleScope(event)
+	if err != nil {
 		return err
+	}
+	scope, stale := found.Get()
+	if !stale {
+		return nil
 	}
 	if err = m.repo.Mark(ctx, event.ProductID, scope); err != nil {
 		return err
 	}
-	if written := writesFrom(ctx); written != nil {
-		written.add(event.ProductID, scope)
+	if collector := collectorFrom(ctx); collector != nil {
+		collector.add(OrganizationRef{ProductID: event.ProductID, OrganizationID: scope})
 	}
 	return nil
 }
 
-// staleScope lists every event type, so a new one fails the exhaustive lint
-// until someone decides whether it changes access.
-func staleScope(event events.Event) (string, bool, error) {
+// staleScope names what the event makes stale: an Organization, ProductScope,
+// or nothing. It lists every event type, so the exhaustive lint makes a new
+// one decide whether it changes access.
+func staleScope(event events.Event) (functional.Option[string], error) {
 	switch event.Type {
 	case events.OrganizationCreated, events.OrganizationDeleted,
 		events.MembershipCreated, events.MembershipUpdated, events.MembershipDeleted,
@@ -45,9 +52,11 @@ func staleScope(event events.Event) (string, bool, error) {
 		events.OrganizationRoleCreated, events.OrganizationRoleUpdated, events.OrganizationRoleDeleted:
 		organizationID := event.Data[events.FieldOrganizationID]
 		if organizationID == "" {
-			return "", false, fmt.Errorf("authz: %s event without %s", event.Type, events.FieldOrganizationID)
+			return functional.None[string](), fmt.Errorf(
+				"authz: %s event without %s", event.Type, events.FieldOrganizationID,
+			)
 		}
-		return organizationID, true, nil
+		return functional.Some(organizationID), nil
 	case events.ProductRoleCreated, events.ProductRoleUpdated, events.ProductRoleDeleted,
 		events.ProductResourcePermissionCreated, events.ProductResourcePermissionUpdated,
 		events.ProductResourcePermissionDeleted,
@@ -55,7 +64,7 @@ func staleScope(event events.Event) (string, bool, error) {
 		events.ProductUserDeleted:
 		// A catalog or managed role change reaches every Organization and the model;
 		// a deleted product user leaves memberships cascaded without events.
-		return repository.ProductScope, true, nil
+		return functional.Some(repository.ProductScope), nil
 	case events.OrganizationUpdated,
 		events.OrganizationInvitationCreated, events.OrganizationInvitationUpdated,
 		events.OrganizationInvitationDeleted, events.OrganizationInvitationAccepted,
@@ -66,29 +75,23 @@ func staleScope(event events.Event) (string, bool, error) {
 		// Names, invitations, workspaces and licenses hold no access the store
 		// mirrors yet. An accepted invitation adds its member through
 		// MembershipCreated; a deleted Clerk user also emits ProductUserDeleted.
-		return "", false, nil
 	}
-	return "", false, nil
+	return functional.None[string](), nil
 }
 
-// written collects the Organizations a request's writes marked.
-type written struct {
+// markCollector collects the Organizations a request's writes marked.
+type markCollector struct {
 	mu   sync.Mutex
-	keys map[organizationKey]struct{}
+	refs map[OrganizationRef]struct{}
 }
 
-type organizationKey struct {
-	productID      string
-	organizationID string
-}
+type collectorKey struct{}
 
-type writtenKey struct{}
-
-// CollectWrites returns a context in which marks are also collected, and the
+// CollectMarks returns a context in which marks are also collected, and the
 // function that lists them once the request's transaction has committed.
-func CollectWrites(ctx context.Context) (context.Context, func() []OrganizationRef) {
-	collected := &written{keys: map[organizationKey]struct{}{}}
-	return context.WithValue(ctx, writtenKey{}, collected), collected.list
+func CollectMarks(ctx context.Context) (context.Context, func() []OrganizationRef) {
+	collector := &markCollector{refs: map[OrganizationRef]struct{}{}}
+	return context.WithValue(ctx, collectorKey{}, collector), collector.list
 }
 
 // OrganizationRef names one Organization of one Product, or the whole Product
@@ -98,23 +101,25 @@ type OrganizationRef struct {
 	OrganizationID string
 }
 
-func writesFrom(ctx context.Context) *written {
-	collected, _ := ctx.Value(writtenKey{}).(*written)
-	return collected
+func (r OrganizationRef) CoversProduct() bool { return r.OrganizationID == repository.ProductScope }
+
+func collectorFrom(ctx context.Context) *markCollector {
+	collector, _ := ctx.Value(collectorKey{}).(*markCollector)
+	return collector
 }
 
-func (w *written) add(productID, organizationID string) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.keys[organizationKey{productID: productID, organizationID: organizationID}] = struct{}{}
+func (c *markCollector) add(ref OrganizationRef) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.refs[ref] = struct{}{}
 }
 
-func (w *written) list() []OrganizationRef {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	refs := make([]OrganizationRef, 0, len(w.keys))
-	for key := range w.keys {
-		refs = append(refs, OrganizationRef{ProductID: key.productID, OrganizationID: key.organizationID})
+func (c *markCollector) list() []OrganizationRef {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	refs := make([]OrganizationRef, 0, len(c.refs))
+	for ref := range c.refs {
+		refs = append(refs, ref)
 	}
 	return refs
 }

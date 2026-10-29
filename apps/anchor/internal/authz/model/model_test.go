@@ -164,11 +164,15 @@ func TestOrganizationTuples(t *testing.T) {
 	t.Run("An assignment's ID gives back its role tuple", func(t *testing.T) {
 		assignment := model.Assignment("org_1", "role_1")
 
-		assert.Equal(t, []model.Tuple{
-			{Object: assignment, Relation: model.RelationRole, User: model.Role("role_1")},
-		}, model.AssignmentTuples(assignment))
-	})
+		roleTuple, ok := model.AssignmentRoleTuple(assignment).Get()
 
+		require.True(t, ok)
+		assert.Equal(t,
+			model.Tuple{Object: assignment, Relation: model.RelationRole, User: model.Role("role_1")}, roleTuple)
+	})
+}
+
+func TestDiff(t *testing.T) {
 	t.Run("Diff writes what is missing and deletes what is left over", func(t *testing.T) {
 		keep := model.Tuple{Object: "a", Relation: "r", User: "u"}
 		drop := model.Tuple{Object: "b", Relation: "r", User: "u"}
