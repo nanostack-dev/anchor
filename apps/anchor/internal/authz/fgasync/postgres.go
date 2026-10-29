@@ -49,7 +49,10 @@ func (r *postgresRepository) Mark(ctx context.Context, scope Scope) error {
 }
 
 func toMark(row dbmodel.AuthzSyncMarks) Mark {
-	return Mark{ProductID: row.ProductID, Source: row.Source, Key: row.ScopeKey, Revision: row.Revision}
+	return Mark{
+		ProductID: row.ProductID, Source: row.Source, Key: row.ScopeKey,
+		Revision: row.Revision, MarkedAt: row.MarkedAt,
+	}
 }
 
 func (r *postgresRepository) Pending(ctx context.Context, productID string) ([]Mark, error) {
@@ -156,8 +159,19 @@ func (l *postgresLocker) TryLocked(
 	productID string,
 	fn func(context.Context) error,
 ) (bool, error) {
+	return l.tryInTx(ctx, fn, func(txCtx context.Context, tx *sql.Tx) (bool, error) {
+		return pglock.TryAdvisoryXactLock(txCtx, tx, syncLockPrefix+productID)
+	})
+}
+
+// tryInTx runs fn in a transaction once acquire got its transaction locks.
+func (l *postgresLocker) tryInTx(
+	ctx context.Context,
+	fn func(context.Context) error,
+	acquire func(context.Context, *sql.Tx) (bool, error),
+) (bool, error) {
 	err := l.tx.InTx(ctx, func(txCtx context.Context) error {
-		acquired, err := pglock.TryAdvisoryXactLock(txCtx, transactor.CurrentTx(txCtx), syncLockPrefix+productID)
+		acquired, err := acquire(txCtx, transactor.CurrentTx(txCtx))
 		if err != nil {
 			return fmt.Errorf("lock authz sync: %w", err)
 		}
@@ -170,6 +184,21 @@ func (l *postgresLocker) TryLocked(
 		return false, nil
 	}
 	return true, err
+}
+
+func (l *postgresLocker) TryKeyLocked(
+	ctx context.Context,
+	productID, key string,
+	fn func(context.Context) error,
+) (bool, error) {
+	return l.tryInTx(ctx, fn, func(txCtx context.Context, tx *sql.Tx) (bool, error) {
+		var shared bool
+		if err := tx.QueryRowContext(txCtx, `SELECT pg_try_advisory_xact_lock_shared($1)`,
+			pglock.KeyHash(syncLockPrefix+productID)).Scan(&shared); err != nil || !shared {
+			return false, err
+		}
+		return pglock.TryAdvisoryXactLock(txCtx, tx, syncLockPrefix+productID+":"+key)
+	})
 }
 
 func (l *postgresLocker) TrySweep(ctx context.Context, fn func(context.Context) error) (bool, error) {

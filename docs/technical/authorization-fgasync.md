@@ -213,7 +213,7 @@ allowed, err := store.Check(ctx, "user:pu_ana", model.CanRelation("billing:write
 | `fgatest.StoreWithModel(t, engine, dsl)` | A new store at a model written in OpenFGA's DSL |
 | `fgatest.Model(t, dsl)` | A compiled model |
 | `fgasynctest.NewRepository(clock)` | Marks and store records in memory, with `AddProduct`, `RemoveProduct` and `Marks()` for assertions |
-| `fgasynctest.NewLocker()` | A per-Product lock; `Hold` and `Release` make it busy from the test |
+| `fgasynctest.NewLocker()` | A per-Product read-write lock and a lock per key; `Hold` and `HoldKey` make them busy from the test |
 | `fgasynctest.NewStores(engine)` | One store per Product, named after it; `Store(t, repo, productID)` returns it at the recorded model |
 | `fgasynctest.Engines{Engine: engine}` | An engine provider that is always ready |
 
@@ -230,7 +230,7 @@ allowed, err := store.Check(ctx, "user:pu_ana", model.CanRelation("billing:write
 | Postpone after a failed sync | 1 min | `sweeper.go` |
 | Compiled models kept per process | 256 | `model_cache.go` |
 
-- **Locks.** `authz-sync:<product>` is a transaction advisory lock: commit or rollback releases it. `authz-sweep` is a session advisory lock, so one replica sweeps at a time.
+- **Locks.** A key's sync holds `authz-sync:<product>` in share mode and `authz-sync:<product>:<source>:<key>` exclusively; a model write, a whole-Product step and a rebuild hold `authz-sync:<product>` exclusively. Both are transaction advisory locks: commit or rollback releases them. `authz-sweep` is a session advisory lock, so one replica sweeps at a time.
 - **Logs.** `authz replay after commit failed; the sweeper retries it`, `authz sync failed; it is retried after the other products` and `reconcile repaired the relationship store` (with write and delete counts) are the lines to watch. A reconcile that repairs tuples often means a source misses an event.
 - **Force a resync of a Product.** Insert a whole-Product mark; the next sweep syncs it:
 
@@ -248,6 +248,6 @@ allowed, err := store.Check(ctx, "user:pu_ana", model.CanRelation("billing:write
 - **A mark says what to read again, not what changed.** [The engine doc](authorization-engine.md#why-a-mark-not-a-tuple-write) explains why: races, cascades without events, and one place that maps state to tuples.
 - **The `Marker` is separate from the `Syncer`.** It runs inside every write, so it depends only on the sources and `ModelChanges`. The `Syncer` depends on the model source, which reads services that emit events; one type doing both would close a dependency cycle.
 - **The syncer drops tuples the model does not define.** Sources then never need the catalog: after a permission is deleted, its tuples are simply no longer desired, and the sync deletes them.
-- **One lock per Product, held per key.** A model write and a whole-Product sync must not race with a key's sync. Holding the lock per key, not per Product sync, keeps a write from waiting behind a whole Product.
+- **Keys of one Product sync side by side.** A model write and a rebuild must not race with a key's sync, so they take the Product's lock exclusively while key syncs share it. Two syncs of one key never run together. A key's sync that finds the model stale writes it in its own exclusive step first. Under parallel writes to different Organizations, one Product-wide lock made replays wait their 3 s and leave the write to the sweeper.
 - **Seams with two adapters each.** The repository, the lock, the stores and the engine each have a Postgres or OpenFGA adapter and an in-memory one. That is what lets `fgasync` test every rule in milliseconds, without Postgres.
 - **No Go generic methods.** Go 1.27 allows them, but the `Source` interface works on strings and `fga.Tuple` only, so a type parameter would add a name without removing a cast.

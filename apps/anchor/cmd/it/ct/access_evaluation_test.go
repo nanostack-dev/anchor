@@ -280,6 +280,49 @@ func TestAccessEvaluationSeesWritesOnTheNextCall(t *testing.T) {
 		assert.True(t, question.Decide().Decision)
 	})
 
+	t.Run("A permission removed from the role is refused on the next evaluation", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		question := w.memberInWorkspaceA().Can(w.read)
+		require.True(t, question.Decide().Decision)
+
+		resp, err := admin(w).UnassignPermissionFromProductRoleWithResponse(
+			t.Context(), w.product.ProductID, w.role.ID, w.read)
+		require.NoError(t, err)
+		require.Less(t, resp.StatusCode(), 300, string(resp.Body))
+
+		requireDenied(t, question.Decide(), ct.MISSINGPERMISSION)
+	})
+
+	t.Run("A member moved to a role without the permission is refused on the next evaluation", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		question := w.memberInWorkspaceA().Can(w.read)
+		require.True(t, question.Decide().Decision)
+		other := createDSLProductRoleWithPermissions(t, w.product, "other-"+uuid.NewString(), nil, []string{w.update})
+
+		resp, err := admin(w).UpdateOrganizationMemberRoleWithResponse(t.Context(), w.product.ProductID, w.orgA.Id,
+			w.userID, ct.UpdateOrganizationMemberRoleJSONRequestBody{RoleId: &other.ID})
+		require.NoError(t, err)
+		require.Less(t, resp.StatusCode(), 300, string(resp.Body))
+
+		requireDenied(t, question.Decide(), ct.MISSINGPERMISSION)
+		assert.True(t, w.memberInWorkspaceA().Can(w.update).Decide().Decision)
+	})
+
+	t.Run("A permission deleted from the catalog is refused for an API key on the next evaluation", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		question := w.access.APIKey(w.apiKey).Can(w.read)
+		require.True(t, question.Decide().Decision)
+
+		resp, err := admin(w).DeleteProductResourcePermissionWithResponse(t.Context(), w.product.ProductID, w.read)
+		require.NoError(t, err)
+		require.Less(t, resp.StatusCode(), 300, string(resp.Body))
+
+		requireDenied(t, question.Decide(), ct.MISSINGPERMISSION)
+	})
+
 	t.Run("A deactivated organization API key is refused as inactive", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)

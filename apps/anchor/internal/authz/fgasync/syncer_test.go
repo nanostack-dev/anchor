@@ -267,6 +267,26 @@ func TestSync(t *testing.T) {
 		require.ErrorIs(t, err, fgasync.ErrLockBusy)
 		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
 	})
+
+	t.Run("Another key syncs while one key is busy, and the busy key waits", func(t *testing.T) {
+		w := givenWorld(t)
+		w.syncer.ShortenLockWait(20 * time.Millisecond)
+		w.changeDoc(t.Context(), t, productID, "readme", "ana")
+		w.changeDoc(t.Context(), t, productID, "notes", "bob")
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
+		w.changeDoc(t.Context(), t, productID, "readme", "carol")
+		w.changeDoc(t.Context(), t, productID, "notes", "dan")
+		require.True(t, w.locker.HoldKey(productID, "doc_owners:readme"))
+		defer w.locker.ReleaseKey(productID, "doc_owners:readme")
+
+		notesErr := w.syncer.Sync(t.Context(), fgasync.Scope{ProductID: productID, Source: "doc_owners", Key: "notes"})
+		readmeErr := w.syncer.Sync(t.Context(), readmeScope())
+
+		require.NoError(t, notesErr)
+		require.ErrorIs(t, readmeErr, fgasync.ErrLockBusy)
+		assert.Equal(t, []fga.Tuple{owns("notes", "dan"), owns("readme", "ana")}, w.stored(t, productID))
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
+	})
 }
 
 func TestModel(t *testing.T) {
