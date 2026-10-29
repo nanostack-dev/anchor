@@ -1,4 +1,4 @@
-package projection
+package source
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 	"anchor/internal/authz/model"
 	dbmodel "anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -36,12 +36,12 @@ func ChangesModel(event events.Event) bool {
 		events.ProductResourceTypeCreated, events.ProductResourceTypeUpdated, events.ProductResourceTypeDeleted)
 }
 
-func (c Catalog) Model(ctx context.Context, productID string) (mirror.Model, error) {
+func (c Catalog) Model(ctx context.Context, productID string) (fgasync.Model, error) {
 	catalog, err := c.read(ctx, productID)
 	if err != nil {
-		return mirror.Model{}, err
+		return fgasync.Model{}, err
 	}
-	return mirror.Model{
+	return fgasync.Model{
 		Hash: model.Hash(catalog),
 		Compile: func() (*openfgav1.AuthorizationModel, error) {
 			compiled, compileErr := model.Compile(catalog)

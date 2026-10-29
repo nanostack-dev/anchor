@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 
 	"anchor/internal/api"
 	"anchor/internal/buildinfo"
@@ -51,7 +51,7 @@ type ServerParams struct {
 	Queue          *queue.Client
 	AuthMiddleware *middleware.AuthMiddleware
 	ServerConfig   *ServerConfig
-	AuthzReplayer  *mirror.Mirror
+	AuthzReplayer  *fgasync.Syncer
 }
 
 func RegisterServer(params ServerParams) {

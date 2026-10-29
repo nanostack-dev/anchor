@@ -1,7 +1,7 @@
-// Package mirrortest has in-memory adapters for the mirror's seams, so a
-// projection or the mirror itself is tested against a real in-memory OpenFGA
+// Package fgasynctest has in-memory adapters for the syncer's seams, so a
+// source or the syncer itself is tested against a real in-memory OpenFGA
 // (fgatest) without Postgres.
-package mirrortest
+package fgasynctest
 
 import (
 	"context"
@@ -15,18 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/authz/fga"
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 )
 
 // Repository keeps marks and store records in memory. Postgres runs a sync's
 // reads and writes in the lock's transaction; this one applies them at once,
-// which is what the mirror's correctness rests on anyway.
+// which is what the syncer's correctness rests on anyway.
 type Repository struct {
 	mu         sync.Mutex
 	revision   int64
 	clock      func() time.Time
-	marks      map[mirror.Scope]markRow
-	models     map[string]mirror.RecordedModel
+	marks      map[fgasync.Scope]markRow
+	models     map[string]fgasync.RecordedModel
 	reconciled map[string]time.Time
 	products   map[string]bool
 }
@@ -39,8 +39,8 @@ type markRow struct {
 func NewRepository(clock func() time.Time) *Repository {
 	return &Repository{
 		clock:      clock,
-		marks:      map[mirror.Scope]markRow{},
-		models:     map[string]mirror.RecordedModel{},
+		marks:      map[fgasync.Scope]markRow{},
+		models:     map[string]fgasync.RecordedModel{},
 		reconciled: map[string]time.Time{},
 		products:   map[string]bool{},
 	}
@@ -59,7 +59,7 @@ func (r *Repository) RemoveProduct(productID string) {
 	delete(r.products, productID)
 }
 
-func (r *Repository) Mark(_ context.Context, scope mirror.Scope) error {
+func (r *Repository) Mark(_ context.Context, scope fgasync.Scope) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.revision++
@@ -67,20 +67,20 @@ func (r *Repository) Mark(_ context.Context, scope mirror.Scope) error {
 	return nil
 }
 
-func (r *Repository) Pending(_ context.Context, productID string) ([]mirror.Mark, error) {
+func (r *Repository) Pending(_ context.Context, productID string) ([]fgasync.Mark, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	var pending []mirror.Mark
+	var pending []fgasync.Mark
 	for scope, row := range r.marks {
 		if scope.ProductID == productID {
-			pending = append(pending, mirror.Mark{Scope: scope, Revision: row.revision})
+			pending = append(pending, fgasync.Mark{Scope: scope, Revision: row.revision})
 		}
 	}
-	slices.SortFunc(pending, func(a, b mirror.Mark) int { return int(a.Revision - b.Revision) })
+	slices.SortFunc(pending, func(a, b fgasync.Mark) int { return int(a.Revision - b.Revision) })
 	return pending, nil
 }
 
-func (r *Repository) ClearIfUnchanged(_ context.Context, mark mirror.Mark) error {
+func (r *Repository) ClearIfUnchanged(_ context.Context, mark fgasync.Mark) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if row, found := r.marks[mark.Scope]; found && row.revision == mark.Revision {
@@ -89,16 +89,16 @@ func (r *Repository) ClearIfUnchanged(_ context.Context, mark mirror.Mark) error
 	return nil
 }
 
-func (r *Repository) Oldest(_ context.Context, limit int) ([]mirror.Mark, error) {
+func (r *Repository) Oldest(_ context.Context, limit int) ([]fgasync.Mark, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	type aged struct {
-		mark mirror.Mark
+		mark fgasync.Mark
 		at   time.Time
 	}
 	var all []aged
 	for scope, row := range r.marks {
-		all = append(all, aged{mark: mirror.Mark{Scope: scope, Revision: row.revision}, at: row.markedAt})
+		all = append(all, aged{mark: fgasync.Mark{Scope: scope, Revision: row.revision}, at: row.markedAt})
 	}
 	slices.SortFunc(all, func(a, b aged) int {
 		if c := a.at.Compare(b.at); c != 0 {
@@ -107,7 +107,7 @@ func (r *Repository) Oldest(_ context.Context, limit int) ([]mirror.Mark, error)
 		return int(a.mark.Revision - b.mark.Revision)
 	})
 	all = all[:min(limit, len(all))]
-	return functional.Slice(all).Map(func(a aged) mirror.Mark { return a.mark }), nil
+	return functional.Slice(all).Map(func(a aged) fgasync.Mark { return a.mark }), nil
 }
 
 func (r *Repository) Postpone(_ context.Context, productID string, until time.Time) error {
@@ -121,13 +121,13 @@ func (r *Repository) Postpone(_ context.Context, productID string, until time.Ti
 	return nil
 }
 
-func (r *Repository) RecordedModel(_ context.Context, productID string) (mirror.RecordedModel, error) {
+func (r *Repository) RecordedModel(_ context.Context, productID string) (fgasync.RecordedModel, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.models[productID], nil
 }
 
-func (r *Repository) SetModel(_ context.Context, productID string, model mirror.RecordedModel) error {
+func (r *Repository) SetModel(_ context.Context, productID string, model fgasync.RecordedModel) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.models[productID] = model
@@ -166,10 +166,10 @@ func (r *Repository) ProductExists(_ context.Context, productID string) (bool, e
 }
 
 // Marks lists the scopes that wait, for assertions.
-func (r *Repository) Marks() []mirror.Scope {
+func (r *Repository) Marks() []fgasync.Scope {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	scopes := make([]mirror.Scope, 0, len(r.marks))
+	scopes := make([]fgasync.Scope, 0, len(r.marks))
 	for scope := range r.marks {
 		scopes = append(scopes, scope)
 	}
@@ -245,7 +245,7 @@ func (s *Stores) StoreID(ctx context.Context, productID string) (string, error) 
 	return created.GetId(), nil
 }
 
-// Store returns the Product's store at the model the mirror recorded.
+// Store returns the Product's store at the model the syncer recorded.
 func (s *Stores) Store(t testing.TB, repo *Repository, productID string) fga.Store {
 	t.Helper()
 	storeID, err := s.StoreID(t.Context(), productID)

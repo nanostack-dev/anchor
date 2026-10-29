@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 )
 
 // AuthzReplayer syncs what a request marked, once its transaction committed.
 type AuthzReplayer interface {
-	Replay(ctx context.Context, marked []mirror.Scope)
+	Replay(ctx context.Context, marked []fgasync.Scope)
 }
 
 // NewAuthzReplayMiddleware returns a StrictMiddlewareFunc that collects what a
@@ -20,7 +20,7 @@ type AuthzReplayer interface {
 func NewAuthzReplayMiddleware(replayer AuthzReplayer) StrictMiddlewareFunc {
 	return func(f StrictHandlerFunc, _ string) StrictHandlerFunc {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-			collectCtx, marked := mirror.CollectMarks(ctx)
+			collectCtx, marked := fgasync.CollectMarks(ctx)
 			response, err := f(collectCtx, w, r, request)
 			if err == nil {
 				replayer.Replay(ctx, marked())

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Authorization Mirror</title>
+<title>Authorization Sync</title>
 <style>
 :root {
   --bg: #f6f5f2; --card: #fff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1dc; --soft: #f1efea;
@@ -125,15 +125,15 @@ pre .hl { background: var(--a-bg); border-radius: 4px; display: inline-block; wi
 </head>
 <body>
 <div class="wrap">
-  <h1>The authorization mirror</h1>
+  <h1>The authorization sync</h1>
   <p class="lead">A generic engine that keeps every Product's OpenFGA store equal to Anchor's tables. A module only says <b>what it owns</b>. The engine does the marking, replaying, sweeping, locking and diffing, once for every module.</p>
 
   <section>
     <h2><span class="n">1</span>Three layers, one direction</h2>
-    <p class="sub">Each layer knows only the one under it. <code>fga</code> and <code>mirror</code> know nothing of Anchor's domain.</p>
+    <p class="sub">Each layer knows only the one under it. <code>fga</code> and <code>syncer</code> know nothing of Anchor's domain.</p>
     <div class="card layers">
       <div class="layer">
-        <div class="label"><b>projection</b><span>Anchor's modules. Domain lives here.</span></div>
+        <div class="label"><b>source</b><span>Anchor's modules. Domain lives here.</span></div>
         <div class="boxes">
           <div class="box a"><b>Assignments</b><small>key: Organization</small></div>
           <div class="box r"><b>RoleGrants</b><small>key: role row</small></div>
@@ -141,12 +141,12 @@ pre .hl { background: var(--a-bg); border-radius: 4px; display: inline-block; wi
           <div class="box m"><b>Catalog</b><small>the model source</small></div>
         </div>
       </div>
-      <div class="arrow">implements ▼ mirror.Projection · mirror.ModelSource</div>
+      <div class="arrow">implements ▼ fgasync.Source · fgasync.ModelSource</div>
       <div class="layer">
-        <div class="label"><b>mirror</b><span>The sync engine. Generic.</span></div>
+        <div class="label"><b>syncer</b><span>The sync engine. Generic.</span></div>
         <div class="boxes">
           <div class="box"><b>Marker</b><small>ObserveTx, inside every write</small></div>
-          <div class="box"><b>Mirror</b><small>Sync · Replay · Sweep · Reconcile</small></div>
+          <div class="box"><b>Syncer</b><small>Sync · Replay · Sweep · Reconcile</small></div>
           <div class="seams">
             <span class="seam">Repository <em>Postgres | in-memory</em></span>
             <span class="seam">Locker <em>advisory lock | mutex</em></span>
@@ -183,12 +183,12 @@ pre .hl { background: var(--a-bg); border-radius: 4px; display: inline-block; wi
 <span data-m="stored">Stored(ctx, store fga.Reader, key string) ([]fga.Tuple, error)</span>
 
 <span style="color:var(--muted)">// register it — one line in authz.NewModule</span>
-mirror.AsProjection(projection.NewRoleGrants)</pre>
+fgasync.AsSource(source.NewRoleGrants)</pre>
       <div class="calls" id="calls">
-        <div class="call" data-m="name"><b>Name</b><span>Stored in every mark. Must stay stable; a renamed projection's old marks resync the whole Product once.</span></div>
+        <div class="call" data-m="name"><b>Name</b><span>Stored in every mark. Must stay stable; a renamed source's old marks resync the whole Product once.</span></div>
         <div class="call" data-m="stale"><b>Stale</b><span>The <b>Marker</b>, inside the write's transaction. Pure: reads the event only. An error rolls the write back.</span></div>
-        <div class="call" data-m="keys"><b>Keys</b><span>A whole-Product or every-key sync, and the reconcile. The mirror adds keys only a mark still names, such as a deleted Organization.</span></div>
-        <div class="call" data-m="desired"><b>Desired</b><span>Every sync. Reads the tables now. The mirror drops tuples the model does not define.</span></div>
+        <div class="call" data-m="keys"><b>Keys</b><span>A whole-Product or every-key sync, and the reconcile. The syncer adds keys only a mark still names, such as a deleted Organization.</span></div>
+        <div class="call" data-m="desired"><b>Desired</b><span>Every sync. Reads the tables now. The syncer drops tuples the model does not define.</span></div>
         <div class="call" data-m="stored"><b>Stored</b><span>Every sync. Reads only the tuples this key owns, so the diff never touches another module's tuples.</span></div>
       </div>
     </div>
@@ -196,7 +196,7 @@ mirror.AsProjection(projection.NewRoleGrants)</pre>
 
   <section class="stepper">
     <h2><span class="n">3</span>One sync, step by step</h2>
-    <p class="sub">Bob joins Acme as Admin. Alice is already there. Follow the <code>organization_assignments</code> projection.</p>
+    <p class="sub">Bob joins Acme as Admin. Alice is already there. Follow the <code>organization_assignments</code> source.</p>
     <div class="card">
       <div class="bar" id="bar"></div>
       <div class="stage">
@@ -211,7 +211,7 @@ mirror.AsProjection(projection.NewRoleGrants)</pre>
 
   <section>
     <h2><span class="n">4</span>Who owns what in Acme's store</h2>
-    <p class="sub">Each projection owns a disjoint slice. That is why one module's sync can never delete another's tuples. Click a projection.</p>
+    <p class="sub">Each source owns a disjoint slice. That is why one module's sync can never delete another's tuples. Click a source.</p>
     <div class="card own">
       <div class="legend" id="legend">
         <button data-o="a"><b><i style="background:var(--a)"></i>organization_assignments</b><small>Stored: org links, role link, assignees</small></button>
@@ -224,14 +224,14 @@ mirror.AsProjection(projection.NewRoleGrants)</pre>
 
   <section class="scopes">
     <h2><span class="n">5</span>Which marks does an event leave?</h2>
-    <p class="sub">Pick a real Anchor event. The Marker asks every projection, and the catalog, which scopes it makes stale.</p>
+    <p class="sub">Pick a real Anchor event. The Marker asks every source, and the catalog, which scopes it makes stale.</p>
     <div class="card">
       <select id="event"></select>
       <div class="marks" id="marks"></div>
       <div class="kinds">
-        <div class="kind"><b>One key</b><code>(projection, key)</code><br>The common case: one Organization, one role.</div>
-        <div class="kind"><b>Every key</b><code>(projection, *)</code><br>A cascade with no events, such as a deleted product user's memberships.</div>
-        <div class="kind"><b>Whole Product</b><code>('', '')</code><br>A model change: every projection resyncs under the new model.</div>
+        <div class="kind"><b>One key</b><code>(source, key)</code><br>The common case: one Organization, one role.</div>
+        <div class="kind"><b>Every key</b><code>(source, *)</code><br>A cascade with no events, such as a deleted product user's memberships.</div>
+        <div class="kind"><b>Whole Product</b><code>('', '')</code><br>A model change: every source resyncs under the new model.</div>
       </div>
     </div>
   </section>
@@ -239,18 +239,18 @@ mirror.AsProjection(projection.NewRoleGrants)</pre>
   <section>
     <h2><span class="n">6</span>Adding a module</h2>
     <div class="howto">
-      <div class="card"><div class="num">Step 1</div><b>Check the model</b><p>The relation must exist. The mirror silently drops tuples the model does not define.</p></div>
-      <div class="card"><div class="num">Step 2</div><b>Write five methods</b><p>One file in <code>projection/</code>. Read tables through <code>Tables</code>, never through a service.</p></div>
-      <div class="card"><div class="num">Step 3</div><b>Register and classify</b><p><code>mirror.AsProjection(…)</code>, then remove its events from <code>WithoutAccess()</code>.</p></div>
+      <div class="card"><div class="num">Step 1</div><b>Check the model</b><p>The relation must exist. The syncer silently drops tuples the model does not define.</p></div>
+      <div class="card"><div class="num">Step 2</div><b>Write five methods</b><p>One file in <code>source/</code>. Read tables through <code>Tables</code>, never through a service.</p></div>
+      <div class="card"><div class="num">Step 3</div><b>Register and classify</b><p><code>fgasync.AsSource(…)</code>, then remove its events from <code>WithoutAccess()</code>.</p></div>
       <div class="card"><div class="num">Step 4</div><b>Test</b><p><code>TestStale</code>, <code>TestOwnership</code>, and one service test: write rows, sync, check, change, sync, check.</p></div>
     </div>
     <ol class="rules">
       <li><b>Own disjoint tuples.</b> No tuple belongs to two keys.</li>
       <li><b>Stored covers Desired.</b> Or a tuple is written forever and never deleted.</li>
       <li><b>Stale is pure.</b> No query; it runs in every write's transaction.</li>
-      <li><b>Every key for cascades.</b> Return <code>mirror.EveryKey</code>.</li>
+      <li><b>Every key for cascades.</b> Return <code>fgasync.EveryKey</code>.</li>
       <li><b>Scope reads to the Product.</b> Another tenant's key implies nothing.</li>
-      <li><b>Nothing you need emits events.</b> The Marker is built from projections; a service that emits would close a cycle.</li>
+      <li><b>Nothing you need emits events.</b> The Marker is built from sources; a service that emits would close a cycle.</li>
     </ol>
   </section>
 </div>
@@ -279,9 +279,9 @@ const steps = [
   { t: "1 · Event", desired: [], stored: [], diff: [], mark: null,
     say: "<code>AddMember</code> inserts Bob's membership and emits <code>organization.membership.created</code>, inside its transaction." },
   { t: "2 · Stale", desired: [], stored: [], diff: [], mark: "new",
-    say: "The Marker asks each projection. <code>Assignments.Stale</code> answers <code>[\"org_acme\"]</code>; the others answer nothing. One mark row is upserted, in the same transaction, at revision 8." },
+    say: "The Marker asks each source. <code>Assignments.Stale</code> answers <code>[\"org_acme\"]</code>; the others answer nothing. One mark row is upserted, in the same transaction, at revision 8." },
   { t: "3 · Desired", desired: [LINK, ROLE, ALICE, BOB], stored: [], diff: [], mark: "new",
-    say: "After commit, <code>Mirror.Sync</code> takes the Product lock, reads the marks, then calls <code>Desired(prod_tasks, org_acme)</code>: Acme's members with a role, as 4 tuples." },
+    say: "After commit, <code>Syncer.Sync</code> takes the Product lock, reads the marks, then calls <code>Desired(prod_tasks, org_acme)</code>: Acme's members with a role, as 4 tuples." },
   { t: "4 · Stored", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE], diff: [], mark: "new",
     say: "<code>Stored(store, org_acme)</code> reads only what this key owns: the links, each link's role tuple, the assignees. The role's grant belongs to <code>role_grants</code>, so it is not read." },
   { t: "5 · Diff", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE], diff: [{ w: BOB }], mark: "new",
@@ -328,7 +328,7 @@ $("legend").addEventListener("click", e => {
   document.querySelectorAll(".tuple").forEach(t => t.classList.toggle("hit", t.dataset.o === focus));
 });
 
-// 5. scopes — mirrors projection.Stale and ChangesModel
+// 5. scopes — the same classification as source.Stale and ChangesModel
 const P = { a: "organization_assignments", r: "role_grants", k: "organization_api_keys" };
 const EVENTS = {
   "organization.membership.created": [[P.a, "org_acme", "Bob joins Acme"]],
@@ -352,7 +352,7 @@ function renderMarks() {
   const marks = EVENTS[$("event").value];
   $("marks").innerHTML = marks.length ? marks.map(([p, k, why]) =>
     `<div class="markcard"><div class="scope">${p ? `(${p}, ${k})` : "(whole Product)"}</div><span>${why}</span></div>`).join("")
-    : `<div class="markcard"><div class="scope">no mark</div><span>Listed in <code>WithoutAccess()</code>: it changes no access the store mirrors.</span></div>`;
+    : `<div class="markcard"><div class="scope">no mark</div><span>Listed in <code>WithoutAccess()</code>: it changes no access the store holds.</span></div>`;
 }
 $("event").addEventListener("change", renderMarks);
 renderMarks();

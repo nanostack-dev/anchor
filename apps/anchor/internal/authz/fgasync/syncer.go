@@ -1,4 +1,4 @@
-package mirror
+package fgasync
 
 import (
 	"context"
@@ -31,40 +31,40 @@ var (
 	ErrInvalidScope = errors.New("invalid authz sync scope")
 )
 
-// Deps is what a Mirror needs. Every field is required except Now.
+// Deps is what a Syncer needs. Every field is required except Now.
 type Deps struct {
-	Engines     Engines
-	Stores      Stores
-	Repository  Repository
-	Locker      Locker
-	Models      ModelSource
-	Projections []Projection
-	Logger      zerolog.Logger
+	Engines    Engines
+	Stores     Stores
+	Repository Repository
+	Locker     Locker
+	Models     ModelSource
+	Sources    []Source
+	Logger     zerolog.Logger
 	// Now defaults to time.Now.
 	Now func() time.Time
 }
 
-// Mirror keeps every Product's store in step with its projections.
-type Mirror struct {
-	engines     Engines
-	stores      Stores
-	repo        Repository
-	locker      Locker
-	models      ModelSource
-	projections []Projection
-	byName      map[string]Projection
-	compiled    *modelCache
-	logger      zerolog.Logger
-	now         func() time.Time
-	timing      timing
+// Syncer keeps every Product's store in step with its sources.
+type Syncer struct {
+	engines  Engines
+	stores   Stores
+	repo     Repository
+	locker   Locker
+	models   ModelSource
+	sources  []Source
+	byName   map[string]Source
+	compiled *modelCache
+	logger   zerolog.Logger
+	now      func() time.Time
+	timing   timing
 	// storesToken continues the walk over OpenFGA's stores between sweeps.
 	storesToken string
 }
 
-// New checks the projections: each needs a name of at most 64 characters,
+// New checks the sources: each needs a name of at most 64 characters,
 // distinct from every other.
-func New(deps Deps) (*Mirror, error) {
-	byName, err := projectionsByName(deps.Projections)
+func New(deps Deps) (*Syncer, error) {
+	byName, err := sourcesByName(deps.Sources)
 	if err != nil {
 		return nil, err
 	}
@@ -72,25 +72,25 @@ func New(deps Deps) (*Mirror, error) {
 	if now == nil {
 		now = time.Now
 	}
-	return &Mirror{
+	return &Syncer{
 		engines: deps.Engines, stores: deps.Stores, repo: deps.Repository, locker: deps.Locker,
-		models: deps.Models, projections: deps.Projections, byName: byName,
+		models: deps.Models, sources: deps.Sources, byName: byName,
 		compiled: newModelCache(),
-		logger:   deps.Logger.With().Str("component", "authz_mirror").Logger(),
+		logger:   deps.Logger.With().Str("component", "authz_syncer").Logger(),
 		now:      now,
 		timing:   defaultTiming(),
 	}, nil
 }
 
-func projectionsByName(projections []Projection) (map[string]Projection, error) {
-	byName := map[string]Projection{}
-	for _, p := range projections {
+func sourcesByName(sources []Source) (map[string]Source, error) {
+	byName := map[string]Source{}
+	for _, p := range sources {
 		name := p.Name()
 		if name == "" || len(name) > maxNameLength {
-			return nil, fmt.Errorf("authz projection name %q must hold 1 to %d characters", name, maxNameLength)
+			return nil, fmt.Errorf("authz source name %q must hold 1 to %d characters", name, maxNameLength)
 		}
 		if _, taken := byName[name]; taken {
-			return nil, fmt.Errorf("two authz projections are named %q", name)
+			return nil, fmt.Errorf("two authz sources are named %q", name)
 		}
 		byName[name] = p
 	}
@@ -98,51 +98,51 @@ func projectionsByName(projections []Projection) (map[string]Projection, error) 
 }
 
 // Sync brings the scope's tuples, and the Product's model, in step with the
-// tables, and clears the marks it covered. A scope naming a projection the
-// mirror does not know, such as one renamed since its mark was left, syncs
+// tables, and clears the marks it covered. A scope naming a source the
+// syncer does not know, such as one renamed since its mark was left, syncs
 // the whole Product.
-func (m *Mirror) Sync(ctx context.Context, scope Scope) error {
+func (s *Syncer) Sync(ctx context.Context, scope Scope) error {
 	if scope.IsWholeProduct() {
-		return m.syncAll(ctx, scope.ProductID, m.projections, scope)
+		return s.syncAll(ctx, scope.ProductID, s.sources, scope)
 	}
-	p, known := m.byName[scope.Projection]
+	p, known := s.byName[scope.Source]
 	switch {
 	case !known:
-		return m.syncAll(ctx, scope.ProductID, m.projections, WholeProduct(scope.ProductID))
+		return s.syncAll(ctx, scope.ProductID, s.sources, WholeProduct(scope.ProductID))
 	case scope.IsEveryKey():
-		return m.syncAll(ctx, scope.ProductID, []Projection{p}, scope)
+		return s.syncAll(ctx, scope.ProductID, []Source{p}, scope)
 	default:
-		return m.syncKey(ctx, p, scope)
+		return s.syncKey(ctx, p, scope)
 	}
 }
 
-// Reconcile syncs the whole Product, then deletes every tuple no projection
+// Reconcile syncs the whole Product, then deletes every tuple no source
 // claims, such as the grants of a role deleted without an event.
-func (m *Mirror) Reconcile(ctx context.Context, productID string) error {
-	exists, err := m.repo.ProductExists(ctx, productID)
+func (s *Syncer) Reconcile(ctx context.Context, productID string) error {
+	exists, err := s.repo.ProductExists(ctx, productID)
 	if err != nil || !exists {
 		return err
 	}
-	if err = m.Sync(ctx, WholeProduct(productID)); err != nil {
+	if err = s.Sync(ctx, WholeProduct(productID)); err != nil {
 		return err
 	}
-	engine, storeID, err := m.open(ctx, productID)
+	engine, storeID, err := s.open(ctx, productID)
 	if err != nil {
 		return err
 	}
-	return m.locked(ctx, productID, func(txCtx context.Context) error {
-		current, lockedErr := m.ensureModel(txCtx, engine, storeID, productID)
+	return s.locked(ctx, productID, func(txCtx context.Context) error {
+		current, lockedErr := s.ensureModel(txCtx, engine, storeID, productID)
 		if lockedErr != nil {
 			return lockedErr
 		}
 		var desired []fga.Tuple
-		for _, p := range m.projections {
+		for _, p := range s.sources {
 			keys, keysErr := p.Keys(txCtx, productID)
 			if keysErr != nil {
 				return keysErr
 			}
 			for _, key := range keys {
-				implied, desiredErr := m.desired(txCtx, current, p, productID, key)
+				implied, desiredErr := s.desired(txCtx, current, p, productID, key)
 				if desiredErr != nil {
 					return desiredErr
 				}
@@ -158,10 +158,10 @@ func (m *Mirror) Reconcile(ctx context.Context, productID string) error {
 			return lockedErr
 		}
 		if !changes.IsEmpty() {
-			m.logger.Info().Str("product_id", productID).Int("writes", len(changes.Writes)).
+			s.logger.Info().Str("product_id", productID).Int("writes", len(changes.Writes)).
 				Int("deletes", len(changes.Deletes)).Msg("reconcile repaired the relationship store")
 		}
-		return m.repo.SetReconciled(txCtx, productID, m.now())
+		return s.repo.SetReconciled(txCtx, productID, s.now())
 	})
 }
 
@@ -173,74 +173,74 @@ type target struct {
 
 // syncKey syncs one key. It reads the marks before it reads the key, so a write
 // landing meanwhile bumps the revision and ClearIfUnchanged keeps its mark.
-func (m *Mirror) syncKey(ctx context.Context, p Projection, scope Scope) error {
-	engine, storeID, err := m.open(ctx, scope.ProductID)
+func (s *Syncer) syncKey(ctx context.Context, p Source, scope Scope) error {
+	engine, storeID, err := s.open(ctx, scope.ProductID)
 	if err != nil {
 		return err
 	}
-	return m.locked(ctx, scope.ProductID, func(txCtx context.Context) error {
-		marks, lockedErr := m.repo.Pending(txCtx, scope.ProductID)
+	return s.locked(ctx, scope.ProductID, func(txCtx context.Context) error {
+		marks, lockedErr := s.repo.Pending(txCtx, scope.ProductID)
 		if lockedErr != nil {
 			return lockedErr
 		}
-		current, lockedErr := m.ensureModel(txCtx, engine, storeID, scope.ProductID)
+		current, lockedErr := s.ensureModel(txCtx, engine, storeID, scope.ProductID)
 		if lockedErr != nil {
 			return lockedErr
 		}
-		if lockedErr = m.syncOne(txCtx, current, p, scope.ProductID, scope.Key); lockedErr != nil {
+		if lockedErr = s.syncOne(txCtx, current, p, scope.ProductID, scope.Key); lockedErr != nil {
 			return lockedErr
 		}
-		return m.clearCovered(txCtx, marks, scope)
+		return s.clearCovered(txCtx, marks, scope)
 	})
 }
 
-// syncAll syncs every key of the projections, each under its own hold of the
+// syncAll syncs every key of the sources, each under its own hold of the
 // lock so no write waits behind a whole Product, then clears the marks the
 // covering scope covers among those it read first. Keys come from the tables
 // and from the marks, since a deleted key is gone from the tables.
-func (m *Mirror) syncAll(ctx context.Context, productID string, projections []Projection, covering Scope) error {
-	engine, storeID, err := m.open(ctx, productID)
+func (s *Syncer) syncAll(ctx context.Context, productID string, sources []Source, covering Scope) error {
+	engine, storeID, err := s.open(ctx, productID)
 	if err != nil {
 		return err
 	}
 	var marks []Mark
 	var current target
-	if err = m.locked(ctx, productID, func(txCtx context.Context) error {
+	if err = s.locked(ctx, productID, func(txCtx context.Context) error {
 		var lockedErr error
-		if marks, lockedErr = m.repo.Pending(txCtx, productID); lockedErr != nil {
+		if marks, lockedErr = s.repo.Pending(txCtx, productID); lockedErr != nil {
 			return lockedErr
 		}
-		current, lockedErr = m.ensureModel(txCtx, engine, storeID, productID)
+		current, lockedErr = s.ensureModel(txCtx, engine, storeID, productID)
 		return lockedErr
 	}); err != nil {
 		return err
 	}
-	for _, p := range projections {
-		keys, keysErr := m.keysToSync(ctx, p, productID, marks)
+	for _, p := range sources {
+		keys, keysErr := s.keysToSync(ctx, p, productID, marks)
 		if keysErr != nil {
 			return keysErr
 		}
 		for _, key := range keys {
-			if err = m.locked(ctx, productID, func(txCtx context.Context) error {
-				return m.syncOne(txCtx, current, p, productID, key)
+			if err = s.locked(ctx, productID, func(txCtx context.Context) error {
+				return s.syncOne(txCtx, current, p, productID, key)
 			}); err != nil {
 				return err
 			}
 		}
 	}
-	return m.locked(ctx, productID, func(txCtx context.Context) error {
-		return m.clearCovered(txCtx, marks, covering)
+	return s.locked(ctx, productID, func(txCtx context.Context) error {
+		return s.clearCovered(txCtx, marks, covering)
 	})
 }
 
-func (m *Mirror) keysToSync(ctx context.Context, p Projection, productID string, marks []Mark) ([]string, error) {
+func (s *Syncer) keysToSync(ctx context.Context, p Source, productID string, marks []Mark) ([]string, error) {
 	keys, err := p.Keys(ctx, productID)
 	if err != nil {
-		return nil, fmt.Errorf("authz projection %s: keys: %w", p.Name(), err)
+		return nil, fmt.Errorf("authz source %s: keys: %w", p.Name(), err)
 	}
 	keys = slices.Clone(keys)
 	for _, mark := range marks {
-		if mark.Projection == p.Name() && !mark.IsEveryKey() && !slices.Contains(keys, mark.Key) {
+		if mark.Source == p.Name() && !mark.IsEveryKey() && !slices.Contains(keys, mark.Key) {
 			keys = append(keys, mark.Key)
 		}
 	}
@@ -249,39 +249,39 @@ func (m *Mirror) keysToSync(ctx context.Context, p Projection, productID string,
 
 // syncOne makes the store hold exactly what the key implies, among the tuples
 // the key owns.
-func (m *Mirror) syncOne(ctx context.Context, current target, p Projection, productID, key string) error {
-	desired, err := m.desired(ctx, current, p, productID, key)
+func (s *Syncer) syncOne(ctx context.Context, current target, p Source, productID, key string) error {
+	desired, err := s.desired(ctx, current, p, productID, key)
 	if err != nil {
 		return err
 	}
 	stored, err := p.Stored(ctx, current.store, key)
 	if err != nil {
-		return fmt.Errorf("authz projection %s: stored tuples of %q: %w", p.Name(), key, err)
+		return fmt.Errorf("authz source %s: stored tuples of %q: %w", p.Name(), key, err)
 	}
 	return current.store.Apply(ctx, fga.Diff(stored, desired))
 }
 
 // desired is what the key implies, less what the model does not define: a
 // permission deleted from the catalog leaves no relation to hold it.
-func (m *Mirror) desired(
+func (s *Syncer) desired(
 	ctx context.Context,
 	current target,
-	p Projection,
+	p Source,
 	productID, key string,
 ) ([]fga.Tuple, error) {
 	desired, err := p.Desired(ctx, productID, key)
 	if err != nil {
-		return nil, fmt.Errorf("authz projection %s: desired tuples of %q: %w", p.Name(), key, err)
+		return nil, fmt.Errorf("authz source %s: desired tuples of %q: %w", p.Name(), key, err)
 	}
 	return functional.Slice(desired).Filter(current.relations.Defines), nil
 }
 
-func (m *Mirror) clearCovered(ctx context.Context, marks []Mark, covering Scope) error {
+func (s *Syncer) clearCovered(ctx context.Context, marks []Mark, covering Scope) error {
 	for _, mark := range marks {
 		if !covering.covers(mark.Scope) {
 			continue
 		}
-		if err := m.repo.ClearIfUnchanged(ctx, mark); err != nil {
+		if err := s.repo.ClearIfUnchanged(ctx, mark); err != nil {
 			return err
 		}
 	}
@@ -290,11 +290,11 @@ func (m *Mirror) clearCovered(ctx context.Context, marks []Mark, covering Scope)
 
 // locked runs fn holding the Product's sync lock, retrying a busy lock with a
 // growing backoff, outside any transaction, until the wait runs out.
-func (m *Mirror) locked(ctx context.Context, productID string, fn func(context.Context) error) error {
-	deadline := time.Now().Add(m.timing.lockWait)
-	backoff := m.timing.lockRetryMin
+func (s *Syncer) locked(ctx context.Context, productID string, fn func(context.Context) error) error {
+	deadline := time.Now().Add(s.timing.lockWait)
+	backoff := s.timing.lockRetryMin
 	for {
-		acquired, err := m.locker.TryLocked(ctx, productID, fn)
+		acquired, err := s.locker.TryLocked(ctx, productID, fn)
 		if err != nil || acquired {
 			return err
 		}
@@ -306,33 +306,33 @@ func (m *Mirror) locked(ctx context.Context, productID string, fn func(context.C
 			return ctx.Err()
 		case <-time.After(backoff):
 		}
-		backoff = min(lockRetryGrowth*backoff, m.timing.lockRetryMax)
+		backoff = min(lockRetryGrowth*backoff, s.timing.lockRetryMax)
 	}
 }
 
 // open returns the engine and the Product's store, outside any transaction: a
 // store created here commits on its own.
-func (m *Mirror) open(ctx context.Context, productID string) (fga.Engine, string, error) {
-	engine, err := m.engines.Get()
+func (s *Syncer) open(ctx context.Context, productID string) (fga.Engine, string, error) {
+	engine, err := s.engines.Get()
 	if err != nil {
 		return nil, "", err
 	}
-	storeID, err := m.stores.StoreID(ctx, productID)
+	storeID, err := s.stores.StoreID(ctx, productID)
 	return engine, storeID, err
 }
 
 // ensureModel writes the Product's model when it changed since the model the
 // store follows.
-func (m *Mirror) ensureModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
-	source, err := m.models.Model(ctx, productID)
+func (s *Syncer) ensureModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
+	source, err := s.models.Model(ctx, productID)
 	if err != nil {
 		return target{}, fmt.Errorf("authz model of %s: %w", productID, err)
 	}
-	compiled, err := m.compiled.get(source)
+	compiled, err := s.compiled.get(source)
 	if err != nil {
 		return target{}, err
 	}
-	recorded, err := m.repo.RecordedModel(ctx, productID)
+	recorded, err := s.repo.RecordedModel(ctx, productID)
 	if err != nil {
 		return target{}, err
 	}
@@ -342,7 +342,7 @@ func (m *Mirror) ensureModel(ctx context.Context, engine fga.Engine, storeID, pr
 			return target{}, writeErr
 		}
 		recorded = RecordedModel{ID: modelID, Hash: source.Hash}
-		if err = m.repo.SetModel(ctx, productID, recorded); err != nil {
+		if err = s.repo.SetModel(ctx, productID, recorded); err != nil {
 			return target{}, err
 		}
 	}

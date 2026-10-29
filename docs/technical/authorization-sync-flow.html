@@ -190,7 +190,7 @@ const ACTOR = {
   svc:     { label: "AddMember service",     c: "--req" },
   emit:    { label: "events.Emitter",        c: "--req" },
   marker:  { label: "Marker.ObserveTx",      c: "--req" },
-  replay:  { label: "Mirror.Replay → Sync",  c: "--sync" },
+  replay:  { label: "Syncer.Replay → Sync",  c: "--sync" },
   fga:     { label: "OpenFGA engine",        c: "--fga" },
   carol:   { label: "Carol's request",       c: "--carol" },
 };
@@ -198,7 +198,7 @@ const ACTOR = {
 const TABLES = {
   memberships: { schema: "public",  name: "organization_memberships", cols: ["organization_id", "product_user_id", "product_role_id"] },
   jobs:        { schema: "public",  name: "pgqueue_jobs",             cols: ["queue_name", "payload.type", "status"] },
-  marks:       { schema: "public",  name: "authz_sync_marks",         cols: ["product_id", "projection", "scope_key", "revision", "marked_at"] },
+  marks:       { schema: "public",  name: "authz_sync_marks",         cols: ["product_id", "source", "scope_key", "revision", "marked_at"] },
   stores:      { schema: "public",  name: "authz_stores",             cols: ["product_id", "store_id", "model_id", "model_hash"] },
   tuple:       { schema: "openfga", name: "openfga.tuple",            cols: ["store", "object_type", "object_id", "relation", "_user"] },
   changelog:   { schema: "openfga", name: "openfga.changelog",        cols: ["object_type", "object_id", "relation", "_user", "operation"] },
@@ -268,7 +268,7 @@ const common = [
   {
     title: "Before the request", actor: "state", dot: "--muted",
     note: `<ul><li>Alice is a member of Acme with <code>role_admin</code>.</li>
-<li>Acme's OpenFGA store holds 4 tuples: one assignment for <code>role_admin</code>, its role link and Alice as assignee, which the <code>organization_assignments</code> projection owns, and the role's grant, which <code>role_grants</code> owns.</li>
+<li>Acme's OpenFGA store holds 4 tuples: one assignment for <code>role_admin</code>, its role link and Alice as assignee, which the <code>organization_assignments</code> source owns, and the role's grant, which <code>role_grants</code> owns.</li>
 <li>No marks wait. The store matches Postgres.</li></ul>`,
     code: `-- The revision sequence was last used for revision 7.\nSELECT last_value FROM authz_sync_mark_revisions;  -- 7`,
     apply: s => {},
@@ -304,10 +304,10 @@ const common = [
   {
     title: "Marker · mark Acme as out of date", actor: "marker", dot: "--req",
     note: `<ul><li>The emitter then calls every transaction observer. The Marker is one of them.</li>
-<li>It asks each projection which keys the event makes stale. <code>organization_assignments</code> answers <code>org_acme</code>; the others answer none.</li>
+<li>It asks each source which keys the event makes stale. <code>organization_assignments</code> answers <code>org_acme</code>; the others answer none.</li>
 <li>The Marker upserts one mark row in the <b>same</b> transaction, and adds that scope to the request's list.</li>
 <li><code>nextval</code> is not transactional: if this transaction rolls back, revision 8 is skipped, and that does no harm.</li></ul>`,
-    code: `INSERT INTO authz_sync_marks (product_id, projection, scope_key)  -- revision DEFAULT nextval(…) → 8\nVALUES ('prod_tasks', 'organization_assignments', 'org_acme')\nON CONFLICT (product_id, projection, scope_key) DO UPDATE\n  SET revision  = nextval('authz_sync_mark_revisions'),\n      marked_at = NOW();\n\ncollector.add(OrganizationRef{"prod_tasks", "org_acme"})`,
+    code: `INSERT INTO authz_sync_marks (product_id, source, scope_key)  -- revision DEFAULT nextval(…) → 8\nVALUES ('prod_tasks', 'organization_assignments', 'org_acme')\nON CONFLICT (product_id, source, scope_key) DO UPDATE\n  SET revision  = nextval('authz_sync_mark_revisions'),\n      marked_at = NOW();\n\ncollector.add(OrganizationRef{"prod_tasks", "org_acme"})`,
     apply: s => {
       s.seq = 8;
       add(s, "marks", ["prod_tasks", "organization_assignments", "org_acme", "8", "10:15:02.120"], "pending", "req");
@@ -332,7 +332,7 @@ const common = [
     title: "Replay starts · find the store", actor: "replay", dot: "--sync",
     note: `<ul><li>The replay context ignores a client disconnect (<code>WithoutCancel</code>) and has its own 30 s limit.</li>
 <li><code>Sync</code> first finds the Product's store, outside any transaction.</li></ul>`,
-    code: `replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)\nmirror.Sync(replayCtx, Scope{"prod_tasks", "organization_assignments", "org_acme"})\n\nSELECT store_id FROM authz_stores WHERE product_id = 'prod_tasks';   -- 01JSTORE`,
+    code: `replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)\nsyncer.Sync(replayCtx, Scope{"prod_tasks", "organization_assignments", "org_acme"})\n\nSELECT store_id FROM authz_stores WHERE product_id = 'prod_tasks';   -- 01JSTORE`,
     apply: s => { markRead(s, "stores"); },
   },
   {
@@ -353,7 +353,7 @@ const common = [
   {
     title: "Read Acme's state from Postgres", actor: "replay", dot: "--sync",
     note: `<ul><li><code>Assignments.Desired</code> reads Acme's members that hold a role, scoped to the Product.</li>
-<li>It turns them into the 4 assignment tuples the store must hold. The mirror drops any tuple the model does not define.</li></ul>`,
+<li>It turns them into the 4 assignment tuples the store must hold. The syncer drops any tuple the model does not define.</li></ul>`,
     code: `SELECT m.product_user_id, m.product_role_id FROM organization_memberships m\n  JOIN organizations o ON o.id = m.organization_id\n WHERE o.product_id = 'prod_tasks' AND m.organization_id = 'org_acme'\n   AND m.product_role_id IS NOT NULL;   -- alice, bob\n\ndesired := assignmentTuples("org_acme", members)   // 4 tuples`,
     apply: s => { markRead(s, "memberships"); s.work.desired = DESIRED_BOB; },
   },
@@ -383,7 +383,7 @@ const happy = [
     title: "Clear the mark · only revision 8", actor: "replay", dot: "--sync",
     note: `<ul><li>The sync deletes the mark only if its revision is still 8, the one it read.</li>
 <li>No write happened since, so the delete removes 1 row. The delete commits with the sync transaction.</li></ul>`,
-    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND projection = 'organization_assignments'\n   AND scope_key = 'org_acme' AND revision = 8;   -- DELETE 1`,
+    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND source = 'organization_assignments'\n   AND scope_key = 'org_acme' AND revision = 8;   -- DELETE 1`,
     apply: s => { const m = rows(s, "marks")[0]; m.st = "delpending"; m.tx = "sync"; },
   },
   {
@@ -409,7 +409,7 @@ const race = [
     note: `<ul><li>A second request adds Carol and commits. Bob's sync has already read Acme's state, so it does not know about Carol.</li>
 <li>Her mark upsert does not wait. The sync read the mark with a plain <code>SELECT</code>, and an advisory lock blocks no row writes.</li>
 <li>The upsert moves the mark from <b>revision 8 to 9</b>.</li></ul>`,
-    code: `BEGIN;\nINSERT INTO organization_memberships VALUES ('org_acme', 'pu_carol', 'role_admin');\nINSERT INTO pgqueue_jobs (…) VALUES ('product-events', '{"type":"organization.membership.created"…}');\nINSERT INTO authz_sync_marks (product_id, projection, scope_key)\nVALUES ('prod_tasks', 'organization_assignments', 'org_acme')\nON CONFLICT (product_id, projection, scope_key) DO UPDATE\n  SET revision = nextval('authz_sync_mark_revisions'), marked_at = NOW();   -- revision 9\nCOMMIT;`,
+    code: `BEGIN;\nINSERT INTO organization_memberships VALUES ('org_acme', 'pu_carol', 'role_admin');\nINSERT INTO pgqueue_jobs (…) VALUES ('product-events', '{"type":"organization.membership.created"…}');\nINSERT INTO authz_sync_marks (product_id, source, scope_key)\nVALUES ('prod_tasks', 'organization_assignments', 'org_acme')\nON CONFLICT (product_id, source, scope_key) DO UPDATE\n  SET revision = nextval('authz_sync_mark_revisions'), marked_at = NOW();   -- revision 9\nCOMMIT;`,
     apply: s => {
       s.seq = 9;
       add(s, "memberships", ["org_acme", "pu_carol", "role_admin"], "changed");
@@ -443,7 +443,7 @@ const race = [
     title: "Clear the mark · revision 8 is gone", actor: "replay", dot: "--sync",
     note: `<ul><li>The sync tries to delete revision 8, but the mark is at revision 9 now. The delete removes <b>0 rows</b>.</li>
 <li>Without the revision check, this delete would remove Carol's mark, and nothing would add her to the store until the 15-minute reconcile.</li></ul>`,
-    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND projection = 'organization_assignments'\n   AND scope_key = 'org_acme' AND revision = 8;   -- DELETE 0`,
+    code: `DELETE FROM authz_sync_marks\n WHERE product_id = 'prod_tasks' AND source = 'organization_assignments'\n   AND scope_key = 'org_acme' AND revision = 8;   -- DELETE 0`,
     apply: s => { markRead(s, "marks"); },
   },
   {

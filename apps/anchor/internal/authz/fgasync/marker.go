@@ -1,4 +1,4 @@
-package mirror
+package fgasync
 
 import (
 	"context"
@@ -12,19 +12,19 @@ import (
 // Marker marks what each event makes stale, inside the event's transaction, so
 // the mark and the write commit together and no committed change goes
 // unsynced. It runs inside every write that emits an event, so it depends on
-// the projections' Stale and the model's changes only: nothing it needs may
+// the sources' Stale and the model's changes only: nothing it needs may
 // itself emit events.
 type Marker struct {
 	repo         Repository
-	projections  []Projection
+	sources      []Source
 	modelChanges ModelChanges
 }
 
-func NewMarker(repo Repository, projections []Projection, modelChanges ModelChanges) (*Marker, error) {
-	if _, err := projectionsByName(projections); err != nil {
+func NewMarker(repo Repository, sources []Source, modelChanges ModelChanges) (*Marker, error) {
+	if _, err := sourcesByName(sources); err != nil {
 		return nil, err
 	}
-	return &Marker{repo: repo, projections: projections, modelChanges: modelChanges}, nil
+	return &Marker{repo: repo, sources: sources, modelChanges: modelChanges}, nil
 }
 
 // ObserveTx marks the scopes the event makes stale; a model change marks the
@@ -52,21 +52,21 @@ func (m *Marker) staleScopes(event events.Event) ([]Scope, error) {
 		return []Scope{WholeProduct(event.ProductID)}, nil
 	}
 	var scopes []Scope
-	for _, p := range m.projections {
+	for _, p := range m.sources {
 		keys, err := p.Stale(event)
 		if err != nil {
-			return nil, fmt.Errorf("authz projection %s: %w", p.Name(), err)
+			return nil, fmt.Errorf("authz source %s: %w", p.Name(), err)
 		}
 		for _, key := range keys {
 			if key == "" {
 				return nil, fmt.Errorf(
-					"%w: projection %s marked an empty key for %s",
+					"%w: source %s marked an empty key for %s",
 					ErrInvalidScope,
 					p.Name(),
 					event.Type,
 				)
 			}
-			scope := Scope{ProductID: event.ProductID, Projection: p.Name(), Key: key}
+			scope := Scope{ProductID: event.ProductID, Source: p.Name(), Key: key}
 			if !slices.Contains(scopes, scope) {
 				scopes = append(scopes, scope)
 			}

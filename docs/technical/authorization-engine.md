@@ -5,7 +5,7 @@ Access decisions move from Postgres queries to OpenFGA ([ADR-0021](../adr/0021-a
 | Step | What it adds | Read by decisions? |
 | --- | --- | --- |
 | PR 4 | OpenFGA runs inside Anchor; each Product can get its own store | no |
-| PR 5 (this) | The catalog compiler writes each Product's model; the [mirror](authorization-mirror.md) keeps its tuples in step with each write, with marks, a replay, a sweeper and a reconcile | no |
+| PR 5 (this) | The catalog compiler writes each Product's model; the [syncer](authorization-fgasync.md) keeps its tuples in step with each write, with marks, a replay, a sweeper and a reconcile | no |
 | PR 6 | Shadow: every decision runs on both evaluators and logs any difference | logged only |
 | PR 7 | Decisions come from OpenFGA; the old evaluator is removed | yes |
 
@@ -46,9 +46,9 @@ Relation names keep a readable part of the permission name and a hash of it, bec
 
 ## Tuples
 
-Three projections of [`internal/authz/projection`](../../apps/anchor/internal/authz/projection) write a Product's tuples. Each owns its own tuples and syncs one key at a time:
+Three sources of [`internal/authz/source`](../../apps/anchor/internal/authz/source) write a Product's tuples. Each owns its own tuples and syncs one key at a time:
 
-| Projection | Key | Fact in Anchor's tables | Tuples |
+| Source | Key | Fact in Anchor's tables | Tuples |
 | --- | --- | --- | --- |
 | `organization_assignments` | Organization *O* | User *U* holds role row *R* in *O* | `role_assignment:O.R # assignee @ user:U`, plus, once per role held in *O*, `role_assignment:O.R # role @ role:R` and `organization:O # assignment @ role_assignment:O.R` |
 | `role_grants` | Role row *R* | *R* holds permission *P* | `role:R # grants_P @ user:*` |
@@ -60,12 +60,12 @@ A role's grants have one owner, the role, whether it is managed or custom. So an
 
 ## Keeping the store in step
 
-Anchor's tables stay the source of truth (ADR-0022 E5). [`internal/authz/mirror`](../../apps/anchor/internal/authz/mirror) keeps every store in step with them; [the mirror guide](authorization-mirror.md) describes its interface, its rules and how to add a projection.
+Anchor's tables stay the source of truth (ADR-0022 E5). [`internal/authz/fgasync`](../../apps/anchor/internal/authz/fgasync) keeps every store in step with them; [the fgasync guide](authorization-fgasync.md) describes its interface, its rules and how to add a source.
 
-1. **Mark.** Every write emits its event inside its transaction. `mirror.Marker`, an event observer, asks each projection which keys the event makes stale and upserts one row of `authz_sync_marks` per stale scope, in the same transaction: `(product, projection, key)`, every key of a projection (`key = '*'`) for a cascade, or the whole Product (`projection = ''`) for a catalog change. A repeated mark bumps its revision.
-2. **Replay after commit.** The API's strict middleware `NewAuthzReplayMiddleware` collects what a request marked and, once the handler returned and its transaction committed, calls `Mirror.Replay` before the response is written, so the next request already sees the change. A write outside an API request, such as a background job, is left to the sweeper.
-3. **Sweep.** Every 5 s, `Mirror.Sweep` syncs the oldest marks.
-4. **Reconcile.** Each pass rebuilds the one Product rebuilt longest ago, when that was more than 15 minutes back (`authz_stores.reconciled_at`). A Product never rebuilt comes first, with or without a store, so every Product gets its first mirror without waiting for a write. A rebuild deletes every tuple no projection claims, such as the grants of a role deleted without an event, and, one page at a time, the stores of deleted Products. With many Products, each is rebuilt about once every *products × 5 s*.
+1. **Mark.** Every write emits its event inside its transaction. `fgasync.Marker`, an event observer, asks each source which keys the event makes stale and upserts one row of `authz_sync_marks` per stale scope, in the same transaction: `(product, source, key)`, every key of a source (`key = '*'`) for a cascade, or the whole Product (`source = ''`) for a catalog change. A repeated mark bumps its revision.
+2. **Replay after commit.** The API's strict middleware `NewAuthzReplayMiddleware` collects what a request marked and, once the handler returned and its transaction committed, calls `Syncer.Replay` before the response is written, so the next request already sees the change. A write outside an API request, such as a background job, is left to the sweeper.
+3. **Sweep.** Every 5 s, `Syncer.Sweep` syncs the oldest marks.
+4. **Reconcile.** Each pass rebuilds the one Product rebuilt longest ago, when that was more than 15 minutes back (`authz_stores.reconciled_at`). A Product never rebuilt comes first, with or without a store, so every Product gets its first syncer without waiting for a write. A rebuild deletes every tuple no source claims, such as the grants of a role deleted without an event, and, one page at a time, the stores of deleted Products. With many Products, each is rebuilt about once every *products × 5 s*.
 
 Every sync runs under the Product's transaction-scoped advisory lock (`authz-sync:<product>`), waiting up to 3 s for another sync. It deletes a mark only if its revision did not move, and revisions come from one sequence, so a write landing during a sync is never lost, even when its mark was deleted and made again. Tuple deletes go before writes, so a sync cut short never leaves a subject with both an old and a new grant; a tuple already there or already gone is not an error, so a sync cut short is replayed whole. A failed replay leaves its mark for the sweeper. One replica sweeps at a time (`authz-sweep` session lock); a Product whose sync fails is postponed a minute behind the others, so it never starves them.
 
@@ -90,12 +90,12 @@ The cost is one key read per access-changing write. For `organization_assignment
 
 | Step | Who | What it writes |
 | --- | --- | --- |
-| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked scopes on the context (`mirror.CollectMarks`) |
+| 1 | `NewAuthzReplayMiddleware` | Puts an empty list of marked scopes on the context (`fgasync.CollectMarks`) |
 | 2 | `AddMember` | Checks the Organization, the product user, the role and that Bob is not a member, outside any transaction |
 | 3 | `applyMembership`, request transaction | `INSERT organization_memberships`; `Emit` queues the webhook in `pgqueue_jobs`; the Marker upserts `authz_sync_marks (product, organization_assignments, org_acme)` at revision *n* and adds that scope to the list |
 | 4 | `COMMIT` | The membership, the webhook job and the mark become visible together |
 | 5 | The handler | Returns its `201` as a value; nothing is sent yet |
-| 6 | `Mirror.Replay` | Syncs the scope with a 30 s limit that ignores a client disconnect |
+| 6 | `Syncer.Replay` | Syncs the scope with a 30 s limit that ignores a client disconnect |
 | 7 | Sync transaction | Takes `authz-sync:<product>`, reads the marks (revision *n*), checks the model hash, reads Acme's members and the assignment tuples its store holds, and diffs them |
 | 8 | OpenFGA, its own transaction | Writes `role_assignment:org_acme.role_admin # assignee @ user:bob` to `openfga.tuple` and `openfga.changelog`, and commits at once |
 | 9 | Sync transaction | `DELETE authz_sync_marks … AND revision = n`, then `COMMIT`, which releases the lock |
@@ -114,5 +114,5 @@ If step 6 to 9 fails, or the lock stays busy for more than 3 s, the error is log
 
 ## Tests
 
-- **Unit, no database.** `internal/authz/fga` tests tuples, the diff, batched and idempotent writes, paging and model relations against a real in-memory OpenFGA (`fgatest`). `internal/authz/mirror` tests every sync rule through a toy projection, with `mirrortest`'s in-memory repository and lock: marks and revisions, the race with a write landing mid-sync, every-key and whole-Product scopes, a renamed projection, a busy lock, model writes and the dropping of undefined relations, the replay, the sweeper's postponing, the reconcile and orphan stores. `internal/authz/projection` checks each projection's stale keys, its tuples, that the three own disjoint tuples of one Organization, and that every event type is classified. `internal/authz/model` tests the compiler.
-- **Service, on Postgres.** `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks` and `TestAuthzReplayAfterCommit` in `apps/anchor/cmd/it/service` run each projection against Anchor's tables. `TestAuthzStores` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.
+- **Unit, no database.** `internal/authz/fga` tests tuples, the diff, batched and idempotent writes, paging and model relations against a real in-memory OpenFGA (`fgatest`). `internal/authz/fgasync` tests every sync rule through a toy source, with `fgasynctest`'s in-memory repository and lock: marks and revisions, the race with a write landing mid-sync, every-key and whole-Product scopes, a renamed source, a busy lock, model writes and the dropping of undefined relations, the replay, the sweeper's postponing, the reconcile and orphan stores. `internal/authz/source` checks each source's stale keys, its tuples, that the three own disjoint tuples of one Organization, and that every event type is classified. `internal/authz/model` tests the compiler.
+- **Service, on Postgres.** `TestAuthzSync`, `TestAuthzReconcile`, `TestAuthzMarks` and `TestAuthzReplayAfterCommit` in `apps/anchor/cmd/it/service` run each source against Anchor's tables. `TestAuthzStores` covers the first store, concurrent creation and the deletion of the stores that lost, a missing Product, a lookup inside a transaction, and a check answered from a model and a tuple written through the engine.

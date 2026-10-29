@@ -1,4 +1,4 @@
-package mirror
+package fgasync
 
 import (
 	"context"
@@ -37,9 +37,9 @@ func (r *postgresRepository) Mark(ctx context.Context, scope Scope) error {
 	return transactor.Exec(
 		ctx,
 		r.db,
-		table.AuthzSyncMarks.INSERT(table.AuthzSyncMarks.ProductID, table.AuthzSyncMarks.Projection, table.AuthzSyncMarks.ScopeKey).
-			VALUES(scope.ProductID, scope.Projection, scope.Key).
-			ON_CONFLICT(table.AuthzSyncMarks.ProductID, table.AuthzSyncMarks.Projection, table.AuthzSyncMarks.ScopeKey).
+		table.AuthzSyncMarks.INSERT(table.AuthzSyncMarks.ProductID, table.AuthzSyncMarks.Source, table.AuthzSyncMarks.ScopeKey).
+			VALUES(scope.ProductID, scope.Source, scope.Key).
+			ON_CONFLICT(table.AuthzSyncMarks.ProductID, table.AuthzSyncMarks.Source, table.AuthzSyncMarks.ScopeKey).
 			DO_UPDATE(postgres.SET(
 				table.AuthzSyncMarks.Revision.SET(postgres.IntExp(postgres.Raw("nextval('authz_sync_mark_revisions')"))),
 				table.AuthzSyncMarks.MarkedAt.SET(postgres.TimestampzExp(postgres.NOW())),
@@ -49,14 +49,14 @@ func (r *postgresRepository) Mark(ctx context.Context, scope Scope) error {
 }
 
 func toMark(row dbmodel.AuthzSyncMarks) Mark {
-	return Mark{ProductID: row.ProductID, Projection: row.Projection, Key: row.ScopeKey, Revision: row.Revision}
+	return Mark{ProductID: row.ProductID, Source: row.Source, Key: row.ScopeKey, Revision: row.Revision}
 }
 
 func (r *postgresRepository) Pending(ctx context.Context, productID string) ([]Mark, error) {
 	return transactor.QueryMapSlice(ctx, r.db,
 		table.AuthzSyncMarks.SELECT(table.AuthzSyncMarks.AllColumns).
 			WHERE(table.AuthzSyncMarks.ProductID.EQ(postgres.String(productID))).
-			ORDER_BY(table.AuthzSyncMarks.Projection.ASC(), table.AuthzSyncMarks.ScopeKey.ASC()),
+			ORDER_BY(table.AuthzSyncMarks.Source.ASC(), table.AuthzSyncMarks.ScopeKey.ASC()),
 		toMark,
 	).Value()
 }
@@ -64,7 +64,7 @@ func (r *postgresRepository) Pending(ctx context.Context, productID string) ([]M
 func (r *postgresRepository) ClearIfUnchanged(ctx context.Context, mark Mark) error {
 	return transactor.Exec(ctx, r.db, table.AuthzSyncMarks.DELETE().WHERE(
 		table.AuthzSyncMarks.ProductID.EQ(postgres.String(mark.ProductID)).
-			AND(table.AuthzSyncMarks.Projection.EQ(postgres.String(mark.Projection))).
+			AND(table.AuthzSyncMarks.Source.EQ(postgres.String(mark.Source))).
 			AND(table.AuthzSyncMarks.ScopeKey.EQ(postgres.String(mark.Key))).
 			AND(table.AuthzSyncMarks.Revision.EQ(postgres.Int(mark.Revision))),
 	)).Err()

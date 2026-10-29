@@ -1,4 +1,4 @@
-package projection
+package source
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"anchor/internal/events"
 )
 
-// RoleGrants mirrors the permissions each role holds, managed or custom: one
+// RoleGrants syncs the permissions each role holds, managed or custom: one
 // grants tuple per permission, given to every user. An assignment then holds a
 // permission when its assignee does and its role grants it.
 type RoleGrants struct{ tables Tables }

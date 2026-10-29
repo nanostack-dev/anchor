@@ -1,4 +1,4 @@
-package projection_test
+package source_test
 
 import (
 	"go/ast"
@@ -15,17 +15,17 @@ import (
 
 	"anchor/internal/authz/fga"
 	"anchor/internal/authz/fga/fgatest"
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 	"anchor/internal/authz/model"
-	"anchor/internal/authz/projection"
+	"anchor/internal/authz/source"
 	"anchor/internal/events"
 )
 
-func projections() []mirror.Projection {
-	return []mirror.Projection{projection.Assignments{}, projection.RoleGrants{}, projection.APIKeyGrants{}}
+func sources() []fgasync.Source {
+	return []fgasync.Source{source.Assignments{}, source.RoleGrants{}, source.APIKeyGrants{}}
 }
 
-// eventWithEveryField carries every data field, so a projection that reads
+// eventWithEveryField carries every data field, so a source that reads
 // one finds it.
 func eventWithEveryField(eventType events.Type) events.Event {
 	return events.Event{Type: eventType, ProductID: "prod_tasks", Data: events.Data{
@@ -39,10 +39,10 @@ func eventWithEveryField(eventType events.Type) events.Event {
 func claimed(t *testing.T, eventType events.Type) bool {
 	t.Helper()
 	event := eventWithEveryField(eventType)
-	if projection.ChangesModel(event) {
+	if source.ChangesModel(event) {
 		return true
 	}
-	for _, p := range projections() {
+	for _, p := range sources() {
 		keys, err := p.Stale(event)
 		require.NoError(t, err)
 		if len(keys) > 0 {
@@ -53,56 +53,56 @@ func claimed(t *testing.T, eventType events.Type) bool {
 }
 
 func TestEveryEventIsClassified(t *testing.T) {
-	t.Run("Each event type is claimed by a projection or the catalog, or listed as without access", func(t *testing.T) {
+	t.Run("Each event type is claimed by a source or the catalog, or listed as without access", func(t *testing.T) {
 		for _, eventType := range declaredEventTypes(t) {
-			listed := slices.Contains(projection.WithoutAccess(), eventType)
+			listed := slices.Contains(source.WithoutAccess(), eventType)
 			isClaimed := claimed(t, eventType)
 
 			assert.NotEqual(t, listed, isClaimed,
-				"%s: claim it in a projection's Stale or the catalog, or list it in WithoutAccess, not both", eventType)
+				"%s: claim it in a source's Stale or the catalog, or list it in WithoutAccess, not both", eventType)
 		}
 	})
 }
 
 func TestStale(t *testing.T) {
 	t.Run("A membership change makes its Organization's assignments stale", func(t *testing.T) {
-		keys, err := projection.Assignments{}.Stale(eventWithEveryField(events.MembershipCreated))
+		keys, err := source.Assignments{}.Stale(eventWithEveryField(events.MembershipCreated))
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"org_acme"}, keys)
 	})
 
 	t.Run("A deleted managed role makes every Organization's assignments stale", func(t *testing.T) {
-		keys, err := projection.Assignments{}.Stale(eventWithEveryField(events.ProductRoleDeleted))
+		keys, err := source.Assignments{}.Stale(eventWithEveryField(events.ProductRoleDeleted))
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{mirror.EveryKey}, keys)
+		assert.Equal(t, []string{fgasync.EveryKey}, keys)
 	})
 
 	t.Run("A role change makes that role's grants stale", func(t *testing.T) {
-		keys, err := projection.RoleGrants{}.Stale(eventWithEveryField(events.OrganizationRoleUpdated))
+		keys, err := source.RoleGrants{}.Stale(eventWithEveryField(events.OrganizationRoleUpdated))
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"role_admin"}, keys)
 	})
 
 	t.Run("A role event without its role fails the write", func(t *testing.T) {
-		_, err := projection.RoleGrants{}.Stale(events.Event{Type: events.ProductRoleUpdated, ProductID: "prod_tasks"})
+		_, err := source.RoleGrants{}.Stale(events.Event{Type: events.ProductRoleUpdated, ProductID: "prod_tasks"})
 
 		require.Error(t, err)
 	})
 
 	t.Run("A permission change rewrites the model", func(t *testing.T) {
-		assert.True(t, projection.ChangesModel(eventWithEveryField(events.ProductResourcePermissionDeleted)))
-		assert.False(t, projection.ChangesModel(eventWithEveryField(events.ProductRoleUpdated)))
+		assert.True(t, source.ChangesModel(eventWithEveryField(events.ProductResourcePermissionDeleted)))
+		assert.False(t, source.ChangesModel(eventWithEveryField(events.ProductRoleUpdated)))
 	})
 }
 
 func TestTuples(t *testing.T) {
 	t.Run("An Organization links one assignment per role, however many members hold it", func(t *testing.T) {
-		tuples := projection.AssignmentTuples("org_acme",
-			projection.Holder{ProductUserID: "pu_ana", RoleRowID: "role_admin"},
-			projection.Holder{ProductUserID: "pu_bob", RoleRowID: "role_admin"},
+		tuples := source.AssignmentTuples("org_acme",
+			source.Holder{ProductUserID: "pu_ana", RoleRowID: "role_admin"},
+			source.Holder{ProductUserID: "pu_bob", RoleRowID: "role_admin"},
 		)
 
 		assignment := model.Assignment("org_acme", "role_admin")
@@ -117,22 +117,22 @@ func TestTuples(t *testing.T) {
 	t.Run("An assignment's ID gives back its role tuple", func(t *testing.T) {
 		assignment := model.Assignment("org_acme", "role_admin")
 
-		roleTuple, ok := projection.AssignmentRoleTuple(assignment).Get()
+		roleTuple, ok := source.AssignmentRoleTuple(assignment).Get()
 
 		require.True(t, ok)
 		assert.Equal(t, fga.Tuple{Object: assignment, Relation: model.RelationRole, User: "role:role_admin"}, roleTuple)
-		assert.False(t, projection.AssignmentRoleTuple("role_assignment:broken").IsPresent())
+		assert.False(t, source.AssignmentRoleTuple("role_assignment:broken").IsPresent())
 	})
 
 	t.Run("A role grants each of its permissions to every user", func(t *testing.T) {
 		assert.Equal(t, []fga.Tuple{
 			{Object: "role:role_admin", Relation: model.GrantsRelation("billing:write"), User: model.AllUsers},
-		}, projection.RoleGrantTuples("role_admin", []string{"billing:write"}))
+		}, source.RoleGrantTuples("role_admin", []string{"billing:write"}))
 	})
 }
 
 func TestOwnership(t *testing.T) {
-	t.Run("The projections own disjoint tuples of one Organization", func(t *testing.T) {
+	t.Run("The sources own disjoint tuples of one Organization", func(t *testing.T) {
 		compiled, err := model.Compile(model.Catalog{
 			Types:       []model.Type{{Slug: model.TypeOrganization}},
 			Permissions: []model.Permission{{Name: "billing:write", Scope: model.TypeOrganization}},
@@ -143,19 +143,19 @@ func TestOwnership(t *testing.T) {
 		modelID, err := fga.WriteModel(t.Context(), engine, storeID, compiled.Proto)
 		require.NoError(t, err)
 		store := fga.NewStore(engine, storeID, modelID)
-		assignments := projection.AssignmentTuples("org_acme",
-			projection.Holder{ProductUserID: "pu_ana", RoleRowID: "role_admin"})
-		grants := projection.RoleGrantTuples("role_admin", []string{"billing:write"})
+		assignments := source.AssignmentTuples("org_acme",
+			source.Holder{ProductUserID: "pu_ana", RoleRowID: "role_admin"})
+		grants := source.RoleGrantTuples("role_admin", []string{"billing:write"})
 		keys := []fga.Tuple{{
 			Object: "organization:org_acme", Relation: model.CanRelation("billing:write"), User: "api_key:key_ci",
 		}}
 		require.NoError(t, store.Apply(t.Context(), fga.Changes{Writes: slices.Concat(assignments, grants, keys)}))
 
-		storedAssignments, err := projection.Assignments{}.Stored(t.Context(), store, "org_acme")
+		storedAssignments, err := source.Assignments{}.Stored(t.Context(), store, "org_acme")
 		require.NoError(t, err)
-		storedGrants, err := projection.RoleGrants{}.Stored(t.Context(), store, "role_admin")
+		storedGrants, err := source.RoleGrants{}.Stored(t.Context(), store, "role_admin")
 		require.NoError(t, err)
-		storedKeys, err := projection.APIKeyGrants{}.Stored(t.Context(), store, "org_acme")
+		storedKeys, err := source.APIKeyGrants{}.Stored(t.Context(), store, "org_acme")
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, assignments, storedAssignments)

@@ -1,4 +1,4 @@
-package projection
+package source
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"anchor/internal/events"
 )
 
-// APIKeyGrants mirrors what each Organization API key holds: the key holds
+// APIKeyGrants syncs what each Organization API key holds: the key holds
 // each of its permissions on its Organization directly. Only an active,
 // unexpired key holds anything. A key that expires by time leaves no event, so
 // its tuples stay until the Product's next rebuild; decisions must refuse an

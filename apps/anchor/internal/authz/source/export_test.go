@@ -1,4 +1,4 @@
-package projection
+package source
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"

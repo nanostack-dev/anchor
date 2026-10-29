@@ -1,4 +1,4 @@
-package mirror
+package fgasync
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 	"anchor/internal/authz/fga"
 )
 
-// Repository keeps the mirror's bookkeeping: the marks, and the model and last
+// Repository keeps the syncer's bookkeeping: the marks, and the model and last
 // rebuild of each Product's store. NewPostgresRepository is the production
-// adapter; mirrortest has an in-memory one.
+// adapter; fgasynctest has an in-memory one.
 type Repository interface {
 	// Mark records the scope as stale in the caller's transaction, giving it a
 	// new revision.

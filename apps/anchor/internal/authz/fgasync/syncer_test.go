@@ -1,4 +1,4 @@
-package mirror_test
+package fgasync_test
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 
 	"anchor/internal/authz/fga"
 	"anchor/internal/authz/fga/fgatest"
-	"anchor/internal/authz/mirror"
-	"anchor/internal/authz/mirror/mirrortest"
+	"anchor/internal/authz/fgasync"
+	"anchor/internal/authz/fgasync/fgasynctest"
 	"anchor/internal/events"
 )
 
-// The tests mirror a toy domain: documents and their owners, in product
-// prod_docs. docOwners is its projection, keyed by document.
+// The tests sync a toy domain: documents and their owners, in product
+// prod_docs. docOwners is its source, keyed by document.
 
 const (
 	productID     = "prod_docs"
@@ -110,11 +110,11 @@ type models struct {
 	compiles int
 }
 
-func (m *models) Model(_ context.Context, _ string) (mirror.Model, error) {
+func (m *models) Model(_ context.Context, _ string) (fgasync.Model, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	dsl := m.dsl
-	return mirror.Model{Hash: dsl, Compile: func() (*openfgav1.AuthorizationModel, error) {
+	return fgasync.Model{Hash: dsl, Compile: func() (*openfgav1.AuthorizationModel, error) {
 		m.mu.Lock()
 		m.compiles++
 		m.mu.Unlock()
@@ -123,13 +123,13 @@ func (m *models) Model(_ context.Context, _ string) (mirror.Model, error) {
 }
 
 type world struct {
-	mirror *mirror.Mirror
-	marker *mirror.Marker
+	syncer *fgasync.Syncer
+	marker *fgasync.Marker
 	docs   *docs
 	models *models
-	repo   *mirrortest.Repository
-	locker *mirrortest.Locker
-	stores *mirrortest.Stores
+	repo   *fgasynctest.Repository
+	locker *fgasynctest.Locker
+	stores *fgasynctest.Stores
 	engine fga.Engine
 }
 
@@ -139,21 +139,21 @@ func givenWorld(t *testing.T) world {
 	w := world{
 		docs:   &docs{owners: map[string]map[string][]string{}},
 		models: &models{dsl: ownersModel},
-		repo:   mirrortest.NewRepository(time.Now),
-		locker: mirrortest.NewLocker(),
-		stores: mirrortest.NewStores(engine),
+		repo:   fgasynctest.NewRepository(time.Now),
+		locker: fgasynctest.NewLocker(),
+		stores: fgasynctest.NewStores(engine),
 		engine: engine,
 	}
 	w.repo.AddProduct(productID)
-	m, err := mirror.New(mirror.Deps{
-		Engines: mirrortest.Engines{Engine: engine}, Stores: w.stores, Repository: w.repo, Locker: w.locker,
-		Models: w.models, Projections: []mirror.Projection{docOwners{docs: w.docs}}, Logger: zerolog.Nop(),
+	m, err := fgasync.New(fgasync.Deps{
+		Engines: fgasynctest.Engines{Engine: engine}, Stores: w.stores, Repository: w.repo, Locker: w.locker,
+		Models: w.models, Sources: []fgasync.Source{docOwners{docs: w.docs}}, Logger: zerolog.Nop(),
 	})
 	require.NoError(t, err)
-	w.mirror = m
-	w.marker, err = mirror.NewMarker(
+	w.syncer = m
+	w.marker, err = fgasync.NewMarker(
 		w.repo,
-		[]mirror.Projection{docOwners{docs: w.docs}},
+		[]fgasync.Source{docOwners{docs: w.docs}},
 		func(event events.Event) bool {
 			return event.Type == modelChanged
 		},
@@ -178,8 +178,8 @@ func (w world) stored(t *testing.T, productID string) []fga.Tuple {
 	return tuples
 }
 
-func readmeScope() mirror.Scope {
-	return mirror.Scope{ProductID: productID, Projection: "doc_owners", Key: "readme"}
+func readmeScope() fgasync.Scope {
+	return fgasync.Scope{ProductID: productID, Source: "doc_owners", Key: "readme"}
 }
 
 func TestSync(t *testing.T) {
@@ -187,7 +187,7 @@ func TestSync(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana", "bob")
 
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana"), owns("readme", "bob")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
@@ -196,10 +196,10 @@ func TestSync(t *testing.T) {
 	t.Run("A key's sync deletes what the key no longer implies", func(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana", "bob")
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		w.changeDoc(t.Context(), t, productID, "readme", "bob")
 
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "bob")}, w.stored(t, productID))
 	})
@@ -208,10 +208,10 @@ func TestSync(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		w.changeDoc(t.Context(), t, productID, "notes", "bob")
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 		w.changeDoc(t.Context(), t, productID, "readme")
 
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 
 		assert.Equal(t, []fga.Tuple{owns("notes", "bob")}, w.stored(t, productID))
 	})
@@ -221,36 +221,36 @@ func TestSync(t *testing.T) {
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		w.docs.during = func() { w.changeDoc(t.Context(), t, productID, "readme", "ana", "carol") }
 
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 
-		assert.Equal(t, []mirror.Scope{readmeScope()}, w.repo.Marks())
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana"), owns("readme", "carol")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
 	})
 
-	t.Run("Every key of a projection includes a key only its mark still names", func(t *testing.T) {
+	t.Run("Every key of a source includes a key only its mark still names", func(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		w.changeDoc(t.Context(), t, productID, "notes", "bob")
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 		w.changeDoc(t.Context(), t, productID, "notes")
 
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.Scope{
-			ProductID: productID, Projection: "doc_owners", Key: mirror.EveryKey,
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.Scope{
+			ProductID: productID, Source: "doc_owners", Key: fgasync.EveryKey,
 		}))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
 	})
 
-	t.Run("A mark of a projection that no longer exists syncs the whole Product and goes", func(t *testing.T) {
+	t.Run("A mark of a source that no longer exists syncs the whole Product and goes", func(t *testing.T) {
 		w := givenWorld(t)
 		w.docs.set(productID, "readme", "ana")
-		gone := mirror.Scope{ProductID: productID, Projection: "renamed_away", Key: "x"}
+		gone := fgasync.Scope{ProductID: productID, Source: "renamed_away", Key: "x"}
 		require.NoError(t, w.repo.Mark(t.Context(), gone))
 
-		require.NoError(t, w.mirror.Sync(t.Context(), gone))
+		require.NoError(t, w.syncer.Sync(t.Context(), gone))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
@@ -258,14 +258,14 @@ func TestSync(t *testing.T) {
 
 	t.Run("A sync waits for a busy lock, then fails and keeps its mark", func(t *testing.T) {
 		w := givenWorld(t)
-		w.mirror.ShortenLockWait(20 * time.Millisecond)
+		w.syncer.ShortenLockWait(20 * time.Millisecond)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		require.True(t, w.locker.Hold(productID))
 
-		err := w.mirror.Sync(t.Context(), readmeScope())
+		err := w.syncer.Sync(t.Context(), readmeScope())
 
-		require.ErrorIs(t, err, mirror.ErrLockBusy)
-		assert.Equal(t, []mirror.Scope{readmeScope()}, w.repo.Marks())
+		require.ErrorIs(t, err, fgasync.ErrLockBusy)
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
 	})
 }
 
@@ -273,15 +273,15 @@ func TestModel(t *testing.T) {
 	t.Run("A model change marks the whole Product, and its sync writes the new model", func(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		before, err := w.repo.RecordedModel(t.Context(), productID)
 		require.NoError(t, err)
 		w.models.dsl = ownersEditors
 
 		require.NoError(t, w.marker.ObserveTx(t.Context(), events.Event{Type: modelChanged, ProductID: productID}))
 
-		assert.Equal(t, []mirror.Scope{mirror.WholeProduct(productID)}, w.repo.Marks())
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+		assert.Equal(t, []fgasync.Scope{fgasync.WholeProduct(productID)}, w.repo.Marks())
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 		after, err := w.repo.RecordedModel(t.Context(), productID)
 		require.NoError(t, err)
 		assert.NotEqual(t, before.ID, after.ID)
@@ -291,12 +291,12 @@ func TestModel(t *testing.T) {
 	t.Run("An unchanged model is compiled once and never written again", func(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
-		require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		first, err := w.repo.RecordedModel(t.Context(), productID)
 		require.NoError(t, err)
 
 		for range 3 {
-			require.NoError(t, w.mirror.Sync(t.Context(), readmeScope()))
+			require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		}
 
 		again, err := w.repo.RecordedModel(t.Context(), productID)
@@ -309,19 +309,19 @@ func TestModel(t *testing.T) {
 		w := givenWorld(t)
 		w.models.dsl = ownersEditors
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 		w.models.dsl = ownersModel
 		w.docs.set(productID, "readme", "ana")
 		require.NoError(t, w.marker.ObserveTx(t.Context(), events.Event{Type: modelChanged, ProductID: productID}))
 
-		require.NoError(t, w.mirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 	})
 }
 
 func TestMarks(t *testing.T) {
-	t.Run("An event no projection claims marks nothing", func(t *testing.T) {
+	t.Run("An event no source claims marks nothing", func(t *testing.T) {
 		w := givenWorld(t)
 
 		require.NoError(t, w.marker.ObserveTx(t.Context(), events.Event{Type: "invoice.paid", ProductID: productID}))
@@ -329,7 +329,7 @@ func TestMarks(t *testing.T) {
 		assert.Empty(t, w.repo.Marks())
 	})
 
-	t.Run("A projection that marks an empty key fails the write", func(t *testing.T) {
+	t.Run("A source that marks an empty key fails the write", func(t *testing.T) {
 		w := givenWorld(t)
 
 		err := w.marker.ObserveTx(
@@ -337,35 +337,35 @@ func TestMarks(t *testing.T) {
 			events.Event{Type: docChanged, ProductID: productID, Data: events.Data{}},
 		)
 
-		require.ErrorIs(t, err, mirror.ErrInvalidScope)
+		require.ErrorIs(t, err, fgasync.ErrInvalidScope)
 		assert.Empty(t, w.repo.Marks())
 	})
 
 	t.Run("A request's marks are collected, and its replay syncs them", func(t *testing.T) {
 		w := givenWorld(t)
-		ctx, marked := mirror.CollectMarks(t.Context())
+		ctx, marked := fgasync.CollectMarks(t.Context())
 		w.changeDoc(ctx, t, productID, "readme", "ana")
 		w.changeDoc(ctx, t, productID, "readme", "ana", "bob")
 
-		w.mirror.Replay(t.Context(), marked())
+		w.syncer.Replay(t.Context(), marked())
 
-		assert.Equal(t, []mirror.Scope{readmeScope()}, marked())
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, marked())
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana"), owns("readme", "bob")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
 	})
 
 	t.Run("A replay that cannot get the lock leaves the mark for the sweeper", func(t *testing.T) {
 		w := givenWorld(t)
-		w.mirror.ShortenLockWait(20 * time.Millisecond)
-		ctx, marked := mirror.CollectMarks(t.Context())
+		w.syncer.ShortenLockWait(20 * time.Millisecond)
+		ctx, marked := fgasync.CollectMarks(t.Context())
 		w.changeDoc(ctx, t, productID, "readme", "ana")
 		require.True(t, w.locker.Hold(productID))
 
-		w.mirror.Replay(t.Context(), marked())
+		w.syncer.Replay(t.Context(), marked())
 
 		w.locker.Release(productID)
-		assert.Equal(t, []mirror.Scope{readmeScope()}, w.repo.Marks())
-		w.mirror.Sweep(t.Context())
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
+		w.syncer.Sweep(t.Context())
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 		assert.Empty(t, w.repo.Marks())
 	})
@@ -379,9 +379,9 @@ func TestSweep(t *testing.T) {
 		w.changeDoc(t.Context(), t, "prod_other", "notes", "bob")
 		w.docs.failOn = productID
 
-		w.mirror.Sweep(t.Context())
+		w.syncer.Sweep(t.Context())
 
-		assert.Equal(t, []mirror.Scope{readmeScope()}, w.repo.Marks())
+		assert.Equal(t, []fgasync.Scope{readmeScope()}, w.repo.Marks())
 		assert.Equal(t, []fga.Tuple{owns("notes", "bob")}, w.stored(t, "prod_other"))
 		w.changeDoc(t.Context(), t, "prod_other", "notes", "carol")
 		oldest, err := w.repo.Oldest(t.Context(), 10)
@@ -394,21 +394,21 @@ func TestSweep(t *testing.T) {
 		w := givenWorld(t)
 		w.docs.set(productID, "readme", "ana")
 
-		w.mirror.Sweep(t.Context())
+		w.syncer.Sweep(t.Context())
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 	})
 
-	t.Run("A reconcile deletes every tuple no projection claims", func(t *testing.T) {
+	t.Run("A reconcile deletes every tuple no source claims", func(t *testing.T) {
 		w := givenWorld(t)
 		w.docs.set(productID, "readme", "ana")
-		require.NoError(t, w.mirror.Reconcile(t.Context(), productID))
+		require.NoError(t, w.syncer.Reconcile(t.Context(), productID))
 		stray := owns("ghost", "eve")
 		require.NoError(t, w.stores.Store(t, w.repo, productID).Apply(t.Context(), fga.Changes{
 			Writes: []fga.Tuple{stray},
 		}))
 
-		require.NoError(t, w.mirror.Reconcile(t.Context(), productID))
+		require.NoError(t, w.syncer.Reconcile(t.Context(), productID))
 
 		assert.Equal(t, []fga.Tuple{owns("readme", "ana")}, w.stored(t, productID))
 	})
@@ -417,12 +417,12 @@ func TestSweep(t *testing.T) {
 		w := givenWorld(t)
 		w.repo.AddProduct("prod_gone")
 		w.docs.set("prod_gone", "readme", "ana")
-		require.NoError(t, w.mirror.Reconcile(t.Context(), "prod_gone"))
+		require.NoError(t, w.syncer.Reconcile(t.Context(), "prod_gone"))
 		goneStore, err := w.stores.StoreID(t.Context(), "prod_gone")
 		require.NoError(t, err)
 		w.repo.RemoveProduct("prod_gone")
 
-		w.mirror.Sweep(t.Context())
+		w.syncer.Sweep(t.Context())
 
 		_, err = w.engine.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: goneStore})
 		assert.Error(t, err)
@@ -430,35 +430,35 @@ func TestSweep(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	t.Run("Two projections with one name are refused", func(t *testing.T) {
-		projection := docOwners{docs: &docs{}}
+	t.Run("Two sources with one name are refused", func(t *testing.T) {
+		source := docOwners{docs: &docs{}}
 
-		_, err := mirror.New(mirror.Deps{Projections: []mirror.Projection{projection, projection}})
+		_, err := fgasync.New(fgasync.Deps{Sources: []fgasync.Source{source, source}})
 
 		require.Error(t, err)
 	})
 }
 
 func TestSmallestCover(t *testing.T) {
-	key := func(product, projection, key string) mirror.Scope {
-		return mirror.Scope{ProductID: product, Projection: projection, Key: key}
+	key := func(product, source, key string) fgasync.Scope {
+		return fgasync.Scope{ProductID: product, Source: source, Key: key}
 	}
 
-	t.Run("A whole Product covers its projections, and every key covers each key", func(t *testing.T) {
-		cover := mirror.SmallestCover([]mirror.Scope{
+	t.Run("A whole Product covers its sources, and every key covers each key", func(t *testing.T) {
+		cover := fgasync.SmallestCover([]fgasync.Scope{
 			key("p1", "docs", "a"),
 			key("p1", "docs", "a"),
 			key("p2", "docs", "a"),
-			key("p2", "docs", mirror.EveryKey),
+			key("p2", "docs", fgasync.EveryKey),
 			key("p2", "teams", "t"),
 			key("p1", "teams", "t"),
-			mirror.WholeProduct("p1"),
+			fgasync.WholeProduct("p1"),
 		})
 
-		assert.Equal(t, []mirror.Scope{
-			key("p2", "docs", mirror.EveryKey),
+		assert.Equal(t, []fgasync.Scope{
+			key("p2", "docs", fgasync.EveryKey),
 			key("p2", "teams", "t"),
-			mirror.WholeProduct("p1"),
+			fgasync.WholeProduct("p1"),
 		}, cover)
 	})
 }

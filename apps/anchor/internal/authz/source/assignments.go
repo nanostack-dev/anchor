@@ -1,4 +1,4 @@
-package projection
+package source
 
 import (
 	"context"
@@ -9,14 +9,14 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/authz/fga"
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 	"anchor/internal/authz/model"
 	dbmodel "anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/events"
 )
 
-// Assignments mirrors who holds which role in each Organization: one
+// Assignments syncs who holds which role in each Organization: one
 // assignment per role held, every member holding it an assignee. A check on an
 // Organization then walks its roles, a handful, not its members.
 type Assignments struct{ tables Tables }
@@ -34,7 +34,7 @@ func (Assignments) Stale(event events.Event) ([]string, error) {
 		return keyOf(event, events.FieldOrganizationID)
 	case isOneOf(event, events.ProductRoleDeleted, events.ProductUserDeleted):
 		// Their memberships cascade away in any Organization, without events.
-		return []string{mirror.EveryKey}, nil
+		return []string{fgasync.EveryKey}, nil
 	default:
 		return nil, nil
 	}

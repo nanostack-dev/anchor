@@ -1,4 +1,4 @@
-package mirror
+package fgasync
 
 import (
 	"context"
@@ -37,15 +37,15 @@ func defaultTiming() timing {
 // Replay syncs what a request marked, right after its transaction committed. It
 // runs detached from the request, so a client that hangs up does not cut a sync
 // short. A failure is logged and leaves the mark for the sweeper.
-func (m *Mirror) Replay(ctx context.Context, marked []Scope) {
+func (s *Syncer) Replay(ctx context.Context, marked []Scope) {
 	if len(marked) == 0 {
 		return
 	}
 	replayCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayTimeout)
 	defer cancel()
 	for _, scope := range smallestCover(marked) {
-		if err := m.Sync(replayCtx, scope); err != nil {
-			m.logger.Warn().Err(err).Str("product_id", scope.ProductID).Str("projection", scope.Projection).
+		if err := s.Sync(replayCtx, scope); err != nil {
+			s.logger.Warn().Err(err).Str("product_id", scope.ProductID).Str("source", scope.Source).
 				Str("key", scope.Key).Msg("authz replay after commit failed; the sweeper retries it")
 		}
 	}
@@ -53,15 +53,15 @@ func (m *Mirror) Replay(ctx context.Context, marked []Scope) {
 
 // Sweep runs one pass: it syncs the oldest marks, then rebuilds the Product
 // rebuilt longest ago if it is due, then removes one page of orphan stores.
-func (m *Mirror) Sweep(ctx context.Context) {
-	m.syncOldestMarks(ctx)
-	if m.reconcileOverdue(ctx) {
-		m.removeOrphanStores(ctx)
+func (s *Syncer) Sweep(ctx context.Context) {
+	s.syncOldestMarks(ctx)
+	if s.reconcileOverdue(ctx) {
+		s.removeOrphanStores(ctx)
 	}
 }
 
 // Run sweeps on one replica at a time until the application stops.
-func (m *Mirror) Run(lc fx.Lifecycle) {
+func (s *Syncer) Run(lc fx.Lifecycle) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	lc.Append(fx.Hook{
@@ -71,7 +71,7 @@ func (m *Mirror) Run(lc fx.Lifecycle) {
 				ticker := time.NewTicker(sweepInterval)
 				defer ticker.Stop()
 				for {
-					m.sweepAlone(ctx)
+					s.sweepAlone(ctx)
 					select {
 					case <-ctx.Done():
 						return
@@ -92,19 +92,19 @@ func (m *Mirror) Run(lc fx.Lifecycle) {
 	})
 }
 
-func (m *Mirror) sweepAlone(ctx context.Context) {
-	if _, err := m.locker.TrySweep(ctx, func(lockCtx context.Context) error {
-		m.Sweep(lockCtx)
+func (s *Syncer) sweepAlone(ctx context.Context) {
+	if _, err := s.locker.TrySweep(ctx, func(lockCtx context.Context) error {
+		s.Sweep(lockCtx)
 		return nil
 	}); err != nil && ctx.Err() == nil {
-		m.logger.Warn().Err(err).Msg("authz sweep lock failed")
+		s.logger.Warn().Err(err).Msg("authz sweep lock failed")
 	}
 }
 
-func (m *Mirror) syncOldestMarks(ctx context.Context) {
-	marks, err := m.repo.Oldest(ctx, sweepBatchSize)
+func (s *Syncer) syncOldestMarks(ctx context.Context) {
+	marks, err := s.repo.Oldest(ctx, sweepBatchSize)
 	if err != nil {
-		m.logger.Error().Err(err).Msg("list authz sync marks")
+		s.logger.Error().Err(err).Msg("list authz sync marks")
 		return
 	}
 	scopes := make([]Scope, 0, len(marks))
@@ -112,69 +112,69 @@ func (m *Mirror) syncOldestMarks(ctx context.Context) {
 		scopes = append(scopes, mark.Scope)
 	}
 	for _, scope := range smallestCover(scopes) {
-		m.postponeAfterFailure(ctx, scope.ProductID, "replay", m.Sync(ctx, scope))
+		s.postponeAfterFailure(ctx, scope.ProductID, "replay", s.Sync(ctx, scope))
 	}
 }
 
 // postponeAfterFailure logs a failed step and postpones the Product's marks, so
 // the next sweep reaches the other Products first.
-func (m *Mirror) postponeAfterFailure(ctx context.Context, productID, step string, err error) {
+func (s *Syncer) postponeAfterFailure(ctx context.Context, productID, step string, err error) {
 	if err == nil || ctx.Err() != nil {
 		return
 	}
-	m.logger.Warn().Err(err).Str("product_id", productID).Str("step", step).
+	s.logger.Warn().Err(err).Str("product_id", productID).Str("step", step).
 		Msg("authz sync failed; it is retried after the other products")
-	if postponeErr := m.repo.Postpone(ctx, productID, m.now().Add(failureBackoff)); postponeErr != nil {
-		m.logger.Warn().Err(postponeErr).Str("product_id", productID).Msg("postpone authz marks")
+	if postponeErr := s.repo.Postpone(ctx, productID, s.now().Add(failureBackoff)); postponeErr != nil {
+		s.logger.Warn().Err(postponeErr).Str("product_id", productID).Msg("postpone authz marks")
 	}
 }
 
 // reconcileOverdue rebuilds the Product rebuilt longest ago, if it is due, and
 // reports whether it ran.
-func (m *Mirror) reconcileOverdue(ctx context.Context) bool {
-	due, err := m.repo.DueForReconcile(ctx, m.now().Add(-reconcileInterval))
+func (s *Syncer) reconcileOverdue(ctx context.Context) bool {
+	due, err := s.repo.DueForReconcile(ctx, s.now().Add(-reconcileInterval))
 	if err != nil {
-		m.logger.Error().Err(err).Msg("find product due for authz reconcile")
+		s.logger.Error().Err(err).Msg("find product due for authz reconcile")
 		return false
 	}
 	productID, ok := due.Get()
 	if !ok {
 		return false
 	}
-	m.postponeAfterFailure(ctx, productID, "reconcile", m.Reconcile(ctx, productID))
+	s.postponeAfterFailure(ctx, productID, "reconcile", s.Reconcile(ctx, productID))
 	return true
 }
 
 // removeOrphanStores deletes, one page per call, the stores whose Product is
 // gone: a deleted Product's records cascade away, but OpenFGA keeps its store.
 // Stores names each store after its Product.
-func (m *Mirror) removeOrphanStores(ctx context.Context) {
-	engine, err := m.engines.Get()
+func (s *Syncer) removeOrphanStores(ctx context.Context) {
+	engine, err := s.engines.Get()
 	if err != nil {
 		return
 	}
 	page, err := engine.ListStores(ctx, &openfgav1.ListStoresRequest{
-		PageSize: wrapperspb.Int32(storesPage), ContinuationToken: m.storesToken,
+		PageSize: wrapperspb.Int32(storesPage), ContinuationToken: s.storesToken,
 	})
 	if err != nil {
-		m.logger.Warn().Err(err).Msg("list openfga stores")
+		s.logger.Warn().Err(err).Msg("list openfga stores")
 		return
 	}
-	m.storesToken = page.GetContinuationToken()
+	s.storesToken = page.GetContinuationToken()
 	for _, found := range page.GetStores() {
-		exists, existsErr := m.repo.ProductExists(ctx, found.GetName())
+		exists, existsErr := s.repo.ProductExists(ctx, found.GetName())
 		if existsErr != nil || exists {
 			continue
 		}
 		if _, err = engine.DeleteStore(ctx, &openfgav1.DeleteStoreRequest{StoreId: found.GetId()}); err != nil {
-			m.logger.Warn().Err(err).Str("store_id", found.GetId()).Msg("delete an orphan openfga store")
+			s.logger.Warn().Err(err).Str("store_id", found.GetId()).Msg("delete an orphan openfga store")
 		}
 	}
 }
 
 // smallestCover drops every scope another one covers, keeping the order in
-// which each first appears: a whole Product covers its projections, and every
-// key of a projection covers each key.
+// which each first appears: a whole Product covers its sources, and every
+// key of a source covers each key.
 func smallestCover(scopes []Scope) []Scope {
 	var cover []Scope
 	for _, scope := range scopes {

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/authz/fga"
-	"anchor/internal/authz/mirror"
+	"anchor/internal/authz/fgasync"
 	"anchor/internal/authz/model"
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/role"
@@ -88,14 +88,14 @@ func givenSyncAPIKey(t *testing.T, w syncWorld, permission string) string {
 
 func syncProduct(t *testing.T, productID string) {
 	t.Helper()
-	require.NoError(t, AuthzMirror.Sync(t.Context(), mirror.WholeProduct(productID)))
+	require.NoError(t, AuthzSyncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
 }
 
-func syncKey(t *testing.T, productID, projection, key string) {
+func syncKey(t *testing.T, productID, source, key string) {
 	t.Helper()
 	require.NoError(
 		t,
-		AuthzMirror.Sync(t.Context(), mirror.Scope{ProductID: productID, Projection: projection, Key: key}),
+		AuthzSyncer.Sync(t.Context(), fgasync.Scope{ProductID: productID, Source: source, Key: key}),
 	)
 }
 
@@ -105,7 +105,7 @@ const (
 	apiKeys     = "organization_api_keys"
 )
 
-// productStore is the product's store at the model the mirror recorded.
+// productStore is the product's store at the model the syncer recorded.
 func productStore(t *testing.T, productID string) fga.Store {
 	t.Helper()
 	storeID, err := AuthzStores.StoreID(t.Context(), productID)
@@ -207,7 +207,7 @@ func TestAuthzSync(t *testing.T) {
 		var wg sync.WaitGroup
 		for range 5 {
 			wg.Go(func() {
-				assert.NoError(t, AuthzMirror.Sync(t.Context(), mirror.WholeProduct(w.productID)))
+				assert.NoError(t, AuthzSyncer.Sync(t.Context(), fgasync.WholeProduct(w.productID)))
 			})
 		}
 		wg.Wait()
@@ -333,7 +333,7 @@ func TestAuthzReconcile(t *testing.T) {
 		store := productStore(t, w.productID)
 		require.NoError(t, store.Apply(t.Context(), fga.Changes{Writes: []fga.Tuple{orphan}}))
 
-		require.NoError(t, AuthzMirror.Reconcile(t.Context(), w.productID))
+		require.NoError(t, AuthzSyncer.Reconcile(t.Context(), w.productID))
 
 		read, err := store.Read(t.Context(), fga.Filter{Object: orphan.Object})
 		require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestAuthzReconcile(t *testing.T) {
 		member := givenMember(t, w, w.organizationID, w.managedID)
 
 		require.Eventually(t, func() bool {
-			AuthzMirror.Sweep(t.Context())
+			AuthzSyncer.Sweep(t.Context())
 			recorded, err := AuthzMarks.RecordedModel(t.Context(), productID)
 			return err == nil && recorded.ID != "" &&
 				can(t, productID, model.User(member), w.permission, w.organizationID)
@@ -369,7 +369,7 @@ func TestAuthzReconcile(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			AuthzMirror.Sweep(t.Context())
+			AuthzSyncer.Sweep(t.Context())
 			_, getErr := openfga.GetStore(t.Context(), &openfgav1.GetStoreRequest{StoreId: orphan.GetId()})
 			return getErr != nil
 		}, 30*time.Second, 10*time.Millisecond)
@@ -379,8 +379,8 @@ func TestAuthzReconcile(t *testing.T) {
 func TestAuthzMarks(t *testing.T) {
 	openFGA(t)
 
-	assignmentsOf := func(w syncWorld) mirror.Scope {
-		return mirror.Scope{ProductID: w.productID, Projection: assignments, Key: w.organizationID}
+	assignmentsOf := func(w syncWorld) fgasync.Scope {
+		return fgasync.Scope{ProductID: w.productID, Source: assignments, Key: w.organizationID}
 	}
 
 	t.Run("A membership write leaves a mark that the sweeper replays", func(t *testing.T) {
@@ -397,7 +397,7 @@ func TestAuthzMarks(t *testing.T) {
 		assert.Equal(t, assignmentsOf(w), marks[0].Scope)
 
 		require.Eventually(t, func() bool {
-			AuthzMirror.Sweep(t.Context())
+			AuthzSyncer.Sweep(t.Context())
 			left, pendingErr := AuthzMarks.Pending(t.Context(), w.productID)
 			return pendingErr == nil && len(left) == 0
 		}, 30*time.Second, 10*time.Millisecond)
@@ -465,15 +465,15 @@ func TestAuthzReplayAfterCommit(t *testing.T) {
 	t.Run("A write's request replays what it marked right after it commits", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		userID := givenProductUser(t, w.productID)
-		ctx, marked := mirror.CollectMarks(t.Context())
+		ctx, marked := fgasync.CollectMarks(t.Context())
 
 		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
 			ProductID: w.productID, OrganizationID: w.organizationID, ProductUserID: userID, RoleID: &w.managedID,
 		})
 		require.NoError(t, err)
-		AuthzMirror.Replay(t.Context(), marked())
+		AuthzSyncer.Replay(t.Context(), marked())
 
-		assert.Equal(t, []mirror.Scope{{ProductID: w.productID, Projection: assignments, Key: w.organizationID}},
+		assert.Equal(t, []fgasync.Scope{{ProductID: w.productID, Source: assignments, Key: w.organizationID}},
 			marked())
 		assert.True(t, can(t, w.productID, model.User(userID), w.permission, w.organizationID))
 		left, err := AuthzMarks.Pending(t.Context(), w.productID)
@@ -483,7 +483,7 @@ func TestAuthzReplayAfterCommit(t *testing.T) {
 
 	t.Run("A member add refused before it writes leaves no mark and collects nothing", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		ctx, marked := mirror.CollectMarks(t.Context())
+		ctx, marked := fgasync.CollectMarks(t.Context())
 
 		_, err := MembershipService.AddMember(ctx, organization.AddMemberInput{
 			ProductID:      w.productID,
