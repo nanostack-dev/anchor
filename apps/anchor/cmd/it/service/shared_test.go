@@ -6,6 +6,7 @@ import (
 
 	itshared "anchor/cmd/it/shared"
 	authzengine "anchor/internal/authz/engine"
+	"anchor/internal/authz/fgasync"
 	authzstore "anchor/internal/authz/store"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
@@ -43,6 +44,8 @@ var (
 	Transactor             transactor.Transactor
 	AuthzStores            authzstore.Stores
 	AuthzEngines           authzengine.Provider
+	AuthzMarks             fgasync.Repository
+	AuthzSyncer            *fgasync.Syncer
 )
 
 func TestMain(m *testing.M) {
@@ -68,6 +71,8 @@ func TestMain(m *testing.M) {
 				&Transactor,
 				&AuthzStores,
 				&AuthzEngines,
+				&AuthzMarks,
+				&AuthzSyncer,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,

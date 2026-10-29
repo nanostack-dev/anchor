@@ -31,10 +31,11 @@ const (
 	migrationDropProductNameIndex = 65
 	migrationRoleTypeRequired     = 66
 	migrationAllowsCustomRoles    = 67
+	migrationAuthzSyncMarks       = 69
 )
 
-// roleSchemaFact is one thing the role migrations (000059 to 000067) must
-// leave true. holds is a query that returns one boolean. Without a recovery,
+// roleSchemaFact is one thing the migrations from 000059 to 000069 (roles,
+// then the authorization store) must leave true. holds is a query that returns one boolean. Without a recovery,
 // the recovery is to force the version before and redeploy.
 type roleSchemaFact struct {
 	holds    string
@@ -115,6 +116,14 @@ SELECT count(*) = 1 FROM information_schema.columns
 WHERE table_schema = current_schema() AND table_name = 'product_resource_types'
   AND column_name = 'allows_custom_roles'`,
 			problem: "product_resource_types has no allows_custom_roles column", version: migrationAllowsCustomRoles,
+		},
+		{
+			// Every write that changes access marks it in its own transaction.
+			holds: `
+SELECT to_regclass('authz_sync_marks') IS NOT NULL AND (SELECT count(*) = 3 FROM information_schema.columns
+WHERE table_schema = current_schema() AND table_name = 'authz_stores'
+  AND column_name IN ('model_id', 'model_hash', 'reconciled_at'))`,
+			problem: "authz_sync_marks or the authz_stores sync columns are missing", version: migrationAuthzSyncMarks,
 		},
 	}
 }

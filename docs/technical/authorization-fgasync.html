@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authorization Sync</title>
+<style>
+:root {
+  --bg: #f6f5f2; --card: #fff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1dc; --soft: #f1efea;
+  --a: #2f6fdb; --a-bg: #e6eefc;
+  --r: #7a4bd1; --r-bg: #efe8fb;
+  --k: #c96a12; --k-bg: #fbeedd;
+  --m: #0e8a7a; --m-bg: #e1f4f1;
+  --ok: #1f8a4c; --ok-bg: #e2f3e8;
+  --del: #c23b3b; --del-bg: #fbe5e5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --card: #1f1f1d; --ink: #ecebe7; --muted: #9b9a95; --line: #34332f; --soft: #262623;
+    --a: #78a6f5; --a-bg: #1d2a42; --r: #b192f0; --r-bg: #2b2340; --k: #f0a35b; --k-bg: #3a2a18;
+    --m: #4cc8b6; --m-bg: #15322e; --ok: #5fcf8c; --ok-bg: #183324; --del: #f08080; --del-bg: #3b1d1d;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --card: #1f1f1d; --ink: #ecebe7; --muted: #9b9a95; --line: #34332f; --soft: #262623;
+  --a: #78a6f5; --a-bg: #1d2a42; --r: #b192f0; --r-bg: #2b2340; --k: #f0a35b; --k-bg: #3a2a18;
+  --m: #4cc8b6; --m-bg: #15322e; --ok: #5fcf8c; --ok-bg: #183324; --del: #f08080; --del-bg: #3b1d1d;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+.lead { color: var(--muted); max-width: 760px; margin: 0 0 28px; }
+section { margin: 0 0 40px; }
+h2 { font-size: 18px; margin: 0 0 4px; display: flex; gap: 10px; align-items: baseline; }
+h2 .n { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.sub { color: var(--muted); margin: 0 0 14px; max-width: 760px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+
+/* layers */
+.layers { display: grid; gap: 10px; }
+.layer { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: stretch; }
+.layer .label { padding: 10px 0; }
+.layer .label b { display: block; font-size: 15px; }
+.layer .label span { color: var(--muted); font-size: 13px; }
+.boxes { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; padding: 10px; border-radius: 12px; background: var(--soft); }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 11px; min-width: 130px; flex: 1; }
+.box b { display: block; font-size: 13.5px; }
+.box small { color: var(--muted); font-size: 12px; }
+.box.a { border-left: 4px solid var(--a); } .box.r { border-left: 4px solid var(--r); } .box.k { border-left: 4px solid var(--k); } .box.m { border-left: 4px solid var(--m); }
+.seams { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; width: 100%; }
+.seam { font-size: 12px; border: 1px dashed var(--line); border-radius: 7px; padding: 4px 8px; background: var(--card); }
+.seam em { font-style: normal; color: var(--muted); }
+.arrow { text-align: center; color: var(--muted); font-size: 12px; margin: -2px 0; }
+
+/* contract */
+.contract { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+pre { margin: 0; background: var(--soft); border-radius: 10px; padding: 14px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+pre .hl { background: var(--a-bg); border-radius: 4px; display: inline-block; width: 100%; }
+.calls { display: grid; gap: 6px; }
+.call { display: grid; grid-template-columns: 82px 1fr; gap: 10px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); cursor: default; background: var(--card); }
+.call b { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+.call span { font-size: 13px; color: var(--muted); }
+.call.on { border-color: var(--a); background: var(--a-bg); }
+.call.on span { color: var(--ink); }
+
+/* stepper */
+.stepper .bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.stepper .bar button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.stepper .bar button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.stage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.col h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.list li { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; padding: 5px 8px; border-radius: 7px; background: var(--soft); overflow-wrap: anywhere; transition: background .25s, color .25s, opacity .25s; }
+.list li.w { background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+.list li.d { background: var(--del-bg); color: var(--del); text-decoration: line-through; }
+.list li.dim { opacity: .35; }
+.list li.empty { background: none; color: var(--muted); font-family: inherit; font-style: italic; }
+.say { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--soft); font-size: 14px; }
+.say code { background: var(--card); padding: 1px 5px; border-radius: 4px; }
+.markrow { margin-top: 10px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pill { font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--k-bg); color: var(--k); }
+.pill.gone { background: var(--soft); color: var(--muted); text-decoration: line-through; }
+
+/* ownership */
+.own { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+.legend { display: grid; gap: 8px; align-content: start; }
+.legend button { font: inherit; text-align: left; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 11px; cursor: pointer; }
+.legend button b { display: block; font-size: 13.5px; }
+.legend button small { color: var(--muted); font-size: 12px; }
+.legend button i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.tuples { display: grid; gap: 5px; }
+.tuple { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 7px 10px; border-radius: 8px; border-left: 4px solid; background: var(--soft); transition: opacity .2s; }
+.tuple small { font-family: ui-sans-serif, sans-serif; color: var(--muted); font-size: 11px; }
+.tuple.a { border-color: var(--a); } .tuple.r { border-color: var(--r); } .tuple.k { border-color: var(--k); }
+.tuples.focus .tuple { opacity: .25; } .tuples.focus .tuple.hit { opacity: 1; }
+
+/* scopes */
+.scopes select { font: inherit; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--ink); max-width: 100%; }
+.marks { display: grid; gap: 6px; margin-top: 12px; }
+.markcard { display: grid; grid-template-columns: 190px 1fr; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+.markcard .scope { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+.markcard span { font-size: 13px; color: var(--muted); }
+.kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.kind { padding: 12px; border-radius: 10px; background: var(--soft); font-size: 13px; }
+.kind b { display: block; margin-bottom: 4px; }
+
+/* steps */
+.howto { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.howto .card { padding: 14px; }
+.howto .num { font-size: 12px; color: var(--muted); }
+.howto b { display: block; margin: 2px 0 6px; }
+.howto p { margin: 0; font-size: 13px; color: var(--muted); }
+.rules { columns: 2; column-gap: 24px; font-size: 14px; padding-left: 18px; margin: 14px 0 0; }
+.rules li { margin-bottom: 6px; break-inside: avoid; }
+
+@media (max-width: 820px) {
+  .layer, .contract, .own, .stage { grid-template-columns: 1fr; }
+  .howto, .kinds { grid-template-columns: 1fr 1fr; }
+  .markcard { grid-template-columns: 1fr; }
+  .rules { columns: 1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The authorization sync</h1>
+  <p class="lead">A generic engine that keeps every Product's OpenFGA store equal to Anchor's tables. A module only says <b>what it owns</b>. The engine does the marking, replaying, sweeping, locking and diffing, once for every module.</p>
+
+  <section>
+    <h2><span class="n">1</span>Three layers, one direction</h2>
+    <p class="sub">Each layer knows only the one under it. <code>fga</code> and <code>syncer</code> know nothing of Anchor's domain.</p>
+    <div class="card layers">
+      <div class="layer">
+        <div class="label"><b>source</b><span>Anchor's modules. Domain lives here.</span></div>
+        <div class="boxes">
+          <div class="box a"><b>Assignments</b><small>key: Organization</small></div>
+          <div class="box r"><b>RoleGrants</b><small>key: role row</small></div>
+          <div class="box k"><b>APIKeyGrants</b><small>key: Organization</small></div>
+          <div class="box m"><b>Catalog</b><small>the model source</small></div>
+        </div>
+      </div>
+      <div class="arrow">implements ▼ fgasync.Source · fgasync.ModelSource</div>
+      <div class="layer">
+        <div class="label"><b>syncer</b><span>The sync engine. Generic.</span></div>
+        <div class="boxes">
+          <div class="box"><b>Marker</b><small>ObserveTx, inside every write</small></div>
+          <div class="box"><b>Syncer</b><small>Sync · Replay · Sweep · Reconcile</small></div>
+          <div class="seams">
+            <span class="seam">Repository <em>Postgres | in-memory</em></span>
+            <span class="seam">Locker <em>advisory lock | mutex</em></span>
+            <span class="seam">Stores <em>authz_stores | map</em></span>
+            <span class="seam">Engines <em>embedded | fgatest</em></span>
+          </div>
+        </div>
+      </div>
+      <div class="arrow">uses ▼</div>
+      <div class="layer">
+        <div class="label"><b>fga</b><span>The OpenFGA surface. Generic.</span></div>
+        <div class="boxes">
+          <div class="box"><b>Tuple · Diff</b><small>what to write, what to delete</small></div>
+          <div class="box"><b>Store</b><small>Read all pages · Apply in batches · Check</small></div>
+          <div class="box"><b>Relations</b><small>what a model defines</small></div>
+        </div>
+      </div>
+      <div class="arrow">talks to ▼</div>
+      <div class="layer">
+        <div class="label"><b>OpenFGA</b><span>In-process, on Postgres.</span></div>
+        <div class="boxes"><div class="box"><b>openfga.tuple</b><small>one store per Product</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>The whole contract: five methods</h2>
+    <p class="sub">Hover a method to see who calls it, and when.</p>
+    <div class="card contract">
+<pre id="code"><span data-m="name">Name() string</span>
+<span data-m="stale">Stale(event events.Event) ([]string, error)</span>
+<span data-m="keys">Keys(ctx, productID string) ([]string, error)</span>
+<span data-m="desired">Desired(ctx, productID, key string) ([]fga.Tuple, error)</span>
+<span data-m="stored">Stored(ctx, store fga.Reader, key string) ([]fga.Tuple, error)</span>
+
+<span style="color:var(--muted)">// register it — one line in authz.NewModule</span>
+fgasync.AsSource(source.NewRoleGrants)</pre>
+      <div class="calls" id="calls">
+        <div class="call" data-m="name"><b>Name</b><span>Stored in every mark. Must stay stable; a renamed source's old marks resync the whole Product once.</span></div>
+        <div class="call" data-m="stale"><b>Stale</b><span>The <b>Marker</b>, inside the write's transaction. Pure: reads the event only. An error rolls the write back.</span></div>
+        <div class="call" data-m="keys"><b>Keys</b><span>A whole-Product or every-key sync, and the reconcile. The syncer adds keys only a mark still names, such as a deleted Organization.</span></div>
+        <div class="call" data-m="desired"><b>Desired</b><span>Every sync. Reads the tables now. The syncer drops tuples the model does not define.</span></div>
+        <div class="call" data-m="stored"><b>Stored</b><span>Every sync. Reads only the tuples this key owns, so the diff never touches another module's tuples.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stepper">
+    <h2><span class="n">3</span>One sync, step by step</h2>
+    <p class="sub">Bob joins Acme as Admin. Alice is already there. Follow the <code>organization_assignments</code> source.</p>
+    <div class="card">
+      <div class="bar" id="bar"></div>
+      <div class="stage">
+        <div class="col"><h4>Desired · from Postgres</h4><ul class="list" id="desired"></ul></div>
+        <div class="col"><h4>Stored · from OpenFGA</h4><ul class="list" id="stored"></ul></div>
+        <div class="col"><h4>Diff → Apply</h4><ul class="list" id="diff"></ul></div>
+      </div>
+      <div class="markrow" id="markrow"></div>
+      <div class="say" id="say"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>Who owns what in Acme's store</h2>
+    <p class="sub">Each source owns a disjoint slice. That is why one module's sync can never delete another's tuples. Click a source.</p>
+    <div class="card own">
+      <div class="legend" id="legend">
+        <button data-o="a"><b><i style="background:var(--a)"></i>organization_assignments</b><small>Stored: org links, role link, assignees</small></button>
+        <button data-o="r"><b><i style="background:var(--r)"></i>role_grants</b><small>Stored: everything on <code>role:R</code></small></button>
+        <button data-o="k"><b><i style="background:var(--k)"></i>organization_api_keys</b><small>Stored: org tuples whose user is an API key</small></button>
+      </div>
+      <div class="tuples" id="tuples"></div>
+    </div>
+  </section>
+
+  <section class="scopes">
+    <h2><span class="n">5</span>Which marks does an event leave?</h2>
+    <p class="sub">Pick a real Anchor event. The Marker asks every source, and the catalog, which scopes it makes stale.</p>
+    <div class="card">
+      <select id="event"></select>
+      <div class="marks" id="marks"></div>
+      <div class="kinds">
+        <div class="kind"><b>One key</b><code>(source, key)</code><br>The common case: one Organization, one role.</div>
+        <div class="kind"><b>Every key</b><code>(source, *)</code><br>A cascade with no events, such as a deleted product user's memberships.</div>
+        <div class="kind"><b>Whole Product</b><code>('', '')</code><br>A model change: every source resyncs under the new model.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">6</span>Adding a module</h2>
+    <div class="howto">
+      <div class="card"><div class="num">Step 1</div><b>Check the model</b><p>The relation must exist. The syncer silently drops tuples the model does not define.</p></div>
+      <div class="card"><div class="num">Step 2</div><b>Write five methods</b><p>One file in <code>source/</code>. Read tables through <code>Tables</code>, never through a service.</p></div>
+      <div class="card"><div class="num">Step 3</div><b>Register and classify</b><p><code>fgasync.AsSource(…)</code>, then remove its events from <code>WithoutAccess()</code>.</p></div>
+      <div class="card"><div class="num">Step 4</div><b>Test</b><p><code>TestStale</code>, <code>TestOwnership</code>, and one service test: write rows, sync, check, change, sync, check.</p></div>
+    </div>
+    <ol class="rules">
+      <li><b>Own disjoint tuples.</b> No tuple belongs to two keys.</li>
+      <li><b>Stored covers Desired.</b> Or a tuple is written forever and never deleted.</li>
+      <li><b>Stale is pure.</b> No query; it runs in every write's transaction.</li>
+      <li><b>Every key for cascades.</b> Return <code>fgasync.EveryKey</code>.</li>
+      <li><b>Scope reads to the Product.</b> Another tenant's key implies nothing.</li>
+      <li><b>Nothing you need emits events.</b> The Marker is built from sources; a service that emits would close a cycle.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+// 2. contract hover
+document.querySelectorAll("[data-m]").forEach(el => {
+  const m = el.dataset.m;
+  const on = v => document.querySelectorAll(`[data-m="${m}"]`).forEach(x => {
+    x.classList.toggle("on", v);
+    if (x.tagName === "SPAN") x.classList.toggle("hl", v);
+  });
+  el.addEventListener("mouseenter", () => on(true));
+  el.addEventListener("mouseleave", () => on(false));
+});
+
+// 3. stepper
+const LINK = "organization:org_acme # assignment @ role_assignment:org_acme.role_admin";
+const ROLE = "role_assignment:org_acme.role_admin # role @ role:role_admin";
+const ALICE = "role_assignment:org_acme.role_admin # assignee @ user:pu_alice";
+const BOB = "role_assignment:org_acme.role_admin # assignee @ user:pu_bob";
+const steps = [
+  { t: "1 · Event", desired: [], stored: [], diff: [], mark: null,
+    say: "<code>AddMember</code> inserts Bob's membership and emits <code>organization.membership.created</code>, inside its transaction." },
+  { t: "2 · Stale", desired: [], stored: [], diff: [], mark: "new",
+    say: "The Marker asks each source. <code>Assignments.Stale</code> answers <code>[\"org_acme\"]</code>; the others answer nothing. One mark row is upserted, in the same transaction, at revision 8." },
+  { t: "3 · Desired", desired: [LINK, ROLE, ALICE, BOB], stored: [], diff: [], mark: "new",
+    say: "After commit, <code>Syncer.Sync</code> takes the Product lock, reads the marks, then calls <code>Desired(prod_tasks, org_acme)</code>: Acme's members with a role, as 4 tuples." },
+  { t: "4 · Stored", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE], diff: [], mark: "new",
+    say: "<code>Stored(store, org_acme)</code> reads only what this key owns: the links, each link's role tuple, the assignees. The role's grant belongs to <code>role_grants</code>, so it is not read." },
+  { t: "5 · Diff", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE], diff: [{ w: BOB }], mark: "new",
+    dimShared: true, say: "<code>fga.Diff</code> compares the two sets: one tuple to write, none to delete." },
+  { t: "6 · Apply", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE, BOB], diff: [{ w: BOB }], mark: "new",
+    say: "<code>Store.Apply</code> writes it: deletes first, in batches of 100, a duplicate is not an error. OpenFGA commits it at once." },
+  { t: "7 · Clear", desired: [LINK, ROLE, ALICE, BOB], stored: [LINK, ROLE, ALICE, BOB], diff: [], mark: "gone",
+    say: "<code>ClearIfUnchanged(rev 8)</code> deletes the mark. Had Carol joined meanwhile, the revision would be 9 and the mark would stay for the next sync." },
+];
+let at = 0;
+function li(items, cls = () => "") {
+  if (!items.length) return `<li class="empty">nothing yet</li>`;
+  return items.map(x => `<li class="${cls(x)}">${esc(x)}</li>`).join("");
+}
+function renderStep() {
+  const s = steps[at];
+  $("bar").innerHTML = steps.map((x, i) => `<button class="${i === at ? "on" : ""}" data-i="${i}">${x.t}</button>`).join("");
+  const shared = x => s.dimShared && s.stored.includes(x) ? "dim" : "";
+  $("desired").innerHTML = li(s.desired, shared);
+  $("stored").innerHTML = li(s.stored, x => (s.dimShared && s.desired.includes(x) ? "dim" : "") + (at >= 5 && x === BOB ? " w" : ""));
+  $("diff").innerHTML = s.diff.length ? s.diff.map(d => `<li class="w">+ ${esc(d.w)}</li>`).join("") + `<li class="empty">deletes: none</li>` : `<li class="empty">no change yet</li>`;
+  $("markrow").innerHTML = s.mark ? `authz_sync_marks: <span class="pill ${s.mark === "gone" ? "gone" : ""}">(prod_tasks, organization_assignments, org_acme) rev 8</span>` : "";
+  $("say").innerHTML = s.say;
+}
+$("bar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { at = +b.dataset.i; renderStep(); } });
+renderStep();
+
+// 4. ownership
+const owned = [
+  ["a", LINK, "Assignments · org_acme"],
+  ["a", ROLE, "Assignments · org_acme"],
+  ["a", ALICE, "Assignments · org_acme"],
+  ["a", BOB, "Assignments · org_acme"],
+  ["r", "role:role_admin # grants_billing_write @ user:*", "RoleGrants · role_admin"],
+  ["r", "role:role_auditor # grants_audit_read @ user:*", "RoleGrants · role_auditor"],
+  ["k", "organization:org_acme # can_billing_read @ api_key:key_ci", "APIKeyGrants · org_acme"],
+];
+$("tuples").innerHTML = owned.map(([o, t, by]) => `<div class="tuple ${o}" data-o="${o}"><span>${esc(t)}</span><small>${by}</small></div>`).join("");
+let focus = null;
+$("legend").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  focus = focus === b.dataset.o ? null : b.dataset.o;
+  $("tuples").classList.toggle("focus", !!focus);
+  document.querySelectorAll(".tuple").forEach(t => t.classList.toggle("hit", t.dataset.o === focus));
+});
+
+// 5. scopes — the same classification as source.Stale and ChangesModel
+const P = { a: "organization_assignments", r: "role_grants", k: "organization_api_keys" };
+const EVENTS = {
+  "organization.membership.created": [[P.a, "org_acme", "Bob joins Acme"]],
+  "organization.membership.updated": [[P.a, "org_acme", "a member changes role"]],
+  "organization.membership.deleted": [[P.a, "org_acme", "a member leaves"]],
+  "organization.deleted": [[P.a, "org_acme", "its links and assignees go"], [P.k, "org_acme", "its keys' grants go"]],
+  "organization.api_key.created": [[P.k, "org_acme", "key_ci gets its grants"]],
+  "organization.api_key.updated": [[P.k, "org_acme", "an inactive key loses them"]],
+  "organization.role.updated": [[P.r, "role_auditor", "a custom role's permissions changed"]],
+  "organization.role.deleted": [[P.r, "role_auditor", "its grants go"], [P.a, "org_acme", "its memberships cascaded away"]],
+  "product.role.updated": [[P.r, "role_admin", "only that role resyncs, not the Product"]],
+  "product.role.deleted": [[P.r, "role_admin", "its grants go"], [P.a, "*", "its memberships cascaded away in every Organization"]],
+  "product_user.deleted": [[P.a, "*", "memberships cascaded away, without events"]],
+  "product.resource_permission.deleted": [["", "", "the model changes: whole Product"]],
+  "product.resource_type.created": [["", "", "the model changes: whole Product"]],
+  "organization.invitation.accepted": [],
+  "workspace.updated": [],
+};
+$("event").innerHTML = Object.keys(EVENTS).map(k => `<option>${k}</option>`).join("");
+function renderMarks() {
+  const marks = EVENTS[$("event").value];
+  $("marks").innerHTML = marks.length ? marks.map(([p, k, why]) =>
+    `<div class="markcard"><div class="scope">${p ? `(${p}, ${k})` : "(whole Product)"}</div><span>${why}</span></div>`).join("")
+    : `<div class="markcard"><div class="scope">no mark</div><span>Listed in <code>WithoutAccess()</code>: it changes no access the store holds.</span></div>`;
+}
+$("event").addEventListener("change", renderMarks);
+renderMarks();
+</script>
+</body>
+</html>
