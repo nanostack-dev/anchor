@@ -28,6 +28,7 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
+	"anchor/internal/domain/roleassignment"
 	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 
@@ -3183,6 +3184,79 @@ type ResourceListResponse struct {
 	Total int64 `json:"total"`
 }
 
+// ResourceMemberFilter defines model for ResourceMemberFilter.
+type ResourceMemberFilter struct {
+	// ProductUserIds Keeps these members.
+	ProductUserIds []Ksuid `json:"product_user_ids,omitempty"`
+
+	// RoleIds Keeps members holding one of these roles on the resource.
+	RoleIds []Ksuid `json:"role_ids,omitempty"`
+}
+
+// ResourceMemberListResponse defines model for ResourceMemberListResponse.
+type ResourceMemberListResponse struct {
+	// Count The number of items returned in this response.
+	Count int                      `json:"count"`
+	Items []ResourceMemberResponse `json:"items"`
+
+	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
+	NextCursor *string `json:"next_cursor,omitempty"`
+
+	// Total Number of items matching the filter, independent of the cursor.
+	Total int64 `json:"total"`
+}
+
+// ResourceMemberPutRequest The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
+type ResourceMemberPutRequest struct {
+	// RoleIds IDs of roles a member of the Organization may hold: a role the Product manages or a custom role of this Organization. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Every role must be scoped to the resource's type, or it answers 400 ROLE_SCOPE_MISMATCH. More than one ID answers 400 SINGLE_ROLE_PER_RESOURCE.
+	//
+	// Examples: ["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"]
+	RoleIds []Ksuid `json:"role_ids"`
+}
+
+// ResourceMemberResponse A member of the Organization and the roles they hold on one resource.
+type ResourceMemberResponse struct {
+	// CreatedAt When the member first held a role on the resource.
+	CreatedAt time.Time `json:"created_at"`
+
+	// ProductUserId Unique identifier using KSUID format with a resource-specific prefix.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	ProductUserId Ksuid `json:"product_user_id"`
+
+	// Roles The roles held on the resource. It holds one item while the product allows one role per member per resource.
+	Roles []ResourceMemberRole `json:"roles"`
+
+	// UpdatedAt When the member's roles on the resource last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ResourceMemberRole A role the member holds on the resource.
+type ResourceMemberRole struct {
+	// Id The role's ID, as the Organization's role routes show it.
+	//
+	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
+	Id Ksuid `json:"id"`
+
+	// Name Examples: Folder editor
+	Name string `json:"name"`
+}
+
+// ResourceMemberSearchRequest defines model for ResourceMemberSearchRequest.
+type ResourceMemberSearchRequest struct {
+	Filter     *ResourceMemberFilter `json:"filter,omitempty"`
+	Pagination *PaginationRequest    `json:"pagination,omitempty"`
+
+	// SortBy Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+	SortBy *ResourceMemberSortField `json:"sort_by,omitempty"`
+
+	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
+	SortDirection *SortDirection `json:"sort_direction,omitempty"`
+}
+
+// ResourceMemberSortField Field to sort by. `created_at` is when the member first held a role on the resource. Every order ends with `product_user_id`.
+type ResourceMemberSortField = roleassignment.SortField
+
 // ResourceParentRef The one parent of a resource: another registered resource of the same Organization, or the Organization itself, named `{ "type": "organization", "id": "<organization_id>" }`.
 type ResourceParentRef struct {
 	// Id The parent's `id`, or the Organization's ID when `type` is `organization`.
@@ -3753,7 +3827,7 @@ type GetOrganizationMemberParams struct {
 
 // DeleteResourceParams defines parameters for DeleteResource.
 type DeleteResourceParams struct {
-	// Cascade `true` also deletes every registered descendant. Absent means `false`.
+	// Cascade `true` also deletes every registered descendant and every role assignment on them. Absent means `false`.
 	Cascade *bool `form:"cascade,omitempty" json:"cascade,omitempty"`
 }
 
@@ -3963,6 +4037,12 @@ type SearchResourcesJSONRequestBody = ResourceSearchRequest
 
 // PutResourceJSONRequestBody defines body for PutResource for application/json ContentType.
 type PutResourceJSONRequestBody = ResourcePutRequest
+
+// SearchResourceMembersJSONRequestBody defines body for SearchResourceMembers for application/json ContentType.
+type SearchResourceMembersJSONRequestBody = ResourceMemberSearchRequest
+
+// PutResourceMemberJSONRequestBody defines body for PutResourceMember for application/json ContentType.
+type PutResourceMemberJSONRequestBody = ResourceMemberPutRequest
 
 // CreateOrganizationRoleJSONRequestBody defines body for CreateOrganizationRole for application/json ContentType.
 type CreateOrganizationRoleJSONRequestBody = ProductRoleCreateRequest
@@ -4529,6 +4609,18 @@ type ServerInterface interface {
 	// PutResource Register Resource
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id})
 	PutResource(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter)
+	// SearchResourceMembers Search Resource Members
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search)
+	SearchResourceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter)
+	// DeleteResourceMember Remove Resource Member
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	DeleteResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid)
+	// GetResourceMember Get Resource Member
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	GetResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid)
+	// PutResourceMember Assign Resource Roles
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	PutResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid)
 	// CreateOrganizationRole Create Organization Custom Role
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/roles)
 	CreateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
@@ -5237,6 +5329,30 @@ func (_ Unimplemented) GetResource(w http.ResponseWriter, r *http.Request, produ
 // PutResource Register Resource
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id})
 func (_ Unimplemented) PutResource(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchResourceMembers Search Resource Members
+// (POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search)
+func (_ Unimplemented) SearchResourceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteResourceMember Remove Resource Member
+// (DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+func (_ Unimplemented) DeleteResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetResourceMember Get Resource Member
+// (GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+func (_ Unimplemented) GetResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PutResourceMember Assign Resource Roles
+// (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+func (_ Unimplemented) PutResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8800,6 +8916,245 @@ func (siw *ServerInterfaceWrapper) PutResource(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// SearchResourceMembers operation middleware
+func (siw *ServerInterfaceWrapper) SearchResourceMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type" -------------
+	var resourceType ResourceTypePathParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type", chi.URLParam(r, "resource_type"), &resourceType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_id" -------------
+	var resourceId ResourceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_id", chi.URLParam(r, "resource_id"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchResourceMembers(w, r, productId, organizationId, resourceType, resourceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteResourceMember operation middleware
+func (siw *ServerInterfaceWrapper) DeleteResourceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type" -------------
+	var resourceType ResourceTypePathParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type", chi.URLParam(r, "resource_type"), &resourceType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_id" -------------
+	var resourceId ResourceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_id", chi.URLParam(r, "resource_id"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteResourceMember(w, r, productId, organizationId, resourceType, resourceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetResourceMember operation middleware
+func (siw *ServerInterfaceWrapper) GetResourceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type" -------------
+	var resourceType ResourceTypePathParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type", chi.URLParam(r, "resource_type"), &resourceType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_id" -------------
+	var resourceId ResourceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_id", chi.URLParam(r, "resource_id"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetResourceMember(w, r, productId, organizationId, resourceType, resourceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutResourceMember operation middleware
+func (siw *ServerInterfaceWrapper) PutResourceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "product_id" -------------
+	var productId ProductIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "organization_id" -------------
+	var organizationId OrganizationIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_type" -------------
+	var resourceType ResourceTypePathParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_type", chi.URLParam(r, "resource_type"), &resourceType, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resource_id" -------------
+	var resourceId ResourceIdParameter
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resource_id", chi.URLParam(r, "resource_id"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "product_user_id" -------------
+	var productUserId Ksuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "product_user_id", chi.URLParam(r, "product_user_id"), &productUserId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutResourceMember(w, r, productId, organizationId, resourceType, resourceId, productUserId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateOrganizationRole operation middleware
 func (siw *ServerInterfaceWrapper) CreateOrganizationRole(w http.ResponseWriter, r *http.Request) {
 
@@ -10510,6 +10865,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}", wrapper.PutResource)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search", wrapper.SearchResourceMembers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}", wrapper.DeleteResourceMember)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}", wrapper.GetResourceMember)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id}", wrapper.PutResourceMember)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/invitations", wrapper.CreateOrganizationInvitation)
@@ -18738,6 +19105,301 @@ func (response PutResource409JSONResponse) VisitPutResourceResponse(w http.Respo
 	return err
 }
 
+type SearchResourceMembersRequestObject struct {
+	ProductId      ProductIdParameter        `json:"product_id"`
+	OrganizationId OrganizationIdParameter   `json:"organization_id"`
+	ResourceType   ResourceTypePathParameter `json:"resource_type"`
+	ResourceId     ResourceIdParameter       `json:"resource_id"`
+	Body           *SearchResourceMembersJSONRequestBody
+}
+
+type SearchResourceMembersResponseObject interface {
+	VisitSearchResourceMembersResponse(w http.ResponseWriter) error
+}
+
+type SearchResourceMembers200JSONResponse ResourceMemberListResponse
+
+func (response SearchResourceMembers200JSONResponse) VisitSearchResourceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceMembers400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchResourceMembers400JSONResponse) VisitSearchResourceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceMembers401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchResourceMembers401JSONResponse) VisitSearchResourceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceMembers403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SearchResourceMembers403JSONResponse) VisitSearchResourceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchResourceMembers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchResourceMembers404JSONResponse) VisitSearchResourceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteResourceMemberRequestObject struct {
+	ProductId      ProductIdParameter        `json:"product_id"`
+	OrganizationId OrganizationIdParameter   `json:"organization_id"`
+	ResourceType   ResourceTypePathParameter `json:"resource_type"`
+	ResourceId     ResourceIdParameter       `json:"resource_id"`
+	ProductUserId  Ksuid                     `json:"product_user_id"`
+}
+
+type DeleteResourceMemberResponseObject interface {
+	VisitDeleteResourceMemberResponse(w http.ResponseWriter) error
+}
+
+type DeleteResourceMember204Response struct {
+}
+
+func (response DeleteResourceMember204Response) VisitDeleteResourceMemberResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteResourceMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteResourceMember401JSONResponse) VisitDeleteResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteResourceMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteResourceMember403JSONResponse) VisitDeleteResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteResourceMember404JSONResponse ApiErrorResponse
+
+func (response DeleteResourceMember404JSONResponse) VisitDeleteResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMemberRequestObject struct {
+	ProductId      ProductIdParameter        `json:"product_id"`
+	OrganizationId OrganizationIdParameter   `json:"organization_id"`
+	ResourceType   ResourceTypePathParameter `json:"resource_type"`
+	ResourceId     ResourceIdParameter       `json:"resource_id"`
+	ProductUserId  Ksuid                     `json:"product_user_id"`
+}
+
+type GetResourceMemberResponseObject interface {
+	VisitGetResourceMemberResponse(w http.ResponseWriter) error
+}
+
+type GetResourceMember200JSONResponse ResourceMemberResponse
+
+func (response GetResourceMember200JSONResponse) VisitGetResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetResourceMember401JSONResponse) VisitGetResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response GetResourceMember403JSONResponse) VisitGetResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetResourceMember404JSONResponse ApiErrorResponse
+
+func (response GetResourceMember404JSONResponse) VisitGetResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMemberRequestObject struct {
+	ProductId      ProductIdParameter        `json:"product_id"`
+	OrganizationId OrganizationIdParameter   `json:"organization_id"`
+	ResourceType   ResourceTypePathParameter `json:"resource_type"`
+	ResourceId     ResourceIdParameter       `json:"resource_id"`
+	ProductUserId  Ksuid                     `json:"product_user_id"`
+	Body           *PutResourceMemberJSONRequestBody
+}
+
+type PutResourceMemberResponseObject interface {
+	VisitPutResourceMemberResponse(w http.ResponseWriter) error
+}
+
+type PutResourceMember200JSONResponse ResourceMemberResponse
+
+func (response PutResourceMember200JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMember400JSONResponse ApiErrorResponse
+
+func (response PutResourceMember400JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMember401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PutResourceMember401JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMember403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response PutResourceMember403JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMember404JSONResponse ApiErrorResponse
+
+func (response PutResourceMember404JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateOrganizationRoleRequestObject struct {
 	ProductId      ProductIdParameter      `json:"product_id"`
 	OrganizationId OrganizationIdParameter `json:"organization_id"`
@@ -21994,6 +22656,18 @@ type StrictServerInterface interface {
 	// PutResource Register Resource
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id})
 	PutResource(ctx context.Context, request PutResourceRequestObject) (PutResourceResponseObject, error)
+	// SearchResourceMembers Search Resource Members
+	// (POST /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/search)
+	SearchResourceMembers(ctx context.Context, request SearchResourceMembersRequestObject) (SearchResourceMembersResponseObject, error)
+	// DeleteResourceMember Remove Resource Member
+	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	DeleteResourceMember(ctx context.Context, request DeleteResourceMemberRequestObject) (DeleteResourceMemberResponseObject, error)
+	// GetResourceMember Get Resource Member
+	// (GET /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	GetResourceMember(ctx context.Context, request GetResourceMemberRequestObject) (GetResourceMemberResponseObject, error)
+	// PutResourceMember Assign Resource Roles
+	// (PUT /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id}/members/{product_user_id})
+	PutResourceMember(ctx context.Context, request PutResourceMemberRequestObject) (PutResourceMemberResponseObject, error)
 	// CreateOrganizationRole Create Organization Custom Role
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/roles)
 	CreateOrganizationRole(ctx context.Context, request CreateOrganizationRoleRequestObject) (CreateOrganizationRoleResponseObject, error)
@@ -25102,6 +25776,139 @@ func (sh *strictHandler) PutResource(w http.ResponseWriter, r *http.Request, pro
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PutResourceResponseObject); ok {
 		if err := validResponse.VisitPutResourceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchResourceMembers operation middleware
+func (sh *strictHandler) SearchResourceMembers(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter) {
+	var request SearchResourceMembersRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.ResourceType = resourceType
+	request.ResourceId = resourceId
+
+	var body SearchResourceMembersJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchResourceMembers(ctx, request.(SearchResourceMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchResourceMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchResourceMembersResponseObject); ok {
+		if err := validResponse.VisitSearchResourceMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteResourceMember operation middleware
+func (sh *strictHandler) DeleteResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
+	var request DeleteResourceMemberRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.ResourceType = resourceType
+	request.ResourceId = resourceId
+	request.ProductUserId = productUserId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteResourceMember(ctx, request.(DeleteResourceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteResourceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteResourceMemberResponseObject); ok {
+		if err := validResponse.VisitDeleteResourceMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetResourceMember operation middleware
+func (sh *strictHandler) GetResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
+	var request GetResourceMemberRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.ResourceType = resourceType
+	request.ResourceId = resourceId
+	request.ProductUserId = productUserId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetResourceMember(ctx, request.(GetResourceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetResourceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetResourceMemberResponseObject); ok {
+		if err := validResponse.VisitGetResourceMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutResourceMember operation middleware
+func (sh *strictHandler) PutResourceMember(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, productUserId Ksuid) {
+	var request PutResourceMemberRequestObject
+
+	request.ProductId = productId
+	request.OrganizationId = organizationId
+	request.ResourceType = resourceType
+	request.ResourceId = resourceId
+	request.ProductUserId = productUserId
+
+	var body PutResourceMemberJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PutResourceMember(ctx, request.(PutResourceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutResourceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PutResourceMemberResponseObject); ok {
+		if err := validResponse.VisitPutResourceMemberResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

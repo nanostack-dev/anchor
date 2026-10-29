@@ -52,6 +52,10 @@ const (
 	ResourceUpdated Type = "resource.updated"
 	ResourceDeleted Type = "resource.deleted"
 
+	ResourceRoleAssignmentCreated Type = "resource.role_assignment.created"
+	ResourceRoleAssignmentUpdated Type = "resource.role_assignment.updated"
+	ResourceRoleAssignmentDeleted Type = "resource.role_assignment.deleted"
+
 	ClerkUserCreated Type = "clerk.user.created"
 	ClerkUserUpdated Type = "clerk.user.updated"
 	ClerkUserDeleted Type = "clerk.user.deleted"
@@ -69,7 +73,8 @@ const (
 	FieldResourceType   = "resource_type"
 	FieldResourceID     = "resource_id"
 	// FieldResourceRowID is Anchor's row ID of a resource. It names the
-	// resource in the relationship store, and only undelivered events carry it.
+	// resource in the relationship store for the observers; the emitter drops
+	// it from the data a product endpoint receives.
 	FieldResourceRowID = "resource_row_id"
 )
 

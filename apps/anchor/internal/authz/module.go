@@ -39,6 +39,7 @@ func NewModule() fx.Option {
 			fgasync.AsSource(source.NewRoleGrants),
 			fgasync.AsSource(source.NewAPIKeyGrants),
 			fgasync.AsSource(source.NewResourceParents),
+			fgasync.AsSource(source.NewResourceAssignments),
 			newSyncer,
 			events.AsTxObserver(newMarker),
 			newChecker,

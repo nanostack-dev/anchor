@@ -77,6 +77,67 @@ func checkAuthzSync(ctx context.Context) error {
 	}
 	fmt.Fprintf(os.Stderr, "authz sync: %d permissions agree across %d products (%d without a model)\n",
 		compared, len(byProduct)-skipped, skipped)
+	return checkResourceAssignments(ctx)
+}
+
+// checkResourceAssignments checks that every role assignment on a resource is
+// in OpenFGA: the resource links its role's assignment, and the member is one
+// of its assignees. Decisions on resources come later, so no permission is
+// compared yet.
+func checkResourceAssignments(ctx context.Context) error {
+	rows, err := testDB.QueryContext(ctx, `SELECT r.product_id, t.slug, a.resource_id, a.role_id, a.product_user_id
+		FROM resource_role_assignments a
+		JOIN resources r ON r.id = a.resource_id
+		JOIN product_resource_types t ON t.id = r.resource_type_id`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	byProduct := map[string][]fga.Tuple{}
+	for rows.Next() {
+		var productID, slug, resourceRowID, roleRowID, productUserID string
+		if err = rows.Scan(&productID, &slug, &resourceRowID, &roleRowID, &productUserID); err != nil {
+			return err
+		}
+		assignment := model.Assignment(resourceRowID, roleRowID)
+		byProduct[productID] = append(byProduct[productID],
+			fga.Tuple{
+				Object: model.ResourceObject(slug, resourceRowID), Relation: model.RelationAssignment, User: assignment,
+			},
+			fga.Tuple{Object: assignment, Relation: model.RelationAssignee, User: model.User(productUserID)},
+		)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	var missing []string
+	checked := 0
+	for productID, tuples := range byProduct {
+		found, openErr := authzStores.Open(ctx, productID)
+		if openErr != nil {
+			return openErr
+		}
+		opened, ok := found.Get()
+		if !ok {
+			continue
+		}
+		held, checkErr := opened.Holds(ctx, tuples)
+		if checkErr != nil {
+			return fmt.Errorf("assignment check for product %s: %w", productID, checkErr)
+		}
+		for i, tuple := range tuples {
+			checked++
+			if !held[i] {
+				missing = append(missing, fmt.Sprintf("  product %s: %s", productID, tuple))
+			}
+		}
+	}
+	if len(missing) > 0 {
+		slices.Sort(missing)
+		return fmt.Errorf("OpenFGA lacks %d resource role assignment tuples, first ones:\n%s",
+			len(missing), strings.Join(missing[:min(len(missing), syncShownLimit)], "\n"))
+	}
+	fmt.Fprintf(os.Stderr, "authz sync: %d resource role assignment tuples present\n", checked)
 	return nil
 }
 

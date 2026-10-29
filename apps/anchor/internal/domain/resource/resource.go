@@ -72,3 +72,16 @@ func (r Resource) Ref() Ref { return Ref{Type: r.Type, ID: r.ExternalID} }
 func NewRowID() string {
 	return ids.MustNew("res")
 }
+
+// RegistrableType resolves the type a path names. Organization is the root of
+// every chain, never a registered resource.
+func RegistrableType(tree resourcetype.Tree, slug string) (resourcetype.ResourceType, error) {
+	rt, ok := tree.BySlug(slug).Get()
+	if !ok {
+		return resourcetype.ResourceType{}, NewTypeNotFoundError(slug)
+	}
+	if rt.BuiltIn() {
+		return resourcetype.ResourceType{}, ErrTypeNotRegistrable
+	}
+	return rt, nil
+}

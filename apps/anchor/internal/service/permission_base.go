@@ -65,6 +65,10 @@ func GeneratePermissions() []permission.ProductPermission {
 			Name:        "resource:delete",
 			Description: new("Allow deleting registered resources in the product's organizations"),
 		},
+		permission.ProductPermission{
+			Name:        "resource_member:write",
+			Description: new("Allow assigning and removing members' roles on registered resources"),
+		},
 	)
 
 	return permissions

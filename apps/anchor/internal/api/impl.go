@@ -7,6 +7,7 @@ import (
 	licensesvc "anchor/internal/license/service"
 	resourceservice "anchor/internal/resource/service"
 	rtservice "anchor/internal/resourcetype/service"
+	assignmentservice "anchor/internal/roleassignment/service"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
 
@@ -32,6 +33,7 @@ type AnchorAPI struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	ResourceService               resourceservice.Service
+	RoleAssignmentService         assignmentservice.Service
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -67,6 +69,7 @@ type Params struct {
 	ResourcePermissionService     service.ResourcePermissionService
 	ResourceTypeService           rtservice.Service
 	ResourceService               resourceservice.Service
+	RoleAssignmentService         assignmentservice.Service
 	OrganizationService           service.OrganizationService
 	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
@@ -102,6 +105,7 @@ func NewAPI(params Params) *AnchorAPI {
 		ResourcePermissionService:     params.ResourcePermissionService,
 		ResourceTypeService:           params.ResourceTypeService,
 		ResourceService:               params.ResourceService,
+		RoleAssignmentService:         params.RoleAssignmentService,
 		OrganizationService:           params.OrganizationService,
 		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,

@@ -24,6 +24,7 @@ import (
 func sources() []fgasync.Source {
 	return []fgasync.Source{
 		source.Assignments{}, source.RoleGrants{}, source.APIKeyGrants{}, source.ResourceParents{},
+		source.ResourceAssignments{},
 	}
 }
 
@@ -101,6 +102,13 @@ func TestStale(t *testing.T) {
 		assert.Equal(t, []string{model.ResourceObject("project", "res_1")}, keys)
 	})
 
+	t.Run("A role assignment on a resource makes that resource's assignments stale", func(t *testing.T) {
+		keys, err := source.ResourceAssignments{}.Stale(eventWithEveryField(events.ResourceRoleAssignmentDeleted))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{model.ResourceObject("project", "res_1")}, keys)
+	})
+
 	t.Run("A resource event without its row fails the write", func(t *testing.T) {
 		_, err := source.ResourceParents{}.Stale(events.Event{
 			Type:      events.ResourceCreated,
@@ -152,6 +160,21 @@ func TestTuples(t *testing.T) {
 			source.ResourceParentTuple("org_acme", "folder", "res_2", "project", "res_1"))
 	})
 
+	t.Run("A resource links one assignment per role held on it, named by its row", func(t *testing.T) {
+		tuples := source.ResourceAssignmentTuples("project", "res_1",
+			source.Holder{ProductUserID: "pu_ana", RoleRowID: "role_editor"},
+			source.Holder{ProductUserID: "pu_bob", RoleRowID: "role_editor"},
+		)
+
+		assignment := model.Assignment("res_1", "role_editor")
+		assert.ElementsMatch(t, []fga.Tuple{
+			{Object: "rt_project:res_1", Relation: model.RelationAssignment, User: assignment},
+			{Object: assignment, Relation: model.RelationRole, User: "role:role_editor"},
+			{Object: assignment, Relation: model.RelationAssignee, User: "user:pu_ana"},
+			{Object: assignment, Relation: model.RelationAssignee, User: "user:pu_bob"},
+		}, tuples)
+	})
+
 	t.Run("A role grants each of its permissions to every user", func(t *testing.T) {
 		assert.Equal(t, []fga.Tuple{
 			{Object: "role:role_admin", Relation: model.GrantsRelation("billing:write"), User: model.AllUsers},
@@ -160,7 +183,7 @@ func TestTuples(t *testing.T) {
 }
 
 func TestOwnership(t *testing.T) {
-	t.Run("The sources own disjoint tuples of one Organization", func(t *testing.T) {
+	t.Run("The sources own disjoint tuples of one Organization and its resource", func(t *testing.T) {
 		compiled, err := model.Compile(model.Catalog{
 			Types: []model.Type{
 				{Slug: model.TypeOrganization},
@@ -181,8 +204,10 @@ func TestOwnership(t *testing.T) {
 			Object: "organization:org_acme", Relation: model.CanRelation("billing:write"), User: "api_key:key_ci",
 		}}
 		parents := []fga.Tuple{source.ResourceParentTuple("org_acme", "project", "res_1", "", "")}
+		onResource := source.ResourceAssignmentTuples("project", "res_1",
+			source.Holder{ProductUserID: "pu_ana", RoleRowID: "role_admin"})
 		require.NoError(t, store.Apply(t.Context(), fga.Changes{
-			Writes: slices.Concat(assignments, grants, keys, parents),
+			Writes: slices.Concat(assignments, grants, keys, parents, onResource),
 		}))
 
 		storedAssignments, err := source.Assignments{}.Stored(t.Context(), store, "org_acme")
@@ -198,7 +223,10 @@ func TestOwnership(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, keys, storedKeys)
+		storedOnResource, err := source.ResourceAssignments{}.Stored(t.Context(), store, "rt_project:res_1")
+		require.NoError(t, err)
 		assert.ElementsMatch(t, parents, storedParents)
+		assert.ElementsMatch(t, onResource, storedOnResource)
 	})
 }
 

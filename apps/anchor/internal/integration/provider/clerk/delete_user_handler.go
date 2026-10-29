@@ -33,6 +33,13 @@ func (p *Provider) executeDeleteUser(
 		if findErr != nil {
 			return findErr
 		}
+		if user, present := found.Get(); present {
+			// Its role assignments on resources go with its memberships
+			// through the foreign keys, each with its event.
+			if releaseErr := p.roleAssignments.ReleaseUser(txCtx, instance.ProductID, user.ID); releaseErr != nil {
+				return releaseErr
+			}
+		}
 		if delErr := p.productUserRepo.DeleteByExternalID(
 			txCtx, instance.ProductID, deleteData.ExternalID,
 		); delErr != nil {

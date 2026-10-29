@@ -56,6 +56,7 @@ func TestCursorSearches(t *testing.T) {
 		"searchLicenseTemplates":               licenseTemplatesCursorCase,
 		"searchOrganizationLicenseHistory":     licenseHistoryCursorCase,
 		"searchResources":                      resourcesCursorCase,
+		"searchResourceMembers":                resourceMembersCursorCase,
 	}
 
 	for name, build := range cases {
@@ -325,6 +326,41 @@ func resourcesCursorCase(t *testing.T) cursorCase {
 				body,
 			)
 			return httpCall(response, err, func(r *ct.SearchResourcesResponse) []byte { return r.Body })
+		},
+	}
+}
+
+func resourceMembersCursorCase(t *testing.T) cursorCase {
+	w := givenMemberWorld(t)
+	members := w.folderMembers()
+	members.Put(w.member, w.editor.Id)
+	for i := range cursorFixtureRows - 1 {
+		role := w.editor.Id
+		if i%2 == 0 {
+			role = w.viewer.Id
+		}
+		members.Put(w.newMember(t), role)
+	}
+	execSQL(t, "UPDATE resource_role_assignments SET created_at = $1 WHERE organization_id = $2", tiedAt(), w.org.Id)
+
+	client := w.product.OwnerAuthenticatedClient()
+	return cursorCase{
+		rows: orderedRows{
+			from:  "resource_role_assignments a JOIN resources r ON r.id = a.resource_id",
+			where: "r.organization_id = $1 AND r.external_id = $2", args: []any{w.org.Id, w.folder},
+			idExpr: "a.product_user_id", defaultField: "created_at",
+			fields: []sortField{
+				{name: "created_at", expr: "a.created_at"},
+				{name: "product_user_id", expr: "a.product_user_id"},
+			},
+		},
+		noMatch: map[string]any{"filter": map[string]any{"product_user_ids": []string{ids.MustNew("pusr")}}},
+		idField: "product_user_id",
+		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
+			response, err := client.SearchResourceMembersWithBodyWithResponse(
+				ctx, w.product.ProductID, w.org.Id, "folder", w.folder, "application/json", body,
+			)
+			return httpCall(response, err, func(r *ct.SearchResourceMembersResponse) []byte { return r.Body })
 		},
 	}
 }
