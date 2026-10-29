@@ -48,6 +48,10 @@ const (
 	NOTAMEMBER                 AccessDenyReason = "NOT_A_MEMBER"
 	NOTEVALUATED               AccessDenyReason = "NOT_EVALUATED"
 	ORGANIZATIONNOTFOUND       AccessDenyReason = "ORGANIZATION_NOT_FOUND"
+	PARENTTYPENOTALLOWED       AccessDenyReason = "PARENT_TYPE_NOT_ALLOWED"
+	RESOURCENOTFOUND           AccessDenyReason = "RESOURCE_NOT_FOUND"
+	RESOURCENOTINORGANIZATION  AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
+	RESOURCETYPENOTFOUND       AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
 	SUBJECTNOTSYNCED           AccessDenyReason = "SUBJECT_NOT_SYNCED"
 	WORKSPACENOTINORGANIZATION AccessDenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
 )
@@ -66,6 +70,14 @@ func (e AccessDenyReason) Valid() bool {
 	case NOTEVALUATED:
 		return true
 	case ORGANIZATIONNOTFOUND:
+		return true
+	case PARENTTYPENOTALLOWED:
+		return true
+	case RESOURCENOTFOUND:
+		return true
+	case RESOURCENOTINORGANIZATION:
+		return true
+	case RESOURCETYPENOTFOUND:
 		return true
 	case SUBJECTNOTSYNCED:
 		return true
@@ -91,24 +103,6 @@ func (e AccessEvaluationsSemantic) Valid() bool {
 	case ExecuteAll:
 		return true
 	case PermitOnFirstPermit:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for AccessResourceType.
-const (
-	Organization AccessResourceType = "organization"
-	Workspace    AccessResourceType = "workspace"
-)
-
-// Valid indicates whether the value is a known member of the AccessResourceType enum.
-func (e AccessResourceType) Valid() bool {
-	switch e {
-	case Organization:
-		return true
-	case Workspace:
 		return true
 	default:
 		return false
@@ -322,20 +316,27 @@ type AccessAction struct {
 
 // AccessDecisionContext Anchor's extension of the AuthZEN decision context.
 type AccessDecisionContext struct {
-	ApiKey             *AccessIdentityRef `json:"api_key,omitempty"`
+	ApiKey *AccessIdentityRef `json:"api_key,omitempty"`
+
+	// GrantedBy Set only on an allowed decision of a request with `options.explain` true (an Anchor extension that AuthZEN clients ignore): the roles, or the API key, that granted the action, nearest first, from the resource up through its registered ancestors to the organization. Absent means the caller did not ask for it. It is read from Anchor's tables after the decision, not from the relationship store that made it, so right after a write it can briefly be empty or differ from the grant the store used. When Anchor's tables can't be read, the decision is answered without it.
+	GrantedBy          *[]AccessGrant     `json:"granted_by,omitempty"`
 	MissingPermissions *[]string          `json:"missing_permissions,omitempty"`
 	Organization       *AccessIdentityRef `json:"organization,omitempty"`
 
-	// Permissions Every permission the role or API key holds in the organization.
+	// Permissions Every permission the organization role or API key holds in the organization.
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
-	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is another organization. It reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+	//
+	// Examples: RESOURCE_NOT_IN_ORGANIZATION
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
 }
 
-// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is another organization. It reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+//
+// Examples: RESOURCE_NOT_IN_ORGANIZATION
 type AccessDenyReason string
 
 // AccessEvaluationItem defines model for AccessEvaluationItem.
@@ -346,12 +347,19 @@ type AccessEvaluationItem struct {
 	Subject  *AccessSubject          `json:"subject,omitempty"`
 }
 
+// AccessEvaluationOptions defines model for AccessEvaluationOptions.
+type AccessEvaluationOptions struct {
+	// Explain `true` adds `granted_by` to the context of each allowed decision (an Anchor extension of AuthZEN). It costs two more reads per call, whatever the number of actions; without it a decision costs no more.
+	Explain *bool `json:"explain,omitempty"`
+}
+
 // AccessEvaluationRequest defines model for AccessEvaluationRequest.
 type AccessEvaluationRequest struct {
-	Action   AccessAction            `json:"action"`
-	Context  *map[string]interface{} `json:"context,omitempty"`
-	Resource AccessResource          `json:"resource"`
-	Subject  AccessSubject           `json:"subject"`
+	Action   AccessAction             `json:"action"`
+	Context  *map[string]interface{}  `json:"context,omitempty"`
+	Options  *AccessEvaluationOptions `json:"options,omitempty"`
+	Resource AccessResource           `json:"resource"`
+	Subject  AccessSubject            `json:"subject"`
 }
 
 // AccessEvaluationResponse defines model for AccessEvaluationResponse.
@@ -364,6 +372,9 @@ type AccessEvaluationResponse struct {
 // AccessEvaluationsOptions defines model for AccessEvaluationsOptions.
 type AccessEvaluationsOptions struct {
 	EvaluationsSemantic *AccessEvaluationsSemantic `json:"evaluations_semantic,omitempty"`
+
+	// Explain `true` adds `granted_by` to the context of each allowed item (an Anchor extension of AuthZEN). It costs two more reads per call, whatever the number of items; without it a decision costs no more.
+	Explain *bool `json:"explain,omitempty"`
 }
 
 // AccessEvaluationsRequest defines model for AccessEvaluationsRequest.
@@ -387,6 +398,24 @@ type AccessEvaluationsResponse struct {
 // AccessEvaluationsSemantic defines model for AccessEvaluationsSemantic.
 type AccessEvaluationsSemantic string
 
+// AccessGrant One thing that granted an allowed action: a `role` the user holds on `resource`, or, for an organization API key subject, the `api_key` holding the permission itself on its organization. Exactly one of `role` and `api_key` is set.
+type AccessGrant struct {
+	ApiKey *AccessIdentityRef `json:"api_key,omitempty"`
+
+	// Resource Where a grant is held, named the way the product does, or `organization` and the organization's ID.
+	Resource AccessGrantResource `json:"resource"`
+	Role     *AccessIdentityRef  `json:"role,omitempty"`
+}
+
+// AccessGrantResource Where a grant is held, named the way the product does, or `organization` and the organization's ID.
+type AccessGrantResource struct {
+	// Id Examples: 3b7e91d2-0c4a-4f6e-9d21-8a5c7e4b2f60
+	Id string `json:"id"`
+
+	// Type Examples: folder
+	Type string `json:"type"`
+}
+
 // AccessIdentityRef defines model for AccessIdentityRef.
 type AccessIdentityRef struct {
 	// Email The product user's email. Set on `product_user` only.
@@ -397,27 +426,36 @@ type AccessIdentityRef struct {
 
 // AccessItemDecision defines model for AccessItemDecision.
 type AccessItemDecision struct {
-	// Context Anchor's extension of the AuthZEN decision context.
+	// Context A denied item's `reason`; an allowed item's `granted_by` when `options.explain` is true. Absent on an allowed item otherwise.
 	Context  *AccessDecisionContext `json:"context,omitempty"`
 	Decision bool                   `json:"decision"`
 }
 
 // AccessResource defines model for AccessResource.
 type AccessResource struct {
-	// Id The organization or workspace ID. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+	// Id The organization or workspace ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
 	Id         *string                   `json:"id,omitempty"`
 	Properties *AccessResourceProperties `json:"properties,omitempty"`
-	Type       AccessResourceType        `json:"type"`
+
+	// Type `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+	//
+	// Examples: document
+	Type AccessResourceType `json:"type"`
 }
 
 // AccessResourceProperties defines model for AccessResourceProperties.
 type AccessResourceProperties struct {
-	// OrganizationId The workspace's organization. Required for a user subject on a workspace resource.
+	// OrganizationId The organization of a workspace or of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
 	OrganizationId *string `json:"organization_id,omitempty"`
+
+	// Parent The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace resources take none (400 `INVALID_ACCESS_RESOURCE`).
+	Parent *ResourceParentRef `json:"parent,omitempty"`
 }
 
-// AccessResourceType defines model for AccessResourceType.
-type AccessResourceType string
+// AccessResourceType `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+//
+// Examples: document
+type AccessResourceType = string
 
 // AccessSubject defines model for AccessSubject.
 type AccessSubject struct {

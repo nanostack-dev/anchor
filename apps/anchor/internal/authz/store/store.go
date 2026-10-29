@@ -54,10 +54,18 @@ type Opened struct {
 }
 
 // Holds answers, for each tuple in order, whether its user holds its relation
-// on its object. A relation the model doesn't define is not held, and is not
-// asked; any check OpenFGA fails on fails the call.
-func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
+// on its object, with the contextual tuples holding for these checks only. A
+// relation the model doesn't define is not held, and is not asked; neither is
+// anything when a contextual tuple is one the model wouldn't accept, which
+// OpenFGA answers with an error rather than a denial. Any check OpenFGA fails
+// on fails the call.
+func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple, contextual ...fga.Tuple) ([]bool, error) {
 	held := make([]bool, len(tuples))
+	for _, t := range contextual {
+		if !o.Relations.Accepts(t) {
+			return held, nil
+		}
+	}
 	var (
 		asked   []fga.Tuple
 		indexes []int
@@ -68,7 +76,7 @@ func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple) ([]bool, error) {
 			indexes = append(indexes, i)
 		}
 	}
-	answers, err := o.Store.CheckAll(ctx, asked)
+	answers, err := o.Store.CheckAll(ctx, asked, contextual...)
 	if err != nil {
 		return nil, err
 	}

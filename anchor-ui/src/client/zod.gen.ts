@@ -861,10 +861,14 @@ export const zAccessSubject = z.object({
     properties: z.record(z.string(), z.unknown()).optional()
 });
 
-export const zAccessResourceType = z.enum(['organization', 'workspace']);
+/**
+ * `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+ */
+export const zAccessResourceType = z.string();
 
 export const zAccessResourceProperties = z.object({
-    organization_id: z.string().optional()
+    organization_id: z.string().optional(),
+    parent: zResourceParentRef.optional()
 });
 
 export const zAccessResource = z.object({
@@ -879,7 +883,7 @@ export const zAccessAction = z.object({
 });
 
 /**
- * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is another organization. It reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
  */
 export const zAccessDenyReason = z.enum([
     'SUBJECT_NOT_SYNCED',
@@ -889,13 +893,34 @@ export const zAccessDenyReason = z.enum([
     'NOT_A_MEMBER',
     'WORKSPACE_NOT_IN_ORGANIZATION',
     'MISSING_PERMISSION',
-    'NOT_EVALUATED'
+    'NOT_EVALUATED',
+    'RESOURCE_TYPE_NOT_FOUND',
+    'RESOURCE_NOT_FOUND',
+    'RESOURCE_NOT_IN_ORGANIZATION',
+    'PARENT_TYPE_NOT_ALLOWED'
 ]);
 
 export const zAccessIdentityRef = z.object({
     id: z.string(),
     name: z.string().optional(),
     email: z.string().optional()
+});
+
+/**
+ * Where a grant is held, named the way the product does, or `organization` and the organization's ID.
+ */
+export const zAccessGrantResource = z.object({
+    type: z.string(),
+    id: z.string()
+});
+
+/**
+ * One thing that granted an allowed action: a `role` the user holds on `resource`, or, for an organization API key subject, the `api_key` holding the permission itself on its organization. Exactly one of `role` and `api_key` is set.
+ */
+export const zAccessGrant = z.object({
+    role: zAccessIdentityRef.optional(),
+    api_key: zAccessIdentityRef.optional(),
+    resource: zAccessGrantResource
 });
 
 /**
@@ -908,14 +933,20 @@ export const zAccessDecisionContext = z.object({
     role: zAccessIdentityRef.optional(),
     product_user: zAccessIdentityRef.optional(),
     api_key: zAccessIdentityRef.optional(),
-    permissions: z.array(z.string()).optional()
+    permissions: z.array(z.string()).optional(),
+    granted_by: z.array(zAccessGrant).optional()
+});
+
+export const zAccessEvaluationOptions = z.object({
+    explain: z.boolean().optional().default(false)
 });
 
 export const zAccessEvaluationRequest = z.object({
     subject: zAccessSubject,
     action: zAccessAction,
     resource: zAccessResource,
-    context: z.record(z.string(), z.unknown()).optional()
+    context: z.record(z.string(), z.unknown()).optional(),
+    options: zAccessEvaluationOptions.optional()
 });
 
 export const zAccessEvaluationResponse = z.object({
@@ -930,7 +961,8 @@ export const zAccessEvaluationsSemantic = z.enum([
 ]);
 
 export const zAccessEvaluationsOptions = z.object({
-    evaluations_semantic: zAccessEvaluationsSemantic.optional()
+    evaluations_semantic: zAccessEvaluationsSemantic.optional(),
+    explain: z.boolean().optional().default(false)
 });
 
 export const zAccessEvaluationItem = z.object({

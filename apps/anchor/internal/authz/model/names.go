@@ -149,3 +149,12 @@ func ObjectID(object string) string {
 	_, id, _ := strings.Cut(object, ":")
 	return id
 }
+
+// unregisteredID names the object of a resource the registry lacks. It exists
+// for one check only, under the contextual parent tuple the check gives it, and
+// can't meet a stored object: those are named by prefixed row IDs.
+const unregisteredID = "unregistered"
+
+// UnregisteredResource names, for one check, a resource of the type that the
+// registry lacks.
+func UnregisteredResource(slug string) string { return ResourceType(slug) + ":" + unregisteredID }

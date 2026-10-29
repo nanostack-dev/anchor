@@ -30,8 +30,12 @@ func givenMemberWorld(t *testing.T) memberWorld {
 	product := createTestProductContext(t)
 	declareDocumentTree(t, product)
 	w := memberWorld{
-		product:      product,
-		orgMember:    createManagedRole(t, product, roleOn("organization", "Member")),
+		product: product,
+		orgMember: createManagedRole(
+			t,
+			product,
+			ct.CreateProductRoleJSONRequestBody{Name: "Member " + ids.MustNew("ct")},
+		),
 		editor:       createManagedRole(t, product, roleOn("folder", "Folder editor")),
 		viewer:       createManagedRole(t, product, roleOn("folder", "Folder viewer")),
 		projectAdmin: createManagedRole(t, product, roleOn("project", "Project admin")),
@@ -62,6 +66,9 @@ func createManagedRole(
 	t *testing.T, product *itdsl.ProductContext, body ct.CreateProductRoleJSONRequestBody,
 ) ct.ProductRoleResponse {
 	t.Helper()
+	if body.ResourceType == "" {
+		body.ResourceType = "organization"
+	}
 	resp, err := product.OwnerAuthenticatedClient().CreateProductRoleWithResponse(t.Context(), product.ProductID, body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))

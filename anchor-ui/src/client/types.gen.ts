@@ -1586,22 +1586,26 @@ export type AccessSubject = {
     };
 };
 
-export enum AccessResourceType {
-    ORGANIZATION = 'organization',
-    WORKSPACE = 'workspace'
-}
+/**
+ * `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+ */
+export type AccessResourceType = string;
 
 export type AccessResourceProperties = {
     /**
-     * The workspace's organization. Required for a user subject on a workspace resource.
+     * The organization of a workspace or of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
      */
     organization_id?: string;
+    /**
+     * The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace resources take none (400 `INVALID_ACCESS_RESOURCE`).
+     */
+    parent?: ResourceParentRef;
 };
 
 export type AccessResource = {
     type: AccessResourceType;
     /**
-     * The organization or workspace ID. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+     * The organization or workspace ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
      */
     id?: string;
     properties?: AccessResourceProperties;
@@ -1618,7 +1622,7 @@ export type AccessAction = {
 };
 
 /**
- * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: the role or key lacks the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is another organization. It reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
  */
 export enum AccessDenyReason {
     SUBJECT_NOT_SYNCED = 'SUBJECT_NOT_SYNCED',
@@ -1628,7 +1632,11 @@ export enum AccessDenyReason {
     NOT_A_MEMBER = 'NOT_A_MEMBER',
     WORKSPACE_NOT_IN_ORGANIZATION = 'WORKSPACE_NOT_IN_ORGANIZATION',
     MISSING_PERMISSION = 'MISSING_PERMISSION',
-    NOT_EVALUATED = 'NOT_EVALUATED'
+    NOT_EVALUATED = 'NOT_EVALUATED',
+    RESOURCE_TYPE_NOT_FOUND = 'RESOURCE_TYPE_NOT_FOUND',
+    RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
+    RESOURCE_NOT_IN_ORGANIZATION = 'RESOURCE_NOT_IN_ORGANIZATION',
+    PARENT_TYPE_NOT_ALLOWED = 'PARENT_TYPE_NOT_ALLOWED'
 }
 
 export type AccessIdentityRef = {
@@ -1638,6 +1646,23 @@ export type AccessIdentityRef = {
      * The product user's email. Set on `product_user` only.
      */
     email?: string;
+};
+
+/**
+ * Where a grant is held, named the way the product does, or `organization` and the organization's ID.
+ */
+export type AccessGrantResource = {
+    type: string;
+    id: string;
+};
+
+/**
+ * One thing that granted an allowed action: a `role` the user holds on `resource`, or, for an organization API key subject, the `api_key` holding the permission itself on its organization. Exactly one of `role` and `api_key` is set.
+ */
+export type AccessGrant = {
+    role?: AccessIdentityRef;
+    api_key?: AccessIdentityRef;
+    resource: AccessGrantResource;
 };
 
 /**
@@ -1651,9 +1676,20 @@ export type AccessDecisionContext = {
     product_user?: AccessIdentityRef;
     api_key?: AccessIdentityRef;
     /**
-     * Every permission the role or API key holds in the organization.
+     * Every permission the organization role or API key holds in the organization.
      */
     permissions?: Array<string>;
+    /**
+     * Set only on an allowed decision of a request with `options.explain` true (an Anchor extension that AuthZEN clients ignore): the roles, or the API key, that granted the action, nearest first, from the resource up through its registered ancestors to the organization. Absent means the caller did not ask for it. It is read from Anchor's tables after the decision, not from the relationship store that made it, so right after a write it can briefly be empty or differ from the grant the store used. When Anchor's tables can't be read, the decision is answered without it.
+     */
+    granted_by?: Array<AccessGrant>;
+};
+
+export type AccessEvaluationOptions = {
+    /**
+     * `true` adds `granted_by` to the context of each allowed decision (an Anchor extension of AuthZEN). It costs two more reads per call, whatever the number of actions; without it a decision costs no more.
+     */
+    explain?: boolean;
 };
 
 export type AccessEvaluationRequest = {
@@ -1663,6 +1699,7 @@ export type AccessEvaluationRequest = {
     context?: {
         [key: string]: unknown;
     };
+    options?: AccessEvaluationOptions;
 };
 
 export type AccessEvaluationResponse = {
@@ -1678,6 +1715,10 @@ export enum AccessEvaluationsSemantic {
 
 export type AccessEvaluationsOptions = {
     evaluations_semantic?: AccessEvaluationsSemantic;
+    /**
+     * `true` adds `granted_by` to the context of each allowed item (an Anchor extension of AuthZEN). It costs two more reads per call, whatever the number of items; without it a decision costs no more.
+     */
+    explain?: boolean;
 };
 
 export type AccessEvaluationItem = {
@@ -1702,6 +1743,9 @@ export type AccessEvaluationsRequest = {
 
 export type AccessItemDecision = {
     decision: boolean;
+    /**
+     * A denied item's `reason`; an allowed item's `granted_by` when `options.explain` is true. Absent on an allowed item otherwise.
+     */
     context?: AccessDecisionContext;
 };
 

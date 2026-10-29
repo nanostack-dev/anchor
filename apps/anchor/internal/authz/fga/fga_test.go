@@ -129,6 +129,19 @@ func TestStore(t *testing.T) {
 		assert.True(t, answers[55])
 	})
 
+	t.Run("CheckAll holds contextual tuples for its checks only", func(t *testing.T) {
+		store := fgatest.StoreWithModel(t, engine, docsModel)
+		draft := fga.Tuple{Object: "doc:draft", Relation: "viewer", User: "user:ana"}
+
+		with, err := store.CheckAll(t.Context(), []fga.Tuple{draft}, ownerOf("draft", "ana"))
+		require.NoError(t, err)
+		without, err := store.CheckAll(t.Context(), []fga.Tuple{draft})
+		require.NoError(t, err)
+
+		assert.Equal(t, []bool{true}, with)
+		assert.Equal(t, []bool{false}, without)
+	})
+
 	t.Run("CheckAll fails on a relation the model doesn't define", func(t *testing.T) {
 		store := fgatest.StoreWithModel(t, engine, docsModel)
 
