@@ -3,10 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/domain/product/role"
+	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
 	"anchor/internal/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 
@@ -32,6 +36,19 @@ func NewBodyProductUserNotFoundError(productUserID string) *fault.Error {
 	})
 }
 
+// NewBodyRoleNotOrganizationScopedError refuses a role scoped below
+// organization as an Organization role: its permissions sit at or below its
+// scope, so it would grant nothing on the Organization (ADR-0022 D4).
+func NewBodyRoleNotOrganizationScopedError(roleID, resourceType string) *fault.Error {
+	return fault.BadRequest(
+		"ROLE_NOT_ORGANIZATION_SCOPED",
+		fmt.Sprintf(
+			"An Organization role must be scoped to organization. This role is scoped to %s: assign it on a resource instead.",
+			resourceType,
+		),
+	).Metadata(map[string]any{fieldRoleIDKey: roleID, "resource_type": resourceType})
+}
+
 // NewBodyRoleNotFoundError answers a role_id supplied in a request body that
 // does not resolve. Distinct from role.ErrProductRoleNotFound (404), which
 // stays correct for product_role_service.go, where role_id is a path
@@ -42,7 +59,7 @@ func NewBodyRoleNotFoundError(roleID string) *fault.Error {
 		"ROLE_NOT_FOUND_IN_REQUEST",
 		"This product has no role with that identifier.",
 	).Metadata(map[string]any{
-		"role_id": roleID,
+		fieldRoleIDKey: roleID,
 	})
 }
 
@@ -62,6 +79,7 @@ type OrganizationMembershipService interface {
 type organizationMembershipService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productRoleRepo   repository.ProductRoleRepository
+	resourceTypes     rtservice.Service
 	roleAssignments   assignments.Service
 	productUserRepo   repository.ProductUserRepository
 	organizationRepo  repository.OrganizationRepository
@@ -73,6 +91,7 @@ type organizationMembershipService struct {
 func NewOrganizationMembershipService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productRoleRepo repository.ProductRoleRepository,
+	resourceTypes rtservice.Service,
 	roleAssignments assignments.Service,
 	productUserRepo repository.ProductUserRepository,
 	organizationRepo repository.OrganizationRepository,
@@ -83,6 +102,7 @@ func NewOrganizationMembershipService(
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
 		productRoleRepo:   productRoleRepo,
+		resourceTypes:     resourceTypes,
 		roleAssignments:   roleAssignments,
 		productUserRepo:   productUserRepo,
 		organizationRepo:  organizationRepo,
@@ -426,7 +446,7 @@ func (s *organizationMembershipService) validateRole(
 	productID, organizationID string, roleID *string,
 	logger zerolog.Logger,
 ) error {
-	err := CheckAssignableRole(ctx, s.productRoleRepo, productID, organizationID, roleID)
+	err := CheckAssignableRole(ctx, s.productRoleRepo, s.resourceTypes, productID, organizationID, roleID)
 	if _, isFault := fault.As(err); err != nil && !isFault {
 		logger.Error().Err(err).
 			Str("product_id", productID).
@@ -439,10 +459,12 @@ func (s *organizationMembershipService) validateRole(
 // CheckAssignableRole answers a role_id in a request body that a member of the
 // Organization may not hold. A member may hold a role the Product manages or
 // a custom role of their own Organization; another Organization's role answers
-// as an unknown one, so a request learns nothing about it. No role (nil) is
-// always allowed: the member holds no permission.
+// as an unknown one, so a request learns nothing about it. The role must also
+// be scoped to organization (ADR-0022 D4). No role (nil) is always allowed:
+// the member holds no permission.
 func CheckAssignableRole(
-	ctx context.Context, roles repository.ProductRoleRepository, productID, organizationID string, roleID *string,
+	ctx context.Context, roles repository.ProductRoleRepository, resourceTypes rtservice.Service,
+	productID, organizationID string, roleID *string,
 ) error {
 	if roleID == nil {
 		return nil
@@ -454,8 +476,24 @@ func CheckAssignableRole(
 	if found.IsAbsent() {
 		return NewBodyRoleNotFoundError(*roleID)
 	}
-	if named := found.Value(); !named.AssignableIn(organizationID) {
+	named := found.Value()
+	if !named.AssignableIn(organizationID) {
 		return NewBodyRoleNotFoundError(*roleID)
+	}
+	return CheckOrganizationScoped(ctx, resourceTypes, named)
+}
+
+// CheckOrganizationScoped refuses a role scoped to any type but organization
+// as an Organization role.
+func CheckOrganizationScoped(ctx context.Context, resourceTypes rtservice.Service, r role.ProductRole) error {
+	tree, err := resourceTypes.Tree(ctx, r.ProductID)
+	if err != nil {
+		return err
+	}
+	scope := tree.ByID(r.ResourceTypeID).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).
+		OrElse(resourcetype.OrganizationSlug)
+	if scope != resourcetype.OrganizationSlug {
+		return NewBodyRoleNotOrganizationScopedError(r.ID, scope)
 	}
 	return nil
 }

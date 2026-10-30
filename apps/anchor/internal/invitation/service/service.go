@@ -16,6 +16,7 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/invitation/repository"
 	anchorrepository "anchor/internal/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	anchorservice "anchor/internal/service"
 )
 
@@ -41,6 +42,7 @@ type organizationInvitationService struct {
 	invitationRepo    repository.Repository
 	organizationRepo  anchorrepository.OrganizationRepository
 	productRoleRepo   anchorrepository.ProductRoleRepository
+	resourceTypes     rtservice.Service
 	membershipService anchorservice.OrganizationMembershipService
 	transactor        transactor.Transactor
 	events            events.Emitter
@@ -51,6 +53,7 @@ func NewOrganizationInvitationService(
 	invitationRepo repository.Repository,
 	organizationRepo anchorrepository.OrganizationRepository,
 	productRoleRepo anchorrepository.ProductRoleRepository,
+	resourceTypes rtservice.Service,
 	membershipService anchorservice.OrganizationMembershipService,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
@@ -60,6 +63,7 @@ func NewOrganizationInvitationService(
 		invitationRepo:    invitationRepo,
 		organizationRepo:  organizationRepo,
 		productRoleRepo:   productRoleRepo,
+		resourceTypes:     resourceTypes,
 		membershipService: membershipService,
 		transactor:        tx,
 		events:            eventEmitter,
@@ -98,7 +102,7 @@ func (s *organizationInvitationService) Create(
 			return lockErr
 		}
 		if roleErr := anchorservice.CheckAssignableRole(
-			txCtx, s.productRoleRepo, input.ProductID, input.OrganizationID, input.RoleID,
+			txCtx, s.productRoleRepo, s.resourceTypes, input.ProductID, input.OrganizationID, input.RoleID,
 		); roleErr != nil {
 			return roleErr
 		}
@@ -195,7 +199,7 @@ func (s *organizationInvitationService) Update(
 			return statusErr
 		}
 		if roleErr := anchorservice.CheckAssignableRole(
-			txCtx, s.productRoleRepo, input.ProductID, input.OrganizationID, input.RoleID,
+			txCtx, s.productRoleRepo, s.resourceTypes, input.ProductID, input.OrganizationID, input.RoleID,
 		); roleErr != nil {
 			return roleErr
 		}

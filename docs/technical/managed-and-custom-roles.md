@@ -30,6 +30,8 @@ The Go code owns the rules, not SQL: `role.NewManaged` and `role.NewCustom` are 
 
 A request that names a role for a member names one of the Product's managed roles or a custom role of that member's Organization. Every such write checks it (`service.CheckAssignableRole`): member add and role update, invitation create and update, and an Organization's founding member, whose new Organization has no custom role yet. Any other role answers `400 ROLE_NOT_FOUND_IN_REQUEST`, as an unknown ID does, so a request learns nothing about another Organization's roles.
 
+The role must also be scoped to `organization` (ADR-0022 D4). A role scoped to another type holds its permissions at or below that type, so as an Organization role it would grant nothing. It answers `400 ROLE_NOT_ORGANIZATION_SCOPED`, with the role in `metadata.role_id` and its scope in `metadata.resource_type`: give it on a resource instead. This check runs after the Organization boundary, so another Organization's role still answers as an unknown one. Rows written before the check existed are kept: when it shipped, no membership or pending invitation in prod held such a role. `TestOrganizationRoleMustBeOrganizationScoped` covers the five writes and a custom role scoped to a type.
+
 The Product's role routes (`/v1/products/{product_id}/roles`) read and write managed roles only. A custom role's ID there answers `404 ROLE_NOT_FOUND`.
 
 ## Names

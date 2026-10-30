@@ -1869,7 +1869,7 @@ type FoundingMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding member a member with no role and no permission.
+	// RoleId Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to make the founding member a member with no role and no permission.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId *Ksuid `json:"role_id,omitempty"`
@@ -2514,7 +2514,7 @@ type OrganizationInvitationCreateRequest struct {
 	// ExpiresAt When the invitation expires. It must be in the future. Absent means 7 days from now.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	// RoleId The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite a member with no role.
+	// RoleId The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to invite a member with no role.
 	//
 	// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
 	RoleId *Ksuid `json:"role_id,omitempty"`
@@ -2601,7 +2601,7 @@ type OrganizationInvitationUpdateRequest struct {
 	// ExpiresAt The new expiry. It must be in the future.
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// RoleId The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The field is required, so leaving it out answers 400.
+	// RoleId The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to invite with no role. The field is required, so leaving it out answers 400.
 	RoleId *string `json:"role_id"`
 }
 
@@ -2905,7 +2905,7 @@ type OrganizationMemberRequest struct {
 	// Examples: pusr_3iXYZ...
 	ProductUserId Ksuid `json:"product_user_id"`
 
-	// RoleId The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
+	// RoleId The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId *Ksuid `json:"role_id,omitempty"`
@@ -2942,7 +2942,7 @@ type OrganizationMemberResponse struct {
 
 // OrganizationMemberRoleRequest Request body for updating a member's role within an organization.
 type OrganizationMemberRoleRequest struct {
-	// RoleId The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
+	// RoleId The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
 	//
 	// Examples: product_role_3A0Yy5f38miFJl65gf4ldxVmWKh
 	RoleId *string `json:"role_id"`

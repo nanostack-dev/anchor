@@ -92,7 +92,7 @@ func NewCustomRoleNameDuplicateError(roleName, organizationID string) *fault.Err
 func NewPermissionAlreadyAssignedError(roleID, permissionName string) *fault.Error {
 	return fault.Conflict("PERMISSION_ALREADY_ASSIGNED", "The permission is already assigned to the role.").
 		Metadata(map[string]any{
-			"role_id":         roleID,
+			fieldRoleIDKey:    roleID,
 			"permission_name": permissionName,
 		})
 }
