@@ -345,7 +345,6 @@ const EVENTS = {
   "product.resource_permission.deleted": [["", "", "the model changes: whole Product"]],
   "product.resource_type.created": [["", "", "the model changes: whole Product"]],
   "organization.invitation.accepted": [],
-  "workspace.updated": [],
 };
 $("event").innerHTML = Object.keys(EVENTS).map(k => `<option>${k}</option>`).join("");
 function renderMarks() {

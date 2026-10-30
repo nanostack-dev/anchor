@@ -1608,7 +1608,7 @@ components:
           type: [string, "null"]
           maxLength: 500
           description: Optional description of the role's purpose.
-          examples: ["Can view and edit resources within assigned organizations/workspaces."]
+          examples: ["Can view and edit resources within assigned organizations."]
         permissions:
           type: array
           description: >-
@@ -1646,7 +1646,7 @@ components:
           type: [string, "null"]
           maxLength: 500
           description: Optional description of the role's purpose.
-          examples: ["Can view and edit resources within assigned organizations/workspaces."]
+          examples: ["Can view and edit resources within assigned organizations."]
         permissions:
           type: array
           description: Permission names to replace the assigned set. Omit this field to
@@ -1691,7 +1691,7 @@ components:
         description:
           type: [string, "null"]
           description: Description of the role.
-          examples: ["Can view and edit resources within assigned organizations/workspaces."]
+          examples: ["Can view and edit resources within assigned organizations."]
         resource_type:
           allOf:
           - $ref: "#/components/schemas/ResourceTypeSlug"

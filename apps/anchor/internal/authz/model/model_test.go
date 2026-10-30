@@ -26,16 +26,61 @@ func documentCatalog() model.Catalog {
 }
 
 func TestCompile(t *testing.T) {
-	t.Run("A permission is held on its scope and every type above it, never below", func(t *testing.T) {
+	t.Run("A permission is held on its scope and every type above it", func(t *testing.T) {
 		compiled, err := model.Compile(documentCatalog())
 
 		require.NoError(t, err)
 		folder := section(compiled.DSL, "type rt_folder")
 		organization := section(compiled.DSL, "type organization")
-		assert.Contains(t, folder, model.CanRelation("document:view"))
-		assert.NotContains(t, folder, model.CanRelation("billing:read"))
+		view := model.CanRelation("document:view")
+		assert.Contains(t, folder, view+": "+view+" from assignment or "+view+" from parent")
 		assert.Contains(t, organization, model.CanRelation("billing:read"))
-		assert.Contains(t, organization, model.CanRelation("document:view"))
+		assert.Contains(t, organization, view)
+	})
+
+	t.Run("A type below a permission's scope answers it through its parent only", func(t *testing.T) {
+		compiled, err := model.Compile(documentCatalog())
+
+		require.NoError(t, err)
+		billing := model.CanRelation("billing:read")
+		assert.Contains(t, section(compiled.DSL, "type rt_folder"), billing+": "+billing+" from parent\n")
+		assert.Contains(t, section(compiled.DSL, "type rt_project"), billing+": "+billing+" from parent\n")
+	})
+
+	t.Run("A type answers no permission scoped to a type off its chain", func(t *testing.T) {
+		catalog := documentCatalog()
+		catalog.Types = append(catalog.Types, model.Type{Slug: "invoice", ParentTypes: []string{"organization"}})
+		catalog.Permissions = append(catalog.Permissions, model.Permission{Name: "invoice:pay", Scope: "invoice"})
+
+		compiled, err := model.Compile(catalog)
+
+		require.NoError(t, err)
+		assert.NotContains(t, section(compiled.DSL, "type rt_folder"), model.CanRelation("invoice:pay"))
+		assert.Contains(t, section(compiled.DSL, "type rt_invoice"), model.CanRelation("billing:read"))
+	})
+
+	t.Run("A type with parents on two branches answers what either branch scopes", func(t *testing.T) {
+		catalog := model.Catalog{
+			Types: []model.Type{
+				{Slug: "organization"},
+				{Slug: "team", ParentTypes: []string{"organization"}},
+				{Slug: "project", ParentTypes: []string{"organization"}},
+				{Slug: "board", ParentTypes: []string{"team", "project"}},
+			},
+			Permissions: []model.Permission{
+				{Name: "team:lead", Scope: "team"},
+				{Name: "project:manage", Scope: "project"},
+			},
+		}
+
+		compiled, err := model.Compile(catalog)
+
+		require.NoError(t, err)
+		board := section(compiled.DSL, "type rt_board")
+		assert.Contains(t, board, model.CanRelation("team:lead"))
+		assert.Contains(t, board, model.CanRelation("project:manage"))
+		_, err = typesystem.NewAndValidate(t.Context(), compiled.Proto)
+		require.NoError(t, err)
 	})
 
 	t.Run("Only organization lets an API key hold a permission directly", func(t *testing.T) {

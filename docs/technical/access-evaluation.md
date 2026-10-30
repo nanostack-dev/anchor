@@ -78,18 +78,14 @@ and so does the Organization role, the root of every chain. An Organization API 
 holds its permissions on every resource of its Organization.
 
 A permission scoped to a type above the resource's type, such as an
-Organization-scoped `flows:read` asked on a `workspace`, is checked on the
-resource's Organization (`PermissionCheck.Fallback`). The OpenFGA model defines a
-permission only on its scope and the types above it, so the resource's own object
-cannot answer it. A product can therefore ask every check on the resource it acts
-on, and still scope permissions to the Organization. A permission scoped to a type
-below or beside the resource's type, such as `project:manage` on a document, is
-answered on the Organization too: only a role held on the Organization holds it
-there.
-
-The drift log compares only decisions checked on the Organization alone, so it
-doesn't cover the actions a resource check sends to the Organization: the evaluator
-doesn't know which actions the checker sent to the fallback.
+Organization-scoped `flows:read` asked on a `workspace`, or a `workspace`-scoped
+permission asked on a project inside it, is answered through the resource's chain:
+a role on the ancestor of that scope, or above it, grants it
+([authorization engine](authorization-engine.md#the-model)). A role held on the
+resource itself never holds it, since a role holds only permissions scoped to its
+own type or below. A product can therefore ask every check on the resource it acts
+on. A permission scoped to a type off the resource's chain, such as `invoice:pay` on
+a document, is `MISSING_PERMISSION` and is not asked.
 
 ### Explaining a decision
 

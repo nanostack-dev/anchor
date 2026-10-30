@@ -140,7 +140,7 @@ An assignment is part of its resource's object state ([Authorization engine](aut
 
 ## Workspaces
 
-Anchor has no built-in workspaces (ADR-0022 A6). A Product that keeps workspaces declares its own `workspace` type under `organization` and registers each workspace as a resource of it, with its own ID. Migration `000073` dropped the `workspaces`, `workspace_memberships` and `workspace_resources` tables after every workspace had its resource. A workspace deletes like any resource, and an Organization-scoped permission asked on it is answered by its Organization ([access evaluation](access-evaluation.md#resources)).
+Anchor has no built-in workspaces (ADR-0022 A6). A Product that keeps workspaces declares its own `workspace` type under `organization` and registers each workspace as a resource of it, with its own ID. The `workspaces`, `workspace_memberships` and `workspace_resources` tables stay unread for one release, so the previous release keeps working during a rolling deploy; a later migration drops them. A workspace deletes like any resource, and a permission scoped above its type, such as an Organization-scoped one, is answered through its parent ([access evaluation](access-evaluation.md#resources)).
 
 ## Tests
 

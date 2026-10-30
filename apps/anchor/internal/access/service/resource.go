@@ -13,12 +13,9 @@ import (
 // located is the object a decision checks, and the registered resource its
 // chain of ancestors starts at: the resource itself, or the parent an
 // unregistered one names. chainStart is empty when the chain is the
-// Organization alone. fallback, when set, is checked for the actions the
-// model doesn't define on object: a permission scoped to a type above the
-// resource's type is checked on its Organization.
+// Organization alone.
 type located struct {
 	object     CheckedObject
-	fallback   *CheckedObject
 	chainStart string
 }
 
@@ -55,7 +52,6 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 		e.reportParentMismatch(ctx, request, registered)
 		return subject, located{
 			object:     CheckedObject{Type: rt.Slug, ID: registered.RowID},
-			fallback:   organizationFallback(organizationID),
 			chainStart: registered.RowID,
 		}, nil
 	}
@@ -87,8 +83,7 @@ func (e *evaluator) reachParent(
 		}
 		parentObject := OrganizationObject(organizationID)
 		return subject, located{
-			object:   CheckedObject{Type: rt.Slug, Parent: &parentObject},
-			fallback: organizationFallback(organizationID),
+			object: CheckedObject{Type: rt.Slug, Parent: &parentObject},
 		}, nil
 	}
 	found, err := e.resources.Find(ctx, organizationID, parentType.ID, parent.ID)
@@ -102,14 +97,8 @@ func (e *evaluator) reachParent(
 	}
 	return subject, located{
 		object:     CheckedObject{Type: rt.Slug, Parent: &CheckedObject{Type: parentType.Slug, ID: registered.RowID}},
-		fallback:   organizationFallback(organizationID),
 		chainStart: registered.RowID,
 	}, nil
-}
-
-func organizationFallback(organizationID string) *CheckedObject {
-	organization := OrganizationObject(organizationID)
-	return &organization
 }
 
 // missingParent tells a parent another Organization of the Product registered

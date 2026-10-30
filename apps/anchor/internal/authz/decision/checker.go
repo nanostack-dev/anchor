@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -32,9 +33,11 @@ const (
 // errNotBuilt reports a Product whose store is still not built after a build.
 var errNotBuilt = errors.New("authz store not built")
 
-// Rebuilder fills a Product's store from its tables in full.
+// Rebuilder fills a Product's store from its tables in full, or brings its
+// model up to date.
 type Rebuilder interface {
 	Reconcile(ctx context.Context, productID string) error
+	EnsureModel(ctx context.Context, productID string) error
 }
 
 // Checker reads each Product's store as it is: the write that changed access
@@ -44,6 +47,8 @@ type Checker struct {
 	stores    store.Stores
 	rebuilder Rebuilder
 	builds    singleflight.Group
+	// current holds the Products whose model this process brought up to date.
+	current sync.Map
 }
 
 func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
@@ -53,9 +58,8 @@ func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
 // Holds checks every action on the object. An unregistered resource is
 // checked as an object of its type that exists for the check only, with its
 // parent given as a contextual tuple (ADR-0022 B1). A permission the model
-// doesn't define on the object's type is asked on the check's fallback
-// object, when it names one, or is not held; neither is anything on a type the
-// model lacks, or under a parent its parent relation refuses.
+// doesn't define on the object's type is not held; neither is anything on a
+// type the model lacks, or under a parent its parent relation refuses.
 // Anything OpenFGA can't answer, or can't answer in time, fails with
 // accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
@@ -73,27 +77,19 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	}
 	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
 	defer cancel()
-	remaining := check.Actions
-	for _, on := range []*accessservice.CheckedObject{&check.Object, check.Fallback} {
-		if on == nil || len(remaining) == 0 {
-			continue
-		}
-		object, contextual := checkedObject(*on)
-		split := functional.Slice(remaining).Partition(func(action string) bool {
-			return opened.Relations.Defines(fga.Tuple{Object: object, Relation: model.CanRelation(action)})
-		})
-		asked := split.First
-		remaining = split.Second
-		tuples := functional.Slice(asked).Map(func(action string) fga.Tuple {
-			return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
-		})
-		answers, holdsErr := opened.Holds(ctx, tuples, contextual...)
-		if holdsErr != nil {
-			return nil, unavailable(holdsErr)
-		}
-		for i, action := range asked {
-			held[action] = held[action] || answers[i]
-		}
+	object, contextual := checkedObject(check.Object)
+	asked := functional.Slice(check.Actions).Filter(func(action string) bool {
+		return opened.Relations.Defines(fga.Tuple{Object: object, Relation: model.CanRelation(action)})
+	})
+	tuples := functional.Slice(asked).Map(func(action string) fga.Tuple {
+		return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
+	})
+	answers, holdsErr := opened.Holds(ctx, tuples, contextual...)
+	if holdsErr != nil {
+		return nil, unavailable(holdsErr)
+	}
+	for i, action := range asked {
+		held[action] = answers[i]
 	}
 	return held, nil
 }
@@ -119,7 +115,8 @@ func objectRef(object accessservice.CheckedObject) string {
 
 // store returns the Product's store once a full rebuild filled it. The first
 // decision for a Product never rebuilt builds it, once per process, while the
-// other decisions for it wait.
+// other decisions for it wait. The first decision for a built Product makes
+// sure its model is the one this release compiles, once per process.
 func (c *Checker) store(ctx context.Context, productID string) (store.Opened, error) {
 	found, err := c.stores.Open(ctx, productID)
 	if errors.Is(err, engine.ErrNotReady) {
@@ -129,7 +126,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		return store.Opened{}, err
 	}
 	if opened, ok := found.Get(); ok && opened.Rebuilt {
-		return opened, nil
+		return c.currentModel(ctx, productID, opened), nil
 	}
 	result := c.builds.DoChan(productID, func() (any, error) {
 		buildCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), buildTimeout)
@@ -137,6 +134,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		if buildErr := c.rebuilder.Reconcile(buildCtx, productID); buildErr != nil {
 			return nil, buildErr
 		}
+		c.current.Store(productID, true)
 		return c.stores.Open(buildCtx, productID)
 	})
 	select {
@@ -144,6 +142,34 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		return store.Opened{}, ctx.Err()
 	case outcome := <-result:
 		return built(outcome)
+	}
+}
+
+// currentModel brings the store's model up to date once per process, while
+// the other decisions for the Product wait. A failure keeps the store as it is
+// and leaves the next decision to try again.
+func (c *Checker) currentModel(ctx context.Context, productID string, opened store.Opened) store.Opened {
+	if _, done := c.current.Load(productID); done {
+		return opened
+	}
+	result := c.builds.DoChan("model:"+productID, func() (any, error) {
+		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), buildTimeout)
+		defer cancel()
+		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
+			return nil, err
+		}
+		c.current.Store(productID, true)
+		return c.stores.Open(modelCtx, productID)
+	})
+	select {
+	case <-ctx.Done():
+		return opened
+	case outcome := <-result:
+		found, _ := outcome.Val.(functional.Option[store.Opened])
+		if reopened, ok := found.Get(); ok && outcome.Err == nil {
+			return reopened
+		}
+		return opened
 	}
 }
 

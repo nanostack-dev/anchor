@@ -74,7 +74,6 @@ All declared in `internal/repository/*.go` (interface lives with its impl) unles
 - `ProductResourcePermissionRepository` — FindByName
 - `ProductUserRepository` — FindByProductIDAndID, FindByExternalID
 - `TenantRepository` — FindByID
-- `WorkspaceRepository` — FindByID, FindByOrganizationIDAndName
 - `SendRecordRepository` (internal/email/repository/repository.go) — FindByDedupeKeyInternal, FindByDedupeKey, FindByID
 - `TemplateRepository` (internal/email/repository/repository.go) — FindByID, FindBySlug, FindBySlugInternal
 - `TemplateVersionRepository` (internal/email/repository/repository.go) — FindByID, FindCurrentDraft, FindCurrentPublished

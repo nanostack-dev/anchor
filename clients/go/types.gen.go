@@ -3900,7 +3900,7 @@ type ProductResponse struct {
 type ProductRoleCreateRequest struct {
 	// Description Optional description of the role's purpose.
 	//
-	// Examples: Can view and edit resources within assigned organizations/workspaces.
+	// Examples: Can view and edit resources within assigned organizations.
 	Description *string `json:"description,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.
@@ -3970,7 +3970,7 @@ type ProductRoleResponse struct {
 
 	// Description Description of the role.
 	//
-	// Examples: Can view and edit resources within assigned organizations/workspaces.
+	// Examples: Can view and edit resources within assigned organizations.
 	Description *string `json:"description,omitempty"`
 
 	// Id Unique identifier for the product role (e.g., prefix 'role_').
@@ -4030,7 +4030,7 @@ type ProductRoleType string
 type ProductRoleUpdateRequest struct {
 	// Description Optional description of the role's purpose.
 	//
-	// Examples: Can view and edit resources within assigned organizations/workspaces.
+	// Examples: Can view and edit resources within assigned organizations.
 	Description *string `json:"description,omitempty"`
 
 	// Name Name of the product role. Must be unique within the Product using case-insensitive matching.

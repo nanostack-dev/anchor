@@ -236,7 +236,7 @@ func TestAccessEvaluationOnResourcesThroughTheOrganization(t *testing.T) {
 		requireDenied(t, response, ct.NOTAMEMBER)
 	})
 
-	t.Run("A permission the resource's type does not hold is missing, not an error", func(t *testing.T) {
+	t.Run("A permission scoped above the resource that no role on its chain holds is missing", func(t *testing.T) {
 		response := w.access.User(reader).OnResource(w.org.Id, "document", w.document).Can(projectManage).Decide()
 		requireDenied(t, response, ct.MISSINGPERMISSION)
 	})
@@ -408,6 +408,21 @@ func TestAccessEvaluationExplainsGrants(t *testing.T) {
 			organizationGrant,
 		}, *response.Evaluations[0].Context.GrantedBy)
 	})
+
+	t.Run("A role on an ancestor grants a permission scoped to that ancestor on a resource below it",
+		func(t *testing.T) {
+			manager := createManagedRole(t, w.product, rolePermitting("project", "Project manager", projectManage))
+			lead, leadExternalID := w.newMember(t, w.orgMember.Id)
+			w.members("project", w.project).Put(lead, manager.Id)
+			asLead := w.access.User(leadExternalID).OnResource(w.org.Id, "document", w.subDocument)
+
+			response := asLead.Can(projectManage).Explain().Decide()
+
+			requireAllowed(t, response)
+			assert.Equal(t, []ct.AccessGrant{roleGrant(manager, "project", w.project)},
+				*response.Evaluations[0].Context.GrantedBy)
+			requireDenied(t, asReader("document", w.subDocument).Can(projectManage).Decide(), ct.MISSINGPERMISSION)
+		})
 
 	t.Run("An unregistered resource lists the grants from its parent up", func(t *testing.T) {
 		response := asReader("document", resourceID()).Under("folder", w.subfolder).Can(documentView).Explain().Decide()
