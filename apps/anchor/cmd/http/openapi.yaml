@@ -3066,8 +3066,8 @@ components:
           description: >-
             Role to assign to the founding member. It must be a role the Product
             manages: a new Organization has no custom role yet. Any other role
-            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding
-            member a member with no role and no permission.
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to make the
+            founding member a member with no role and no permission.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
@@ -3236,9 +3236,9 @@ components:
           description: >-
             The role to assign to the member. It must be a role the Product
             manages or a custom role of this Organization; any other role
-            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with
-            no role: they belong to the Organization and hold no permission
-            there until they get one.
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to add a member
+            with no role: they belong to the Organization and hold no
+            permission there until they get one.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
       required:
       - product_user_id
@@ -3260,7 +3260,7 @@ components:
           description: >-
             The new role to assign to the member. It must be a role the Product
             manages or a custom role of this Organization; any other role
-            answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the
+            answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to remove the
             member's role: they stay a member and hold no permission. The field
             is required, so leaving it out answers 400.
           examples: ["product_role_3A0Yy5f38miFJl65gf4ldxVmWKh"]
@@ -3401,8 +3401,8 @@ components:
           description: >-
             The role the invited person receives on accept. It must be a role
             the Product manages or a custom role of this Organization; any
-            other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite
-            a member with no role.
+            other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to
+            invite a member with no role.
         expires_at:
           type: string
           format: date-time
@@ -3431,7 +3431,7 @@ components:
           description: >-
             The new role. It must be a role the Product manages or a custom
             role of this Organization; any other role answers 400
-            ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The
+            ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to invite with no role. The
             field is required, so leaving it out answers 400.
         expires_at:
           type: string

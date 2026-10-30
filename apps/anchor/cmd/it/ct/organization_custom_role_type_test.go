@@ -274,3 +274,15 @@ func TestProductTypeSwitchOff(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, resp.StatusCode(), string(resp.Body))
 	})
 }
+
+// roleLessMember adds a new product user to the world's Organization with no
+// role, and returns the user's ID.
+func (w projectRoleWorld) roleLessMember(t *testing.T) string {
+	t.Helper()
+	user := createDSLProductUser(t, w.product)
+	resp, err := w.client.AddOrganizationMemberWithResponse(context.Background(), w.product.ProductID,
+		w.organization.Id, ct.AddOrganizationMemberJSONRequestBody{ProductUserId: user.ID})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode(), string(resp.Body))
+	return user.ID
+}

@@ -21,6 +21,7 @@ import (
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
+	rtservice "anchor/internal/resourcetype/service"
 	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 
@@ -107,6 +108,7 @@ type organizationService struct {
 	orgMembershipRepo repository.OrganizationMembershipRepository
 	productUserRepo   repository.ProductUserRepository
 	productRoleRepo   repository.ProductRoleRepository
+	resourceTypes     rtservice.Service
 	roleAssignments   assignments.Service
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
@@ -121,6 +123,7 @@ func NewOrganizationService(
 	orgMembershipRepo repository.OrganizationMembershipRepository,
 	productUserRepo repository.ProductUserRepository,
 	productRoleRepo repository.ProductRoleRepository,
+	resourceTypes rtservice.Service,
 	roleAssignments assignments.Service,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
@@ -134,6 +137,7 @@ func NewOrganizationService(
 		orgMembershipRepo: orgMembershipRepo,
 		productUserRepo:   productUserRepo,
 		productRoleRepo:   productRoleRepo,
+		resourceTypes:     resourceTypes,
 		roleAssignments:   roleAssignments,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
@@ -718,5 +722,5 @@ func (s *organizationService) checkFoundingRole(
 	if found.IsAbsent() {
 		return NewBodyRoleNotFoundError(*roleID)
 	}
-	return nil
+	return CheckOrganizationScoped(ctx, s.resourceTypes, found.Value())
 }

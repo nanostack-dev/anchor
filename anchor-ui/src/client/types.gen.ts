@@ -1796,7 +1796,7 @@ export type FoundingMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to make the founding member a member with no role and no permission.
+     * Role to assign to the founding member. It must be a role the Product manages: a new Organization has no custom role yet. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to make the founding member a member with no role and no permission.
      */
     role_id?: Ksuid;
 };
@@ -1915,7 +1915,7 @@ export type OrganizationMemberRequest = {
      */
     product_user_id: Ksuid;
     /**
-     * The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
+     * The role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to add a member with no role: they belong to the Organization and hold no permission there until they get one.
      */
     role_id?: Ksuid;
 };
@@ -1925,7 +1925,7 @@ export type OrganizationMemberRequest = {
  */
 export type OrganizationMemberRoleRequest = {
     /**
-     * The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
+     * The new role to assign to the member. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to remove the member's role: they stay a member and hold no permission. The field is required, so leaving it out answers 400.
      */
     role_id: string | null;
 };
@@ -2025,7 +2025,7 @@ export type OrganizationInvitationCreateRequest = {
      */
     email: string;
     /**
-     * The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Omit it to invite a member with no role.
+     * The role the invited person receives on accept. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Omit it to invite a member with no role.
      */
     role_id?: Ksuid;
     /**
@@ -2039,7 +2039,7 @@ export type OrganizationInvitationCreateRequest = {
  */
 export type OrganizationInvitationUpdateRequest = {
     /**
-     * The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Send null to invite with no role. The field is required, so leaving it out answers 400.
+     * The new role. It must be a role the Product manages or a custom role of this Organization; any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. A role scoped to another type than `organization` answers 400 ROLE_NOT_ORGANIZATION_SCOPED: give it on a resource instead. Send null to invite with no role. The field is required, so leaving it out answers 400.
      */
     role_id: string | null;
     /**

@@ -11,4 +11,5 @@ const (
 	fieldQueueAttemptKey     = "queue_attempt"
 	fieldQueueMaxAttemptsKey = "queue_max_attempts"
 	fieldMetadataKeyKey      = "metadata_key"
+	fieldRoleIDKey           = "role_id"
 )
