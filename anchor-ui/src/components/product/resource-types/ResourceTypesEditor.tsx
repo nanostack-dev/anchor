@@ -545,8 +545,9 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			</Alert>
 		);
 
+	// A refused delete names a type the draft no longer holds.
 	const nameOf = (slug: string) =>
-		types.find((type) => type.slug === slug)?.name ?? slug;
+		[...types, ...published].find((type) => type.slug === slug)?.name ?? slug;
 	const failures =
 		publish.isError &&
 		state.draft &&

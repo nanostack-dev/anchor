@@ -238,6 +238,7 @@ Every existing permission and role becomes Organization-scoped, so every existin
 |  | [DR-D8](#dr-d8) · Managed roles shared by every Organization, and custom roles (revised: replaces template copies) | ✅ Accepted |  |
 |  | [DR-D9](#dr-d9) · Custom roles open per resource type: Organization first, then the Product's own types | ✅ Accepted |  |
 |  | [DR-D10](#dr-d10) · Role changes, deletes and limits (revised) | ✅ Accepted |  |
+|  | [DR-D11](#dr-d11) · A custom role never blocks the Product's tree | ✅ Accepted |  |
 | **E. Access decisions** | [DR-E1](#dr-e1) · Grants only, inherited downward | ✅ Accepted |  |
 |  | [DR-E2](#dr-e2) · The evaluation API takes any resource type | ✅ Accepted |  |
 |  | [DR-E3](#dr-e3) · Roles are data; the Product's OpenFGA model holds only types and permissions | ✅ Accepted (depends on ADR-0021) |  |
@@ -1549,6 +1550,8 @@ POST /v1/products/prd_2qL8vH1nX0aR7mB3cK5dT9wQ/organizations/org_2qL9aC3mE8xP1rT
 </details>
 
 > **Implementation note (PR 3).** The switch is `allows_custom_roles`: nullable with no default, so a type the previous release writes during the deploy reads as off. Turning it off keeps the existing custom roles and the access they grant; the Organization can still delete them but not create or change them (`400 CUSTOM_ROLES_DISABLED`). See [managed and custom roles](../technical/managed-and-custom-roles.md#custom-roles).
+>
+> **Implementation note (PR 14).** Phase 2 is in: every resource type of the Product accepts `allows_custom_roles: true`, and `CUSTOM_ROLES_NOT_AVAILABLE` is gone. Each switch opens custom roles scoped to its own type only, under the same scope rule as any role (D1). The 50 custom roles of an Organization (D10) count every type together. The admin UI enables the switch on every published type.
 
 > **Q-D9.1** Is Organization behind the same switch, or always open to custom roles? *(recommended: behind the switch, off by default; each Product decides whether its customers write roles at all)*
 >
@@ -1654,6 +1657,68 @@ The Product removes `document:share` from the `project-admin` template:
 > **Answer:** at most 50 per Organization.
 
 </details>
+
+</details>
+
+<a id="dr-d11"></a>
+<details>
+<summary><b>DR-D11</b> · A custom role never blocks the Product's tree — <i>✅ Accepted</i></summary>
+
+> **Added 2026-10-29** with PR 14, which opens custom roles on every type of the Product (D9 phase 2). Before it, a custom role could only be scoped to `organization`, which sits above every type and can't be deleted, so it never touched a tree change.
+
+**Context.** A custom role on a Product type now uses that type like a managed role does: its permissions sit at or below its scope (D1). Two tree changes would refuse because of it:
+
+- moving a type so that a custom role's permission falls out of its scope (`PATCH` of the type or the tree `PUT`);
+- deleting the type the custom role is scoped to.
+
+The Product can't edit or delete an Organization's custom role. A 409 that names one leaves the Product stuck until the Organization acts, which D10 rules out.
+
+**Decision.**
+
+| When | Managed role | Custom role |
+| :-- | :-- | :-- |
+| A tree change moves a permission out of the role's scope | `409 RESOURCE_TYPE_IN_USE` with the role in `metadata.role_ids`, as before | The role loses that permission in the same transaction, with `organization.role.updated`. It keeps its other permissions and its holders. |
+| The Product deletes the role's type | `409 RESOURCE_TYPE_IN_USE`, counted in `blocked_by.roles` | Nobody holds it: deleted with the type, with `organization.role.deleted`. A membership, an assignment or a pending invitation holds it: `409 RESOURCE_TYPE_IN_USE`, counted in `blocked_by.custom_roles_held`. |
+
+A type delete still needs its child types, permissions and registered resources gone first. Each permission delete already strips that permission from custom roles (D10), so a custom role deleted with its type grants nothing by then.
+
+The delete locks the type's custom roles `FOR UPDATE` before it counts their holders, as a role delete does (D10). A member added on one at the same moment waits, then fails its foreign key, instead of being removed by the cascade.
+
+<details>
+<summary>📌 Real example</summary>
+
+Acme Corp's custom role `release-manager` is scoped to `project` and holds `project:manage` and `document:view`. The Product moves `document` to sit under `organization` only:
+
+```http
+PATCH /v1/products/prd_acme/resource-types/rt_document
+{ "parent_types": ["organization"] }
+
+200 OK
+```
+
+| Role | Before | After, in the same transaction |
+| :-- | :-- | :-- |
+| `release-manager` (Acme Corp, CUSTOM) | `project:manage`, `document:view` | `project:manage`; Acme Corp gets `organization.role.updated` |
+
+The Product then deletes `document:view`, then the type `document`. Globex's custom role `reader` is scoped to `document`:
+
+| `reader` is | `DELETE /resource-types/rt_document` |
+| :-- | :-- |
+| held by nobody | `204`; `reader` is deleted, Globex gets `organization.role.deleted` |
+| Ana's Organization role in Globex | `409 RESOURCE_TYPE_IN_USE`, `blocked_by: {child_types: 0, roles: 0, permissions: 0, custom_roles_held: 1}` |
+
+</details>
+
+**Rejected.**
+
+- **Block on every custom role, and record it as accepted.** The Product would wait on each Organization. With the type's switch off, an Organization can't even change the role, only delete it.
+- **Delete held custom roles too.** A membership's role cascades away with the role (`ON DELETE CASCADE`), so Ana would leave Globex without anyone asking. Refusing a held role costs one 409 and loses no member.
+
+> **Q-D11.1** When the Product deletes a type that an Organization's custom role is scoped to? *(recommended: delete the custom roles nobody holds; refuse while one is held)*
+>
+> **Answer:** delete the unheld ones with an event, refuse with `blocked_by.custom_roles_held` while one is held. (2026-10-29)
+
+> **Follow-up.** A membership or invitation may still name a role of any type as the Organization role, which D4 doesn't intend: such a role grants nothing on the Organization. Requiring an Organization-scoped role there removes the held case for memberships. Tracked in [#301](https://github.com/nanostack-dev/anchor/issues/301).
 
 </details>
 

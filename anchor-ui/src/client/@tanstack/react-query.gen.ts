@@ -515,7 +515,7 @@ export const searchProductResourceTypesOptions = (options: Options<SearchProduct
 /**
  * Delete Product Resource Type
  *
- * Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+ * Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
  */
 export const deleteProductResourceTypeMutation = (options?: Partial<Options<DeleteProductResourceTypeData>>): UseMutationOptions<DeleteProductResourceTypeResponse, DeleteProductResourceTypeError, Options<DeleteProductResourceTypeData>> => {
     const mutationOptions: UseMutationOptions<DeleteProductResourceTypeResponse, DeleteProductResourceTypeError, Options<DeleteProductResourceTypeData>> = {
@@ -1758,7 +1758,7 @@ export const searchOrganizationRolesOptions = (options: Options<SearchOrganizati
 /**
  * Create Organization Custom Role
  *
- * Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+ * Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
  */
 export const createOrganizationRoleMutation = (options?: Partial<Options<CreateOrganizationRoleData>>): UseMutationOptions<CreateOrganizationRoleResponse, CreateOrganizationRoleError, Options<CreateOrganizationRoleData>> => {
     const mutationOptions: UseMutationOptions<CreateOrganizationRoleResponse, CreateOrganizationRoleError, Options<CreateOrganizationRoleData>> = {

@@ -149,7 +149,7 @@ export function ResourceTypeInspector({
 	const customRolesId = `resource-type-custom-roles-${type.key}`;
 	const filtered = (path: string) =>
 		`${path}?${new URLSearchParams({ resource_type: type.slug }).toString()}`;
-	const switchLocked = !type.builtIn && !type.customRoles;
+	const switchLocked = !type.published;
 	const slugError =
 		editing && !type.builtIn && !naming
 			? slugProblem(types, type, reservedSlugs)
@@ -348,7 +348,7 @@ export function ResourceTypeInspector({
 								<FieldLabel htmlFor={customRolesId}>Custom roles</FieldLabel>
 								<FieldDescription>
 									{switchLocked
-										? "Anchor accepts custom roles on Organization only, for now."
+										? "Publish this type first, then turn on its custom roles."
 										: `Organizations can create their own roles scoped to ${type.name || "this type"}, beside the roles your product manages.`}
 								</FieldDescription>
 							</Stack>

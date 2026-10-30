@@ -197,11 +197,8 @@ func (s *service) Update(
 		if current.BuiltIn() && !onlySwitchChanged(current, changed) {
 			return resourcetype.ErrBuiltIn
 		}
-		if changed.AllowsCustomRoles && !current.AllowsCustomRoles && !current.BuiltIn() {
-			return resourcetype.ErrCustomRolesNotAvailable
-		}
 		if reshapes(current, changed) {
-			if err = s.checkReshape(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
+			if err = s.fitRoles(txCtx, input.ProductID, replaceType(tree, changed), changed.Slug); err != nil {
 				return err
 			}
 			if err = s.checkResourceParents(txCtx, tree, current, changed); err != nil {
@@ -239,7 +236,7 @@ func (s *service) Delete(ctx context.Context, productID, id string) error {
 		if current.BuiltIn() {
 			return resourcetype.ErrBuiltIn
 		}
-		if err = s.checkUnused(txCtx, current, true); err != nil {
+		if err = s.clearForDelete(txCtx, current, true); err != nil {
 			return err
 		}
 		if err = s.deleteTypes(txCtx, productID, current); err != nil {
@@ -283,11 +280,11 @@ func (s *service) ReplaceTree(
 		}
 		plan := planTree(tree, input)
 		next := resourcetype.NewTree(plan.next)
-		if err = s.checkReshape(txCtx, input.ProductID, next, ""); err != nil {
+		if err = s.fitRoles(txCtx, input.ProductID, next, ""); err != nil {
 			return err
 		}
 		for _, removed := range plan.removed {
-			if err = s.checkUnused(txCtx, removed, false); err != nil {
+			if err = s.clearForDelete(txCtx, removed, false); err != nil {
 				return err
 			}
 		}
@@ -457,9 +454,11 @@ func replaceType(tree resourcetype.Tree, changed resourcetype.ResourceType) reso
 	return resourcetype.NewTree(types)
 }
 
-// checkReshape validates a candidate tree and refuses it when a role would
-// then hold a permission that is no longer at or below the role's scope.
-func (s *service) checkReshape(
+// fitRoles validates a candidate tree and refuses it when a managed role
+// would then hold a permission no longer at or below the role's scope. A
+// custom role loses those permissions instead, with a role-updated event:
+// the Product can't edit it, so it never blocks the catalog (DR-D11).
+func (s *service) fitRoles(
 	ctx context.Context, productID string, next resourcetype.Tree, slug string,
 ) error {
 	if err := next.Validate(); err != nil {
@@ -473,22 +472,43 @@ func (s *service) checkReshape(
 	scopeOf := func(id string) string {
 		return next.ByID(id).Map(func(rt resourcetype.ResourceType) string { return rt.Slug }).OrElse(root.Slug)
 	}
-	var outside []string
+	var managed []string
+	stripped := map[string][]string{}
 	for _, role := range roles {
 		below := next.Below(scopeOf(role.ResourceTypeID))
-		for _, permissionType := range role.PermissionTypeIDs {
-			if !below[scopeOf(permissionType)] {
-				outside = append(outside, role.RoleID)
+		for _, permission := range role.Permissions {
+			if below[scopeOf(permission.ResourceTypeID)] {
+				continue
+			}
+			if role.OrganizationID == "" {
+				managed = append(managed, role.RoleID)
 				break
 			}
+			stripped[role.RoleID] = append(stripped[role.RoleID], permission.Name)
 		}
 	}
-	if len(outside) > 0 {
-		slices.Sort(outside)
+	if len(managed) > 0 {
+		slices.Sort(managed)
 		if slug == "" {
-			return resourcetype.NewTreeRolesOutOfScopeError(outside)
+			return resourcetype.NewTreeRolesOutOfScopeError(managed)
 		}
-		return resourcetype.NewRolesOutOfScopeError(slug, outside)
+		return resourcetype.NewRolesOutOfScopeError(slug, managed)
+	}
+	for _, role := range roles {
+		names, found := stripped[role.RoleID]
+		if !found {
+			continue
+		}
+		if err = s.repo.RemoveRolePermissions(ctx, productID, role.RoleID, names); err != nil {
+			return err
+		}
+		if err = s.events.Emit(ctx, events.Event{
+			Type:      events.OrganizationRoleUpdated,
+			ProductID: productID,
+			Data:      events.OrganizationRoleData(role.OrganizationID, role.RoleID),
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -525,10 +545,18 @@ func (s *service) checkResourceParents(
 	return nil
 }
 
-// checkUnused refuses to delete a type that roles, permissions or registered
-// resources use. withChildren also counts child types; a whole-tree replacement leaves
-// them to the tree validation, because its removed children go with it.
-func (s *service) checkUnused(ctx context.Context, rt resourcetype.ResourceType, withChildren bool) error {
+// clearForDelete refuses to delete a type that child types, permissions,
+// registered resources, managed roles or held custom roles use. withChildren
+// also counts child types; a whole-tree replacement leaves them to the tree
+// validation, because its removed children go with it. It then deletes the
+// type's custom roles nobody holds: the type's permissions are gone by then,
+// so they grant nothing, and only their Organization could delete them
+// (DR-D11).
+func (s *service) clearForDelete(ctx context.Context, rt resourcetype.ResourceType, withChildren bool) error {
+	custom, err := s.repo.LockCustomRoles(ctx, rt.ProductID, rt.ID)
+	if err != nil {
+		return err
+	}
 	usage, err := s.repo.CountUsage(ctx, rt.ProductID, rt.ID)
 	if err != nil {
 		return err
@@ -536,8 +564,33 @@ func (s *service) checkUnused(ctx context.Context, rt resourcetype.ResourceType,
 	if !withChildren {
 		usage.ChildTypes = 0
 	}
+	held := functional.Slice(custom).Filter(func(role repository.CustomRole) bool { return role.Held })
+	usage.CustomRolesHeld = held.Count()
 	if usage.InUse() {
 		return resourcetype.NewInUseError(rt.Slug, usage)
+	}
+	ids := functional.Slice(custom).Map(func(role repository.CustomRole) string { return role.ID })
+	invitations, err := s.repo.DeleteCustomRoles(ctx, rt.ProductID, ids)
+	if err != nil {
+		return err
+	}
+	for _, invitation := range invitations {
+		if err = s.events.Emit(ctx, events.Event{
+			Type:      events.OrganizationInvitationDeleted,
+			ProductID: rt.ProductID,
+			Data:      events.InvitationData(invitation.OrganizationID, invitation.ID),
+		}); err != nil {
+			return err
+		}
+	}
+	for _, role := range custom {
+		if err = s.events.Emit(ctx, events.Event{
+			Type:      events.OrganizationRoleDeleted,
+			ProductID: rt.ProductID,
+			Data:      events.OrganizationRoleData(role.OrganizationID, role.ID),
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }

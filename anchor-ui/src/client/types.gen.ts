@@ -491,7 +491,7 @@ export type ProductResourceTypeUpdateRequest = {
     name?: string;
     description?: string | null;
     /**
-     * Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
+     * Replaces the allowed parent types. Removing a parent type that a managed role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. An Organization's custom role never blocks the change: it loses those permissions instead, with organization.role.updated. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
      */
     parent_types?: Array<ResourceTypeSlug>;
     /**
@@ -499,7 +499,7 @@ export type ProductResourceTypeUpdateRequest = {
      */
     nests_in_itself?: boolean;
     /**
-     * Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
+     * Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Every type of the product accepts it, `organization` included, and each switch opens custom roles of its own type only. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
      */
     allows_custom_roles?: boolean;
 };

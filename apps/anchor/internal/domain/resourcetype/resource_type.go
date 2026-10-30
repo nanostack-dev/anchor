@@ -30,7 +30,7 @@ type ResourceType struct {
 	ParentTypes   []string
 	NestsInItself bool
 	// AllowsCustomRoles lets the product's Organizations write their own
-	// roles on this type (ADR-0022 D9). Only organization accepts it for now.
+	// roles on this type (ADR-0022 D9).
 	AllowsCustomRoles bool
 	CreatedAt         time.Time
 	UpdatedAt         time.Time

@@ -3885,7 +3885,7 @@ type ProductResourceTypeTreeResponse struct {
 
 // ProductResourceTypeUpdateRequest Fields to change. An omitted field keeps its value. The slug never changes. The built-in `organization` type accepts only `allows_custom_roles`, and answers 409 BUILT_IN_RESOURCE_TYPE to any other change.
 type ProductResourceTypeUpdateRequest struct {
-	// AllowsCustomRoles Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Only `organization` accepts `true` for now; any other type answers 400 CUSTOM_ROLES_NOT_AVAILABLE. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
+	// AllowsCustomRoles Lets the product's Organizations create their own roles scoped to this type, through the Organization's role routes. Every type of the product accepts it, `organization` included, and each switch opens custom roles of its own type only. Turning it off keeps the custom roles that exist and the access they grant: Organizations can no longer create or change them, but can still delete them.
 	AllowsCustomRoles *bool   `json:"allows_custom_roles,omitempty"`
 	Description       *string `json:"description,omitempty"`
 	Name              *string `json:"name,omitempty"`
@@ -3893,7 +3893,7 @@ type ProductResourceTypeUpdateRequest struct {
 	// NestsInItself Turning it off while a registered resource of this type sits under another of the same type answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources`.
 	NestsInItself *bool `json:"nests_in_itself,omitempty"`
 
-	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a managed role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. An Organization's custom role never blocks the change: it loses those permissions instead, with organization.role.updated. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
 	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
 }
 

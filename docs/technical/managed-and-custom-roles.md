@@ -38,7 +38,7 @@ Managed role names are unique in their Product, regardless of case (`idx_product
 
 ## Custom roles
 
-An Organization creates its own roles through `/v1/products/{product_id}/organizations/{organization_id}/roles` (D9 phase 1), when the Product turns on `allows_custom_roles` on the `organization` resource type. The switch is off for every type at first; any other type answers `400 CUSTOM_ROLES_NOT_AVAILABLE` for now.
+An Organization creates its own roles through `/v1/products/{product_id}/organizations/{organization_id}/roles` (D9), scoped to a resource type whose `allows_custom_roles` the Product turned on. The switch is off for every type at first, and each switch opens custom roles of its own type only: with `project` on and `organization` off, a project custom role is created and an organization one answers `400 CUSTOM_ROLES_DISABLED`. The limit of 50 custom roles per Organization counts every type together.
 
 ```http
 PATCH /v1/products/prd_1/resource-types/rtype_org
@@ -86,7 +86,7 @@ In the domain, `organization.Membership.Role` and `user.OrganizationMembership.R
 - **A permission.** Deleting a permission removes it from every role that bundles it, custom roles included, through the foreign key cascade.
 - **An Organization.** Deleting an Organization deletes its custom roles (`ON DELETE CASCADE`).
 
-A resource type that a custom role is scoped to is in use (`CountUsage`), and a tree change checks custom roles' permission scopes as it checks managed ones (`FindRoleBundles`).
+- **A resource type.** A custom role never blocks the Product's tree (DR-D11). A tree change that moves a permission out of a custom role's scope removes it from the role, with `organization.role.updated`. A type delete deletes the type's custom roles nobody holds, with `organization.role.deleted`, and their settled invitations. It refuses while one is held, counted in `blocked_by.custom_roles_held`. It locks those roles `transactor.ForUpdate` before it counts, for the same reason as a role delete.
 
 ## Admin UI
 

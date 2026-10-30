@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
+	rtrepository "anchor/internal/resourcetype/repository"
 )
 
 // Every release writes a role type, so the database refuses a role without one.
@@ -167,13 +169,22 @@ func TestCustomRolesWrittenByTheNextRelease(t *testing.T) {
 		assertFaultCode(t, err, "ROLE_NOT_FOUND_IN_REQUEST")
 	})
 
-	t.Run("A resource type a custom role is scoped to is in use", func(t *testing.T) {
+	t.Run("A custom role is not counted as a use of its type, and is listed apart, unheld", func(t *testing.T) {
 		fixture := givenACustomRole(t)
 
 		usage, err := ResourceTypeRepo.CountUsage(t.Context(), fixture.productID, fixture.scopeID)
+		require.NoError(t, err)
+		var custom []rtrepository.CustomRole
+		err = Transactor.InTx(t.Context(), func(txCtx context.Context) error {
+			custom, err = ResourceTypeRepo.LockCustomRoles(txCtx, fixture.productID, fixture.scopeID)
+			return err
+		})
 
 		require.NoError(t, err)
-		assert.Equal(t, 2, usage.Roles)
+		assert.Equal(t, 1, usage.Roles)
+		assert.Equal(t, []rtrepository.CustomRole{
+			{ID: fixture.customID, OrganizationID: fixture.ownerOrgID, Held: false},
+		}, custom)
 	})
 
 	t.Run("A deleted permission leaves the custom roles that bundle it", func(t *testing.T) {

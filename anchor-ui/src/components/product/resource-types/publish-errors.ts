@@ -13,6 +13,7 @@ interface BlockedBy {
 	roles?: number;
 	permissions?: number;
 	resources?: number;
+	custom_roles_held?: number;
 }
 
 function text(value: unknown) {
@@ -29,6 +30,8 @@ function blockers(blocked: BlockedBy) {
 			`${plural(blocked.permissions, "permission is", "permissions are")} scoped to it`,
 		blocked.resources &&
 			`${plural(blocked.resources, "registered resource uses", "registered resources use")} it`,
+		blocked.custom_roles_held &&
+			`${plural(blocked.custom_roles_held, "role an Organization created is", "roles Organizations created are")} still held by members or invitations`,
 	].filter(Boolean);
 }
 

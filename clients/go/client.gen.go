@@ -1569,7 +1569,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRoleWithBody Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1578,7 +1578,7 @@ type ClientInterface interface {
 
 	// CreateOrganizationRole Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1971,7 +1971,7 @@ type ClientInterface interface {
 
 	// DeleteProductResourceType Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 	DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5141,7 +5141,7 @@ func (c *Client) PutResourceMember(ctx context.Context, productId ProductIdParam
 
 // CreateOrganizationRoleWithBody Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5160,7 +5160,7 @@ func (c *Client) CreateOrganizationRoleWithBody(ctx context.Context, productId P
 
 // CreateOrganizationRole Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5972,7 +5972,7 @@ func (c *Client) SearchProductResourceTypes(ctx context.Context, productId Produ
 
 // DeleteProductResourceType Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 func (c *Client) DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14772,7 +14772,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14781,7 +14781,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateOrganizationRoleWithResponse Create Organization Custom Role
 	//
-	// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+	// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -15196,7 +15196,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductResourceTypeWithResponse Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -27442,7 +27442,7 @@ func (c *ClientWithResponses) PutResourceMemberWithResponse(ctx context.Context,
 
 // CreateOrganizationRoleWithBodyWithResponse Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27457,7 +27457,7 @@ func (c *ClientWithResponses) CreateOrganizationRoleWithBodyWithResponse(ctx con
 
 // CreateOrganizationRoleWithResponse Create Organization Custom Role
 //
-// Creates a CUSTOM role that only this Organization's members may hold. The resource type must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
+// Creates a CUSTOM role that only this Organization's members may hold. Its resource type, any type of the product, must allow custom roles (`allows_custom_roles`); otherwise the call answers 400 CUSTOM_ROLES_DISABLED. The name must be unique in the Organization and must not be the name of one of the Product's managed roles (409 ROLE_NAME_DUPLICATE). An Organization holds at most 50 custom roles, every resource type counted together (409 CUSTOM_ROLE_LIMIT_REACHED). Emits organization.role.created.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -28124,7 +28124,7 @@ func (c *ClientWithResponses) SearchProductResourceTypesWithResponse(ctx context
 
 // DeleteProductResourceTypeWithResponse Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //

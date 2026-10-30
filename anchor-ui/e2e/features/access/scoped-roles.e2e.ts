@@ -294,7 +294,7 @@ test("access.scoped-tables: roles and permissions show their scope, counts and h
 });
 
 // Covers: PRODUCT_RESOURCE_TYPES
-test("access.custom-roles-switch: Organization's custom roles switch publishes with the draft; other types can't turn it on", async ({
+test("access.custom-roles-switch: every type's custom roles switch publishes with the draft, Organization and the product's own types alike", async ({
 	page,
 	world,
 }, testInfo) => {
@@ -305,27 +305,24 @@ test("access.custom-roles-switch: Organization's custom roles switch publishes w
 	const details = page.getByRole("complementary", {
 		name: "Resource type details",
 	});
-	await tree.getByRole("button", { name: "Organization", exact: true }).click();
+	const toggle = details.getByRole("switch", {
+		name: "Custom roles",
+		exact: true,
+	});
+	await tree.getByRole("button", { name: "Folder", exact: true }).click();
 	await expect(details).toContainText("Custom roles off");
 	await page
 		.getByRole("button", { name: "Edit resource types", exact: true })
 		.click();
 	await tree.getByRole("button", { name: "Folder", exact: true }).click();
-	await expect(
-		details.getByRole("switch", { name: "Custom roles", exact: true }),
-	).toBeDisabled();
-	await expect(details).toContainText(
-		"Anchor accepts custom roles on Organization only, for now.",
-	);
+	await expect(toggle).toBeEnabled();
+	await toggle.click();
+	await expect(toggle).toBeChecked();
 	await tree.getByRole("button", { name: "Organization", exact: true }).click();
-	const toggle = details.getByRole("switch", {
-		name: "Custom roles",
-		exact: true,
-	});
 	await expect(toggle).toBeEnabled();
 	await toggle.click();
 	await expect(
-		page.getByText("Draft: custom roles switched on 1 type"),
+		page.getByText("Draft: custom roles switched on 2 types"),
 	).toBeVisible();
 	await captureReviewCheckpoint(page, testInfo, "switch-draft");
 	await page.getByRole("button", { name: "Publish", exact: true }).click();
@@ -338,15 +335,13 @@ test("access.custom-roles-switch: Organization's custom roles switch publishes w
 		{ pagination: { limit: 100 } },
 		200,
 	);
-	expect(
-		saved.items.find((type) => type.slug === "organization")
-			?.allows_custom_roles,
-	).toBe(true);
-	expect(
-		saved.items.find((type) => type.slug === "folder")?.allows_custom_roles,
-	).toBe(false);
+	const switchOf = (slug: string) =>
+		saved.items.find((type) => type.slug === slug)?.allows_custom_roles;
+	expect(switchOf("organization")).toBe(true);
+	expect(switchOf("folder")).toBe(true);
+	expect(switchOf("project")).toBe(false);
 	await page.reload();
-	await tree.getByRole("button", { name: "Organization", exact: true }).click();
+	await tree.getByRole("button", { name: "Folder", exact: true }).click();
 	await expect(details).toContainText("Custom roles on");
 	await captureReviewCheckpoint(page, testInfo, "switch-published");
 });
