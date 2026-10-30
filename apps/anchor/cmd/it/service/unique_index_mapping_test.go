@@ -22,14 +22,11 @@ import (
 var uniqueGuardsWithoutMapping = map[string]string{
 	"idx_platform_users_tenant_email": "registration inserts users first in the same transaction, " +
 		"so a second registration of an email stops on users_email_key",
-	"platform_users_external_id_key":      "registration copies users.external_id, which nothing writes",
-	"users_external_id_key":               "nothing writes users.external_id",
-	"platform_invitations_code_key":       "the code is 32 random bytes",
-	"workspace_memberships_pkey":          "nothing writes workspace_memberships; a later migration drops it",
-	"workspaces_organization_id_name_key": "nothing writes workspaces; a later migration drops it",
+	"platform_users_external_id_key": "registration copies users.external_id, which nothing writes",
+	"users_external_id_key":          "nothing writes users.external_id",
+	"platform_invitations_code_key":  "the code is 32 random bytes",
 	"resources_organization_type_external_id_key": "a resource PUT reads the resource under the Organization's " +
 		"resource lock, held exclusively, before it creates one",
-	"workspace_resources_pkey": "nothing writes workspace_resources; a later migration drops it",
 	"resource_role_assignments_pkey": "an assignment PUT reads the member's roles on the resource under its " +
 		"per-member advisory lock, and inserts only the roles they don't hold",
 	"product_api_key_permissions_pkey": "permission names are deduplicated; a create inserts under a new key " +

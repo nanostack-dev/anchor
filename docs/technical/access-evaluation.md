@@ -87,13 +87,9 @@ own type or below. A product can therefore ask every check on the resource it ac
 on. A permission scoped to a type off the resource's chain, such as `invoice:pay` on
 a document, is `MISSING_PERMISSION` and is not asked.
 
-For one release, a registered resource of a `workspace` type keeps the previous
-release's answer: an action the model doesn't define on it is checked on its
-Organization (`PermissionCheck.Fallback`). During the rolling deploy, replicas of
-both releases write their own model to the store, and the previous one lacks the
-relations a type inherits from its parent. Each decision checks, at most every 30
-seconds, that its store follows this release's model, and writes it when it
-doesn't. The migration that drops the workspace tables removes the fallback.
+Each decision checks, at most every 30 seconds, that its store follows the model
+this release compiles, and writes it when it doesn't: during a rolling deploy, a
+replica of the previous release may write its own model back.
 
 ### Explaining a decision
 
