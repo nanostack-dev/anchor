@@ -42,6 +42,7 @@ func NewModule() fx.Option {
 			fgasync.AsSource(source.NewResourceAssignments),
 			newSyncer,
 			events.AsTxObserver(newMarker),
+			events.AsTxObserver(source.NewModelSizeGuard),
 			newChecker,
 		),
 		fx.Invoke(func(m *fgasync.Syncer, lc fx.Lifecycle) { m.Run(lc) }),

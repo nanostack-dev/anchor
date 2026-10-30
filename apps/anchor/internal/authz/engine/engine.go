@@ -32,6 +32,8 @@ import (
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
+
+	"anchor/internal/authz/model"
 )
 
 const (
@@ -44,13 +46,9 @@ const (
 	migrationLockKey = "openfga-migrations"
 	maxOpenConns     = 10
 	connMaxIdleTime  = 5 * time.Minute
-	// maxModelBytes lifts OpenFGA's 256 KiB model limit: a model grows by
-	// about half a kilobyte per permission and type that holds it, so a large
-	// catalog of a thousand permission placements still fits.
-	maxModelBytes = 1 << 20
-	retryMin      = time.Second
-	retryMax      = 30 * time.Second
-	retryGrowth   = 2
+	retryMin         = time.Second
+	retryMax         = 30 * time.Second
+	retryGrowth      = 2
 )
 
 // ErrNotReady is returned until OpenFGA's migrations ran and its server opened.
@@ -172,7 +170,7 @@ func (p *provider) start(ctx context.Context) error {
 		server.WithDatastore(datastore),
 		server.WithLogger(logger),
 		server.WithCheckQueryCacheEnabled(false),
-		server.WithMaxAuthorizationModelSizeInBytes(maxModelBytes),
+		server.WithMaxAuthorizationModelSizeInBytes(model.MaxBytes),
 	)
 	if err != nil {
 		datastore.Close()

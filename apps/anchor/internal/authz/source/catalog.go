@@ -55,7 +55,13 @@ func (c Catalog) read(ctx context.Context, productID string) (model.Catalog, err
 	if err != nil {
 		return model.Catalog{}, err
 	}
-	permissions, err := transactor.Query[[]dbmodel.ProductResourcePermissions](ctx, c.tables.db,
+	return c.tables.catalog(ctx, productID, tree)
+}
+
+// catalog reads the Product's permissions and gives each the slug of its
+// scope in the tree.
+func (t Tables) catalog(ctx context.Context, productID string, tree resourcetype.Tree) (model.Catalog, error) {
+	permissions, err := transactor.Query[[]dbmodel.ProductResourcePermissions](ctx, t.db,
 		table.ProductResourcePermissions.SELECT(
 			table.ProductResourcePermissions.Name, table.ProductResourcePermissions.ResourceTypeID,
 		).WHERE(table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))),
@@ -64,9 +70,9 @@ func (c Catalog) read(ctx context.Context, productID string) (model.Catalog, err
 		return model.Catalog{}, err
 	}
 	var catalog model.Catalog
-	for _, t := range tree.Types() {
+	for _, rt := range tree.Types() {
 		catalog.Types = append(catalog.Types, model.Type{
-			Slug: t.Slug, ParentTypes: t.ParentTypes, NestsInItself: t.NestsInItself,
+			Slug: rt.Slug, ParentTypes: rt.ParentTypes, NestsInItself: rt.NestsInItself,
 		})
 	}
 	for _, p := range permissions {
