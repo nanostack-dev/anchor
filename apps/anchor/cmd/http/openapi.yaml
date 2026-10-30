@@ -7700,10 +7700,12 @@ paths:
         identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership,
         role, role assignment, resource, workspace or API key change made through the API usually applies to the next
         call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds.
-        Evaluating an organization API key updates its last_used_at as introspection does.
+        Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the
+        Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
       operationId: evaluateAccess
       tags: [Access]
       security:
+      - platformBearerAuth: []
       - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
       requestBody:
         required: true
@@ -7770,6 +7772,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
         "503":
@@ -7788,10 +7792,12 @@ paths:
         extension). `options.evaluations_semantic` controls short-circuiting; items that are not evaluated are denied
         with reason `NOT_EVALUATED`. The resource is resolved once for every item, as on the single evaluation: a
         resource the subject can't reach denies every item with the same reason. With `options.explain` true, each
-        allowed item carries `granted_by` in its own `context`.
+        allowed item carries `granted_by` in its own `context`. The platform session of the Product's tenant may call it
+        too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
       operationId: evaluateAccessBatch
       tags: [Access]
       security:
+      - platformBearerAuth: []
       - productApiKeyAuth: ["product_user:read", "organization_api_key:read"]
       requestBody:
         required: true
@@ -7812,6 +7818,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
         "503":

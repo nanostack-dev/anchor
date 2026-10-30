@@ -17,6 +17,11 @@ export class AnchorAPI {
 		expect(response.status(), `${path}: ${await response.text()}`).toBe(status);
 		return response.json() as Promise<T>;
 	}
+	async patch<T>(path: string, data: unknown, status = 200): Promise<T> {
+		const response = await this.context.patch(path, { data });
+		expect(response.status(), `${path}: ${await response.text()}`).toBe(status);
+		return response.json() as Promise<T>;
+	}
 	async remove(path: string) {
 		const response = await this.context.delete(path);
 		expect([204, 404], `${path}: ${await response.text()}`).toContain(

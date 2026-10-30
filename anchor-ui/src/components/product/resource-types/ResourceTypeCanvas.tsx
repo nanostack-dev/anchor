@@ -25,9 +25,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type CanvasActions,
 	CanvasActionsContext,
+	type NodeTrace,
 	type ResourceTypeFlowNode,
 	ResourceTypeNode,
 } from "./ResourceTypeNode";
+import type { AccessHighlight } from "./access-explainer";
 import {
 	type Layout,
 	NODE_HEIGHT,
@@ -36,6 +38,9 @@ import {
 	sameLayout,
 } from "./resource-type-layout";
 import { type TreeType, addChildBlocker } from "./resource-type-tree";
+
+const EDGE_MOTION =
+	"stroke 150ms cubic-bezier(0.23, 1, 0.32, 1), opacity 150ms cubic-bezier(0.23, 1, 0.32, 1)";
 
 const nodeTypes: NodeTypes = { resourceType: ResourceTypeNode };
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -166,6 +171,16 @@ export interface ResourceTypeCanvasProps {
 	instant: boolean;
 	focusRequest: { key: string; id: number } | null;
 	actions: CanvasActions;
+	trace?: AccessHighlight | null;
+}
+
+function traceOf(
+	slug: string,
+	trace: AccessHighlight | null | undefined,
+): NodeTrace | undefined {
+	if (!trace) return undefined;
+	if (trace.granted[slug]) return "granted";
+	return trace.path.includes(slug) ? "path" : undefined;
 }
 
 function Canvas({
@@ -178,6 +193,7 @@ function Canvas({
 	instant,
 	focusRequest,
 	actions,
+	trace,
 }: ResourceTypeCanvasProps) {
 	const positions = useAnimatedLayout(layout, instant);
 	const tabbableKey =
@@ -207,6 +223,8 @@ function Canvas({
 					tabbable: type.key === tabbableKey,
 					focusId: focusKey === type.key ? focusId : undefined,
 					addBlocker: editing ? addChildBlocker(types, type.key) : undefined,
+					trace: traceOf(type.slug, trace),
+					holders: trace?.granted[type.slug],
 				},
 			})),
 		[
@@ -219,25 +237,39 @@ function Canvas({
 			tabbableKey,
 			focusKey,
 			focusId,
+			trace,
 		],
 	);
 
-	const edges = useMemo<Edge[]>(
-		() =>
-			types.flatMap((type) =>
-				type.parents
-					.filter((parent) => parent !== type.key)
-					.map((parent) => ({
+	const edges = useMemo<Edge[]>(() => {
+		const slugOf = new Map(types.map((type) => [type.key, type.slug]));
+		const onPath = (parent: string, child: string) =>
+			trace?.steps.some(
+				([from, to]) => from === slugOf.get(parent) && to === slugOf.get(child),
+			) ?? false;
+		return types.flatMap((type) =>
+			type.parents
+				.filter((parent) => parent !== type.key)
+				.map((parent) => {
+					const step = onPath(parent, type.key);
+					return {
 						id: `${parent}->${type.key}`,
 						source: parent,
 						target: type.key,
 						focusable: false,
 						selectable: false,
-						style: { stroke: "var(--border-strong)", strokeWidth: 1.5 },
-					})),
-			),
-		[types],
-	);
+						className: trace ? (step ? "trace-step" : "trace-dimmed") : "",
+						style: {
+							...(step
+								? { stroke: "var(--primary)", strokeWidth: 2.5 }
+								: { stroke: "var(--border-strong)", strokeWidth: 1.5 }),
+							opacity: trace && !step ? 0.45 : 1,
+							transition: EDGE_MOTION,
+						},
+					};
+				}),
+		);
+	}, [types, trace]);
 
 	return (
 		<CanvasActionsContext.Provider value={actions}>

@@ -472,3 +472,45 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 		requireDenied(t, response, ct.APIKEYINVALID)
 	})
 }
+
+func TestAccessEvaluationFromThePlatformSession(t *testing.T) {
+	t.Parallel()
+
+	t.Run("The product owner's platform session explains a decision on the single route, as the admin UI does",
+		func(t *testing.T) {
+			t.Parallel()
+			w := newAccessWorld(t)
+			owner := w.product.AccessClientWith(w.product.OwnerAuthenticatedClient())
+
+			resp := owner.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Explain().Single()
+
+			require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+			assert.True(t, resp.JSON200.Decision)
+			require.NotNil(t, resp.JSON200.Context.GrantedBy)
+			assert.NotEmpty(t, *resp.JSON200.Context.GrantedBy)
+		})
+
+	t.Run("The product owner's platform session evaluates a batch", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		owner := w.product.AccessClientWith(w.product.OwnerAuthenticatedClient())
+
+		decision := owner.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Decide()
+
+		assert.True(t, decision.Decision)
+	})
+
+	t.Run("Another tenant's platform session gets 404 on both routes", func(t *testing.T) {
+		t.Parallel()
+		w := newAccessWorld(t)
+		otherTenant := itdsl.Given(t).Tenant(itdsl.TenantOpts{Alias: "other", Isolated: true}).Build().Tenant("other")
+		foreign := w.product.AccessClientWith(otherTenant.OwnerClient)
+		question := foreign.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read)
+
+		single := question.Single()
+		batch := question.Send()
+
+		requireAPIError(t, single, single.Body, http.StatusNotFound, "PRODUCT_NOT_FOUND")
+		requireAPIError(t, batch, batch.Body, http.StatusNotFound, "PRODUCT_NOT_FOUND")
+	})
+}

@@ -9,10 +9,11 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **68 scenarios in 16 spec files**.
+The managed app suite declares **71 scenarios in 17 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
+| [access/access-explainer.e2e.ts](../features/access/access-explainer.e2e.ts) | 3 |
 | [access/permissions.e2e.ts](../features/access/permissions.e2e.ts) | 5 |
 | [access/resource-types.e2e.ts](../features/access/resource-types.e2e.ts) | 3 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 6 |
@@ -78,6 +79,7 @@ Specs: [management keys](../features/platform/api-keys.e2e.ts),
 [permissions](../features/access/permissions.e2e.ts),
 [roles](../features/access/roles.e2e.ts),
 [scoped roles](../features/access/scoped-roles.e2e.ts),
+[access explainer](../features/access/access-explainer.e2e.ts),
 [tenancy](../features/access/tenancy.e2e.ts).
 
 | Route key and path | Browser actions asserted | Preparation or boundary | Spec |
@@ -90,7 +92,7 @@ Specs: [management keys](../features/platform/api-keys.e2e.ts),
 | `PRODUCT_RESOURCES_PERMISSIONS` — `/products/resources/permissions` | Create link, Name facet, sort, pagination, search/empty recovery, single/bulk delete and affected-role warning; Resource type column, the roles holding each permission (one roles search per page) and the `resource_type` filter opened from the canvas. | API permissions prepare list/bulk data; a role holds a grant for deletion impact; API scoped roles fill the Roles column. | permissions, scoped roles |
 | `PRODUCT_RESOURCE_PERMISSION_NEW` — `/products/resources/new-permission` | Resource type chosen first with no preset, `{slug}:` name prefill, create and the detail it opens; opened from an empty scope, the type and prefix are preset. | Outside `/permissions/` because a permission may be named `new`. | permissions, scoped roles |
 | `PRODUCT_RESOURCE_PERMISSION_DETAIL` — `/products/resources/permissions/$permissionName` | View, immutable name, description edit/cancel/save/reload and missing-resource recovery. | API checks persisted description and committed deletion. | permissions, roles |
-| `PRODUCT_RESOURCE_TYPES` — `/products/resources/types` | Read-only tree with the locked Organization, self-nesting badge and per-type role/permission counts; edit mode with `+` handle and keyboard naming (Enter keeps, Escape drops, `N` adds, arrows move, Enter renames), parent and nesting changes, delete confirmation, disabled delete with reasons, discard, publish and reload; the custom roles switch of Organization and of a product's own type published with the draft; a refused publish keeps the draft and names the blocking role. | API publishes the starting tree and scoped permissions and roles; API checks the published tree. | resource types |
+| `PRODUCT_RESOURCE_TYPES` — `/products/resources/types` | Read-only tree with the locked Organization, self-nesting badge and per-type role/permission counts; edit mode with `+` handle and keyboard naming (Enter keeps, Escape drops, `N` adds, arrows move, Enter renames), parent and nesting changes, delete confirmation, disabled delete with reasons, discard, publish and reload; the custom roles switch of Organization and of a product's own type published with the draft; a refused publish keeps the draft and names the blocking role; Check access (DR-F5) stays disabled until an Organization, a member, a permission and a resource are chosen by search, answers Allowed with the granting roles, an Organization's custom role included, and the resource chain, or Denied with the plain-language reason, and lights the chain's types and the granting type on the canvas. | API publishes the starting tree and scoped permissions and roles; API checks the published tree. The explainer's API registers the resources, the member and the folder role assignment, and for the custom-role case turns on the project switch, creates the custom role and assigns it on the project; the 503 and error states are story-only. | resource types, access explainer |
 | `PRODUCT_ROLES` — `/products/resources/roles` | Create link, Name facet, sorting, pagination, search, single/bulk delete, assigned-role error and mixed bulk outcomes; Resource type column, permission count, Resource type facet in the URL, and the filter opened from the canvas. | API permissions/membership prepare grants and an assigned role. Failed deletion retains its row. | roles, scoped roles |
 | `PRODUCT_ROLE_NEW` — `/products/resources/roles/new` | Scope first (Continue disabled until chosen), details, permissions grouped by type from the scope down with types above left out, group Select all, review, create; an empty scope explains itself and links to a pre-scoped permission; a role with no permission. | API publishes the tree and scoped permissions. | roles, scoped roles |
 | `PRODUCT_ROLE_DETAIL` — `/products/resources/roles/$roleId` | View with scope and key, edit/cancel with the scope fixed and the same filtered permissions, renamed role and grant replacement, reload and missing-role recovery. | API checks persisted name/grants/scope; permission deletion must leave `permissions: []`. | roles, permissions, scoped roles |

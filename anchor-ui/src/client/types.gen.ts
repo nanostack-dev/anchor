@@ -6341,6 +6341,10 @@ export type EvaluateAccessErrors = {
      */
     403: ApiErrorResponse;
     /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
+    /**
      * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
      */
     500: ApiErrorResponse;
@@ -6386,6 +6390,10 @@ export type EvaluateAccessBatchErrors = {
      * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
      */
     403: ApiErrorResponse;
+    /**
+     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
+     */
+    404: ApiErrorResponse;
     /**
      * The server failed for a reason the caller could not have influenced. The `code` is `UNEXPECTED_ERROR` unless the failure is a modelled operational outcome that carries its own stable code.
      */
