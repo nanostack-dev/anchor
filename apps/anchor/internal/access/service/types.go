@@ -76,11 +76,7 @@ type PermissionCheck struct {
 	ProductUserID string
 	APIKeyID      string
 	Object        CheckedObject
-	// Fallback, when set, is checked for the actions the model doesn't define
-	// on Object. Only a workspace sets it, for one release: see
-	// workspaceCompatibility.
-	Fallback *CheckedObject
-	Actions  []string
+	Actions       []string
 }
 
 // CheckedObject is an object of the Product's model: the Organization, by its

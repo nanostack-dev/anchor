@@ -214,29 +214,6 @@ func TestAnchorSDKWorkspaceResources(t *testing.T) {
 			"a workspace the Organization did not register")
 	})
 
-	t.Run("A permission scoped off a workspace's chain is still answered by its organization, for one release",
-		func(t *testing.T) {
-			t.Parallel()
-			w := givenWorkspaceAccessWorld(t)
-			w.product.ResourceTypes().Create(ct.CreateProductResourceTypeJSONRequestBody{
-				Slug: "invoice", Name: "Invoice", ParentTypes: []string{"organization"},
-			})
-			pay := "invoice:pay"
-			w.product.CreateScopedPermissions(t, "invoice", pay)
-			payer := createManagedRole(t, w.product, ct.CreateProductRoleJSONRequestBody{
-				Name: "Payer " + ids.MustNew("ct"), Permissions: []string{pay},
-			})
-			_, payerExternalID := w.memberWithID(t, payer.Id)
-			shared := w.sdk.Organization(w.org.Id).Resource(workspaceType, w.shared)
-
-			assert.True(
-				t,
-				w.can(t, payerExternalID, shared, pay),
-				"the previous release answered it on the organization",
-			)
-			assert.False(t, w.can(t, w.editorExternalID, shared, pay))
-		})
-
 	t.Run("A workspace deletes like any other resource", func(t *testing.T) {
 		t.Parallel()
 		w := givenWorkspaceAccessWorld(t)

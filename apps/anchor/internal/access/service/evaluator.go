@@ -104,7 +104,6 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 		ProductUserID: identity.ProductUserID,
 		APIKeyID:      identity.APIKeyID,
 		Object:        target.object,
-		Fallback:      target.fallback,
 		Actions:       request.Actions,
 	})
 	switch {

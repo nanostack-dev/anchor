@@ -13,11 +13,9 @@ import (
 // located is the object a decision checks, and the registered resource its
 // chain of ancestors starts at: the resource itself, or the parent an
 // unregistered one names. chainStart is empty when the chain is the
-// Organization alone. fallback, when set, is checked for the actions the
-// model doesn't define on object.
+// Organization alone.
 type located struct {
 	object     CheckedObject
-	fallback   *CheckedObject
 	chainStart string
 }
 
@@ -54,7 +52,6 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 		e.reportParentMismatch(ctx, request, registered)
 		return subject, located{
 			object:     CheckedObject{Type: rt.Slug, ID: registered.RowID},
-			fallback:   workspaceCompatibility(rt.Slug, organizationID),
 			chainStart: registered.RowID,
 		}, nil
 	}
@@ -64,20 +61,6 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 		return stoppedBy(ReasonResourceNotFound), located{}, nil
 	}
 	return e.reachParent(ctx, request, tree, rt, subject)
-}
-
-// workspaceCompatibility keeps, for a registered resource of a `workspace`
-// type, the answer the previous release gave: an action the model doesn't
-// define on it is checked on its Organization. During the rolling deploy a
-// replica of that release writes its own model back, which lacks the
-// relations a type inherits from its parent. Remove it with the migration that
-// drops the workspace tables.
-func workspaceCompatibility(slug, organizationID string) *CheckedObject {
-	if slug != "workspace" {
-		return nil
-	}
-	organization := OrganizationObject(organizationID)
-	return &organization
 }
 
 // reachParent resolves the parent an unregistered resource names: a type the
