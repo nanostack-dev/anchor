@@ -33,6 +33,13 @@ func (tp *ProductContext) Resources(organizationID string, scopes ...string) Res
 	}
 }
 
+// As drives the same Organization with another client, such as another
+// product's key or another tenant's platform session.
+func (c ResourceClient) As(client *nanostackClient.ClientWithResponses) ResourceClient {
+	c.client = client
+	return c
+}
+
 // Ref names a resource or a parent the way the product does.
 func Ref(resourceType, id string) nanostackClient.ResourceParentRef {
 	return nanostackClient.ResourceParentRef{Type: resourceType, Id: id}
