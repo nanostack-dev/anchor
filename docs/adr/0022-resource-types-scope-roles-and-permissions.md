@@ -373,6 +373,16 @@ The type tree is part of the catalog: it decides how roles and permissions combi
 
 </details>
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| Deleting a Product with nested resource types cascades through `product_resource_type_parents.parent_type_id` too. | A Product's delete removes its types one statement at a time; a type's parent edge still held its parent, so the delete answered 500. The admin UI's end-to-end teardown found it, and `TestDeleteProductWithResourceTypes` answers 500 without the fix. | [#270](https://github.com/nanostack-dev/anchor/pull/270) |
+
+</details>
+
 </details>
 
 <a id="dr-a2"></a>
@@ -598,6 +608,16 @@ A slug and a scope fixed after creation keep every assignment and API call valid
 
 </details>
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| A type in use by resources is refused with `blocked_by.resources`, and removing a parent type in use or turning nesting off answers `409 RESOURCE_TYPE_IN_USE` with `parent_type`. | Resources (B1) arrived after the first catalog PR; these are the A5 rows that need them. The checks run under the exclusive catalog lock, and a registration holds the same lock in share mode, so the two can't race; a CT races them. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
+
+</details>
+
 </details>
 
 <a id="dr-a6"></a>
@@ -617,7 +637,7 @@ A slug and a scope fixed after creation keep every assignment and API call valid
 - **Access evaluation** answers `"type": "workspace"` through the generic model from phase 2. `WORKSPACE_NOT_IN_ORGANIZATION` stays until phase 4, then gives way to `RESOURCE_NOT_IN_ORGANIZATION` (E2).
 - **Today** the only consumer is Nanostack's own product, so phase 3 is one coordinated change on that side.
 
-> **Implementation note (M5, PR 15).** Phases 1 and 2 are in. A migration runs beside each start under an advisory lock. It declares `workspace` under `organization`, which counts toward the Product's 50 types; a declared `workspace` that may sit there is reused, and a Product whose slug can't is left alone and logged. It registers each workspace with its ID and name, and marks the resource as the workspace's mirror. It moves a `workspace_memberships` row into a role assignment only when the row's role is scoped to `workspace`; workspace roles have been Organization-scoped since G1, so such rows stay, counted in the log. It only fills gaps, and deletes a mirror whose workspace a previous release deleted. The workspace routes write the resource in their own transaction, and the last write of either side wins. Access evaluation checks a workspace on its resource, an Organization-scoped permission on the Organization, and a mirror whose workspace is gone as absent, so every answer for a workspace of the workspace routes is unchanged. Two answers are new: a role assigned on a workspace grants, and a `workspace` resource the Product registered itself is decided as registered. The five operations are `deprecated: true` and answer with `Deprecation` and `Link: rel="successor-version"` headers. Phase 3 is PR 16, in the Product's own repository; phase 4 is tracked by M7 ([#266](https://github.com/nanostack-dev/anchor/issues/266)). See [Resources](../technical/resources.md#workspaces).
+> **Implementation note (M5, PR 15).** Phases 1 and 2 are in. A migration runs beside each start under an advisory lock. It declares `workspace` under `organization`, which counts toward the Product's 50 types; a declared `workspace` that may sit there is reused, and a Product whose slug can't is left alone and logged. It registers each workspace with its ID and name, and marks the resource as the workspace's mirror. It moves a `workspace_memberships` row into a role assignment only when the row's role is scoped to `workspace`; workspace roles have been Organization-scoped since G1, so such rows stay, counted in the log. It only fills gaps, and deletes a mirror whose workspace a previous release deleted. The workspace routes write the resource in their own transaction, and the last write of either side wins. Access evaluation checks a workspace on its resource, an Organization-scoped permission on the Organization, and a mirror whose workspace is gone as absent, so every answer for a workspace of the workspace routes is unchanged. Two answers are new: a role assigned on a workspace grants, and a `workspace` resource the Product registered itself is decided as registered. The five operations are `deprecated: true` and answer with `Deprecation` and `Link: rel="successor-version"` headers. Phase 3 is PR 16, in the Product's own repository; phase 4 is tracked by M7 ([#266](https://github.com/nanostack-dev/anchor/issues/266)). The workspace backfill cleanup ([G4](#dr-g4), #294) removed the per-start step: a workspace update now declares the type and registers its workspace, and a mirror whose workspace is gone stays absent through its mark, for checks on it and on every resource under it. See [Resources](../technical/resources.md#workspaces).
 
 > **Implementation note (phases 3 and 4).** Echopoint, the only consumer, moved first: it declares its `workspace` type in Terraform, registers each workspace through the resource routes with an ID it mints, and gives an Organization with no workspace a "Default" one on its own side, under a lock per Organization. Prod logs then showed no call to a `/workspaces` route, and no prod workspace write had emitted a `workspace.*` event since. Anchor then removed, in one change: the five `/workspaces` routes, `include=workspace` and the initial `workspace` of an Organization create, the `workspace.*` events, the `workspace:*` product key scopes, `WORKSPACE_NOT_IN_ORGANIZATION`, the startup backfill, the mirror marks and `RESOURCE_IS_WORKSPACE`, the admin pages, and the SDK's `Workspaces()`. The tables `workspaces`, `workspace_memberships` and `workspace_resources` stayed one more release, so pods of the previous release kept working during the rolling deploy; migration `000073` then dropped them. Every prod workspace already had its resource, none of them mirrored a deleted workspace, and no workspace membership existed. An unknown or foreign workspace is now `RESOURCE_NOT_FOUND`, like any unregistered resource that names no parent, rather than the `RESOURCE_NOT_IN_ORGANIZATION` this record first planned: that reason stays for a named parent, as E2's M4 note decided.
 >
@@ -653,6 +673,22 @@ Workspace is built into Anchor today: its own table, API, admin UI, events, and 
 <summary>Why</summary>
 
 One model instead of a generic model plus a special case. A Product that has no workspaces never sees the concept, and one that names them "projects" or "spaces" uses its own word.
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| Phases 1 and 2 run as a startup step beside the start, plus a dual write on the workspace routes; the routes are deprecated with `Deprecation` and `Link` headers. | Public IDs are KSUIDs, which SQL can't mint, and the previous release keeps writing during the deploy. A step in fx's start hook would race its 15 s timeout, so it runs beside the start, and one anti-join finds the workspaces still missing. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| References the routes and the backfill write are marked; a marked reference whose workspace row is gone counts as absent and answers `WORKSPACE_NOT_IN_ORGANIZATION`. The backfill pruned it until the workspace backfill cleanup ([G4](#dr-g4)) removed it; the mark keeps it absent after that. | The review reproduced it: a workspace the previous release deleted during the deploy kept its reference and answered allowed forever. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| Permissions the `workspace` type doesn't define are checked on the Organization until phase 4. | Every existing workspace decision asks Organization-scoped permissions. Without the fallback, each would have changed answer. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| `workspace_memberships` rows become assignments only when their role is `workspace`-scoped; other rows stay. | D4 requires the role's scope to equal the resource's type, and today's workspace roles are Organization-scoped. No route on `main` writes that table. | [#287](https://github.com/nanostack-dev/anchor/pull/287) |
+| Phases 3 and 4 ran as a change pair: the code removal first, the table drop one release later. | A rolling deploy runs the previous release against the new schema, and the previous release read `workspace_resources` on every resource check. | [#304](https://github.com/nanostack-dev/anchor/pull/304), [#305](https://github.com/nanostack-dev/anchor/pull/305) |
+| An unknown or foreign workspace is `RESOURCE_NOT_FOUND`, not `RESOURCE_NOT_IN_ORGANIZATION`. | E2 keeps `RESOURCE_NOT_IN_ORGANIZATION` for a named parent; a resource that names none is `RESOURCE_NOT_FOUND`, whatever its type. | [#304](https://github.com/nanostack-dev/anchor/pull/304) |
+| The Organization fallback became a model rule: each type answers the permissions scoped to its ancestor types through its parent (amends E3). | A fallback to the Organization skipped intermediate ancestors and let `granted_by` name a role that did not decide. One release kept the fallback for workspaces, because replicas of the previous release wrote their model back while the deploy rolled. | [#304](https://github.com/nanostack-dev/anchor/pull/304), [#305](https://github.com/nanostack-dev/anchor/pull/305) |
 
 </details>
 
@@ -812,6 +848,17 @@ Nesting is about **types**; cycles are about **instances**.
 | folder *design* into *specs*, while *specs* is inside *design* | ❌ `409 RESOURCE_CYCLE` | *design* would become its own ancestor, and every check on it would walk forever |
 
 Anchor detects the cycle by walking up from the new parent: if it meets the resource being moved, the move is refused.
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| All resource writes in one Organization run one at a time, under an advisory lock on the Organization's resources. | Locking only the moved resource's subtree can't stop two crossing moves from forming a cycle: they lock different roots. `TestConcurrentResourceWrites` fails without the lock. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
+| A path naming `organization` as the resource type answers `404 RESOURCE_TYPE_NOT_REGISTRABLE`. | The review found `BUILT_IN_RESOURCE_TYPE` with two statuses, 409 on the type routes and an undeclared 400 here. A type named in the path is a 404 under the house status rules. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
 
 </details>
 
@@ -1085,6 +1132,16 @@ The engine already takes the union: two role assignments are two tuples, and a c
 >
 > **Answer:** the list-shaped contract now; the `roles_per_resource` setting later, with `single` as the only value until then.
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| `role_ids` holds 1 to 10 IDs; more than one answers `400 SINGLE_ROLE_PER_RESOURCE`, and an unknown role `400 ROLE_NOT_FOUND_IN_REQUEST`. | `single` is the only setting (Q-D3.2). An entity named in a request body answers 400 under the house status rules, as for memberships. | [#282](https://github.com/nanostack-dev/anchor/pull/282) |
+
+</details>
+
 </details>
 
 <a id="dr-d4"></a>
@@ -1135,6 +1192,17 @@ erDiagram
 | Acme Corp · Maya Chen · admin | — |
 | Acme Corp · Dan Okafor · member | folder Design · Dan Okafor · folder-viewer |
 | Acme Corp · Bob Lee · member | document Pricing page · Bob Lee · document-viewer |
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| A role assignment references the membership `(organization_id, product_user_id)` with `ON DELETE CASCADE`; every path that removes assignments emits one `resource.role_assignment.deleted` per row before the delete. | The review found that Organization, product user and Clerk user deletes removed assignments through the cascade with no event, so webhook consumers kept holders that were gone. `TestDeletesReleaseResourceRoles` covers all three. A Product delete still removes them without events. | [#282](https://github.com/nanostack-dev/anchor/pull/282) |
+| Writes take, in this order everywhere: the Organization `FOR KEY SHARE`, the Organization's resources in shared mode, the (resource, member) lock, the membership `FOR KEY SHARE`, then each role. | The review found a member removal racing `DELETE …/members/{user}` could emit a duplicate event or answer 204 after deleting nothing. The race CTs now check that created and deleted events balance. | [#282](https://github.com/nanostack-dev/anchor/pull/282) |
 
 </details>
 
@@ -1518,6 +1586,8 @@ The cost is one row per template per Organization: 10,000 Organizations with 8 t
 
 </details>
 
+
+
 </details>
 
 </details>
@@ -1661,6 +1731,8 @@ The Product removes `document:share` from the `project-admin` template:
 > **Q-D10.4** A limit on custom roles per Organization? *(recommended: 50)*
 >
 > **Answer:** at most 50 per Organization.
+
+
 
 </details>
 
@@ -1836,6 +1908,18 @@ The spec only shows reasons in a non-normative example (`reason_admin`, `reason_
 >
 > **Answer:** yes, as an Anchor extension: `options.explain: true` adds `granted_by` inside `context`.
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| An undeclared `resource.type` answers a 200 deny `RESOURCE_TYPE_NOT_FOUND` instead of a 400. | E2 lists it as a deny reason. No request a released client sends starts failing; the deployed flow suite sends no undeclared type. | [#283](https://github.com/nanostack-dev/anchor/pull/283) |
+| An unregistered resource with no parent is `RESOURCE_NOT_FOUND`, even when another Organization registered the same ID. | IDs are unique per Organization and type (B2), so that is another resource. The review also found the other reason told a caller without `resource:read` whether the ID existed elsewhere. | [#283](https://github.com/nanostack-dev/anchor/pull/283) |
+| `granted_by` is read from Anchor's tables after OpenFGA decided; an error while explaining returns the decision without it. | Right after a write it can briefly name a different grant than the store used. Before the fix, an explanation error turned an allowed decision into a 500. | [#283](https://github.com/nanostack-dev/anchor/pull/283) |
+
+</details>
+
 </details>
 
 <a id="dr-e3"></a>
@@ -1966,6 +2050,17 @@ type folder
 - [OpenFGA: concepts](https://openfga.dev/docs/concepts)
 - [OpenFGA: parent-child objects](https://openfga.dev/docs/modeling/parent-child)
 - [ADR-0021](0021-access-decisions-come-from-openfga.md), the engine and its sync
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| A role assignment is keyed by the object and the role, `role_assignment:<organization or resource>.<role>`, with every holder as an `assignee`, instead of one assignment per member. | With one per member, a check walked every member's assignment. On OpenFGA 1.22, a denied check took 0.3 ms at 10 members, 18.6 ms at 1,000 and 210 ms at 5,000; 50 checks took 2.24 s at 1,000 and 11.3 s at 5,000. With one per role, a denial takes about 0.25 ms at 10, 1,000 and 5,000 members, and 50 checks 65 ms at 5,000. | [#276](https://github.com/nanostack-dev/anchor/pull/276) |
+| Every Product type is named `rt_<slug>` in the model, the model carries no comment, and the model limit is raised from 256 KiB to 1 MiB. | Valid slugs such as `define`, `and`, `self` or `user` broke the DSL or OpenFGA's validator, and a newline in a permission name broke a comment line; a unit test compiles them all. A model grows by about half a kilobyte per permission and type that holds it. | [#276](https://github.com/nanostack-dev/anchor/pull/276) |
 
 </details>
 
@@ -2131,6 +2226,21 @@ Every Anchor collection is a cursor search with sort and filters, and every writ
 >
 > **Answer:** right after each write; the mark and the sweeper are the backup.
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| A store answers decisions only once a full rebuild has filled it (`authz_stores.reconciled_at`); the first decision for a Product runs that rebuild once per process. | Before, a concurrent decision saw the model, written first, and checked a store with no tuples: a 200 deny. Found by the review of the switch. | [#278](https://github.com/nanostack-dev/anchor/pull/278) |
+| A write usually reaches the store before its response; when its replay can't take the Product lock within 3 s, or the Product's sync fails, decisions see the previous state until the sweeper replays the mark, within 5 s or after a 1-minute backoff. A mark replayed more than a minute late logs `authz.mark_stale`. | The review found the first wording, "the next request already sees the change", promised more than the code guarantees. The route description and docs state the cases. | [#278](https://github.com/nanostack-dev/anchor/pull/278) |
+| A resource write marks only its own object and its replay syncs that object: the `resource_parents` and `resource_assignments` sources are keyed by `rt_<slug>:<row id>`, and the Organization's sources read no resource. | Reading every registered resource on each Organization sync cost about 0.4 ms per resource: 0.35 to 0.42 s at 1,000. Bulk registration was quadratic, and past about 7,000 resources one sync outlasted the 3 s lock wait. A replay now takes 6 to 8 ms at 10 or 1,000 resources. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
+| Mark revisions come from one sequence, and one replica sweeps at a time. | A mark deleted and made again restarted at revision 1, so a sync could clear a newer mark. Every replica repeated the same sweep. | [#276](https://github.com/nanostack-dev/anchor/pull/276) |
+| Production keeps a drift signal: the evaluator logs `authz.decision_drift`, sampled, when OpenFGA disagrees with the permissions the tables list. | The shadow (PR 6) is removed by the switch, and the end-of-suite mirror check runs only in CI. | [#278](https://github.com/nanostack-dev/anchor/pull/278) |
+| A key's sync holds the Product's lock in share mode and its key's exclusively, so the keys of one Product, an Organization, a role or a resource, sync side by side. Only a model write, a whole-Product step and a rebuild hold the Product's lock exclusively. | With one lock per Product, a catalog write replayed the whole Product while membership writes in other Organizations waited their 3 s and fell back to the sweeper. The Nanostack product's CT suite saw decisions answer `MISSING_PERMISSION` for 3 to 7 s. An `fgasync` unit test holds one key's lock: another key of the Product syncs, and the busy key waits. | [#278](https://github.com/nanostack-dev/anchor/pull/278), [#281](https://github.com/nanostack-dev/anchor/pull/281) |
+
+</details>
+
 </details>
 
 ### F. Admin UI
@@ -2214,6 +2324,16 @@ flowchart LR
 
 - [React Flow: learn](https://reactflow.dev/learn)
 - [dagre layout](https://github.com/dagrejs/dagre)
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| The first view fits the tree but stops zooming out at 50%; the fit button shows a wide tree whole. | A 51-type tree fitted in full was unreadable in review screenshots. | [#279](https://github.com/nanostack-dev/anchor/pull/279) |
 
 </details>
 
@@ -2312,6 +2432,18 @@ flowchart LR
 
 </details>
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| The scope is chosen in a select, not a radio tree; create is a route with four steps, scope first. | The design system asks for a select above seven options, and a Product can have 51 types. | [#280](https://github.com/nanostack-dev/anchor/pull/280) |
+| The `allows_custom_roles` switch is saved with the type's `PATCH` before the tree `PUT`, with its own message. | The tree `PUT` has no `allows_custom_roles` field, so the two can't be one transaction. | [#280](https://github.com/nanostack-dev/anchor/pull/280) |
+| An Organization's roles are a read-only section of the existing per-Organization page. | It is the only page per Organization in the admin UI. | [#280](https://github.com/nanostack-dev/anchor/pull/280) |
+
+</details>
+
 </details>
 
 <a id="dr-f5"></a>
@@ -2340,6 +2472,17 @@ flowchart LR
 >
 > **Answer:** a follow-up, right after the canvas.
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| The access evaluation routes accept the Product's platform session as well as a Product API key. | The admin UI signs in with the platform session, so every Check answered 401. The maintainer approved the change. The tenant must own the Product, and the admin's own access is still decided by tenant ownership and API key scopes, never by OpenFGA. | [#286](https://github.com/nanostack-dev/anchor/pull/286) |
+| The path is written out under the panel, and "Show on the canvas" scrolls to the highlight. | The canvas shows types, not instances. A sticky canvas doesn't stick inside the app shell's scrolling box. | [#286](https://github.com/nanostack-dev/anchor/pull/286) |
+
+</details>
+
 </details>
 
 ### G. Migration and rollout
@@ -2355,7 +2498,7 @@ flowchart LR
 
 After it, every decision is unchanged, because Organization-scoped roles reach every resource below the Organization. The workspace move (A6) is a separate, later migration.
 
-> **Implementation note (PR 1).** Public IDs are KSUIDs, which SQL cannot mint, and a rolling deploy runs the previous release beside the new one. The seed and the scope backfill therefore run as an idempotent startup step, `resource_type_id` stays nullable, and a null scope reads as Organization until the G6 cleanup makes it `NOT NULL`. See [resource types](../technical/resource-types.md#backfill).
+> **Implementation note (PR 1).** Public IDs are KSUIDs, which SQL cannot mint, and a rolling deploy runs the previous release beside the new one. The seed and the scope backfill therefore run as an idempotent startup step, `resource_type_id` stays nullable, and a null scope reads as Organization until the scope cleanup above #270 ([G4](#dr-g4)) makes it `NOT NULL`. Migration `000058` closes the nullable column: it scopes any row the backfill missed to its Product's `organization` type, then sets `resource_type_id` `NOT NULL`, and the release refuses to start if the column is still nullable. See [resource types](../technical/resource-types.md#backfill).
 
 > **Implementation note (PR 2).** The same holds for the role `type`: it is added nullable with no default, the code reads a null type as `MANAGED` (the previous release writes only managed roles), a startup step writes `MANAGED`, and a later contract step makes it `NOT NULL`.
 
@@ -2409,6 +2552,16 @@ UPDATE product_roles SET type = 'MANAGED' WHERE type IS NULL;
 
 </details>
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| `resource_type` stays required with no server default; PR 1 merges only once the Terraform provider sends it and infra pins that release, Echopoint's pinned Anchor image digest bump sends it, and the flow suite sends it. | C1 and D1 forbid defaulting a scope, which conflicts with the rule for released clients in `AGENTS.md`. The maintainer chose the merge gate. For the flow suite, the 13 flows that create roles or permissions have copies that send it, swapped in once PR 1 is deployed. | [#270](https://github.com/nanostack-dev/anchor/pull/270) |
+
+</details>
+
 </details>
 
 <a id="dr-g3"></a>
@@ -2445,6 +2598,16 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 >
 > **Answer:** assignment events go to webhooks; resource events stay internal at first.
 
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| A new `Undelivered` event flag: the event is emitted to in-transaction observers, never queued, never listed in the catalog and never subscribable. `resource.created`, `resource.updated` and `resource.deleted` use it. | G3 keeps resource events internal; the sync marks still need to see them. A CT asserts that no queue row exists for them. | [#281](https://github.com/nanostack-dev/anchor/pull/281) |
+
+</details>
+
 </details>
 
 <a id="dr-g4"></a>
@@ -2457,6 +2620,7 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 - It is cut from `main`. The POC branch (`poc/openfga-authz`) stays a draft reference that PRs take code from; it is never merged.
 - It is one of three kinds: **invisible** (no change for products), **new behind a switch**, or **a switch-over** of behaviour a previous PR proved.
 - It ships its migration and its tests. Tests that existed before it pass unchanged.
+- A startup backfill, which a rolling deploy needs because SQL can't mint KSUIDs, is removed by a **cleanup PR** directly above the PR that adds it. The cleanup merges only after its gate below holds, so the backfill has run over what the previous release wrote. Then the backfill and every read that exists only for unbackfilled rows go.
 
 | Milestone | PRs | Kind | Done when |
 | :-- | :-- | :-- | :-- |
@@ -2468,6 +2632,14 @@ They replace the `workspace.*` and `workspace.membership.*` events, which keep f
 | [#264](https://github.com/nanostack-dev/anchor/issues/264) **M5 · Workspace becomes generic** | 15. Workspaces migrate into a `workspace` resource type and assignments; the old routes are deprecated (A6 phases 1–2)<br/>16. Nanostack's own product moves to the generic API, under the cross-repo rollout rule in `AGENTS.md` | switch-over | released clients still pass against the deprecated routes |
 | [#265](https://github.com/nanostack-dev/anchor/issues/265) **M6 · First adopting product** | planned in its own change | new | — |
 | [#266](https://github.com/nanostack-dev/anchor/issues/266) **M7 · Cleanup** | the G6 checklist | removal | request logs show no remaining caller over the agreed period |
+
+**Cleanup PRs.** Each is its own PR, directly above the PR it cleans, and the stack stays linear: `main`, the scope cleanup, then #271 and up. Later migrations are numbered after the cleanups' migrations.
+
+| Cleanup PR | Directly above | Removes | Merges when |
+| :-- | :-- | :-- | :-- |
+| **Scope cleanup**, the bottom of the stack | [#270](https://github.com/nanostack-dev/anchor/pull/270) (PR 1) | migration `000058` scopes any role or permission the backfill missed to its Product's `organization` type and makes `resource_type_id` `NOT NULL` on `product_roles` and `product_resource_permissions`; the startup scope backfill and the reads that count a null scope as `organization` go; the seed on Product creation stays; the release refuses to start while either column is nullable | 1. #270 is deployed to prod. 2. A prod query shows zero rows with a null `resource_type_id` in both tables. |
+| **Role type cleanup** ([#293](https://github.com/nanostack-dev/anchor/pull/293)) | [#271](https://github.com/nanostack-dev/anchor/pull/271) (PR 2) | the startup type backfill and the read of a null `type` as `MANAGED`; migration `000066` fills any null `type` with `MANAGED` and makes `product_roles.type` `NOT NULL` | 1. #271 is deployed to prod. 2. A prod query shows no role with a null `type`. |
+| **Workspace removal** | [#287](https://github.com/nanostack-dev/anchor/pull/287) (PR 15) | everything A6 phase 4 removes: [#304](https://github.com/nanostack-dev/anchor/pull/304) the code, routes, scopes, events, backfill and marks; [#305](https://github.com/nanostack-dev/anchor/pull/305) the three tables, one release later. It replaced the narrower backfill cleanup ([#294](https://github.com/nanostack-dev/anchor/pull/294), closed). | merged and deployed on 2026-10-30, after Echopoint registered its workspaces as resources and prod logs showed no call to a `/workspaces` route |
 
 <details>
 <summary>📌 Real example</summary>
@@ -2489,6 +2661,20 @@ PR 6 in practice: one decision, both answers, one log line when they differ.
 authz.shadow_mismatch product=prod_2qL9 org=org_2qL9aC3m subject=pusr_2qLAb0bL
   permission=documents:read resource=organization:org_2qL9aC3m legacy=allow openfga=deny
 ```
+
+</details>
+
+
+<details>
+<summary>📌 Update (implementation, 2026-10-25): what changed, and why</summary>
+
+| Change | Why: the fact behind it | PR |
+| :-- | :-- | :-- |
+| PR 2 shipped as three PRs: #271 adds `type` and `organization_id` on roles and the reads that handle both, #272 makes the membership role optional, and #293 requires the type once #271 ran in prod. | Production deploys start-first, so the previous release runs beside the new one, and its writes leave `type` null until the next release reads them. | [#271](https://github.com/nanostack-dev/anchor/pull/271), [#272](https://github.com/nanostack-dev/anchor/pull/272), [#293](https://github.com/nanostack-dev/anchor/pull/293) |
+| PR 6's gate compares more than live decisions: at the end of the suite, every member's and active key's permissions in the tables are compared with OpenFGA's answer for every permission of the Product. | The shadow compared only 24 actions over the whole suite, so most writes were never measured. The end-of-suite sync check compares 508 permissions across 100 products, and a run with the sync's deletes removed failed it. | [#277](https://github.com/nanostack-dev/anchor/pull/277) |
+| PR 6's shadow runs after the answer, at most 8 at a time with a 500 ms budget, in batches of 50 checks. | Inline, it could add up to 2 s to a decision, and a request with more than 50 actions failed its comparison. | [#277](https://github.com/nanostack-dev/anchor/pull/277) |
+| PR 7 keeps Postgres for resolving the subject and for the response's `context.permissions`; only the decision moved to OpenFGA. | `context.permissions` is part of the evaluation contract. Removing the reach steps would let OpenFGA answer for removed members and inactive keys. | [#278](https://github.com/nanostack-dev/anchor/pull/278) |
+| PR 10, the explainer, comes after PR 13 in the stack. | It needs E2's `granted_by`, which PR 13 adds. | [#283](https://github.com/nanostack-dev/anchor/pull/283) |
 
 </details>
 
@@ -2589,13 +2775,12 @@ resource "anchor_product_role" "folder_viewer" {
 | Remove | From | Replaced by |
 | :-- | :-- | :-- |
 | `scope_modifier`: column, API field, search filter, Terraform attribute | permissions | resource type scope (C1, C3) |
-| nullable `resource_type_id` on `product_roles` and `product_resource_permissions`, and the read that counts a null scope as `organization` | roles and permissions | `NOT NULL`, after a final run of the startup backfill |
 | `workspaces` table, `/workspaces` routes, admin pages, `workspace.*` events ✅ removed (A6 phase 4) | built-in Workspace | a `workspace` resource type a Product declares (A6) |
 | `workspace_memberships` table, workspace member routes, `workspace.membership.*` events ✅ removed (A6 phase 4) | workspace roles | `resource_role_assignments` (D4) |
-| `WORKSPACE_NOT_IN_ORGANIZATION` | access evaluation | `RESOURCE_NOT_IN_ORGANIZATION` (E2) |
+| `WORKSPACE_NOT_IN_ORGANIZATION` ✅ removed (A6 phase 4) | access evaluation | `RESOURCE_NOT_FOUND` (E2) |
 | ADR-0021's fixed two-type model builder | `internal/authz/model` | the catalog compiler (E3) |
-| Workspace and workspace-member methods | Go SDK, UI client, Terraform provider (where present) | generic resource and assignment methods |
-| "Workspace" and "workspace role" entries | `CONTEXT.md` | "resource type", "resource", "role assignment" |
+| Workspace and workspace-member methods ✅ removed (A6 phase 4) | Go SDK, UI client, Terraform provider (where present) | generic resource and assignment methods |
+| "Workspace" and "workspace role" entries ✅ rewritten (A6 phase 4) | `CONTEXT.md` | "resource type", "resource", "role assignment" |
 
 - **Each Product keeps its own list** of what it can drop on its side once it relies on Anchor's decisions, such as local membership or permission caches. It is tracked in that Product's repository, not here.
 - **This table is the checklist.** Anything else this ADR deprecates later is added to it, so the cleanup never depends on memory.
