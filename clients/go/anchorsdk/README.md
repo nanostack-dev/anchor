@@ -83,7 +83,10 @@ org := c.Organization("org_3iXYZ")
 | `org.Members()` | list, search, get, add, remove, set role |
 | `org.Invitations()` | create, list, search by status and email, get, update, delete, accept |
 | `c.Invitations()` | search every organization of the product by status and email |
-| `org.Workspaces()` | create, get, update, delete, search, list |
+| `org.Resource(type, id)` | put (register, rename, move), get, delete, delete a tree, `Members()`: assign, get, remove, search |
+| `org.Resources()` | search by type, ID, name and parent |
+| `c.AccessForUser(id)`, `c.AccessForAPIKey(raw)` | evaluate on an organization or a resource: `On(resource).Can(ctx, perms...)` |
+| `org.Workspaces()` | deprecated: workspaces are resources of the product's `workspace` type |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
 | `org.License()` | get (cached), instantiate, adjust, diff, report usage |
 | `anchorsdk.Events(secret)` | typed Standard Webhooks ingest (`http.Handler`) |
@@ -160,6 +163,28 @@ decision, err := c.AccessForUser(accountID).InOrganization(o.ID()).Permissions("
 The external ID is printable ASCII of at most 255 characters, unique within the product (a duplicate
 matches `ErrConflict`), and cannot change after the create. A Clerk integration of the same product
 uses the same IDs, and its events overwrite the email and name of a user created with a Clerk user ID.
+
+### Resources and access
+
+A resource is a thing the product protects, of a type the product declared, named by the product's
+own ID. A handle calls nothing until a method sends:
+
+```go
+ws := o.Resource("workspace", workspaceID)
+_, err = ws.Put("Default").Do(ctx)                                 // under the organization
+_, err = o.Resource("folder", folderID).Put("Specs").Under("workspace", workspaceID).Do(ctx)
+_, err = ws.Members().Assign(ctx, productUserID, editorRoleID)    // pusr_...; replaces their role there
+
+ok, err := c.AccessForUser(externalUserID).On(ws).Can(ctx, "flow:run")
+decision, err := c.AccessForAPIKey(rawKey).On(ws).Permissions("flow:run", "flow:edit").Do(ctx)
+
+for r, err := range o.Resources().Search().Types("workspace").All(ctx) { ... }
+```
+
+Every call is retried on transient failures: `Put` and `Assign` change nothing when sent again, and
+a retried delete whose first attempt succeeded answers success. `Delete` refuses a resource that
+holds another resource or a role (`ErrConflict`); `DeleteTree` removes them too. `Can` needs at
+least one permission and answers false on a denial; `Do` returns the decision with the reason.
 
 ### Invitations
 
