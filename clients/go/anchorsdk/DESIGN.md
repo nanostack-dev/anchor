@@ -10,7 +10,7 @@ Same module as the generated client it wraps, so the two version together — no
 
 **Standard library only.** No `nanostack-framework` import, ever. Anchor is source-available with a public Go client; consumers outside the Nanostack stack must be able to depend on this without inheriting the framework, and coupling the SDK's version to the framework's would force lockstep upgrades. This is why `retry.go` exists instead of using `pkg/retry`, and why errors are plain Go errors instead of `pkg/fault`.
 
-**Scope: what a product *uses*, not what an admin *operates*.** In: email send, organizations, organization members, workspaces, organization API keys (including validate/introspect), product users, and later licensing. Out: creating products, platform users, platform invitations, and the permission/role catalog — those belong to the admin UI and Terraform, and stay reachable via `Client.Raw()`.
+**Scope: what a product *uses*, not what an admin *operates*.** In: email send, organizations, organization members, resources and the roles held on them, access evaluation, organization API keys (including validate/introspect), product users, and later licensing. Out: creating products, platform users, platform invitations, and the permission/role catalog and resource types — those belong to the admin UI and Terraform, and stay reachable via `Client.Raw()`.
 
 **Product ID bound at construction.** Every product-scoped generated method takes `productId` as its first parameter. The SDK binds it once in `New` so it never appears at a call site.
 
@@ -53,7 +53,10 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `email.go` | done — fluent send; the FAILED-record rule is preserved |
 | `organizations.go` | done — create/update builders, get, delete, search, list |
 | `members.go` | done — list, search, get (plus role permissions), add, remove, set role |
-| `workspaces.go` | done — create, get, update, delete, search, list |
+| `workspaces.go` | deprecated — create, get, update, delete, search, list |
+| `resources.go` | done — `Resource` handle: put (with `Under`), get, delete, delete a tree; `Resources().Search()` |
+| `resource_members.go` | done — roles on a resource: assign, get, remove, search |
+| `access.go` | done — evaluate on an organization, a workspace or a resource; `On(resource)`, `Can` |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
 | `users.go` | done — create, get, delete, search, list, a user's organizations (`SearchOrganizations`, `Organizations` reads every page) |
 | `paginate.go` | done — the cursor iterator behind every `All` |

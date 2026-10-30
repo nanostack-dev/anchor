@@ -30,7 +30,8 @@ func (c *Client) AccessForUser(externalUserID string) *AccessCheck {
 }
 
 // AccessForAPIKey evaluates a raw organization API key. The key's own
-// organization is used unless InOrganization or InWorkspace names one.
+// organization is used unless InOrganization, InWorkspace, OnResource or On
+// names one.
 func (c *Client) AccessForAPIKey(rawKey string) *AccessCheck {
 	return c.accessCheck(nanoclient.AccessSubject{Type: nanoclient.OrganizationApiKey, Id: rawKey})
 }
@@ -75,6 +76,14 @@ func (a *AccessCheck) OnResource(organizationID, resourceType, id string) *Acces
 	}
 	a.body.Resource = resource
 	return a
+}
+
+// On targets a resource from its handle, which must not be nil:
+//
+//	ws := c.Organization(orgID).Resource("workspace", workspaceID)
+//	ok, err := c.AccessForUser(externalUserID).On(ws).Can(ctx, "flow:run")
+func (a *AccessCheck) On(r *Resource) *AccessCheck {
+	return a.OnResource(r.o.id, r.typ, r.id)
 }
 
 // Under names the parent of a resource the product has not registered: a
@@ -133,6 +142,18 @@ func (a *AccessCheck) Do(ctx context.Context) (*nanoclient.AccessEvaluationsResp
 		}
 		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
 	})
+}
+
+// Can sends the check and answers whether the subject holds the permissions,
+// with any named before through [AccessCheck.Permissions]. At least one is
+// required, so a check never asks only whether the subject reaches the
+// resource. Use [AccessCheck.Do] to read why a check is denied.
+func (a *AccessCheck) Can(ctx context.Context, permission string, more ...string) (bool, error) {
+	decision, err := a.Permissions(append([]string{permission}, more...)...).Do(ctx)
+	if err != nil {
+		return false, err
+	}
+	return decision.Decision, nil
 }
 
 func optional(value string) *string {

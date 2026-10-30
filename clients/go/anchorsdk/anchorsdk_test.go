@@ -50,6 +50,7 @@ type stubResponse struct {
 type recordedRequest struct {
 	method string
 	path   string
+	query  string
 	body   []byte
 	header http.Header
 }
@@ -86,6 +87,7 @@ func (s *stubServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.requests = append(s.requests, recordedRequest{
 		method: r.Method,
 		path:   r.URL.Path,
+		query:  r.URL.RawQuery,
 		body:   body,
 		header: r.Header.Clone(),
 	})

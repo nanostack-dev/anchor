@@ -2,7 +2,8 @@
 //
 // It wraps the generated OpenAPI client ([nanoclient]) with a fluent, typed
 // surface for the operations a product backend performs at runtime: sending
-// transactional email, managing its organizations and their members, issuing
+// transactional email, managing its organizations and their members,
+// registering the resources it protects, deciding access to them, issuing
 // organization API keys, and resolving credentials.
 //
 // # Scope
@@ -10,8 +11,8 @@
 // This SDK covers what a product *uses*, authenticated with a product API key.
 // It deliberately does not cover platform administration — creating products,
 // managing platform users and invitations, or maintaining the permission and
-// role catalog. Those are operated through the admin UI and Terraform, and
-// remain available on the generated client via [Client.Raw].
+// role catalog and the resource types. Those are operated through the admin UI
+// and Terraform, and remain available on the generated client via [Client.Raw].
 //
 // # Usage
 //
