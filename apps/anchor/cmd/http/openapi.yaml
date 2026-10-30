@@ -3251,7 +3251,7 @@ components:
           type: [string, "null"]
           pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
           # Server only: a Nullable tells an omitted role_id (400) from null
-          # (no role). generate_anchor.sh drops these three hints from the
+          # (no role). scripts/client-spec.sh drops these three hints from the
           # client spec, where a nil pointer sends null.
           x-go-type: nullable.Nullable[string]
           x-go-type-skip-optional-pointer: true
@@ -3422,7 +3422,7 @@ components:
           type: [string, "null"]
           pattern: "^[a-z_]{2,20}_[0-9a-zA-Z]{27}$"
           # Server only: a Nullable tells an omitted role_id (400) from null
-          # (no role). generate_anchor.sh drops these three hints from the
+          # (no role). scripts/client-spec.sh drops these three hints from the
           # client spec, where a nil pointer sends null.
           x-go-type: nullable.Nullable[string]
           x-go-type-skip-optional-pointer: true
