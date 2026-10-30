@@ -171,27 +171,13 @@ function BlockingRoles({
 			path: { product_id: productId },
 			body: { filter: { ids: roleIds }, pagination: { limit: 50 } },
 		}),
-		select: (data) => ({
-			names: data.items.map((role) => role.name),
-			managed: data.total,
-		}),
+		select: (data) => data.items.map((role) => role.name),
 	});
-	if (!roles.data) return null;
-	const { names, managed } = roles.data;
-	const organizationRoles = roleIds.length - managed;
+	if (!roles.data?.length) return null;
 	return (
-		<>
-			{names.length > 0 && (
-				<Box as="span" className="block [overflow-wrap:anywhere]">
-					{`${names.length === 1 ? "Role" : "Roles"} to fix: ${names.join(", ")}.`}
-				</Box>
-			)}
-			{organizationRoles > 0 && (
-				<Box as="span" className="block">
-					{`${plural(organizationRoles, "role", "roles")} that Organizations created also ${organizationRoles === 1 ? "needs" : "need"} changing. Each Organization changes its own roles.`}
-				</Box>
-			)}
-		</>
+		<Box as="span" className="block [overflow-wrap:anywhere]">
+			{`${roles.data.length === 1 ? "Role" : "Roles"} to fix: ${roles.data.join(", ")}.`}
+		</Box>
 	);
 }
 
@@ -559,8 +545,9 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			</Alert>
 		);
 
+	// A refused delete names a type the draft no longer holds.
 	const nameOf = (slug: string) =>
-		types.find((type) => type.slug === slug)?.name ?? slug;
+		[...types, ...published].find((type) => type.slug === slug)?.name ?? slug;
 	const failures =
 		publish.isError &&
 		state.draft &&

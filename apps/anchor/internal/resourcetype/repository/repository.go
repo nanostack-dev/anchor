@@ -30,12 +30,33 @@ var (
 
 const slugUniqueConstraint = "product_resource_types_product_id_slug_key"
 
-// RolePermissionScopes is one role of a product with the scopes of the permissions it
-// holds, all as resource type IDs.
+// RolePermissionScopes is one role of a product with the permissions it
+// holds and their scopes, as resource type IDs. OrganizationID is set on a
+// custom role only.
 type RolePermissionScopes struct {
-	RoleID            string
-	ResourceTypeID    string
-	PermissionTypeIDs []string
+	RoleID         string
+	OrganizationID string
+	ResourceTypeID string
+	Permissions    []PermissionScope
+}
+
+type PermissionScope struct {
+	Name           string
+	ResourceTypeID string
+}
+
+// CustomRole is an Organization's custom role scoped to a type. Held is true
+// while a membership, an assignment or a pending invitation names it.
+type CustomRole struct {
+	ID             string
+	OrganizationID string
+	Held           bool
+}
+
+// DeletedInvitation is a settled invitation deleted with its custom role.
+type DeletedInvitation struct {
+	ID             string
+	OrganizationID string
 }
 
 type Repository interface {
@@ -58,6 +79,13 @@ type Repository interface {
 	// parent is of the given type; organization counts those at the top.
 	CountResourcesUnder(ctx context.Context, productID, id string, parent resourcetype.ResourceType) (int, error)
 	FindRolePermissionScopes(ctx context.Context, productID string) ([]RolePermissionScopes, error)
+	RemoveRolePermissions(ctx context.Context, productID, roleID string, names []string) error
+	// LockCustomRoles locks the custom roles scoped to the type FOR UPDATE,
+	// so a member added on one at the same moment waits, then fails its
+	// foreign key, instead of being removed by the cascade.
+	LockCustomRoles(ctx context.Context, productID, id string) ([]CustomRole, error)
+	// DeleteCustomRoles deletes the roles with their settled invitations.
+	DeleteCustomRoles(ctx context.Context, productID string, ids []string) ([]DeletedInvitation, error)
 }
 
 type repositoryImpl struct {
@@ -304,7 +332,8 @@ func (r *repositoryImpl) CountUsage(ctx context.Context, productID, id string) (
 	roles, err := transactor.QueryCount(ctx, r.db,
 		table.ProductRoles.SELECT(postgres.COUNT(postgres.STAR)).WHERE(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
-				AND(table.ProductRoles.ResourceTypeID.EQ(postgres.String(id))),
+				AND(table.ProductRoles.ResourceTypeID.EQ(postgres.String(id))).
+				AND(table.ProductRoles.OrganizationID.IS_NULL()),
 		),
 	).Value()
 	if err != nil {
@@ -353,9 +382,11 @@ func (r *repositoryImpl) CountResourcesUnder(
 }
 
 type rolePermissionScopesRow struct {
-	RoleID           string `alias:"product_roles.id"`
-	RoleTypeID       string `alias:"product_roles.resource_type_id"`
-	PermissionTypeID string `alias:"product_resource_permissions.resource_type_id"`
+	RoleID           string  `alias:"product_roles.id"`
+	OrganizationID   *string `alias:"product_roles.organization_id"`
+	RoleTypeID       string  `alias:"product_roles.resource_type_id"`
+	PermissionName   string  `alias:"product_resource_permissions.name"`
+	PermissionTypeID string  `alias:"product_resource_permissions.resource_type_id"`
 }
 
 func (r *repositoryImpl) FindRolePermissionScopes(
@@ -365,7 +396,9 @@ func (r *repositoryImpl) FindRolePermissionScopes(
 	rows, err := transactor.Query[[]rolePermissionScopesRow](ctx, r.db,
 		postgres.SELECT(
 			table.ProductRoles.ID.AS("product_roles.id"),
+			table.ProductRoles.OrganizationID.AS("product_roles.organization_id"),
 			table.ProductRoles.ResourceTypeID.AS("product_roles.resource_type_id"),
+			table.ProductResourcePermissions.Name.AS("product_resource_permissions.name"),
 			table.ProductResourcePermissions.ResourceTypeID.AS("product_resource_permissions.resource_type_id"),
 		).FROM(
 			table.ProductRoles.
@@ -377,7 +410,7 @@ func (r *repositoryImpl) FindRolePermissionScopes(
 				),
 		).WHERE(
 			table.ProductRoles.ProductID.EQ(postgres.String(productID)),
-		).ORDER_BY(table.ProductRoles.ID.ASC()),
+		).ORDER_BY(table.ProductRoles.ID.ASC(), table.ProductResourcePermissions.Name.ASC()),
 	).Value()
 	if err != nil {
 		return nil, err
@@ -385,13 +418,112 @@ func (r *repositoryImpl) FindRolePermissionScopes(
 	grouped := functional.Slice(rows).GroupBy(func(row rolePermissionScopesRow) string { return row.RoleID })
 	scopes := make([]RolePermissionScopes, 0, len(grouped))
 	for roleID, permissions := range grouped {
+		organizationID := ""
+		if permissions[0].OrganizationID != nil {
+			organizationID = *permissions[0].OrganizationID
+		}
 		scopes = append(scopes, RolePermissionScopes{
 			RoleID:         roleID,
+			OrganizationID: organizationID,
 			ResourceTypeID: permissions[0].RoleTypeID,
-			PermissionTypeIDs: functional.Slice(permissions).Map(
-				func(row rolePermissionScopesRow) string { return row.PermissionTypeID },
-			),
+			Permissions: functional.Slice(permissions).Map(func(row rolePermissionScopesRow) PermissionScope {
+				return PermissionScope{Name: row.PermissionName, ResourceTypeID: row.PermissionTypeID}
+			}),
 		})
 	}
 	return scopes, nil
+}
+
+func (r *repositoryImpl) RemoveRolePermissions(ctx context.Context, productID, roleID string, names []string) error {
+	if len(names) == 0 {
+		return nil
+	}
+	return transactor.Exec(ctx, r.db, table.ProductRoleResourcePermissions.DELETE().WHERE(
+		table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoleResourcePermissions.ProductRoleID.EQ(postgres.String(roleID))).
+			AND(table.ProductRoleResourcePermissions.PermissionName.IN(jetx.ToStringExpressions(names)...)),
+	)).Err()
+}
+
+func (r *repositoryImpl) LockCustomRoles(ctx context.Context, productID, id string) ([]CustomRole, error) {
+	roles, err := transactor.QueryMapSlice(transactor.ForUpdate(ctx), r.db,
+		table.ProductRoles.SELECT(table.ProductRoles.ID, table.ProductRoles.OrganizationID).WHERE(
+			table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+				AND(table.ProductRoles.ResourceTypeID.EQ(postgres.String(id))).
+				AND(table.ProductRoles.OrganizationID.IS_NOT_NULL()),
+		).ORDER_BY(table.ProductRoles.ID.ASC()),
+		func(row model.ProductRoles) CustomRole {
+			return CustomRole{ID: row.ID, OrganizationID: *row.OrganizationID}
+		},
+	).Value()
+	if err != nil || len(roles) == 0 {
+		return roles, err
+	}
+	held, err := r.heldRoleIDs(ctx, functional.Slice(roles).Map(func(role CustomRole) string { return role.ID }))
+	if err != nil {
+		return nil, err
+	}
+	for i := range roles {
+		roles[i].Held = held[roles[i].ID]
+	}
+	return roles, nil
+}
+
+// heldRoleIDs returns the roles a membership, a resource assignment or a
+// pending invitation names.
+func (r *repositoryImpl) heldRoleIDs(ctx context.Context, ids []string) (map[string]bool, error) {
+	idList := jetx.ToStringExpressions(ids)
+	invitations := table.OrganizationInvitations
+	holders := []postgres.SelectStatement{
+		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.ProductRoleID.AS("role_id")).
+			WHERE(table.OrganizationMemberships.ProductRoleID.IN(idList...)),
+		table.WorkspaceMemberships.SELECT(table.WorkspaceMemberships.ProductRoleID.AS("role_id")).
+			WHERE(table.WorkspaceMemberships.ProductRoleID.IN(idList...)),
+		table.ResourceRoleAssignments.SELECT(table.ResourceRoleAssignments.RoleID.AS("role_id")).
+			WHERE(table.ResourceRoleAssignments.RoleID.IN(idList...)),
+		invitations.SELECT(invitations.ProductRoleID.AS("role_id")).
+			WHERE(invitations.ProductRoleID.IN(idList...).
+				AND(invitations.AcceptedAt.IS_NULL()).
+				AND(invitations.ExpiresAt.GT(postgres.TimestampzT(time.Now())))),
+	}
+	held := map[string]bool{}
+	for _, holder := range holders {
+		rows, err := transactor.Query[[]struct {
+			RoleID string `alias:"role_id"`
+		}](ctx, r.db, holder).Value()
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			held[row.RoleID] = true
+		}
+	}
+	return held, nil
+}
+
+func (r *repositoryImpl) DeleteCustomRoles(
+	ctx context.Context, productID string, ids []string,
+) ([]DeletedInvitation, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	idList := jetx.ToStringExpressions(ids)
+	invitations, err := transactor.QueryMapSlice(ctx, r.db,
+		table.OrganizationInvitations.DELETE().WHERE(
+			table.OrganizationInvitations.ProductID.EQ(postgres.String(productID)).
+				AND(table.OrganizationInvitations.ProductRoleID.IN(idList...)),
+		).RETURNING(table.OrganizationInvitations.ID, table.OrganizationInvitations.OrganizationID),
+		func(row model.OrganizationInvitations) DeletedInvitation {
+			return DeletedInvitation{ID: row.ID, OrganizationID: row.OrganizationID}
+		},
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	err = transactor.Exec(ctx, r.db, table.ProductRoles.DELETE().WHERE(
+		table.ProductRoles.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductRoles.ID.IN(idList...)).
+			AND(table.ProductRoles.OrganizationID.IS_NOT_NULL()),
+	)).Err()
+	return invitations, err
 }

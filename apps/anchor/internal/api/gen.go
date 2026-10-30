@@ -2813,7 +2813,7 @@ type ProductResourceTypeUpdateRequest struct {
 	// NestsInItself Turning it off while a registered resource of this type sits under another of the same type answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources`.
 	NestsInItself *bool `json:"nests_in_itself,omitempty"`
 
-	// ParentTypes Replaces the allowed parent types. Removing a parent type that a role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
+	// ParentTypes Replaces the allowed parent types. Removing a parent type that a managed role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped above this type would then hold a permission outside its scope. An Organization's custom role never blocks the change: it loses those permissions instead, with organization.role.updated. Removing a parent type that a registered resource of this type sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in `metadata.blocked_by.resources` and the type in `metadata.parent_type`.
 	ParentTypes *[]ResourceTypeSlug `json:"parent_types,omitempty"`
 }
 

@@ -417,22 +417,26 @@ export const PublishError: Story = {
 	},
 };
 
-/** Roles Organizations own block a publish too; the admin UI can't change them, so it counts them apart. */
-export const PublishErrorOrganizationRoles: Story = {
+/** A custom role a member still holds blocks deleting its type; the admin UI can't see it, so the refusal counts it. */
+export const PublishErrorCustomRolesHeld: Story = {
 	parameters: {
 		backend: {
 			types: DOCUMENT_TREE,
-			roles: [{ id: "role_1", name: "Project editor" }],
 			publish: {
 				status: 409,
 				body: {
 					errors: [
 						{
 							code: "RESOURCE_TYPE_IN_USE",
-							message: "Roles would hold permissions outside their scope.",
+							message: "document can't be deleted while other records use it.",
 							metadata: {
-								blocked_by: { roles: 3 },
-								role_ids: ["role_1", "orole_2", "orole_3"],
+								slug: "document",
+								blocked_by: {
+									child_types: 0,
+									roles: 0,
+									permissions: 0,
+									custom_roles_held: 1,
+								},
 							},
 						},
 					],
@@ -445,17 +449,21 @@ export const PublishErrorOrganizationRoles: Story = {
 		await startEditing(canvasElement);
 		await userEvent.click(await typeNode(canvasElement, "Document"));
 		await userEvent.click(
-			inspector(canvasElement).getByRole("checkbox", { name: "Folder" }),
+			await inspector(canvasElement).findByRole("button", {
+				name: "Delete Document",
+			}),
+		);
+		const dialog = await screen.findByRole("alertdialog");
+		await userEvent.click(
+			within(dialog).getByRole("button", { name: "Delete type" }),
 		);
 		await userEvent.click(canvas.getByRole("button", { name: "Publish" }));
 		await expect(
-			await canvas.findByText("Role to fix: Project editor."),
-		).toBeVisible();
-		await expect(
-			canvas.getByText(
-				"2 roles that Organizations created also need changing. Each Organization changes its own roles.",
+			await canvas.findByText(
+				"Document can't be deleted: 1 role an Organization created is still held by members or invitations.",
 			),
 		).toBeVisible();
+		await expect(canvas.getByText("Draft: 1 deleted")).toBeVisible();
 	},
 };
 

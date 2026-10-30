@@ -86,7 +86,7 @@ In the domain, `organization.Membership.Role` and `user.OrganizationMembership.R
 - **A permission.** Deleting a permission removes it from every role that bundles it, custom roles included, through the foreign key cascade.
 - **An Organization.** Deleting an Organization deletes its custom roles (`ON DELETE CASCADE`).
 
-A resource type that a custom role is scoped to is in use (`CountUsage`), and a tree change checks custom roles' permission scopes as it checks managed ones (`FindRoleBundles`).
+- **A resource type.** A custom role never blocks the Product's tree (DR-D11). A tree change that moves a permission out of a custom role's scope removes it from the role, with `organization.role.updated`. A type delete deletes the type's custom roles nobody holds, with `organization.role.deleted`, and their settled invitations. It refuses while one is held, counted in `blocked_by.custom_roles_held`. It locks those roles `transactor.ForUpdate` before it counts, for the same reason as a role delete.
 
 ## Admin UI
 

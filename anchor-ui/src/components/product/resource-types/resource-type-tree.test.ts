@@ -285,6 +285,32 @@ describe("publish errors", () => {
 		);
 	});
 
+	it("counts the held custom roles that block a delete", () => {
+		const [problem] = publishProblems(
+			{
+				errors: [
+					{
+						code: "RESOURCE_TYPE_IN_USE",
+						message: "document can't be deleted while other records use it.",
+						metadata: {
+							slug: "document",
+							blocked_by: {
+								child_types: 0,
+								roles: 0,
+								permissions: 0,
+								custom_roles_held: 2,
+							},
+						},
+					},
+				],
+			},
+			nameOf,
+		);
+		expect(problem.message).toBe(
+			"Document can't be deleted: 2 roles Organizations created are still held by members or invitations.",
+		);
+	});
+
 	it("explains a parent type that registered resources still sit under", () => {
 		const [problem] = publishProblems(
 			{

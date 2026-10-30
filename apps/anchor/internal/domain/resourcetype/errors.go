@@ -79,18 +79,19 @@ func NewSelfParentError(slug string) *fault.Error {
 	).Metadata(map[string]any{metadataSlug: slug})
 }
 
-// Usage counts what keeps a type from being deleted or reshaped. Resources
-// is left out when none block, so the counts a client read before resources
-// existed keep their shape.
+// Usage counts what keeps a type from being deleted or reshaped. Roles
+// counts managed roles only. Resources and CustomRolesHeld are left out when
+// none block, so the counts a client read before them keep their shape.
 type Usage struct {
-	ChildTypes  int `json:"child_types"`
-	Roles       int `json:"roles"`
-	Permissions int `json:"permissions"`
-	Resources   int `json:"resources,omitempty"`
+	ChildTypes      int `json:"child_types"`
+	Roles           int `json:"roles"`
+	Permissions     int `json:"permissions"`
+	Resources       int `json:"resources,omitempty"`
+	CustomRolesHeld int `json:"custom_roles_held,omitempty"`
 }
 
 func (u Usage) InUse() bool {
-	return u.ChildTypes > 0 || u.Roles > 0 || u.Permissions > 0 || u.Resources > 0
+	return u.ChildTypes > 0 || u.Roles > 0 || u.Permissions > 0 || u.Resources > 0 || u.CustomRolesHeld > 0
 }
 
 // NewResourcesUnderParentError refuses a change that would leave registered
@@ -120,13 +121,13 @@ func NewInUseError(slug string, usage Usage) *fault.Error {
 	).Metadata(map[string]any{metadataSlug: slug, metadataBlockedBy: usage})
 }
 
-// NewRolesOutOfScopeError refuses a tree change that would leave roles
-// holding a permission no longer below their scope.
+// NewRolesOutOfScopeError refuses a tree change that would leave managed
+// roles holding a permission no longer below their scope.
 func NewRolesOutOfScopeError(slug string, roleIDs []string) *fault.Error {
 	return fault.Conflict(
 		"RESOURCE_TYPE_IN_USE",
 		fmt.Sprintf(
-			"Roles would hold permissions outside their scope if %s changed this way. Remove those permissions from the roles first.",
+			"Managed roles would hold permissions outside their scope if %s changed this way. Remove those permissions from the roles first.",
 			slug,
 		),
 	).Metadata(map[string]any{metadataSlug: slug, metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
@@ -137,6 +138,6 @@ func NewRolesOutOfScopeError(slug string, roleIDs []string) *fault.Error {
 func NewTreeRolesOutOfScopeError(roleIDs []string) *fault.Error {
 	return fault.Conflict(
 		"RESOURCE_TYPE_IN_USE",
-		"Roles would hold permissions outside their scope with this tree. Remove those permissions from the roles first.",
+		"Managed roles would hold permissions outside their scope with this tree. Remove those permissions from the roles first.",
 	).Metadata(map[string]any{metadataBlockedBy: map[string]any{"roles": len(roleIDs)}, "role_ids": roleIDs})
 }

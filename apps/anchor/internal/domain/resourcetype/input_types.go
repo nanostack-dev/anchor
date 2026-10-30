@@ -26,7 +26,7 @@ type UpdateInput struct {
 	Description   *string  `validate:"omitempty,max=500"`
 	ParentTypes   []string `validate:"max=10,unique,dive,required"`
 	NestsInItself *bool
-	// AllowsCustomRoles is accepted only on organization (ADR-0022 D9 phase 1).
+	// AllowsCustomRoles opens custom roles scoped to this type (ADR-0022 D9).
 	AllowsCustomRoles *bool
 }
 

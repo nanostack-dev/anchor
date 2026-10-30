@@ -1050,8 +1050,10 @@ components:
           uniqueItems: true
           description: >-
             Replaces the allowed parent types. Removing a parent type that a
-            role still needs answers 409 RESOURCE_TYPE_IN_USE: a role scoped
-            above this type would then hold a permission outside its scope.
+            managed role still needs answers 409 RESOURCE_TYPE_IN_USE: a role
+            scoped above this type would then hold a permission outside its
+            scope. An Organization's custom role never blocks the change: it
+            loses those permissions instead, with organization.role.updated.
             Removing a parent type that a registered resource of this type
             sits under also answers 409 RESOURCE_TYPE_IN_USE, with the count in
             `metadata.blocked_by.resources` and the type in
@@ -6313,10 +6315,14 @@ paths:
       summary: Delete Product Resource Type
       description: >-
         Deletes a resource type that nothing uses. A type that is the parent of
-        another type, that roles or permissions are scoped to, or that
+        another type, that managed roles or permissions are scoped to, or that
         registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the
         blocking counts in `metadata.blocked_by`; `resources` is present only
-        when resources block it.
+        when resources block it. Custom roles of the type that nobody holds are
+        deleted with it, with organization.role.deleted: its permissions are
+        gone by then, so they grant nothing. A custom role that a membership,
+        an assignment or a pending invitation names blocks the delete,
+        counted in `metadata.blocked_by.custom_roles_held`.
         The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE.
         Emits `product.resource_type.deleted`. Requires Platform Bearer token
         or Product API Key with resource_type:delete.

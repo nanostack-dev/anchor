@@ -1971,7 +1971,7 @@ type ClientInterface interface {
 
 	// DeleteProductResourceType Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 	DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5972,7 +5972,7 @@ func (c *Client) SearchProductResourceTypes(ctx context.Context, productId Produ
 
 // DeleteProductResourceType Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/resource-types/{resource_type_id} (the `DeleteProductResourceType` operationId).
 func (c *Client) DeleteProductResourceType(ctx context.Context, productId ProductIdParameter, resourceTypeId ResourceTypeIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15196,7 +15196,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteProductResourceTypeWithResponse Delete Product Resource Type
 	//
-	// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+	// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -28124,7 +28124,7 @@ func (c *ClientWithResponses) SearchProductResourceTypesWithResponse(ctx context
 
 // DeleteProductResourceTypeWithResponse Delete Product Resource Type
 //
-// Deletes a resource type that nothing uses. A type that is the parent of another type, that roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
+// Deletes a resource type that nothing uses. A type that is the parent of another type, that managed roles or permissions are scoped to, or that registered resources use, answers 409 RESOURCE_TYPE_IN_USE with the blocking counts in `metadata.blocked_by`; `resources` is present only when resources block it. Custom roles of the type that nobody holds are deleted with it, with organization.role.deleted: its permissions are gone by then, so they grant nothing. A custom role that a membership, an assignment or a pending invitation names blocks the delete, counted in `metadata.blocked_by.custom_roles_held`. The built-in `organization` type answers 409 BUILT_IN_RESOURCE_TYPE. Emits `product.resource_type.deleted`. Requires Platform Bearer token or Product API Key with resource_type:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //
