@@ -39,6 +39,9 @@ import {
 } from "./resource-type-layout";
 import { type TreeType, addChildBlocker } from "./resource-type-tree";
 
+const EDGE_MOTION =
+	"stroke 150ms cubic-bezier(0.23, 1, 0.32, 1), opacity 150ms cubic-bezier(0.23, 1, 0.32, 1)";
+
 const nodeTypes: NodeTypes = { resourceType: ResourceTypeNode };
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const REFLOW_SECONDS = 0.2;
@@ -256,9 +259,13 @@ function Canvas({
 						focusable: false,
 						selectable: false,
 						className: trace ? (step ? "trace-step" : "trace-dimmed") : "",
-						style: step
-							? { stroke: "var(--primary)", strokeWidth: 2.5 }
-							: { stroke: "var(--border-strong)", strokeWidth: 1.5 },
+						style: {
+							...(step
+								? { stroke: "var(--primary)", strokeWidth: 2.5 }
+								: { stroke: "var(--border-strong)", strokeWidth: 1.5 }),
+							opacity: trace && !step ? 0.45 : 1,
+							transition: EDGE_MOTION,
+						},
 					};
 				}),
 		);

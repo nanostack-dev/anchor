@@ -49,6 +49,7 @@ import {
 	type ChainLink,
 	type CheckQuestion,
 	type Explanation,
+	type Grant,
 	ORGANIZATION,
 	explain,
 	highlightOf,
@@ -68,6 +69,18 @@ export interface CheckResult {
 
 function memberLabel(member: OrganizationMemberResponse) {
 	return member.name?.trim() || member.email;
+}
+
+// The canvas keyframes (resource-type-canvas.css); reduced motion keeps the fade.
+const RESULT_MOTION =
+	"animate-[resource-type-enter_150ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-[resource-type-fade_150ms_cubic-bezier(0.23,1,0.32,1)_both]";
+
+// No granted_by means Anchor couldn't read its tables; an empty list means a
+// change is still syncing to the decisions.
+function unexplained(grants: Grant[] | null) {
+	return grants
+		? "Anchor couldn't name the role yet: a change is still reaching the decisions. Check again in a moment."
+		: "Anchor couldn't read what granted it.";
 }
 
 function PathLine({
@@ -108,10 +121,10 @@ function PathLine({
 								{` (${typeName(types, link.type)})`}
 							</Box>
 						</Box>
-						{holders.map((holder) => (
+						{holders.map((holder, holderIndex) => (
 							<Box
 								as="span"
-								key={holder}
+								key={`${holderIndex}-${holder}`}
 								className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 font-medium text-success-on-tint text-xs"
 							>
 								<Box as="span" aria-hidden>
@@ -160,7 +173,7 @@ export function AccessDecision({
 	const links = chain?.links ?? [subject];
 	const grants = new Map<string, string[]>();
 	if (explanation.decision === "allowed")
-		for (const grant of explanation.grants) {
+		for (const grant of explanation.grants ?? []) {
 			const key = `${grant.link.type}:${grant.link.id}`;
 			grants.set(key, [...(grants.get(key) ?? []), grant.holder]);
 		}
@@ -193,7 +206,7 @@ export function AccessDecision({
 
 	if (explanation.decision === "allowed")
 		return (
-			<Box as="section" aria-label={label} className="access-result">
+			<Box as="section" aria-label={label} className={RESULT_MOTION}>
 				<Stack space="md">
 					<Alert tone="success" icon={CheckCircleIcon} role="presentation">
 						<AlertTitle>Allowed</AlertTitle>
@@ -202,12 +215,12 @@ export function AccessDecision({
 								<Box as="span" className="[overflow-wrap:anywhere]">
 									{`${question.member.label} has ${question.permission.name} on ${subject.name}.`}
 								</Box>
-								{explanation.grants.length > 0 ? (
+								{explanation.grants?.length ? (
 									<Stack as="ul" space="xs" aria-label="Granted by">
 										{explanation.grants.map((grant) => (
 											<Box
 												as="li"
-												key={`${grant.holder}-${grant.link.type}-${grant.link.id}`}
+												key={`${grant.kind}-${grant.id}-${grant.link.type}-${grant.link.id}`}
 												className="[overflow-wrap:anywhere]"
 											>
 												<Box as="span" className="font-medium">
@@ -218,10 +231,7 @@ export function AccessDecision({
 										))}
 									</Stack>
 								) : (
-									<Box as="span">
-										Anchor couldn't name the role yet: a change is still
-										reaching the decisions. Check again in a moment.
-									</Box>
+									<Box as="span">{unexplained(explanation.grants)}</Box>
 								)}
 							</Stack>
 						</AlertDescription>
@@ -232,7 +242,7 @@ export function AccessDecision({
 		);
 
 	return (
-		<Box as="section" aria-label={label} className="access-result">
+		<Box as="section" aria-label={label} className={RESULT_MOTION}>
 			<Stack space="md">
 				<Alert tone="critical" icon={ProhibitIcon} role="presentation">
 					<AlertTitle>Denied</AlertTitle>
@@ -374,7 +384,13 @@ export function CheckAccessPanel({
 	const announcement = check.isPending
 		? "Checking access…"
 		: explanation?.decision === "allowed"
-			? `Allowed. ${explanation.grants.map((grant) => `${grant.holder} on ${grant.link.name}`).join(", ")}`
+			? `Allowed. ${
+					explanation.grants?.length
+						? explanation.grants
+								.map((grant) => `${grant.holder} on ${grant.link.name}`)
+								.join(", ")
+						: unexplained(explanation.grants)
+				}`
 			: explanation?.decision === "denied"
 				? `Denied. ${explanation.title}`
 				: "";

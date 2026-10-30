@@ -136,7 +136,9 @@ async function chooseAll(
 }
 
 async function shows(canvas: Canvas, text: string | RegExp) {
-	await waitFor(() => expect(canvas.getByText(text)).toBeVisible(), {
+	// The live region repeats the answer for screen readers; match the visible copy.
+	const visible = { ignore: "output, script, style" };
+	await waitFor(() => expect(canvas.getByText(text, visible)).toBeVisible(), {
 		timeout: 3000,
 	});
 }
@@ -173,6 +175,10 @@ export const AllowedThroughAFolder: Story = {
 		await expect(
 			canvas.getByText("Dan Okafor has document:view on Pricing page."),
 		).toBeVisible();
+		await expect(
+			getComputedStyle(canvas.getByRole("region", { name: "Access decision" }))
+				.animationName,
+		).toBe("resource-type-enter");
 		await expect(
 			within(canvas.getByRole("list", { name: "Granted by" })).getByRole(
 				"listitem",
@@ -636,6 +642,73 @@ export const AllowedWithoutAGrantYet: Story = {
 		await chooseAll(canvas);
 		await userEvent.click(canvas.getByRole("button", { name: "Check" }));
 		await shows(canvas, /Anchor couldn't name the role yet/);
+		await expect(canvasElement.querySelector("output")).toHaveTextContent(
+			/^Allowed\. Anchor couldn't name the role yet/,
+		);
+	},
+};
+
+/** No granted_by means Anchor couldn't read what granted the access, which checking again won't change. */
+export const AllowedWithoutAnExplanation: Story = {
+	parameters: {
+		backend: {
+			...BACKEND,
+			evaluate: () => {
+				const body = allowed([]);
+				body.context.granted_by = undefined;
+				return { status: 200, body: JSON.parse(JSON.stringify(body)) };
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await chooseAll(canvas);
+		await userEvent.click(canvas.getByRole("button", { name: "Check" }));
+		await shows(canvas, "Anchor couldn't read what granted it.");
+		await expect(canvasElement.querySelector("output")).toHaveTextContent(
+			"Allowed. Anchor couldn't read what granted it.",
+		);
+	},
+};
+
+/** A managed role and an Organization's custom role may share a name; both grants show. */
+export const TwoRolesShareAName: Story = {
+	parameters: {
+		backend: {
+			...BACKEND,
+			evaluate: () => {
+				const body = allowed([]);
+				body.context.granted_by = [
+					{
+						role: { id: "role_editor", name: "Editor" },
+						resource: { type: "folder", id: DESIGN.id },
+					},
+					{
+						role: { id: "orole_editor", name: "Editor" },
+						resource: { type: "folder", id: DESIGN.id },
+					},
+				];
+				return { status: 200, body };
+			},
+		},
+	},
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		await chooseAll(canvas);
+		await userEvent.click(canvas.getByRole("button", { name: "Check" }));
+		await shows(canvas, "Allowed");
+		const grants = within(
+			canvas.getByRole("list", { name: "Granted by" }),
+		).getAllByRole("listitem");
+		await expect(grants.map((grant) => grant.textContent)).toEqual([
+			"Editor role on Folder Design",
+			"Editor role on Folder Design",
+		]);
+		await waitFor(() =>
+			expect(args.onHighlight).toHaveBeenLastCalledWith(
+				expect.objectContaining({ granted: { folder: ["Editor", "Editor"] } }),
+			),
+		);
 	},
 };
 

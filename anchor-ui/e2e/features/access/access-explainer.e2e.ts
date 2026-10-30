@@ -1,6 +1,8 @@
 import type { Page } from "playwright/test";
 import type {
 	ProductOrganizationResponse,
+	ProductResourceTypeTreeResponse,
+	ProductRoleResponse,
 	ProductUserResponse,
 	ResourceResponse,
 } from "../../../src/client";
@@ -42,7 +44,10 @@ async function register(
 }
 
 async function folderViewerOnDesign(world: World) {
-	await resourceTypeTree(world, documentTree);
+	const tree: ProductResourceTypeTreeResponse = await resourceTypeTree(
+		world,
+		documentTree,
+	);
 	const view = await scopedPermission(world, "document", "document:view");
 	const [folderViewer, memberRole, tenant] = await Promise.all([
 		scopedRole(world, "folder", [view.name], "folder-viewer"),
@@ -83,7 +88,7 @@ async function folderViewerOnDesign(world: World) {
 		`${world.productPath}/organizations/${tenant.id}/resources/folder/${design.id}/members/${dan.id}`,
 		{ role_ids: [folderViewer.id] },
 	);
-	return { view, folderViewer, tenant, dan, website, pricing };
+	return { view, folderViewer, tenant, dan, website, pricing, tree };
 }
 
 const panel = (page: Page) =>
@@ -241,5 +246,54 @@ test("access.explainer-denied: denied with the reason for a project above the fo
 	await expect(decision).toHaveCount(0);
 	await expect(typeNode(page, "Project")).toHaveAccessibleDescription(
 		"Slug project.",
+	);
+});
+
+// Covers: PRODUCT_RESOURCE_TYPES
+test("access.explainer-custom-role: allowed via an Organization's custom role on the project above", async ({
+	page,
+	world,
+}) => {
+	const { view, folderViewer, tenant, dan, website, tree } =
+		await folderViewerOnDesign(world);
+	const projectType = tree.resource_types.find(
+		(type) => type.slug === "project",
+	);
+	await world.api.patch(
+		`${world.productPath}/resource-types/${projectType?.id}`,
+		{ allows_custom_roles: true },
+	);
+	const tenantAPI = await world.productAPI();
+	const releaseManager = await tenantAPI.post<ProductRoleResponse>(
+		`${world.productPath}/organizations/${tenant.id}/roles`,
+		{
+			name: world.name("release-manager"),
+			resource_type: "project",
+			permissions: [view.name],
+		},
+	);
+	await tenantAPI.put(
+		`${world.productPath}/organizations/${tenant.id}/resources/project/${website.id}/members/${dan.id}`,
+		{ role_ids: [releaseManager.id] },
+	);
+	await openResourceTypes(page, world);
+
+	await pick(page, "Organization", "Acme", tenant.name);
+	await pick(page, "Member", "Dan", dan.name ?? dan.email);
+	await pick(page, "Permission", "document:view", view.name);
+	await chooseType(page, "Document");
+	await pick(page, "Resource", "Pricing", "Pricing page");
+	await check(page, world);
+
+	const decision = panel(page).getByRole("region", { name: "Access decision" });
+	await expect(decision).toContainText("Allowed");
+	await expect(
+		decision.getByRole("list", { name: "Granted by" }).getByRole("listitem"),
+	).toHaveText([
+		`${folderViewer.name} role on Folder Design`,
+		`${releaseManager.name} role on Project Website redesign`,
+	]);
+	await expect(typeNode(page, "Project")).toHaveAccessibleDescription(
+		`Slug project. On the checked path. Grants access: ${releaseManager.name}.`,
 	);
 });

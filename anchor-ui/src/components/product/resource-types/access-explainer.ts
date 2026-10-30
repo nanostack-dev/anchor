@@ -30,13 +30,15 @@ export interface CheckQuestion {
 }
 
 export interface Grant {
+	id: string;
 	holder: string;
 	kind: "role" | "api_key";
 	link: ChainLink;
 }
 
 export type Explanation =
-	| { decision: "allowed"; grants: Grant[] }
+	// grants is null when Anchor couldn't read what granted the access.
+	| { decision: "allowed"; grants: Grant[] | null }
 	| {
 			decision: "denied";
 			reason: string;
@@ -93,8 +95,10 @@ const sameLink = (
 export function grantsOf(
 	granted: AccessGrant[] | undefined,
 	chain: ChainLink[],
-): Grant[] {
-	return (granted ?? []).map((grant) => ({
+): Grant[] | null {
+	if (!granted) return null;
+	return granted.map((grant) => ({
+		id: grant.role?.id ?? grant.api_key?.id ?? "",
 		holder: grant.role?.name ?? grant.api_key?.name ?? grant.role?.id ?? "",
 		kind: grant.role ? "role" : "api_key",
 		link: chain.find((link) => sameLink(link, grant.resource)) ?? {
@@ -266,11 +270,17 @@ export function highlightOf(
 			steps.push([parent, child]);
 	}
 	const granted: Record<string, string[]> = {};
+	const seen = new Set<string>();
 	if (explanation.decision === "allowed")
-		for (const grant of explanation.grants) {
-			const holders = granted[grant.link.type] ?? [];
-			if (!holders.includes(grant.holder)) holders.push(grant.holder);
-			granted[grant.link.type] = holders;
+		for (const grant of explanation.grants ?? []) {
+			const key = `${grant.link.type}:${grant.id}`;
+			if (!seen.has(key)) {
+				seen.add(key);
+				granted[grant.link.type] = [
+					...(granted[grant.link.type] ?? []),
+					grant.holder,
+				];
+			}
 			if (!path.includes(grant.link.type)) path.push(grant.link.type);
 		}
 	return { decision: explanation.decision, path, steps, granted };

@@ -1,7 +1,7 @@
 /*
  * Motion from ADR-0022 DR-F3, which the access explainer (DR-F5) reuses.
- * Keyframes, edge paths and the React Flow attribution override can't be
- * written as Tailwind utilities.
+ * Keyframes, per-property transition durations and the React Flow
+ * attribution override can't be written as Tailwind utilities.
  *
  * Never transition `.react-flow__node`: its transform is the layout position,
  * which is interpolated in JavaScript so edges follow every frame.
@@ -32,19 +32,6 @@
 		cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.resource-type-canvas .react-flow__edge-path {
-	transition: stroke 150ms cubic-bezier(0.23, 1, 0.32, 1), opacity 150ms
-		cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.resource-type-canvas .react-flow__edge.trace-dimmed .react-flow__edge-path {
-	opacity: 0.45;
-}
-
-.access-result {
-	animation: resource-type-enter 150ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
-
 .resource-type-card[data-entering="true"] {
 	animation: resource-type-enter 150ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
@@ -64,8 +51,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.resource-type-card[data-entering="true"],
-	.access-result {
+	.resource-type-card[data-entering="true"] {
 		animation-name: resource-type-fade;
 	}
 }

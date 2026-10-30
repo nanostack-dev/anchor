@@ -476,7 +476,21 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 func TestAccessEvaluationFromThePlatformSession(t *testing.T) {
 	t.Parallel()
 
-	t.Run("The product owner's platform session evaluates access, as the admin UI does", func(t *testing.T) {
+	t.Run("The product owner's platform session explains a decision on the single route, as the admin UI does",
+		func(t *testing.T) {
+			t.Parallel()
+			w := newAccessWorld(t)
+			owner := w.product.AccessClientWith(w.product.OwnerAuthenticatedClient())
+
+			resp := owner.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Explain().Single()
+
+			require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+			assert.True(t, resp.JSON200.Decision)
+			require.NotNil(t, resp.JSON200.Context.GrantedBy)
+			assert.NotEmpty(t, *resp.JSON200.Context.GrantedBy)
+		})
+
+	t.Run("The product owner's platform session evaluates a batch", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
 		owner := w.product.AccessClientWith(w.product.OwnerAuthenticatedClient())
@@ -486,14 +500,17 @@ func TestAccessEvaluationFromThePlatformSession(t *testing.T) {
 		assert.True(t, decision.Decision)
 	})
 
-	t.Run("Another tenant's platform session can't evaluate access on the product", func(t *testing.T) {
+	t.Run("Another tenant's platform session gets 404 on both routes", func(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
 		otherTenant := itdsl.Given(t).Tenant(itdsl.TenantOpts{Alias: "other", Isolated: true}).Build().Tenant("other")
 		foreign := w.product.AccessClientWith(otherTenant.OwnerClient)
+		question := foreign.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read)
 
-		resp := foreign.User(w.externalID).InOrganization(w.orgA.Id).Can(w.read).Send()
+		single := question.Single()
+		batch := question.Send()
 
-		assert.Contains(t, []int{http.StatusForbidden, http.StatusNotFound}, resp.StatusCode(), string(resp.Body))
+		requireAPIError(t, single, single.Body, http.StatusNotFound, "PRODUCT_NOT_FOUND")
+		requireAPIError(t, batch, batch.Body, http.StatusNotFound, "PRODUCT_NOT_FOUND")
 	})
 }

@@ -12277,6 +12277,20 @@ func (response EvaluateAccess403JSONResponse) VisitEvaluateAccessResponse(w http
 	return err
 }
 
+type EvaluateAccess404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response EvaluateAccess404JSONResponse) VisitEvaluateAccessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type EvaluateAccess500JSONResponse struct {
 	InternalServerErrorJSONResponse
 }
@@ -12370,6 +12384,20 @@ func (response EvaluateAccessBatch403JSONResponse) VisitEvaluateAccessBatchRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EvaluateAccessBatch404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response EvaluateAccessBatch404JSONResponse) VisitEvaluateAccessBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }

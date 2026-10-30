@@ -152,14 +152,60 @@ describe("explain", () => {
 			decision: "allowed",
 			grants: [
 				{
+					id: "role_fv",
 					holder: "folder-viewer",
 					kind: "role",
 					link: { type: "folder", id: "f1", name: "Design" },
 				},
 				{
+					id: "role_m",
 					holder: "member",
 					kind: "role",
 					link: { type: "organization", id: "org_acme", name: "Acme Corp" },
+				},
+			],
+		});
+	});
+
+	it("keeps a missing explanation apart from an empty one", () => {
+		const unread = explain(
+			{ decision: true, context: {} },
+			question(page),
+			chain,
+			types,
+		);
+		const syncing = explain(
+			{ decision: true, context: { granted_by: [] } },
+			question(page),
+			chain,
+			types,
+		);
+		expect(unread).toEqual({ decision: "allowed", grants: null });
+		expect(syncing).toEqual({ decision: "allowed", grants: [] });
+	});
+
+	it("falls back to IDs for a grant off the chain and a role with no name", () => {
+		const explanation = explain(
+			{
+				decision: true,
+				context: {
+					granted_by: [
+						{ role: { id: "role_x" }, resource: { type: "project", id: "p9" } },
+					],
+				},
+			},
+			question(page),
+			chain,
+			types,
+		);
+		expect(explanation).toEqual({
+			decision: "allowed",
+			grants: [
+				{
+					id: "role_x",
+					holder: "role_x",
+					kind: "role",
+					link: { type: "project", id: "p9", name: "p9" },
 				},
 			],
 		});
@@ -245,6 +291,14 @@ describe("heldOnTypes", () => {
 			"project",
 		]);
 	});
+
+	it("walks a self-nesting type once", () => {
+		expect([...heldOnTypes(types, "folder")].sort()).toEqual([
+			"folder",
+			"organization",
+			"project",
+		]);
+	});
 });
 
 describe("highlightOf", () => {
@@ -260,7 +314,14 @@ describe("highlightOf", () => {
 			highlightOf(
 				{
 					decision: "allowed",
-					grants: [{ holder: "folder-viewer", kind: "role", link: links[2] }],
+					grants: [
+						{
+							id: "role_fv",
+							holder: "folder-viewer",
+							kind: "role",
+							link: links[2],
+						},
+					],
 				},
 				links,
 			),
@@ -274,5 +335,43 @@ describe("highlightOf", () => {
 			],
 			granted: { folder: ["folder-viewer"] },
 		});
+	});
+
+	it("keeps two roles that share a name, and lists one role once", () => {
+		const design = { type: "folder", id: "f1", name: "Design" };
+		const editor = (id: string) => ({
+			id,
+			holder: "Editor",
+			kind: "role" as const,
+			link: design,
+		});
+		expect(
+			highlightOf(
+				{
+					decision: "allowed",
+					grants: [
+						editor("role_managed"),
+						editor("role_custom"),
+						editor("role_custom"),
+					],
+				},
+				[design],
+			).granted,
+		).toEqual({ folder: ["Editor", "Editor"] });
+	});
+
+	it("marks no type as granting on a denial", () => {
+		const design = { type: "folder", id: "f1", name: "Design" };
+		expect(
+			highlightOf(
+				{
+					decision: "denied",
+					reason: "MISSING_PERMISSION",
+					title: "",
+					detail: "",
+				},
+				[design],
+			).granted,
+		).toEqual({});
 	});
 });

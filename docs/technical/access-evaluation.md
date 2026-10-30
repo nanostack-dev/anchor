@@ -42,7 +42,8 @@ the organization role, the product user or API key ID and every permission the r
 or key holds in the organization, allowed or not.
 
 Errors are only for the call itself: 400 for an invalid request, 401 and 403 for the
-caller's credential, 500 for a failure.
+caller's credential, 404 `PRODUCT_NOT_FOUND` for a platform session of another tenant,
+500 for a failure.
 
 ## Resources
 

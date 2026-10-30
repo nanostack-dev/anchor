@@ -715,7 +715,6 @@ export const MotionContract: Story = {
 		await expect(ruleFor(".resource-type-card")?.transitionDuration).toBe(
 			"120ms, 150ms, 150ms",
 		);
-		await expect(ruleFor(".access-result")?.animationDuration).toBe("150ms");
 		await startEditing(canvasElement);
 		await userEvent.click(node);
 		await userEvent.click(
@@ -920,6 +919,10 @@ export const ExplainsAccessOnTheCanvas: Story = {
 		await expect(
 			canvasElement.querySelectorAll(".react-flow__edge.trace-dimmed"),
 		).toHaveLength(1);
+		const dimmed = canvasElement.querySelector(
+			".react-flow__edge.trace-dimmed .react-flow__edge-path",
+		) as SVGPathElement;
+		await expect(getComputedStyle(dimmed).opacity).toBe("0.45");
 		await userEvent.click(
 			canvas.getByRole("button", { name: "Show on the canvas" }),
 		);
