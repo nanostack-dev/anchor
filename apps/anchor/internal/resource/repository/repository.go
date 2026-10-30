@@ -335,7 +335,8 @@ func (r *repositoryImpl) Search(
 	}
 
 	where := table.Resources.OrganizationID.EQ(postgres.String(organizationID)).
-		AND(table.Resources.ProductID.EQ(postgres.String(productID)))
+		AND(table.Resources.ProductID.EQ(postgres.String(productID))).
+		AND(postgres.RawBool(notMirroringDeletedWorkspace))
 	if request.Filter != nil {
 		where = where.AND(filterCondition(productID, organizationID, *request.Filter))
 	}

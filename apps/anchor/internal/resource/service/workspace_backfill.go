@@ -30,13 +30,9 @@ type WriteReplay interface {
 	Collect(ctx context.Context) (context.Context, func(context.Context))
 }
 
-// WorkspaceBackfill runs ADR-0022 A6 phase 2: each product with workspaces
-// gets a workspace type, each workspace a marked resource with its ID and
-// name under its Organization, and each workspace_memberships row whose role
-// is scoped to that type becomes a role assignment. It also deletes a marked
-// resource whose workspace an earlier release deleted. It only fills what is
-// missing, so it is safe on every start, and a resource the resource routes
-// renamed, moved or gave roles to keeps them.
+// WorkspaceBackfill registers each workspace as a marked resource, moves the
+// memberships whose role is scoped to workspace, and prunes mirrors of deleted
+// workspaces (ADR-0022 A6). It only fills what is missing, so it runs on every start.
 type WorkspaceBackfill struct {
 	workspaceRepo orgrepository.WorkspaceRepository
 	workspaces    Workspaces
@@ -281,14 +277,9 @@ func (b *WorkspaceBackfill) register(txCtx context.Context, productID, organizat
 	return len(missing), nil
 }
 
-// moveMembership turns a workspace_memberships row into a role assignment on
-// the workspace's resource, and removes the row, so the next start never
-// assigns it again. A row whose role is not scoped to the workspace type, or
-// that the assignment rules refuse otherwise, stays: workspace roles have
-// been Organization-scoped (ADR-0022 G1), and a role assigned on a resource
-// must be scoped to its type (D4). So does a row for a member who already
-// holds a role there: that assignment is newer. Each kept row logs at debug;
-// the product logs their count.
+// moveMembership turns a membership into a role assignment and removes the row.
+// A row the assignment rules refuse, or for a member who already holds a role
+// there, stays (D4).
 func (b *WorkspaceBackfill) moveMembership(
 	txCtx context.Context, productID, organizationID string, membership workspace.Membership,
 ) (bool, error) {

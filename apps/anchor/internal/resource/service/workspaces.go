@@ -15,13 +15,8 @@ import (
 	rtservice "anchor/internal/resourcetype/service"
 )
 
-// Workspaces keeps each built-in workspace registered as a resource of its
-// product's workspace type, with the workspace's ID and name, under its
-// Organization (ADR-0022 A6, phase 2). Every resource it writes is marked as
-// a workspace's mirror: a marked resource counts only while its workspace
-// exists. While the built-in Workspace lives, its routes write the resource
-// in their own transaction; the resource follows the last write of either
-// side.
+// Workspaces keeps each built-in workspace registered and marked as a resource
+// of its product's workspace type, with the same ID and name (ADR-0022 A6).
 type Workspaces interface {
 	// DeclareType makes sure the product has a workspace type that may sit
 	// under the Organization, creating it when absent. It answers false, and
@@ -129,7 +124,12 @@ func (w *workspaces) Put(txCtx context.Context, productID, organizationID, works
 		Parent:         resource.OrganizationRef(organizationID),
 	})
 	if refused, ok := refusal(err); ok {
-		w.once(zerolog.WarnLevel, productID, codeOf(refused)).Str("product_id", productID).
+		level := zerolog.WarnLevel
+		if codeOf(refused) == codeTypeNotFound {
+			// An Organization create declares the type after it commits, then registers the workspace.
+			level = zerolog.DebugLevel
+		}
+		w.once(level, productID, codeOf(refused)).Str("product_id", productID).
 			Str("organization_id", organizationID).Str("workspace_id", workspaceID).Str("code", codeOf(refused)).
 			Msg("workspace left unregistered as a resource")
 		return nil
@@ -148,6 +148,8 @@ func (w *workspaces) Delete(txCtx context.Context, productID, organizationID, wo
 	}
 	return err
 }
+
+const codeTypeNotFound = "RESOURCE_TYPE_NOT_FOUND"
 
 // once logs at the level the first time a product meets the code in this
 // process, and at debug after that.

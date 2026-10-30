@@ -11,7 +11,7 @@ Anchor supports organization-scoped workspaces as the third level of the Product
 | --- | --- |
 | `POST …/organizations/{organization_id}/workspaces` | `PUT …/organizations/{organization_id}/resources/workspace/{id}` with the Product's own ID, a `name` and `"parent": { "type": "organization", "id": "<organization_id>" }` |
 | `GET` and `PUT …/workspaces/{workspace_id}` | `GET` and `PUT …/resources/workspace/{workspace_id}` |
-| `DELETE …/workspaces/{workspace_id}` | `DELETE …/resources/workspace/{workspace_id}`, with `?cascade=true` once it holds children or role assignments |
+| `DELETE …/workspaces/{workspace_id}` | Keep this route while the workspace routes exist. `DELETE …/resources/workspace/{workspace_id}` refuses a workspace's resource with `409 RESOURCE_IS_WORKSPACE`, because only this route deletes the workspace too. |
 | `POST …/workspaces/search` | `POST …/resources/search` with `"filter": { "resource_types": ["workspace"] }` |
 | A role on a workspace | `PUT …/resources/workspace/{workspace_id}/members/{product_user_id}` with a role scoped to `workspace` ([role assignments](technical/resources.md#role-assignments)) |
 | `workspace.*` events | `resource.role_assignment.*` for roles; resource events stay inside Anchor |

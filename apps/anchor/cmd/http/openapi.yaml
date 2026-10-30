@@ -38,7 +38,7 @@ tags:
   description: Manage Organizations within a Product. (Requires Product API Key)
 - name: Workspace
   description: Manage Workspaces within an Organization. (Requires Product API
-    Key) Deprecated (ADR-0022 A6) in favour of resources of the product's `workspace` resource type.
+    Key) Deprecated (ADR-0022 A6). Use resources of the product's `workspace` resource type instead.
 - name: ProductUser
   description: Manage Product Users (end-users). (Requires Product API Key)
 - name: Membership
@@ -8759,8 +8759,10 @@ paths:
         `resource.role_assignment.deleted` per role assignment removed, then
         one `resource.deleted` per deleted resource, deepest first. The
         `resource.deleted` events stay inside Anchor and are never delivered to
-        the product's event endpoint. Requires Product API Key with
-        resource:delete.
+        the product's event endpoint. A resource that mirrors a built-in
+        workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded
+        subtree: delete the workspace with the deprecated workspace route while
+        it exists. Requires Product API Key with resource:delete.
       operationId: deleteResource
       tags: [Resource]
       security:

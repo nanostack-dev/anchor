@@ -1477,7 +1477,7 @@ type ClientInterface interface {
 
 	// DeleteResource Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 	DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4975,7 +4975,7 @@ func (c *Client) SearchResources(ctx context.Context, productId ProductIdParamet
 
 // DeleteResource Delete Resource
 //
-// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 func (c *Client) DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -14716,7 +14716,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteResourceWithResponse Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -27366,7 +27366,7 @@ func (c *ClientWithResponses) SearchResourcesWithResponse(ctx context.Context, p
 
 // DeleteResourceWithResponse Delete Resource
 //
-// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //

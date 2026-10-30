@@ -1307,7 +1307,7 @@ export const searchResources = <ThrowOnError extends boolean = false>(options: O
 /**
  * Delete Resource
  *
- * Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
+ * Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
  */
 export const deleteResource = <ThrowOnError extends boolean = false>(options: Options<DeleteResourceData, ThrowOnError>) => (options.client ?? client).delete<DeleteResourceResponses, DeleteResourceErrors, ThrowOnError>({
     security: [{ name: 'X-Product-API-Key', type: 'apiKey' }],

@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/workspace"
 )
@@ -28,6 +31,9 @@ type WorkspaceMirrors interface {
 	// ChainMirrorsDeletedWorkspace reports whether the resource or any
 	// resource above it is marked and its workspace is gone.
 	ChainMirrorsDeletedWorkspace(ctx context.Context, organizationID, rowID string) (bool, error)
+	// LiveWorkspaceMirrors lists the workspace IDs of the given resources
+	// that are marked and whose workspace still exists.
+	LiveWorkspaceMirrors(ctx context.Context, organizationID string, rowIDs []string) ([]string, error)
 	// DeletedWorkspaces lists the workspace IDs of the Organization's marked
 	// resources whose workspace is gone.
 	DeletedWorkspaces(ctx context.Context, organizationID string) ([]string, error)
@@ -121,6 +127,59 @@ func (r *repositoryImpl) ChainMirrorsDeletedWorkspace(ctx context.Context, organ
 	return gone, rows.Err()
 }
 
+// FindLive is Find, with a resource that mirrors a deleted workspace, or sits
+// under one, read as absent.
+func FindLive(
+	ctx context.Context, repo Repository, organizationID, typeID, externalID string,
+) (functional.Option[resource.Resource], error) {
+	found, err := repo.Find(ctx, organizationID, typeID, externalID)
+	if err != nil || found.IsAbsent() {
+		return found, err
+	}
+	gone, err := repo.ChainMirrorsDeletedWorkspace(ctx, organizationID, found.Value().RowID)
+	if err != nil || gone {
+		return functional.None[resource.Resource](), err
+	}
+	return found, nil
+}
+
+func (r *repositoryImpl) LiveWorkspaceMirrors(
+	ctx context.Context, organizationID string, rowIDs []string,
+) ([]string, error) {
+	if len(rowIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := transactor.Executor(ctx, r.db).QueryContext(ctx, `
+SELECT r.external_id FROM workspace_resources m
+JOIN resources r ON r.id = m.resource_id
+JOIN workspaces w ON w.id = r.external_id AND w.organization_id = r.organization_id
+WHERE r.organization_id = $1 AND m.resource_id = ANY($2)
+ORDER BY r.external_id`, organizationID, pq.Array(rowIDs))
+	if err != nil {
+		return nil, fmt.Errorf("read live workspace mirrors: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// notMirroringDeletedWorkspace keeps a search from listing a resource the
+// previous release deleted the workspace of.
+const notMirroringDeletedWorkspace = `NOT EXISTS (
+    SELECT 1 FROM workspace_resources m
+    WHERE m.resource_id = resources.id AND NOT EXISTS (
+        SELECT 1 FROM workspaces w
+        WHERE w.id = resources.external_id AND w.organization_id = resources.organization_id
+    )
+)`
+
 func (r *repositoryImpl) DeletedWorkspaces(ctx context.Context, organizationID string) ([]string, error) {
 	rows, err := transactor.Executor(ctx, r.db).QueryContext(ctx, `
 SELECT r.external_id FROM workspace_resources m
@@ -171,7 +230,10 @@ ORDER BY w.created_at, w.id`, organizationID, typeID)
 
 // pendingWorkspacesQuery is the migration's work list. Its first branch is the
 // anti-join of every start: a workspace with a marked resource of the
-// workspace type costs one index probe and adds nothing.
+// workspace type costs one index probe and adds nothing. It skips a product
+// whose own workspace type can't sit under the Organization, which the
+// migration never changes. Only memberships whose role is scoped to the
+// workspace type can move, so only they make an Organization pending.
 const pendingWorkspacesQuery = `
 SELECT o.product_id, w.organization_id
 FROM workspaces w
@@ -181,6 +243,13 @@ WHERE ($1 = '' OR o.product_id = $1) AND NOT EXISTS (
     JOIN product_resource_types t ON t.id = r.resource_type_id AND t.slug = $2
     JOIN workspace_resources m ON m.resource_id = r.id
     WHERE r.organization_id = w.organization_id AND r.external_id = w.id
+) AND NOT EXISTS (
+    SELECT 1 FROM product_resource_types t
+    WHERE t.product_id = o.product_id AND t.slug = $2 AND NOT EXISTS (
+        SELECT 1 FROM product_resource_type_parents p
+        JOIN product_resource_types parent ON parent.id = p.parent_type_id AND parent.slug = 'organization'
+        WHERE p.resource_type_id = t.id
+    )
 )
 UNION
 SELECT r.product_id, r.organization_id
@@ -194,6 +263,8 @@ SELECT o.product_id, w.organization_id
 FROM workspace_memberships wm
 JOIN workspaces w ON w.id = wm.workspace_id
 JOIN organizations o ON o.id = w.organization_id
+JOIN product_roles pr ON pr.id = wm.product_role_id
+JOIN product_resource_types t ON t.id = pr.resource_type_id AND t.slug = $2
 WHERE ($1 = '' OR o.product_id = $1)
 ORDER BY 1, 2`
 

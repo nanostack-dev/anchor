@@ -34,20 +34,9 @@ func (e *evaluator) locate(ctx context.Context, request Request, subject reach) 
 	}
 }
 
-// reachWorkspace resolves a workspace through the generic model (ADR-0022
-// A6): the resource registered in the Organization under the product's
-// workspace type, checked on its own object, so Organization roles reach it
-// through its parent and roles assigned on it grant too. An action scoped
-// above the workspace type, such as every Organization-scoped permission, is
-// checked on the Organization, as it was before workspaces were registered.
-//
-// A resource the workspace mirror wrote counts only while its workspace
-// exists: one an earlier release deleted without its resource stops like an
-// unknown workspace. A resource the product registered itself is its own
-// statement that the workspace exists, as for any type. A built-in workspace
-// without a resource, because the product's type refused it or an earlier
-// release created it, is checked on its Organization alone. Unknown and
-// foreign workspaces stop the same way.
+// reachWorkspace checks a workspace on its resource (ADR-0022 A6), and an
+// action the workspace type doesn't define on the Organization. A mirror whose
+// workspace is gone, and an unknown or foreign workspace, stop the check.
 func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, located, error) {
 	organizationID := subject.identity.OrganizationID
 	organization := OrganizationObject(organizationID)

@@ -200,22 +200,25 @@ func TestWorkspaceBackfill(t *testing.T) {
 		waitForSweep(t, product.ProductID)
 	})
 
-	t.Run("A workspace type that can't sit under the organization is left alone, and logged once", func(t *testing.T) {
-		t.Parallel()
-		product := createTestProductContext(t)
-		product.ResourceTypes().CreateUnder("project", "organization")
-		product.ResourceTypes().CreateUnder(workspaceType, "project")
-		org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-		workspaceID := insertWorkspace(t, org.Id, "Payments")
-		backfill, log := newWorkspaceBackfill()
+	t.Run(
+		"A workspace type that can't sit under the organization is left alone, and its product skipped",
+		func(t *testing.T) {
+			t.Parallel()
+			product := createTestProductContext(t)
+			product.ResourceTypes().CreateUnder("project", "organization")
+			product.ResourceTypes().CreateUnder(workspaceType, "project")
+			org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
+			workspaceID := insertWorkspace(t, org.Id, "Payments")
+			backfill, log := newWorkspaceBackfill()
 
-		require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
+			require.NoError(t, backfill.RunProduct(t.Context(), product.ProductID))
 
-		assert.Equal(t, []string{"project"}, product.ResourceTypes().BySlug(workspaceType).ParentTypes)
-		requireNoWorkspaceResource(t, product, org.Id, workspaceID)
-		assert.True(t, log.logged(t, "error", "can't sit under the organization",
-			map[string]any{"product_id": product.ProductID}))
-	})
+			assert.Equal(t, []string{"project"}, product.ResourceTypes().BySlug(workspaceType).ParentTypes)
+			requireNoWorkspaceResource(t, product, org.Id, workspaceID)
+			assert.False(t, log.logged(t, "error", "can't sit under the organization",
+				map[string]any{"product_id": product.ProductID}), "the work list leaves the product out")
+		},
+	)
 
 	t.Run("A membership with a workspace role moves to an assignment; one with an organization role stays",
 		func(t *testing.T) {
@@ -359,7 +362,7 @@ func TestWorkspaceRoutesWriteTheirResource(t *testing.T) {
 		})
 	})
 
-	t.Run("A rename puts back a resource the product moved or removed", func(t *testing.T) {
+	t.Run("A rename puts back a resource the product moved; the resource routes can't remove it", func(t *testing.T) {
 		t.Parallel()
 		product := createTestProductContext(t)
 		product.ResourceTypes().CreateUnder("project", "organization")
@@ -372,11 +375,13 @@ func TestWorkspaceRoutesWriteTheirResource(t *testing.T) {
 		moved := workspaces.Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Payments"})
 		removed := workspaces.Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Billing"})
 		resources.Put(workspaceType, moved.Id, "Moved", itdsl.Ref("project", project))
-		resources.Delete(workspaceType, removed.Id, false)
+		refused := resources.DeleteRaw(workspaceType, removed.Id, false)
+		cascaded := resources.DeleteRaw("project", project, true)
 
 		workspaces.Update(moved.Id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Payments"})
-		workspaces.Update(removed.Id, ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Billing"})
 
+		requireAPIError(t, refused, refused.Body, http.StatusConflict, "RESOURCE_IS_WORKSPACE")
+		requireAPIError(t, cascaded, cascaded.Body, http.StatusConflict, "RESOURCE_IS_WORKSPACE")
 		requireWorkspaceResource(t, product, org.Id, moved.Id, "Payments")
 		requireWorkspaceResource(t, product, org.Id, removed.Id, "Billing")
 	})

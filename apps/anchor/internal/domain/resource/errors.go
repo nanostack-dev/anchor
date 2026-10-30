@@ -79,6 +79,16 @@ func NewTooDeepError(depth int) *fault.Error {
 	).Metadata(map[string]any{"max_depth": MaxDepth, "depth": depth})
 }
 
+// NewWorkspaceMirrorError refuses deleting a workspace through the resource
+// routes while its workspace exists: the workspace routes delete both.
+func NewWorkspaceMirrorError(workspaceID string) *fault.Error {
+	return fault.Conflict(
+		"RESOURCE_IS_WORKSPACE",
+		fmt.Sprintf("Workspace %s is deleted with DELETE /workspaces/%s while the workspace routes exist.",
+			workspaceID, workspaceID),
+	).Metadata(map[string]any{"workspace_id": workspaceID})
+}
+
 // NewInUseError refuses to delete a resource that still has registered
 // children or role assignments without cascade.
 func NewInUseError(children, roleAssignments int) *fault.Error {
