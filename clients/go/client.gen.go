@@ -1775,7 +1775,7 @@ type ClientInterface interface {
 
 	// CreateProductResourcePermissionWithBody Create Product Resource Permission
 	//
-	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1784,7 +1784,7 @@ type ClientInterface interface {
 
 	// CreateProductResourcePermission Create Product Resource Permission
 	//
-	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1845,7 +1845,7 @@ type ClientInterface interface {
 
 	// CreateProductResourceTypeWithBody Create Product Resource Type
 	//
-	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1854,7 +1854,7 @@ type ClientInterface interface {
 
 	// CreateProductResourceType Create Product Resource Type
 	//
-	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1863,7 +1863,7 @@ type ClientInterface interface {
 
 	// ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1872,7 +1872,7 @@ type ClientInterface interface {
 
 	// ReplaceProductResourceTypes Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1915,7 +1915,7 @@ type ClientInterface interface {
 
 	// UpdateProductResourceTypeWithBody Update Product Resource Type
 	//
-	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1924,7 +1924,7 @@ type ClientInterface interface {
 
 	// UpdateProductResourceType Update Product Resource Type
 	//
-	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5486,7 +5486,7 @@ func (c *Client) GetUserOrganization(ctx context.Context, productId ProductIdPar
 
 // CreateProductResourcePermissionWithBody Create Product Resource Permission
 //
-// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5505,7 +5505,7 @@ func (c *Client) CreateProductResourcePermissionWithBody(ctx context.Context, pr
 
 // CreateProductResourcePermission Create Product Resource Permission
 //
-// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5636,7 +5636,7 @@ func (c *Client) UpdateProductResourcePermission(ctx context.Context, productId 
 
 // CreateProductResourceTypeWithBody Create Product Resource Type
 //
-// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5655,7 +5655,7 @@ func (c *Client) CreateProductResourceTypeWithBody(ctx context.Context, productI
 
 // CreateProductResourceType Create Product Resource Type
 //
-// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5674,7 +5674,7 @@ func (c *Client) CreateProductResourceType(ctx context.Context, productId Produc
 
 // ReplaceProductResourceTypesWithBody Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5693,7 +5693,7 @@ func (c *Client) ReplaceProductResourceTypesWithBody(ctx context.Context, produc
 
 // ReplaceProductResourceTypes Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5786,7 +5786,7 @@ func (c *Client) GetProductResourceType(ctx context.Context, productId ProductId
 
 // UpdateProductResourceTypeWithBody Update Product Resource Type
 //
-// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5805,7 +5805,7 @@ func (c *Client) UpdateProductResourceTypeWithBody(ctx context.Context, productI
 
 // UpdateProductResourceType Update Product Resource Type
 //
-// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -14507,7 +14507,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateProductResourcePermissionWithBodyWithResponse Create Product Resource Permission
 	//
-	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14516,7 +14516,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateProductResourcePermissionWithResponse Create Product Resource Permission
 	//
-	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+	// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14581,7 +14581,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateProductResourceTypeWithBodyWithResponse Create Product Resource Type
 	//
-	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14590,7 +14590,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateProductResourceTypeWithResponse Create Product Resource Type
 	//
-	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+	// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14599,7 +14599,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14608,7 +14608,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
 	//
-	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+	// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14655,7 +14655,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateProductResourceTypeWithBodyWithResponse Update Product Resource Type
 	//
-	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14664,7 +14664,7 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateProductResourceTypeWithResponse Update Product Resource Type
 	//
-	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+	// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -26891,7 +26891,7 @@ func (c *ClientWithResponses) GetUserOrganizationWithResponse(ctx context.Contex
 
 // CreateProductResourcePermissionWithBodyWithResponse Create Product Resource Permission
 //
-// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -26906,7 +26906,7 @@ func (c *ClientWithResponses) CreateProductResourcePermissionWithBodyWithRespons
 
 // CreateProductResourcePermissionWithResponse Create Product Resource Permission
 //
-// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+// Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27013,7 +27013,7 @@ func (c *ClientWithResponses) UpdateProductResourcePermissionWithResponse(ctx co
 
 // CreateProductResourceTypeWithBodyWithResponse Create Product Resource Type
 //
-// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27028,7 +27028,7 @@ func (c *ClientWithResponses) CreateProductResourceTypeWithBodyWithResponse(ctx 
 
 // CreateProductResourceTypeWithResponse Create Product Resource Type
 //
-// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+// Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27043,7 +27043,7 @@ func (c *ClientWithResponses) CreateProductResourceTypeWithResponse(ctx context.
 
 // ReplaceProductResourceTypesWithBodyWithResponse Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27058,7 +27058,7 @@ func (c *ClientWithResponses) ReplaceProductResourceTypesWithBodyWithResponse(ct
 
 // ReplaceProductResourceTypesWithResponse Replace Product Resource Type Tree
 //
-// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+// Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27135,7 +27135,7 @@ func (c *ClientWithResponses) GetProductResourceTypeWithResponse(ctx context.Con
 
 // UpdateProductResourceTypeWithBodyWithResponse Update Product Resource Type
 //
-// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27150,7 +27150,7 @@ func (c *ClientWithResponses) UpdateProductResourceTypeWithBodyWithResponse(ctx 
 
 // UpdateProductResourceTypeWithResponse Update Product Resource Type
 //
-// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+// Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

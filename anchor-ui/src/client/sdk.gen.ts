@@ -304,7 +304,7 @@ export const ingestWebhook = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Create Product Resource Type
  *
- * Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
+ * Adds a resource type to the product's tree. Roles and permissions are scoped to a resource type, and a role held on a resource covers that resource and every resource below it. A duplicate slug answers 409 RESOURCE_TYPE_SLUG_DUPLICATE; an unknown parent type answers 400 RESOURCE_TYPE_NOT_FOUND; more than 50 types besides `organization` answers 409 RESOURCE_TYPE_LIMIT_REACHED. A type that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`. Emits `product.resource_type.created`. Requires Platform Bearer token or Product API Key with resource_type:create.
  */
 export const createProductResourceType = <ThrowOnError extends boolean = false>(options: Options<CreateProductResourceTypeData, ThrowOnError>) => (options.client ?? client).post<CreateProductResourceTypeResponses, CreateProductResourceTypeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -319,7 +319,7 @@ export const createProductResourceType = <ThrowOnError extends boolean = false>(
 /**
  * Replace Product Resource Type Tree
  *
- * Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
+ * Replaces every resource type of the product except `organization` in one transaction: the admin UI publishes a draft tree with this call. A type in the body is created or updated by slug; a type left out is deleted, under the same rules as the delete route. A type that loses a parent type, or stops nesting in itself, is refused as on the update route while registered resources use it that way. A tree that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits one `product.resource_type.*` event per type created, updated or deleted. Requires Platform Bearer token or Product API Key with resource_type:create, resource_type:update and resource_type:delete.
  */
 export const replaceProductResourceTypes = <ThrowOnError extends boolean = false>(options: Options<ReplaceProductResourceTypesData, ThrowOnError>) => (options.client ?? client).put<ReplaceProductResourceTypesResponses, ReplaceProductResourceTypesErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -372,7 +372,7 @@ export const getProductResourceType = <ThrowOnError extends boolean = false>(opt
 /**
  * Update Product Resource Type
  *
- * Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
+ * Renames a resource type, changes its description or its allowed parent types, or turns `nests_in_itself` on or off. A change that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, as on the create route. Emits `product.resource_type.updated` when something changed. Requires Platform Bearer token or Product API Key with resource_type:update.
  */
 export const updateProductResourceType = <ThrowOnError extends boolean = false>(options: Options<UpdateProductResourceTypeData, ThrowOnError>) => (options.client ?? client).patch<UpdateProductResourceTypeResponses, UpdateProductResourceTypeErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],
@@ -387,7 +387,7 @@ export const updateProductResourceType = <ThrowOnError extends boolean = false>(
 /**
  * Create Product Resource Permission
  *
- * Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
+ * Defines a new domain-resource permission for the product's own application resources (e.g. "document:read", "file:delete"). A permission that would make the product's authorization model larger than 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE, with the size in `metadata.model_bytes` and the limit in `metadata.max_model_bytes`: delete permissions or resource types first. Requires Platform Bearer token or Product API Key with resources_permissions:create scope.
  */
 export const createProductResourcePermission = <ThrowOnError extends boolean = false>(options: Options<CreateProductResourcePermissionData, ThrowOnError>) => (options.client ?? client).post<CreateProductResourcePermissionResponses, CreateProductResourcePermissionErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }, { name: 'X-Product-API-Key', type: 'apiKey' }],

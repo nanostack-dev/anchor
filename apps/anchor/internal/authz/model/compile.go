@@ -9,7 +9,17 @@ import (
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/openfga/language/pkg/go/transformer"
+	"google.golang.org/protobuf/proto"
 )
+
+// MaxBytes is the largest model OpenFGA stores. It lifts OpenFGA's 256 KiB
+// default: a model grows by about 150 bytes per permission and type that holds
+// or inherits it, so a catalog of 50 types and 120 permissions still fits.
+const MaxBytes = 1 << 20
+
+// modelIDBytes is the ID OpenFGA adds to a model before it measures it: a
+// 26-character ULID with its field tag and length.
+const modelIDBytes = 28
 
 // Catalog is what a Product defines for access: its resource types and its
 // permissions with their scope. It is the only input of its model.
@@ -56,6 +66,12 @@ func Compile(catalog Catalog) (Model, error) {
 		return Model{}, fmt.Errorf("compile authorization model: %w", err)
 	}
 	return Model{DSL: dsl, Proto: proto, Hash: catalog.hash()}, nil
+}
+
+// Bytes is the size OpenFGA measures against MaxBytes before it stores the
+// model: its wire encoding with the ID OpenFGA adds.
+func (m Model) Bytes() int {
+	return proto.Size(m.Proto) + modelIDBytes
 }
 
 // Hash tells two catalogs apart without compiling either: the same catalog in
