@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -455,7 +456,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		}
 		logger.Info().Str("product_id", input.ProductID).Msg("product deleted")
 	} else {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to delete product")
+		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to delete product")
 	}
 	return err
 }

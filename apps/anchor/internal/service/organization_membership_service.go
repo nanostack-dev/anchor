@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/rs/zerolog"
@@ -253,7 +254,7 @@ func (s *organizationMembershipService) applyMembership(
 		if errors.Is(txErr, repository.ErrOrganizationMembershipRoleGone) {
 			return organization.Membership{}, NewBodyRoleNotFoundError(loggedRoleID(roleID))
 		}
-		logger.Error().Err(txErr).
+		log.Event(&logger, txErr).
 			Str("product_id", productID).
 			Str("organization_id", organizationID).
 			Str("product_user_id", productUserID).
