@@ -44,7 +44,6 @@ func TestCursorSearches(t *testing.T) {
 		"searchProductUsers":                   productUsersCursorCase,
 		"searchOrganizationAPIKeys":            organizationAPIKeysCursorCase,
 		"searchProductOrganizations":           organizationsCursorCase,
-		"searchOrganizationWorkspaces":         workspacesCursorCase,
 		"searchOrganizationMembers":            membersCursorCase,
 		"searchOrganizationInvitations":        organizationInvitationsCursorCase,
 		"searchProductOrganizationInvitations": productInvitationsCursorCase,
@@ -516,36 +515,6 @@ func organizationsCursorCase(t *testing.T) cursorCase {
 				ctx, product.ProductID, nil, "application/json", body,
 			)
 			return httpCall(response, err, func(r *ct.SearchProductOrganizationsResponse) []byte { return r.Body })
-		},
-	}
-}
-
-func workspacesCursorCase(t *testing.T) cursorCase {
-	product := createTestProductContext(t)
-	organization := product.CreateOrganization(t, "org-"+ids.MustNew("ct"), nil)
-	workspaces := product.Workspaces(organization.Id)
-	for range cursorFixtureRows {
-		workspaces.Create(ct.ProductWorkspaceRequest{Name: "ws-" + ids.MustNew("ct")})
-	}
-	execSQL(t, "UPDATE workspaces SET created_at = $1 WHERE organization_id = $2", tiedAt(), organization.Id)
-
-	client := product.AllScopeAPIKeyClient()
-	return cursorCase{
-		rows: orderedRows{
-			from: "workspaces", where: "organization_id = $1", args: []any{organization.Id}, idExpr: "id",
-			defaultField: "created_at",
-			fields: []sortField{
-				{name: "created_at", expr: "created_at"},
-				{name: "updated_at", expr: "updated_at"},
-				{name: "name", expr: "name"},
-			},
-		},
-		noMatch: map[string]any{"filter": map[string]any{"ids": []string{"no-such-id"}}},
-		call: func(ctx context.Context, body io.Reader) (int, []byte, error) {
-			response, err := client.SearchOrganizationWorkspacesWithBodyWithResponse(
-				ctx, product.ProductID, organization.Id, "application/json", body,
-			)
-			return httpCall(response, err, func(r *ct.SearchOrganizationWorkspacesResponse) []byte { return r.Body })
 		},
 	}
 }

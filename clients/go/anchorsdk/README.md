@@ -86,7 +86,6 @@ org := c.Organization("org_3iXYZ")
 | `org.Resource(type, id)` | put (register, rename, move), get, delete, delete a tree, `Members()`: assign, get, remove, search |
 | `org.Resources()` | search by type, ID, name and parent |
 | `c.AccessForUser(id)`, `c.AccessForAPIKey(raw)` | evaluate on an organization or a resource: `On(resource).Can(ctx, perms...)` |
-| `org.Workspaces()` | deprecated: workspaces are resources of the product's `workspace` type |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
 | `org.License()` | get (cached), instantiate, adjust, diff, report usage |
 | `anchorsdk.Events(secret)` | typed Standard Webhooks ingest (`http.Handler`) |

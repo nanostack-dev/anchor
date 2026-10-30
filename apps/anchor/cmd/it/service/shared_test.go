@@ -55,13 +55,11 @@ var (
 	Evaluator              accessservice.Evaluator
 	ProductUserRepo        repository.ProductUserRepository
 	MembershipRepo         repository.OrganizationMembershipRepository
-	WorkspaceRepo          repository.WorkspaceRepository
 	ResourceTypeService    rtservice.Service
 	ResourceService        resourceservice.Service
 	RoleAssignmentService  assignmentservice.Service
 	ResourceRepo           resourcerepository.Repository
 	RoleAssignmentRepo     assignmentrepository.Repository
-	WorkspaceBackfill      *resourceservice.WorkspaceBackfill
 )
 
 func TestMain(m *testing.M) {
@@ -97,8 +95,6 @@ func TestMain(m *testing.M) {
 				&Evaluator,
 				&ProductUserRepo,
 				&MembershipRepo,
-				&WorkspaceRepo,
-				&WorkspaceBackfill,
 				&TestDB,
 				&MembershipService,
 				&InvitationService,

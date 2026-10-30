@@ -105,33 +105,6 @@ func TestAnchorSDK(t *testing.T) {
 		assert.ErrorIs(t, err, anchorsdk.ErrNotFound, "a removed member is gone")
 	})
 
-	t.Run("The SDK creates, reads, updates, searches, and deletes organization workspaces", func(t *testing.T) {
-		org, err := sdk.Organizations().Create("SDK Workspaces " + itshared.Faker.UUID().V4()).Do(ctx)
-		require.NoError(t, err)
-		handle := sdk.Organization(org.Id)
-
-		created, err := handle.Workspaces().
-			Create("Production").
-			Description("created through anchorsdk").
-			Do(ctx)
-		require.NoError(t, err)
-		require.NotEmpty(t, created.Id)
-
-		fetched, err := handle.Workspaces().Get(ctx, created.Id)
-		require.NoError(t, err)
-		assert.Equal(t, created.Id, fetched.Id)
-
-		updated, err := handle.Workspaces().Update(created.Id, "Staging").Do(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, "Staging", updated.Name)
-
-		page, err := handle.Workspaces().List(ctx)
-		require.NoError(t, err)
-		require.NotEmpty(t, page.Items)
-
-		require.NoError(t, handle.Workspaces().Delete(ctx, created.Id))
-	})
-
 	t.Run("The SDK manages organization API keys and preserves their permissions", func(t *testing.T) {
 		permissions := product.CreateDefaultProductResourcePermissions(t)
 		require.NotEmpty(t, permissions)

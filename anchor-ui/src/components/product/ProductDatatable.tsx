@@ -265,7 +265,7 @@ export function ProductDatatable() {
 						id: "delete",
 						label: "Delete selected",
 						description:
-							"This permanently deletes the selected products and all associated API keys, users, organizations, and workspaces.",
+							"This permanently deletes the selected products and all associated API keys, users, organizations, and resources.",
 						destructive: true,
 						removesRows: true,
 						run: (row) =>

@@ -17,7 +17,6 @@ func NewModule() fx.Option {
 			NewAuthService,
 			NewInvitationService,
 			NewOrganizationService,
-			NewWorkspaceService,
 			NewOrganizationAPIKeyService,
 			NewOrganizationMembershipService,
 			NewPermissionService,
@@ -39,7 +38,6 @@ func NewModule() fx.Option {
 
 			// Event registrations
 			events.AsRegistration(OrganizationEventRegistration),
-			events.AsRegistration(WorkspaceEventRegistration),
 			events.AsRegistration(OrganizationAPIKeyEventRegistration),
 			events.AsRegistration(ProductUserEventRegistration),
 			events.AsRegistration(ProductRBACEventRegistration),

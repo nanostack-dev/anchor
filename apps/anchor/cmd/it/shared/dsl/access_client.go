@@ -12,7 +12,7 @@ import (
 // AccessClient calls access evaluation with a product API key holding exactly
 // the scopes the route requires. Ask questions fluently:
 //
-//	product.Access().User(externalID).InWorkspace(orgID, workspaceID).Can("file:read").Decide()
+//	product.Access().User(externalID).OnResource(orgID, "document", documentID).Can("file:read").Decide()
 type AccessClient struct {
 	t         *testing.T
 	client    *client.ClientWithResponses
@@ -64,15 +64,6 @@ type AccessQuestion struct {
 // InOrganization targets an organization; "" leaves the ID out.
 func (q AccessQuestion) InOrganization(organizationID string) AccessQuestion {
 	q.body.Resource = client.AccessResource{Type: client.Organization, Id: optional(organizationID)}
-	return q
-}
-
-// InWorkspace targets a workspace; organizationID "" leaves the organization out.
-func (q AccessQuestion) InWorkspace(organizationID, workspaceID string) AccessQuestion {
-	q.body.Resource = client.AccessResource{Type: client.Workspace, Id: optional(workspaceID)}
-	if organizationID != "" {
-		q.body.Resource.Properties = &client.AccessResourceProperties{OrganizationId: &organizationID}
-	}
 	return q
 }
 

@@ -96,15 +96,6 @@ func allCases() []allCase {
 			},
 		},
 		{
-			name: "workspaces",
-			path: "/v1/products/prd_test/organizations/org_1/workspaces/search",
-			item: idItem,
-			all: func(ctx context.Context, c *anchorsdk.Client) iter.Seq2[string, error] {
-				seq := c.Organization(testOrgID).Workspaces().Search().Limit(2).Offset(4).All(ctx)
-				return mapIDs(seq, func(w nanoclient.ProductWorkspaceResponse) string { return w.Id })
-			},
-		},
-		{
 			name: "members",
 			path: "/v1/products/prd_test/organizations/org_1/members/search",
 			item: func(id string) string { return fmt.Sprintf(`{"product_user_id":%q}`, id) },

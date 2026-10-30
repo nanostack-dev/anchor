@@ -47,8 +47,6 @@ export const ROUTE_PATHS = {
 	ORGANIZATIONS: "/organizations",
 	ORGANIZATIONS_APIS_KEYS: "/organizations/api-keys",
 	ORGANIZATION_MEMBERSHIPS: "/organization-memberships",
-	WORKSPACES: "/workspaces",
-	WORKSPACE_MEMBERSHIPS: "/workspace-memberships",
 
 	// Email routes
 	EMAIL_TEMPLATES: "/products/email/templates",

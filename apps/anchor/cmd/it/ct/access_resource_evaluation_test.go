@@ -236,12 +236,12 @@ func TestAccessEvaluationOnResourcesThroughTheOrganization(t *testing.T) {
 		requireDenied(t, response, ct.NOTAMEMBER)
 	})
 
-	t.Run("A permission the resource's type does not hold is missing, not an error", func(t *testing.T) {
+	t.Run("A permission scoped above the resource that no role on its chain holds is missing", func(t *testing.T) {
 		response := w.access.User(reader).OnResource(w.org.Id, "document", w.document).Can(projectManage).Decide()
 		requireDenied(t, response, ct.MISSINGPERMISSION)
 	})
 
-	t.Run("An organization-scoped permission the organization role holds is missing on a document", func(t *testing.T) {
+	t.Run("An organization-scoped permission asked on a document is answered by its organization", func(t *testing.T) {
 		billing := "billing:read"
 		w.product.CreateScopedPermissions(t, "organization", billing)
 		admin := createManagedRole(t, w.product, ct.CreateProductRoleJSONRequestBody{
@@ -251,7 +251,9 @@ func TestAccessEvaluationOnResourcesThroughTheOrganization(t *testing.T) {
 		as := w.access.User(billingReader)
 
 		requireAllowed(t, as.InOrganization(w.org.Id).Can(billing).Decide())
-		requireDenied(t, as.OnResource(w.org.Id, "document", w.document).Can(billing).Decide(), ct.MISSINGPERMISSION)
+		requireAllowed(t, as.OnResource(w.org.Id, "document", w.document).Can(billing).Decide())
+		requireDenied(t, w.access.User(w.memberExternalID).OnResource(w.org.Id, "document", w.document).
+			Can(billing).Decide(), ct.MISSINGPERMISSION)
 	})
 
 	t.Run("An organization API key is refused another organization's resources", func(t *testing.T) {
@@ -359,13 +361,10 @@ func TestAccessEvaluationResourceParents(t *testing.T) {
 		requireDenied(t, response, ct.MISSINGPERMISSION)
 	})
 
-	t.Run("Organization and workspace resources take no parent", func(t *testing.T) {
-		workspace := w.product.Workspaces(w.org.Id).
-			Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + ids.MustNew("ct")}).Id
+	t.Run("An organization resource takes no parent", func(t *testing.T) {
 		as := w.access.User(w.memberExternalID)
 		for _, question := range []itdsl.AccessQuestion{
 			as.InOrganization(w.org.Id).Under("project", w.project),
-			as.InWorkspace(w.org.Id, workspace).Under("project", w.project),
 		} {
 			resp := question.Can(documentView).Send()
 
@@ -409,6 +408,21 @@ func TestAccessEvaluationExplainsGrants(t *testing.T) {
 			organizationGrant,
 		}, *response.Evaluations[0].Context.GrantedBy)
 	})
+
+	t.Run("A role on an ancestor grants a permission scoped to that ancestor on a resource below it",
+		func(t *testing.T) {
+			manager := createManagedRole(t, w.product, rolePermitting("project", "Project manager", projectManage))
+			lead, leadExternalID := w.newMember(t, w.orgMember.Id)
+			w.members("project", w.project).Put(lead, manager.Id)
+			asLead := w.access.User(leadExternalID).OnResource(w.org.Id, "document", w.subDocument)
+
+			response := asLead.Can(projectManage).Explain().Decide()
+
+			requireAllowed(t, response)
+			assert.Equal(t, []ct.AccessGrant{roleGrant(manager, "project", w.project)},
+				*response.Evaluations[0].Context.GrantedBy)
+			requireDenied(t, asReader("document", w.subDocument).Can(projectManage).Decide(), ct.MISSINGPERMISSION)
+		})
 
 	t.Run("An unregistered resource lists the grants from its parent up", func(t *testing.T) {
 		response := asReader("document", resourceID()).Under("folder", w.subfolder).Can(documentView).Explain().Decide()
@@ -527,39 +541,4 @@ func TestAccessEvaluationOnResourcesSeesWritesOnTheNextCall(t *testing.T) {
 
 		requireDenied(t, question.Decide(), ct.MISSINGPERMISSION)
 	})
-}
-
-// A product's own workspace type and the workspaces of the workspace routes
-// are one type (ADR-0022 A6): a workspace registered through the resource
-// routes is decided like one the workspace routes created.
-func TestAccessEvaluationDecidesARegisteredWorkspaceLikeABuiltInOne(t *testing.T) {
-	t.Parallel()
-	t.Run(
-		"A workspace registered as a resource is decided like a workspace of the workspace routes",
-		func(t *testing.T) {
-			t.Parallel()
-			product := createTestProductContext(t)
-			product.ResourceTypes().CreateUnder("workspace", "organization")
-			org := product.CreateOrganization(t, "Org-"+ids.MustNew("ct"), nil)
-			resources := product.Resources(org.Id)
-			registered := resourceID()
-			resources.Put("workspace", registered, "Registered", resources.Top())
-			role := createManagedRole(
-				t,
-				product,
-				ct.CreateProductRoleJSONRequestBody{Name: "Member " + ids.MustNew("ct")},
-			)
-			user := createDSLProductUser(t, product)
-			externalID := "user_" + ids.MustNew("ext")
-			setDSLProductUserExternalID(t, product, user.ID, externalID)
-			addMember(t, product, org.Id, user.ID, role.Id)
-			builtIn := product.Workspaces(org.Id).
-				Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + ids.MustNew("ct")}).Id
-			access := product.Access().User(externalID)
-
-			requireAllowed(t, access.InWorkspace(org.Id, builtIn).Decide())
-			requireAllowed(t, access.InWorkspace(org.Id, registered).Decide())
-			requireDenied(t, access.InWorkspace(org.Id, resourceID()).Decide(), ct.WORKSPACENOTINORGANIZATION)
-		},
-	)
 }

@@ -45,7 +45,9 @@ type Model struct {
 //     both hold;
 //   - each resource type holds the permissions scoped to it or to a type below
 //     it, through an assignment on it or through its parent; organization also
-//     lets an API key hold them directly.
+//     lets an API key hold them directly;
+//   - each resource type also answers the permissions scoped to a type above
+//     it, through its parent only: no role on it may hold them.
 func Compile(catalog Catalog) (Model, error) {
 	catalog = catalog.normalized()
 	dsl := catalog.dsl()
@@ -77,7 +79,7 @@ func (c Catalog) hash() string {
 
 // modelVersion changes whenever Compile writes a different model for the same
 // catalog, so every store gets the new model.
-const modelVersion = "anchor-authz-model-2"
+const modelVersion = "anchor-authz-model-3"
 
 // HasPermission reports whether the model holds the permission, so tuples
 // never name a relation it lacks.
@@ -158,6 +160,7 @@ func (c Catalog) dsl() string {
 	}
 
 	held := c.heldOn()
+	inherited := c.inheritedOn(held)
 	for _, t := range c.Types {
 		w.typeHeader(ResourceType(t.Slug))
 		w.line(indentRelations, "relations")
@@ -173,6 +176,9 @@ func (c Catalog) dsl() string {
 			)
 		}
 		w.define(RelationAssignment, "["+TypeRoleAssignment+"]")
+		for _, permission := range inherited[t.Slug] {
+			w.define(CanRelation(permission), CanRelation(permission)+" from "+RelationParent)
+		}
 		for _, permission := range held[t.Slug] {
 			alternatives := []string{CanRelation(permission) + " from " + RelationAssignment}
 			if t.Slug == TypeOrganization {
@@ -185,6 +191,40 @@ func (c Catalog) dsl() string {
 		}
 	}
 	return w.String()
+}
+
+// inheritedOn lists, for each type, the permissions scoped to a type above it
+// that it does not hold itself. Its parent answers them.
+func (c Catalog) inheritedOn(held map[string][]string) map[string][]string {
+	parents := map[string][]string{}
+	for _, t := range c.Types {
+		parents[t.Slug] = t.ParentTypes
+	}
+	scopes := map[string][]string{}
+	for _, permission := range c.Permissions {
+		scopes[permission.Scope] = append(scopes[permission.Scope], permission.Name)
+	}
+	inherited := map[string][]string{}
+	for _, t := range c.Types {
+		seen := map[string]bool{t.Slug: true}
+		queue := slices.Clone(t.ParentTypes)
+		for len(queue) > 0 {
+			slug := queue[0]
+			queue = queue[1:]
+			if seen[slug] {
+				continue
+			}
+			seen[slug] = true
+			for _, name := range scopes[slug] {
+				if !slices.Contains(held[t.Slug], name) && !slices.Contains(inherited[t.Slug], name) {
+					inherited[t.Slug] = append(inherited[t.Slug], name)
+				}
+			}
+			queue = append(queue, parents[slug]...)
+		}
+		slices.Sort(inherited[t.Slug])
+	}
+	return inherited
 }
 
 func mapSlugs(slugs []string) []string {

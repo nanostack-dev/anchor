@@ -140,51 +140,10 @@ An assignment is part of its resource's object state ([Authorization engine](aut
 
 ## Workspaces
 
-The built-in workspaces are resources of the Product's `workspace` type (ADR-0022 A6, phases 1 and 2). The workspace routes are deprecated but keep working; each workspace keeps its row in `workspaces` and gets a resource with the **same ID**, the workspace's name and the Organization as parent. Code: `internal/resource/service/workspaces.go` (the writes), `workspace_backfill.go` (the migration) and `internal/resource/repository/workspaces.go`.
-
-### Mirrored resources
-
-Every resource the workspace routes or the migration write is **marked** in `workspace_resources` (migration `000072`): it mirrors the workspace of the same ID. A marked resource counts only while that workspace exists. A resource the Product registered itself through the resource routes carries no mark and counts like any resource: registering it is the Product's statement that the workspace exists (B1, B2). That is the generic model the Product moves to in phase 3, so a Product that registers a `workspace` resource on purpose, a deleted workspace's ID included, gets it decided as registered ([access evaluation](access-evaluation.md#workspaces)). The migration marks an unmarked resource whose workspace exists, so a resource the Product registered before its workspace became a mirror is a mirror too.
-
-A marked resource whose workspace is gone is absent on the resource routes too: a read, a role assignment read or write answer `404 RESOURCE_NOT_FOUND`, and a search leaves it out (`repository.FindLive`). The resource routes never delete a workspace: `DELETE …/resources/workspace/{id}` on a marked resource whose workspace exists answers `409 RESOURCE_IS_WORKSPACE`, also when it sits in a cascaded subtree. Only the workspace route deletes the workspace row, then its resource.
-
-### The workspace type
-
-A Product needs a `workspace` type that may sit under `organization`. `DeclareType` creates `workspace` (name *Workspace*, under `organization`, not nesting) through the resource type service, which emits the usual `product.resource_type.created`. It **counts toward the 50 types** a Product declares besides `organization` (`resourcetype.MaxOwnTypes`). A Product that already declared `workspace` with `organization` among its parent types keeps that type. A Product whose `workspace` can't sit under the Organization, or that is at its limit (`RESOURCE_TYPE_LIMIT_REACHED`), keeps its catalog untouched and its workspaces stay unregistered: their decisions fall back to the Organization. The refusal logs an error once per Product and process, then at debug.
-
-The type is never declared inside a transaction: a refused insert would abort it, and the catalog lock would come after the Organization's row. A workspace create declares it before its own transaction. An Organization created with a `workspace`, with or without a founding member, creates its workspace inside its own transaction and declares the type and registers the workspace only once that transaction commits, so a refused request declares nothing. A create inside a caller's transaction leaves both to the next start's migration.
-
-### The migration
-
-On every start, beside the start rather than in it, `RegisterWorkspaceBackfill` runs `WorkspaceBackfill.Run` under the `resources:workspace-backfill` advisory lock. KSUIDs can't be minted in SQL, so it is code, like the [resource type backfill](resource-types.md#backfill). One statement lists the Organizations with work: a workspace that no marked resource mirrors (an anti-join), a marked resource whose workspace is gone, or a `workspace_memberships` row whose role is scoped to `workspace`. A Product whose own `workspace` type can't sit under the Organization is left out, so it costs nothing on later starts. A start with nothing to do costs that statement. For each Product listed, it declares the type, then, for each Organization, in one transaction:
-
-1. it deletes each marked resource whose workspace is gone, with `cascade`, so its descendants and role assignments go too, with their events;
-2. it marks the resources a workspace exists for, then registers each workspace no resource of the type stands for, read in one anti-join. The parent is the Organization by construction: the only parent a built-in workspace has, and the one default the migration takes;
-3. it moves each `workspace_memberships` row into a role assignment on the workspace's resource and deletes the row, when the row's role resolves in the Organization to a role scoped to the `workspace` type (D4). A template's ID names the Organization's copy. A row whose role is scoped elsewhere, whose user is not a member, or whose member already holds a role on that workspace stays; each logs at debug, and the Product logs their count once at warn. Workspace roles have been Organization-scoped since G1, so every existing row stays: the migration never invents a role. No route writes the table.
-
-Then it replays the Organization's marks, as a request does after its commit (`WriteReplay`, provided by `internal/authz`), so OpenFGA holds the parent and assignment tuples before a decision reads them; the sweeper retries a replay that can't run. An Organization that fails is logged and the others run; the errors are joined. It only fills what is missing: a resource the resource routes renamed, moved or gave roles to keeps them, and a moved membership is never assigned again.
-
-### Writes through the workspace routes
-
-While the built-in Workspace lives, the workspace routes write the resource in the workspace's own transaction, and mark it:
-
-| Route | Resource |
-| --- | --- |
-| Create | Registered with the workspace's ID and name under the Organization. |
-| Update | Re-registered with the workspace's name under the Organization: a rename renames it, and a resource the Product moved, renamed or deleted is put back. |
-| Delete | Deleted with `cascade`: its registered descendants and every role assignment on them go too, with their events. |
-
-A write the resource rules refuse (no type, or a type that can't sit under the Organization) leaves the workspace unregistered and logs once per Product and code; the workspace route answers as it did before. The resource routes never create, rename or delete a row in `workspaces`.
-
-**Who wins.** The last write wins: a workspace route rewrites the resource from the workspace row, and the resource routes may change it afterwards. The migration writes only what is missing, so it never overwrites either side.
-
-**Locks.** A workspace write and the migration take the locks of a resource write, in the same order: the Organization row (`FOR UPDATE` on create, `FOR KEY SHARE` otherwise), the catalog in share mode, then `resources:<organization_id>`. The migration reads the workspaces only after the last one. A workspace write that holds the lock first commits before the migration reads, so the migration sees its row and its resource. One that waits commits its resource after the migration, from its own row. A deleted workspace is therefore never registered again, and a new one is registered once (`TestWorkspaceBackfillRacesWorkspaceRoutes` queues writes and the migration behind a held lock, then releases them at once).
-
-**Rolling deploy.** The previous release writes workspaces without resources. The next start's migration registers the ones it created, and deletes the resource of one it deleted; until then that resource counts as absent, since its workspace is gone. A rename it made leaves the old name on the resource until the next write through a workspace route, which only affects display.
+Anchor has no built-in workspaces (ADR-0022 A6). A Product that keeps workspaces declares its own `workspace` type under `organization` and registers each workspace as a resource of it, with its own ID. The `workspaces`, `workspace_memberships` and `workspace_resources` tables stay unread for one release, so the previous release keeps working during a rolling deploy; a later migration drops them. A workspace deletes like any resource, and a permission scoped above its type, such as an Organization-scoped one, is answered through its parent ([access evaluation](access-evaluation.md#resources)).
 
 ## Tests
 
-`TestWorkspaceBackfill`, `TestWorkspaceRoutesWriteTheirResource`, `TestWorkspaceDeletedByAnEarlierRelease`, `TestOrganizationCreateRegistersItsWorkspace`, `TestDeprecatedWorkspaceRoutes` and the serial `TestWorkspaceBackfillRacesWorkspaceRoutes` in `apps/anchor/cmd/it/ct/workspace_resource_test.go` cover the migration (type, resources, a reused and an incompatible type, moved and kept memberships, a pruned workspace resource, reruns), the writes of the workspace routes and of Organization creates, the deprecation headers, and the race between the migration and those routes. `TestWorkspaceBackfillSync` in `apps/anchor/cmd/it/service` checks that the migration's own replay leaves the relationship store holding its tuples and no mark.
 
 `TestPutResourceMember`, `TestPutResourceMemberRefusals`, `TestGetResourceMember`, `TestDeleteResourceMember`, `TestSearchResourceMembers`, `TestResourceMemberEvents`, `TestRemoveMemberRemovesResourceRoles`, `TestDeletesReleaseResourceRoles`, `TestDeleteResourceWithRoleAssignments`, `TestRoleHeldOnAResource`, `TestResourceMemberScopes`, `TestConcurrentResourceMemberWrites` and the serial `TestManagedRoleDeleteDuringAnAssignment` in `apps/anchor/cmd/it/ct` cover the assignment rules, codes, limits, events and races; `searchResourceMembers` has a case in `TestCursorSearches`, and the end-of-suite sync check also checks every assignment's tuples. `TestResourceAssignmentSync` in `apps/anchor/cmd/it/service` covers the tuples after an assignment, a shared role, a replace, a removal, a member removal, a cascade, a stray assignee and the reconcile, and that an assignment's replay touches its resource only.
 

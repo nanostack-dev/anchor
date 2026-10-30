@@ -82,7 +82,7 @@ In the domain, `organization.Membership.Role` and `user.OrganizationMembership.R
 
 ## Deletes
 
-- **A role.** A role that a membership, a workspace membership, a [role assignment on a resource](resources.md#role-assignments) or a pending invitation still holds answers `409 ROLE_IN_USE`. The delete reads the role row with `transactor.ForUpdate`, not `ForNoKeyUpdate`: a membership insert takes `FOR KEY SHARE` through its foreign key, which `FOR NO KEY UPDATE` lets through, and the delete's `ON DELETE CASCADE` would then remove the new member. Under `FOR UPDATE` the insert waits, then fails its foreign key, and answers `400 ROLE_NOT_FOUND_IN_REQUEST`.
+- **A role.** A role that a membership, a [role assignment on a resource](resources.md#role-assignments) or a pending invitation still holds answers `409 ROLE_IN_USE`. The delete reads the role row with `transactor.ForUpdate`, not `ForNoKeyUpdate`: a membership insert takes `FOR KEY SHARE` through its foreign key, which `FOR NO KEY UPDATE` lets through, and the delete's `ON DELETE CASCADE` would then remove the new member. Under `FOR UPDATE` the insert waits, then fails its foreign key, and answers `400 ROLE_NOT_FOUND_IN_REQUEST`.
 - **A permission.** Deleting a permission removes it from every role that bundles it, custom roles included, through the foreign key cascade.
 - **An Organization.** Deleting an Organization deletes its custom roles (`ON DELETE CASCADE`).
 

@@ -45,7 +45,6 @@ import {
 	Check,
 	CheckCircle2,
 	Copy,
-	FolderKanban,
 	Globe,
 	KeyRound,
 	Layers,
@@ -95,9 +94,6 @@ function getGroupIcon(name: string, type: "internal" | "integration") {
 	const normalized = name.toLowerCase();
 	if (normalized.includes("organization")) {
 		return <Building2 className="size-4 text-primary" />;
-	}
-	if (normalized.includes("workspace")) {
-		return <FolderKanban className="size-4 text-primary" />;
 	}
 	if (normalized.includes("key")) {
 		return <KeyRound className="size-4 text-primary" />;

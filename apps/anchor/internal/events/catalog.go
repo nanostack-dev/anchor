@@ -14,7 +14,6 @@ const (
 
 const (
 	GroupOrganizations    = "Organizations"
-	GroupWorkspaces       = "Workspaces"
 	GroupAPIKeys          = "API Keys"
 	GroupUsers            = "Users"
 	GroupLicensing        = "Licensing"

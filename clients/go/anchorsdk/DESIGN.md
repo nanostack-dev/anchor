@@ -32,7 +32,7 @@ members, err := o.Members().List(ctx)
 key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 ```
 
-`Client.Organization(id)` returns an `*Org` handle exposing `Members()`, `Workspaces()`, `APIKeys()`. That keeps the organization ID out of every sub-call.
+`Client.Organization(id)` returns an `*Org` handle exposing `Members()`, `Resource()`, `Resources()`, `APIKeys()`. That keeps the organization ID out of every sub-call.
 
 **Errors.** Every method returns `*Error` on failure, carrying `Op`, `StatusCode`, and Anchor's structured `Details`. Classify with `errors.Is` against `ErrNotFound`, `ErrForbidden`, `ErrUnauthorized`, `ErrConflict`, `ErrInvalid`, `ErrPermanent`. `ErrPermanent` matches every 4xx except 429.
 
@@ -53,10 +53,9 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `email.go` | done — fluent send; the FAILED-record rule is preserved |
 | `organizations.go` | done — create/update builders, get, delete, search, list |
 | `members.go` | done — list, search, get (plus role permissions), add, remove, set role |
-| `workspaces.go` | deprecated — create, get, update, delete, search, list |
 | `resources.go` | done — `Resource` handle: put (with `Under`), get, delete, delete a tree; `Resources().Search()` |
 | `resource_members.go` | done — roles on a resource: assign, get, remove, search |
-| `access.go` | done — evaluate on an organization, a workspace or a resource; `On(resource)`, `Can` |
+| `access.go` | done — evaluate on an organization or a resource; `On(resource)`, `Can` |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
 | `users.go` | done — create, get, delete, search, list, a user's organizations (`SearchOrganizations`, `Organizations` reads every page) |
 | `paginate.go` | done — the cursor iterator behind every `All` |
@@ -69,7 +68,6 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 Where the build departed from the plan:
 
 - **`ptr` is gone.** The repo's `modernize` linter rejects it outright (`newexpr: ptr can be an inlinable wrapper around new(expr)`) and the module is on Go 1.26, so every call site uses the `new(expr)` builtin. `decode`, `expectSuccess`, `retrying`, `permanentError`, and `transportError` are all in use.
-- **Workspaces gained `Search`/`List`.** The plan listed only CRUD, but Anchor exposes the search endpoint and every sibling facade wraps one; omitting it made `Workspaces` the odd facade out.
 - **Product users have no update.** The generated client has no `UpdateProductUser` operation — Anchor does not expose one. That is documented on the `Users` type. Attach/detach is `Members().Add`/`Remove`, cross-referenced from `users.go`.
 - **Three pre-existing lint findings were cleared** so the module lints at zero: `mnd` on `jitter`'s `d / 2` (now the `jitterSpread` const), `gosec` G101 on `productAPIKeyHeader` (renamed `productAuthHeader` — it names a header, it is not a credential), and `mnd` plus `revive` in the generated-client package's hand-written `config.go`. One suppression was added: `//nolint:gosec` on `rand.Int64N` in `jitter`, since backoff spread is a scheduling decision that needs no CSPRNG.
 - **Tests split into a second file.** `license_test.go` sits alongside `anchorsdk_test.go` in the same `anchorsdk_test` package rather than growing the single file further — the suite crossed 1,100 lines and licensing's own scenarios (routing, error classification, five separate cache-behaviour tests) read better grouped. Both files share the `stubServer`/`newTestClient`/`assertJSONEqual` helpers; `license_test.go` adds one local `newLicenseTestClient` for the one knob (`LicenseCachePolicy`) the shared helper does not take.
@@ -100,7 +98,7 @@ Judgment calls made without a human in the loop, flagged here rather than silent
 - All ID types are `= string` aliases (`Ksuid`, `ProductIdParameter`, `OrganizationIdParameter`, …), so SDK signatures take plain `string`.
 - Response types follow oapi-codegen convention: `Body []byte`, `HTTPResponse *http.Response`, `JSON200`/`JSON201`/…, and a `StatusCode()` method.
 - Organization operations are named `…ProductOrganization…` (`CreateProductOrganizationWithResponse`, `GetProductOrganizationWithResponse`), not `…Organization…`.
-- Request bodies are often aliases: `CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest`, `AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest`, `CreateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyCreateRequest`, `CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest`.
+- Request bodies are often aliases: `CreateProductOrganizationJSONRequestBody = ProductOrganizationRequest`, `AddOrganizationMemberJSONRequestBody = OrganizationMemberRequest`, and `CreateOrganizationAPIKeyJSONRequestBody = OrganizationAPIKeyCreateRequest`.
 - `client.gen.go` and `types.gen.go` are generated. Never hand-edit them.
 - **A declared-JSON status with an unparseable body destroys the whole response.** For any status the spec declares a JSON body for (`JSON400`, `JSON401`, `JSON403`, …), the generated parser unmarshals it and returns `(nil, err)` on failure — the status code is lost, so the SDK can only report a transport error and will retry what was really a permanent 4xx. Nothing the SDK can do about it from outside the generated client; it matters when writing tests, where every error stub must carry a real `ApiErrorResponse` body. An undeclared status (404, 409, 500, …) parses fine with any body.
 - Not every operation declares the same error statuses. `GetProductOrganization` declares only 401/403; `SendEmail` declares only 400.

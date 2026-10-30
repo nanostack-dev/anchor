@@ -18,7 +18,6 @@ import (
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
-	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 	licensesvc "anchor/internal/license/service"
 	"anchor/internal/repository"
@@ -111,7 +110,6 @@ type organizationService struct {
 	roleAssignments   assignments.Service
 	licenses          licensesvc.OrganizationLicenseService
 	licenseTemplates  licensesvc.LicenseTemplateService
-	workspaces        WorkspaceService
 	transactor        transactor.Transactor
 	lock              *pglock.Client
 	events            events.Emitter
@@ -126,7 +124,6 @@ func NewOrganizationService(
 	roleAssignments assignments.Service,
 	licenses licensesvc.OrganizationLicenseService,
 	licenseTemplates licensesvc.LicenseTemplateService,
-	workspaces WorkspaceService,
 	tx transactor.Transactor,
 	lock *pglock.Client,
 	eventEmitter events.Emitter,
@@ -140,7 +137,6 @@ func NewOrganizationService(
 		roleAssignments:   roleAssignments,
 		licenses:          licenses,
 		licenseTemplates:  licenseTemplates,
-		workspaces:        workspaces,
 		transactor:        tx,
 		lock:              lock,
 		events:            eventEmitter,
@@ -263,17 +259,6 @@ func (s *organizationService) attachIncludes(
 			}
 		}
 	}
-	if slices.Contains(includes, organization.IncludeWorkspace) {
-		linked, err := s.workspaces.ListByOrganizations(ctx, workspace.ListByOrganizationsInput{
-			ProductID: productID, OrganizationIDs: organizationIDs,
-		})
-		if err != nil {
-			return nil, err
-		}
-		for i, org := range organizations {
-			organizations[i].Workspaces = linked[org.ID]
-		}
-	}
 	return organizations, nil
 }
 
@@ -301,7 +286,6 @@ func (s *organizationService) Create(
 
 	// One transaction so a refused license template leaves no organization behind.
 	var created organization.Organization
-	var initialWorkspace workspace.Workspace
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		template, templateErr := s.resolveLicenseTemplate(
 			txCtx, input.TenantID, input.ProductID, input.LicenseTemplateID,
@@ -333,23 +317,11 @@ func (s *organizationService) Create(
 			return licenseErr
 		}
 		created.License = instantiated
-		if input.Workspace != nil {
-			var workspaceErr error
-			if initialWorkspace, workspaceErr = s.workspaces.Create(
-				txCtx,
-				workspace.CreateWorkspaceInput{Name: input.Workspace.Name, Description: input.Workspace.Description,
-					ProductID: input.ProductID, OrganizationID: created.ID,
-				},
-			); workspaceErr != nil {
-				return workspaceErr
-			}
-		}
 
 		return s.emitOrganization(txCtx, events.OrganizationCreated, created.ProductID, created.ID)
 	}); txErr != nil {
 		return organization.Organization{}, txErr
 	}
-	s.registerInitialWorkspace(ctx, input.ProductID, created.ID, initialWorkspace.ID)
 
 	logger.Info().
 		Str("organization_id", created.ID).
@@ -388,7 +360,6 @@ func (s *organizationService) CreateWithMember(
 
 	var createdOrg organization.Organization
 	var createdMembership organization.Membership
-	var initialWorkspace workspace.Workspace
 
 	acquired, err := s.lock.TryWithLock(ctx, lockKey, func(lockCtx context.Context, tx *sql.Tx) error {
 		lockCtx = transactor.WithTx(lockCtx, tx)
@@ -463,20 +434,6 @@ func (s *organizationService) CreateWithMember(
 			return licenseErr
 		}
 		createdOrg.License = createdLicense
-		if input.Workspace != nil {
-			var workspaceErr error
-			if initialWorkspace, workspaceErr = s.workspaces.Create(
-				lockCtx,
-				workspace.CreateWorkspaceInput{
-					Name:           input.Workspace.Name,
-					Description:    input.Workspace.Description,
-					ProductID:      input.ProductID,
-					OrganizationID: createdOrg.ID,
-				},
-			); workspaceErr != nil {
-				return workspaceErr
-			}
-		}
 
 		if emitErr := s.emitOrganization(
 			lockCtx,
@@ -511,8 +468,6 @@ func (s *organizationService) CreateWithMember(
 			"product_user_id": input.ProductUserID,
 		})
 	}
-
-	s.registerInitialWorkspace(ctx, input.ProductID, createdOrg.ID, initialWorkspace.ID)
 
 	logger.Info().
 		Str("product_id", input.ProductID).
@@ -764,21 +719,4 @@ func (s *organizationService) checkFoundingRole(
 		return NewBodyRoleNotFoundError(*roleID)
 	}
 	return nil
-}
-
-// registerInitialWorkspace registers an organization's initial workspace as a
-// resource once its create committed, declaring the product's workspace type
-// first (ADR-0022 A6). The organization is already created, so a failure is
-// logged and left to the next start's backfill.
-func (s *organizationService) registerInitialWorkspace(
-	ctx context.Context,
-	productID, organizationID, workspaceID string,
-) {
-	if workspaceID == "" {
-		return
-	}
-	if err := s.workspaces.RegisterResource(ctx, productID, organizationID, workspaceID); err != nil {
-		s.logger.Error().Err(err).Str("product_id", productID).Str("organization_id", organizationID).
-			Str("workspace_id", workspaceID).Msg("failed to register the initial workspace as a resource")
-	}
 }

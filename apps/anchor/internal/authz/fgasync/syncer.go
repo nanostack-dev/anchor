@@ -119,6 +119,28 @@ func (s *Syncer) Sync(ctx context.Context, scope Scope) error {
 	}
 }
 
+// EnsureModel writes the Product's model when it changed since the model its
+// store follows, such as after a release that compiles the same catalog into
+// a different model. The tuples stay: a new model version only adds relations
+// computed from them.
+func (s *Syncer) EnsureModel(ctx context.Context, productID string) error {
+	source, _, recorded, err := s.modelState(ctx, productID)
+	if err != nil {
+		return err
+	}
+	if recorded.Hash == source.Hash && recorded.ID != "" {
+		return nil
+	}
+	engine, storeID, err := s.open(ctx, productID)
+	if err != nil {
+		return err
+	}
+	return s.exclusive(ctx, productID, func(txCtx context.Context) error {
+		_, lockedErr := s.ensureModel(txCtx, engine, storeID, productID)
+		return lockedErr
+	})
+}
+
 // Reconcile syncs the whole Product, then deletes every tuple no source
 // claims, such as the grants of a role deleted without an event.
 func (s *Syncer) Reconcile(ctx context.Context, productID string) error {

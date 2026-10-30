@@ -1,7 +1,7 @@
 # Access evaluation
 
-A product backend asks Anchor whether one caller may act on an organization, a
-workspace or one of its own resources, instead of rebuilding memberships, roles,
+A product backend asks Anchor whether one caller may act on an organization or
+one of its own resources, instead of rebuilding memberships, roles,
 resource chains and API-key checks itself.
 
 ## Contract
@@ -18,8 +18,7 @@ subject or resource than the caller named.
   `organization_api_key` with the raw key. The request logger never records the
   body of these routes, introspection or key validation, even with
   `LOG_REQUEST_BODY=true`.
-- **Resource:** `organization`, `workspace`, or any resource type slug the product
-  declares, with the product's own ID ([resources](#resources)). A user needs the
+- **Resource:** `organization`, or any resource type slug the product declares, with the product's own ID ([resources](#resources)). A user needs the
   organization: the organization ID, or `properties.organization_id` for anything
   else. An API key defaults to its own organization when none is named.
 - **Action:** a resource permission name such as `flows:read`. A batch with no
@@ -31,11 +30,10 @@ subject or resource than the caller named.
 
 A denial is HTTP 200 with `decision: false` and `context.reason`:
 `SUBJECT_NOT_SYNCED`, `API_KEY_INVALID`, `API_KEY_INACTIVE`, `ORGANIZATION_NOT_FOUND`,
-`NOT_A_MEMBER`, `WORKSPACE_NOT_IN_ORGANIZATION`, `RESOURCE_TYPE_NOT_FOUND`,
+`NOT_A_MEMBER`, `RESOURCE_TYPE_NOT_FOUND`,
 `RESOURCE_NOT_FOUND`, `RESOURCE_NOT_IN_ORGANIZATION`, `PARENT_TYPE_NOT_ALLOWED`
 ([resources](#resources)), `MISSING_PERMISSION` (with `missing_permissions`) or
-`NOT_EVALUATED` for items skipped by `options.evaluations_semantic`. An unknown,
-foreign or deleted workspace gives the same `WORKSPACE_NOT_IN_ORGANIZATION`. A
+`NOT_EVALUATED` for items skipped by `options.evaluations_semantic`. A
 subject or resource that is not reached denies every item of a batch with the same
 reason. When the subject reaches the resource, `context` carries the organization,
 the organization role, the product user or API key ID and every permission the role
@@ -51,9 +49,7 @@ A Product's own resource types follow ADR-0022 B1 and E2. Postgres resolves the
 resource after the subject, in this order; the first rule that fails is the reason:
 
 1. **The type.** A slug the Product does not declare is `RESOURCE_TYPE_NOT_FOUND`.
-   `organization` keeps its own path, and `workspace` has its own rules until the
-   workspace routes are removed ([workspaces](#workspaces)). `properties.parent` on
-   either is a 400.
+   `organization` keeps its own path, and `properties.parent` on it is a 400.
 2. **A registered resource** of that type and ID in the asked Organization is checked
    on its own object, under its stored chain. A `properties.parent` that differs is
    ignored and logged at warn level as `"event": "access.parent_mismatch"`, sampled at
@@ -79,48 +75,25 @@ parent's own Organization counts.
 
 A role held on the resource, or on any resource above it, grants what it holds,
 and so does the Organization role, the root of every chain. An Organization API key
-holds its permissions on every resource of its Organization. A permission that the
-resource's type does not hold, such as `project:manage` on a document, is
-`MISSING_PERMISSION` and is not asked.
+holds its permissions on every resource of its Organization.
 
-### Workspaces
+A permission scoped to a type above the resource's type, such as an
+Organization-scoped `flows:read` asked on a `workspace`, or a `workspace`-scoped
+permission asked on a project inside it, is answered through the resource's chain:
+a role on the ancestor of that scope, or above it, grants it
+([authorization engine](authorization-engine.md#the-model)). A role held on the
+resource itself never holds it, since a role holds only permissions scoped to its
+own type or below. A product can therefore ask every check on the resource it acts
+on. A permission scoped to a type off the resource's chain, such as `invoice:pay` on
+a document, is `MISSING_PERMISSION` and is not asked.
 
-A workspace is a resource of the Product's `workspace` type (ADR-0022 A6, phase 2).
-Every workspace of the deprecated workspace routes is registered as one, with the
-workspace's ID, under its Organization ([organization workspaces](../organization-workspaces.md)),
-and a Product may also register its own through the resource routes. A `"type":
-"workspace"` decision resolves, in this order:
-
-1. **The registered resource** of the `workspace` type and ID in the asked
-   Organization, checked on its own object. The Organization role reaches it through
-   its parent, a role assigned on it grants what it holds, and `granted_by` names
-   both. A permission the `workspace` type doesn't hold, such as every
-   Organization-scoped permission, is checked on the Organization instead
-   (`PermissionCheck.Fallback`), so it answers as before workspaces were registered.
-   A resource the workspace mirror wrote counts only while its workspace exists: one
-   whose workspace a previous release deleted, without its resource, is
-   `WORKSPACE_NOT_IN_ORGANIZATION`, as it was before, until the next start's migration
-   deletes it ([resources](resources.md#mirrored-resources)).
-2. **A workspace of the workspace routes without a resource**, which happens when the
-   Product's `workspace` type can't sit under the Organization or a previous release
-   created the workspace during a rolling deploy, is checked on its Organization alone.
-3. **Anything else**, an unknown workspace or one of another Organization, is
-   `WORKSPACE_NOT_IN_ORGANIZATION`, never `RESOURCE_NOT_FOUND`. That reason gives way
-   to `RESOURCE_NOT_IN_ORGANIZATION` once the workspace routes are removed (A6 phase 4).
-
-**Answers that change.** For a workspace of the workspace routes, every answer is
-the same as before, Organization-scoped permissions included. What is new: a role
-assigned on a workspace grants its workspace-scoped permissions, and a `workspace`
-resource the Product registered itself through the resource routes, with no
-workspace of that ID, is decided as registered rather than
-`WORKSPACE_NOT_IN_ORGANIZATION`. That is deliberate: the Product moves its
-workspaces to those routes in A6 phase 3, and registering a resource is how it says
-the resource exists. Before M5 (PR 15), `workspace` always named the built-in
-workspace, even when the Product declared a type of that slug.
-
-The drift log compares only decisions checked on the Organization alone, so it no
-longer covers a registered workspace's Organization-scoped actions: the evaluator
-doesn't know which actions the checker sent to the fallback.
+For one release, a registered resource of a `workspace` type keeps the previous
+release's answer: an action the model doesn't define on it is checked on its
+Organization (`PermissionCheck.Fallback`). During the rolling deploy, replicas of
+both releases write their own model to the store, and the previous one lacks the
+relations a type inherits from its parent. Each decision checks, at most every 30
+seconds, that its store follows this release's model, and writes it when it
+doesn't. The migration that drops the workspace tables removes the fallback.
 
 ### Explaining a decision
 
@@ -176,7 +149,7 @@ the product sent on create.
 
 The evaluator (`apps/anchor/internal/access`) resolves the subject in Postgres on
 every call: the product user by external ID, the membership joined to its role,
-and, for a workspace, the type tree, its resource and, without one, the workspace. A refusal for a missing membership adds one
+A refusal for a missing membership adds one
 organization read to tell `ORGANIZATION_NOT_FOUND` from `NOT_A_MEMBER`. A resource
 of the Product's own types adds the type tree, the resource, and, for an
 unregistered one, its parent: three reads at most, plus one when the named parent is
@@ -203,18 +176,18 @@ allowing documents registered under it and under a sub-folder, and an unregister
 one named by its folder, but not the parent project or the Organization; the
 Organization role and an API key on resources; each resource reason; a stored parent
 winning over a named one; `granted_by`; batch semantics; revocations on the next
-call; and a workspace registered through the resource routes decided like one of the
-workspace routes. `apps/anchor/cmd/it/ct/workspace_resource_test.go`
-(`TestAccessEvaluationOnWorkspaceResources`) covers an Organization role reaching a
-workspace-scoped permission through the parent, an Organization-scoped permission
-still decided on the Organization, a role assigned on the workspace with its
-`granted_by`, and `WORKSPACE_NOT_IN_ORGANIZATION` for a workspace of another
+call; and an Organization-scoped permission asked on a document answered by the
+Organization. `apps/anchor/cmd/it/ct/access_evaluation_test.go` asks every check on a
+resource of a declared `workspace` type with Organization-scoped permissions, the way
+a product that keeps its workspaces in Anchor does. `TestAnchorSDKWorkspaceResources`
+in `apps/anchor/cmd/it/ct/anchorsdk_resources_test.go` covers the same through the SDK:
+an Organization role reaching a workspace-scoped permission through the parent, a
+role assigned on the workspace, and an Organization-scoped permission decided on the
 Organization.
 `TestAccessDecisionsOnResources` in `apps/anchor/cmd/it/service` checks a decision at
 the bottom of a 15-level chain and on an unregistered resource one level below it.
 
 ## Not covered
 
-`workspace_memberships` rows are not read: the workspace backfill moves the ones it can
-into role assignments ([resources](resources.md#workspaces)). A product user's
+A product user's
 `INACTIVE` status is not checked, matching what membership listings return today.

@@ -70,11 +70,6 @@
       "organization_role:delete"
     ]
   },
-  "DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
-    "productApiKeyAuth": [
-      "workspace:delete"
-    ]
-  },
   "DELETE /v1/products/{product_id}/product-users/{product_user_id}": {
     "productApiKeyAuth": [
       "product_user:delete"
@@ -236,12 +231,6 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_role:read"
-    ]
-  },
-  "GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
-    "platformBearerAuth": [],
-    "productApiKeyAuth": [
-      "workspace:read"
     ]
   },
   "GET /v1/products/{product_id}/permissions/{permission_id}": {
@@ -528,17 +517,6 @@
       "organization_role:read"
     ]
   },
-  "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces": {
-    "productApiKeyAuth": [
-      "workspace:create"
-    ]
-  },
-  "POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search": {
-    "platformBearerAuth": [],
-    "productApiKeyAuth": [
-      "workspace:read"
-    ]
-  },
   "POST /v1/products/{product_id}/permissions/search": {
     "platformBearerAuth": []
   },
@@ -672,11 +650,6 @@
     "platformBearerAuth": [],
     "productApiKeyAuth": [
       "organization_role:update"
-    ]
-  },
-  "PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}": {
-    "productApiKeyAuth": [
-      "workspace:update"
     ]
   },
   "PUT /v1/products/{product_id}/resource-permissions/{permission_name}": {

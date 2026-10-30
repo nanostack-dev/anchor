@@ -342,7 +342,7 @@ type ClientInterface interface {
 
 	// EvaluateAccessWithBody Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -351,7 +351,7 @@ type ClientInterface interface {
 
 	// EvaluateAccess Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1477,7 +1477,7 @@ type ClientInterface interface {
 
 	// DeleteResource Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 	//
 	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 	DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1494,7 +1494,6 @@ type ClientInterface interface {
 	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-	// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1506,7 +1505,6 @@ type ClientInterface interface {
 	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-	// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1638,100 +1636,6 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
 	UpdateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateOrganizationWorkspaceWithBody Create Organization Workspace
-	//
-	// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspaceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateOrganizationWorkspace Create Organization Workspace
-	//
-	// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SearchOrganizationWorkspacesWithBody Search Organization Workspaces
-	//
-	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspacesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SearchOrganizationWorkspaces Search Organization Workspaces
-	//
-	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspaces(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteOrganizationWorkspace Delete Organization Workspace
-	//
-	// Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission. The workspace's resource goes with it, with every resource registered under it and every role assignment on them.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `DeleteOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	DeleteOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetOrganizationWorkspace Get Organization Workspace
-	//
-	// Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `GetOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	GetOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateOrganizationWorkspaceWithBody Update Organization Workspace
-	//
-	// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspaceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateOrganizationWorkspace Update Organization Workspace
-	//
-	// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProductPermissionsWithBody Search built-in Product Permissions
 	//
@@ -2625,7 +2529,7 @@ func (c *Client) UpdateProduct(ctx context.Context, productId ProductIdParameter
 
 // EvaluateAccessWithBody Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2644,7 +2548,7 @@ func (c *Client) EvaluateAccessWithBody(ctx context.Context, productId ProductId
 
 // EvaluateAccess Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -4975,7 +4879,7 @@ func (c *Client) SearchResources(ctx context.Context, productId ProductIdParamet
 
 // DeleteResource Delete Resource
 //
-// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 //
 // Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/{resource_type}/{resource_id} (the `DeleteResource` operationId).
 func (c *Client) DeleteResource(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, resourceType ResourceTypePathParameter, resourceId ResourceIdParameter, params *DeleteResourceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5012,7 +4916,6 @@ func (c *Client) GetResource(ctx context.Context, productId ProductIdParameter, 
 // Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 // The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 // Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5034,7 +4937,6 @@ func (c *Client) PutResourceWithBody(ctx context.Context, productId ProductIdPar
 // Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 // The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 // Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -5307,172 +5209,6 @@ func (c *Client) UpdateOrganizationRoleWithBody(ctx context.Context, productId P
 // Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
 func (c *Client) UpdateOrganizationRole(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationRoleRequest(c.Server, productId, organizationId, roleId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateOrganizationWorkspaceWithBody Create Organization Workspace
-//
-// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) CreateOrganizationWorkspaceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateOrganizationWorkspaceRequestWithBody(c.Server, productId, organizationId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateOrganizationWorkspace Create Organization Workspace
-//
-// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) CreateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateOrganizationWorkspaceRequest(c.Server, productId, organizationId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// SearchOrganizationWorkspacesWithBody Search Organization Workspaces
-//
-// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) SearchOrganizationWorkspacesWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchOrganizationWorkspacesRequestWithBody(c.Server, productId, organizationId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// SearchOrganizationWorkspaces Search Organization Workspaces
-//
-// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) SearchOrganizationWorkspaces(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSearchOrganizationWorkspacesRequest(c.Server, productId, organizationId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// DeleteOrganizationWorkspace Delete Organization Workspace
-//
-// Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission. The workspace's resource goes with it, with every resource registered under it and every role assignment on them.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `DeleteOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) DeleteOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteOrganizationWorkspaceRequest(c.Server, productId, organizationId, workspaceId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetOrganizationWorkspace Get Organization Workspace
-//
-// Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `GetOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) GetOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetOrganizationWorkspaceRequest(c.Server, productId, organizationId, workspaceId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateOrganizationWorkspaceWithBody Update Organization Workspace
-//
-// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) UpdateOrganizationWorkspaceWithBody(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateOrganizationWorkspaceRequestWithBody(c.Server, productId, organizationId, workspaceId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateOrganizationWorkspace Update Organization Workspace
-//
-// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *Client) UpdateOrganizationWorkspace(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateOrganizationWorkspaceRequest(c.Server, productId, organizationId, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -11611,271 +11347,6 @@ func NewUpdateOrganizationRoleRequestWithBody(server string, productId ProductId
 	return req, nil
 }
 
-// NewCreateOrganizationWorkspaceRequest calls the generic CreateOrganizationWorkspace builder with application/json body
-func NewCreateOrganizationWorkspaceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateOrganizationWorkspaceRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
-}
-
-// NewCreateOrganizationWorkspaceRequestWithBody constructs an http.Request for the CreateOrganizationWorkspace method, with any body, and a specified content type
-func NewCreateOrganizationWorkspaceRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewSearchOrganizationWorkspacesRequest calls the generic SearchOrganizationWorkspaces builder with application/json body
-func NewSearchOrganizationWorkspacesRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationWorkspacesJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSearchOrganizationWorkspacesRequestWithBody(server, productId, organizationId, "application/json", bodyReader)
-}
-
-// NewSearchOrganizationWorkspacesRequestWithBody constructs an http.Request for the SearchOrganizationWorkspaces method, with any body, and a specified content type
-func NewSearchOrganizationWorkspacesRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/search", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteOrganizationWorkspaceRequest constructs an http.Request for the DeleteOrganizationWorkspace method
-func NewDeleteOrganizationWorkspaceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetOrganizationWorkspaceRequest constructs an http.Request for the GetOrganizationWorkspace method
-func NewGetOrganizationWorkspaceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateOrganizationWorkspaceRequest calls the generic UpdateOrganizationWorkspace builder with application/json body
-func NewUpdateOrganizationWorkspaceRequest(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateOrganizationWorkspaceRequestWithBody(server, productId, organizationId, workspaceId, "application/json", bodyReader)
-}
-
-// NewUpdateOrganizationWorkspaceRequestWithBody constructs an http.Request for the UpdateOrganizationWorkspace method, with any body, and a specified content type
-func NewUpdateOrganizationWorkspaceRequestWithBody(server string, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "product_id", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "organization_id", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "workspace_id", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/products/%s/organizations/%s/workspaces/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewSearchProductPermissionsRequest calls the generic SearchProductPermissions builder with application/json body
 func NewSearchProductPermissionsRequest(server string, productId ProductIdParameter, body SearchProductPermissionsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -13517,7 +12988,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithBodyWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -13526,7 +12997,7 @@ type ClientWithResponsesInterface interface {
 
 	// EvaluateAccessWithResponse Evaluate Access
 	//
-	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+	// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14716,7 +14187,7 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteResourceWithResponse Delete Resource
 	//
-	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
+	// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -14737,7 +14208,6 @@ type ClientWithResponsesInterface interface {
 	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-	// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14749,7 +14219,6 @@ type ClientWithResponsesInterface interface {
 	// Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 	// The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 	// Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-	// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14889,104 +14358,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id} (the `UpdateOrganizationRole` operationId).
 	UpdateOrganizationRoleWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter, body UpdateOrganizationRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationRoleResponse, error)
-
-	// CreateOrganizationWorkspaceWithBodyWithResponse Create Organization Workspace
-	//
-	// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspaceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationWorkspaceResponse, error)
-
-	// CreateOrganizationWorkspaceWithResponse Create Organization Workspace
-	//
-	// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationWorkspaceResponse, error)
-
-	// SearchOrganizationWorkspacesWithBodyWithResponse Search Organization Workspaces
-	//
-	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspacesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationWorkspacesResponse, error)
-
-	// SearchOrganizationWorkspacesWithResponse Search Organization Workspaces
-	//
-	// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspacesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationWorkspacesResponse, error)
-
-	// DeleteOrganizationWorkspaceWithResponse Delete Organization Workspace
-	//
-	// Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission. The workspace's resource goes with it, with every resource registered under it and every role assignment on them.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `DeleteOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	DeleteOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationWorkspaceResponse, error)
-
-	// GetOrganizationWorkspaceWithResponse Get Organization Workspace
-	//
-	// Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `GetOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	GetOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationWorkspaceResponse, error)
-
-	// UpdateOrganizationWorkspaceWithBodyWithResponse Update Organization Workspace
-	//
-	// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspaceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationWorkspaceResponse, error)
-
-	// UpdateOrganizationWorkspaceWithResponse Update Organization Workspace
-	//
-	// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-	// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationWorkspaceResponse, error)
 
 	// SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
 	//
@@ -22835,358 +22206,6 @@ func (r UpdateOrganizationRoleResponse) ContentType() string {
 	return ""
 }
 
-type CreateOrganizationWorkspaceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *ProductWorkspaceResponse
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
-}
-
-// GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON201() *ProductWorkspaceResponse {
-	return r.JSON201
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r CreateOrganizationWorkspaceResponse) GetJSON409() *Conflict {
-	return r.JSON409
-}
-
-// GetBody returns the raw response body bytes
-func (r CreateOrganizationWorkspaceResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateOrganizationWorkspaceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateOrganizationWorkspaceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateOrganizationWorkspaceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type SearchOrganizationWorkspacesResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *ProductWorkspaceListResponse
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON200() *ProductWorkspaceListResponse {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r SearchOrganizationWorkspacesResponse) GetJSON409() *Conflict {
-	return r.JSON409
-}
-
-// GetBody returns the raw response body bytes
-func (r SearchOrganizationWorkspacesResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r SearchOrganizationWorkspacesResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SearchOrganizationWorkspacesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r SearchOrganizationWorkspacesResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteOrganizationWorkspaceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r DeleteOrganizationWorkspaceResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r DeleteOrganizationWorkspaceResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r DeleteOrganizationWorkspaceResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r DeleteOrganizationWorkspaceResponse) GetJSON409() *Conflict {
-	return r.JSON409
-}
-
-// GetBody returns the raw response body bytes
-func (r DeleteOrganizationWorkspaceResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteOrganizationWorkspaceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteOrganizationWorkspaceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteOrganizationWorkspaceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetOrganizationWorkspaceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *ProductWorkspaceResponse
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetOrganizationWorkspaceResponse) GetJSON200() *ProductWorkspaceResponse {
-	return r.JSON200
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetOrganizationWorkspaceResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetOrganizationWorkspaceResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetOrganizationWorkspaceResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetBody returns the raw response body bytes
-func (r GetOrganizationWorkspaceResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetOrganizationWorkspaceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetOrganizationWorkspaceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetOrganizationWorkspaceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type UpdateOrganizationWorkspaceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *ProductWorkspaceResponse
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *Unauthorized
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *Forbidden
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON200() *ProductWorkspaceResponse {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON401() *Unauthorized {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON403() *Forbidden {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r UpdateOrganizationWorkspaceResponse) GetJSON409() *Conflict {
-	return r.JSON409
-}
-
-// GetBody returns the raw response body bytes
-func (r UpdateOrganizationWorkspaceResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateOrganizationWorkspaceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateOrganizationWorkspaceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateOrganizationWorkspaceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type SearchProductPermissionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -25435,7 +24454,7 @@ func (c *ClientWithResponses) UpdateProductWithResponse(ctx context.Context, pro
 
 // EvaluateAccessWithBodyWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -25450,7 +24469,7 @@ func (c *ClientWithResponses) EvaluateAccessWithBodyWithResponse(ctx context.Con
 
 // EvaluateAccessWithResponse Evaluate Access
 //
-// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization, a workspace, or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource, workspace or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
+// Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0 Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key. The resource is an organization or a resource of any type the product declares, named by the product's own ID. A registered resource is checked under its stored parent; one the product has not registered names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the permissions it holds, the organization role included. The action name is a resource permission name such as `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership, role, role assignment, resource or API key change made through the API usually applies to the next call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds. Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27366,7 +26385,7 @@ func (c *ClientWithResponses) SearchResourcesWithResponse(ctx context.Context, p
 
 // DeleteResourceWithResponse Delete Resource
 //
-// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. A resource that mirrors a built-in workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded subtree: delete the workspace with the deprecated workspace route while it exists. Requires Product API Key with resource:delete.
+// Deletes a registered resource. A resource with registered children or role assignments answers 409 RESOURCE_IN_USE with the counts, unless `cascade=true`, which deletes the resource, its whole subtree and every role assignment held on them in one transaction. Emits one `resource.role_assignment.deleted` per role assignment removed, then one `resource.deleted` per deleted resource, deepest first. The `resource.deleted` events stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:delete.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -27399,7 +26418,6 @@ func (c *ClientWithResponses) GetResourceWithResponse(ctx context.Context, produ
 // Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 // The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 // Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27417,7 +26435,6 @@ func (c *ClientWithResponses) PutResourceWithBodyWithResponse(ctx context.Contex
 // Registers a resource of the product under its parent, renames it or moves it. The call is idempotent: the same body twice leaves one resource and changes nothing the second time. Register a resource only when a role is held on it, together with the ancestors it hangs from; any other item is checked by naming its parent. Parents register before their children.
 // The parent must be one of the type's parent types, or the type itself when it nests in itself, and must be registered in the same Organization. A resource can't move under itself or under one of its descendants. A chain is at most 15 levels deep, counting the Organization. A move carries the resource's whole subtree, and the depth rule applies to its deepest descendant.
 // Emits `resource.created` or `resource.updated`, which stay inside Anchor and are never delivered to the product's event endpoint. Requires Product API Key with resource:write.
-// Each workspace of the deprecated workspace routes is a resource of the `workspace` type with the workspace's ID. Those routes write it too: a workspace create or rename sets its name and puts it back under its Organization, and a workspace delete removes it with its subtree. This route never creates a workspace of those routes.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -27646,149 +26663,6 @@ func (c *ClientWithResponses) UpdateOrganizationRoleWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseUpdateOrganizationRoleResponse(rsp)
-}
-
-// CreateOrganizationWorkspaceWithBodyWithResponse Create Organization Workspace
-//
-// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) CreateOrganizationWorkspaceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateOrganizationWorkspaceResponse, error) {
-	rsp, err := c.CreateOrganizationWorkspaceWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateOrganizationWorkspaceResponse(rsp)
-}
-
-// CreateOrganizationWorkspaceWithResponse Create Organization Workspace
-//
-// Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission. The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and name, under the organization; the product gets that type on its first workspace.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}` and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces (the `CreateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) CreateOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body CreateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOrganizationWorkspaceResponse, error) {
-	rsp, err := c.CreateOrganizationWorkspace(ctx, productId, organizationId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateOrganizationWorkspaceResponse(rsp)
-}
-
-// SearchOrganizationWorkspacesWithBodyWithResponse Search Organization Workspaces
-//
-// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) SearchOrganizationWorkspacesWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchOrganizationWorkspacesResponse, error) {
-	rsp, err := c.SearchOrganizationWorkspacesWithBody(ctx, productId, organizationId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchOrganizationWorkspacesResponse(rsp)
-}
-
-// SearchOrganizationWorkspacesWithResponse Search Organization Workspaces
-//
-// Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search (the `SearchOrganizationWorkspaces` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) SearchOrganizationWorkspacesWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, body SearchOrganizationWorkspacesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchOrganizationWorkspacesResponse, error) {
-	rsp, err := c.SearchOrganizationWorkspaces(ctx, productId, organizationId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSearchOrganizationWorkspacesResponse(rsp)
-}
-
-// DeleteOrganizationWorkspaceWithResponse Delete Organization Workspace
-//
-// Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission. The workspace's resource goes with it, with every resource registered under it and every role assignment on them.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `DeleteOrganizationWorkspace` operationId).
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) DeleteOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*DeleteOrganizationWorkspaceResponse, error) {
-	rsp, err := c.DeleteOrganizationWorkspace(ctx, productId, organizationId, workspaceId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteOrganizationWorkspaceResponse(rsp)
-}
-
-// GetOrganizationWorkspaceWithResponse Get Organization Workspace
-//
-// Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `GetOrganizationWorkspace` operationId).
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) GetOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, reqEditors ...RequestEditorFn) (*GetOrganizationWorkspaceResponse, error) {
-	rsp, err := c.GetOrganizationWorkspace(ctx, productId, organizationId, workspaceId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetOrganizationWorkspaceResponse(rsp)
-}
-
-// UpdateOrganizationWorkspaceWithBodyWithResponse Update Organization Workspace
-//
-// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) UpdateOrganizationWorkspaceWithBodyWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationWorkspaceResponse, error) {
-	rsp, err := c.UpdateOrganizationWorkspaceWithBody(ctx, productId, organizationId, workspaceId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateOrganizationWorkspaceResponse(rsp)
-}
-
-// UpdateOrganizationWorkspaceWithResponse Update Organization Workspace
-//
-// Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission. A new name is also written to the workspace's resource.
-// Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id} (the `UpdateOrganizationWorkspace` operationId).
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (c *ClientWithResponses) UpdateOrganizationWorkspaceWithResponse(ctx context.Context, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter, body UpdateOrganizationWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationWorkspaceResponse, error) {
-	rsp, err := c.UpdateOrganizationWorkspace(ctx, productId, organizationId, workspaceId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateOrganizationWorkspaceResponse(rsp)
 }
 
 // SearchProductPermissionsWithBodyWithResponse Search built-in Product Permissions
@@ -34332,286 +33206,6 @@ func ParseUpdateOrganizationRoleResponse(rsp *http.Response) (*UpdateOrganizatio
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ProductRoleResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateOrganizationWorkspaceResponse parses an HTTP response from a CreateOrganizationWorkspaceWithResponse call
-func ParseCreateOrganizationWorkspaceResponse(rsp *http.Response) (*CreateOrganizationWorkspaceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateOrganizationWorkspaceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest ProductWorkspaceResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseSearchOrganizationWorkspacesResponse parses an HTTP response from a SearchOrganizationWorkspacesWithResponse call
-func ParseSearchOrganizationWorkspacesResponse(rsp *http.Response) (*SearchOrganizationWorkspacesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SearchOrganizationWorkspacesResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProductWorkspaceListResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteOrganizationWorkspaceResponse parses an HTTP response from a DeleteOrganizationWorkspaceWithResponse call
-func ParseDeleteOrganizationWorkspaceResponse(rsp *http.Response) (*DeleteOrganizationWorkspaceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteOrganizationWorkspaceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetOrganizationWorkspaceResponse parses an HTTP response from a GetOrganizationWorkspaceWithResponse call
-func ParseGetOrganizationWorkspaceResponse(rsp *http.Response) (*GetOrganizationWorkspaceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetOrganizationWorkspaceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProductWorkspaceResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateOrganizationWorkspaceResponse parses an HTTP response from a UpdateOrganizationWorkspaceWithResponse call
-func ParseUpdateOrganizationWorkspaceResponse(rsp *http.Response) (*UpdateOrganizationWorkspaceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateOrganizationWorkspaceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProductWorkspaceResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

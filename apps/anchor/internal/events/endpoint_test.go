@@ -59,7 +59,7 @@ func TestDeliveryTargetAllows(t *testing.T) {
 	if filtered.Allows(events.OrganizationUpdated) {
 		t.Fatal("organization.updated must not be allowed")
 	}
-	if filtered.Allows(events.WorkspaceCreated) {
-		t.Fatal("workspace.created must not be allowed")
+	if filtered.Allows(events.MembershipCreated) {
+		t.Fatal("organization.membership.created must not be allowed")
 	}
 }

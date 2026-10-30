@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"golang.org/x/sync/singleflight"
@@ -27,14 +30,22 @@ const (
 	// buildTimeout bounds the first build of a Product's store, which runs
 	// detached from the request that asked for it.
 	buildTimeout = 30 * time.Second
+	// modelCheckInterval is how long a decision trusts that its Product's store
+	// follows the model this release compiles.
+	modelCheckInterval = 30 * time.Second
+	// modelRetryDelay is how long decisions wait before they try a failed
+	// model check again.
+	modelRetryDelay = 5 * time.Second
 )
 
 // errNotBuilt reports a Product whose store is still not built after a build.
 var errNotBuilt = errors.New("authz store not built")
 
-// Rebuilder fills a Product's store from its tables in full.
+// Rebuilder fills a Product's store from its tables in full, or brings its
+// model up to date.
 type Rebuilder interface {
 	Reconcile(ctx context.Context, productID string) error
+	EnsureModel(ctx context.Context, productID string) error
 }
 
 // Checker reads each Product's store as it is: the write that changed access
@@ -44,6 +55,9 @@ type Checker struct {
 	stores    store.Stores
 	rebuilder Rebuilder
 	builds    singleflight.Group
+	// current holds when this process last made sure each Product's model is
+	// the one it compiles.
+	current sync.Map
 }
 
 func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
@@ -92,7 +106,7 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 			return nil, unavailable(holdsErr)
 		}
 		for i, action := range asked {
-			held[action] = held[action] || answers[i]
+			held[action] = answers[i]
 		}
 	}
 	return held, nil
@@ -119,7 +133,8 @@ func objectRef(object accessservice.CheckedObject) string {
 
 // store returns the Product's store once a full rebuild filled it. The first
 // decision for a Product never rebuilt builds it, once per process, while the
-// other decisions for it wait.
+// other decisions for it wait. The first decision for a built Product makes
+// sure its model is the one this release compiles, once per process.
 func (c *Checker) store(ctx context.Context, productID string) (store.Opened, error) {
 	found, err := c.stores.Open(ctx, productID)
 	if errors.Is(err, engine.ErrNotReady) {
@@ -129,7 +144,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		return store.Opened{}, err
 	}
 	if opened, ok := found.Get(); ok && opened.Rebuilt {
-		return opened, nil
+		return c.currentModel(ctx, productID, opened), nil
 	}
 	result := c.builds.DoChan(productID, func() (any, error) {
 		buildCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), buildTimeout)
@@ -137,6 +152,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		if buildErr := c.rebuilder.Reconcile(buildCtx, productID); buildErr != nil {
 			return nil, buildErr
 		}
+		c.current.Store(productID, time.Now())
 		return c.stores.Open(buildCtx, productID)
 	})
 	select {
@@ -144,6 +160,40 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		return store.Opened{}, ctx.Err()
 	case outcome := <-result:
 		return built(outcome)
+	}
+}
+
+// currentModel brings the store's model up to date at most every
+// modelCheckInterval, while the other decisions for the Product wait. It runs
+// again later because a replica of the previous release, during a rolling
+// deploy, writes its own model back. A failure keeps the store as it is, is
+// logged, and is tried again after modelRetryDelay.
+func (c *Checker) currentModel(ctx context.Context, productID string, opened store.Opened) store.Opened {
+	if checked, found := c.current.Load(productID); found {
+		if at, isTime := checked.(time.Time); isTime && time.Since(at) < modelCheckInterval {
+			return opened
+		}
+	}
+	result := c.builds.DoChan("model:"+productID, func() (any, error) {
+		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkTimeout)
+		defer cancel()
+		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
+			c.current.Store(productID, time.Now().Add(modelRetryDelay-modelCheckInterval))
+			log.Ctx(ctx).Warn().Err(err).Str("product_id", productID).Msg("authz model check failed")
+			return nil, err
+		}
+		c.current.Store(productID, time.Now())
+		return c.stores.Open(modelCtx, productID)
+	})
+	select {
+	case <-ctx.Done():
+		return opened
+	case outcome := <-result:
+		found, _ := outcome.Val.(functional.Option[store.Opened])
+		if reopened, ok := found.Get(); ok && outcome.Err == nil {
+			return reopened
+		}
+		return opened
 	}
 }
 

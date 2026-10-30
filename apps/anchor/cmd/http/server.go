@@ -163,7 +163,6 @@ func setupRouter(params ServerParams) *chi.Mux {
 	)
 	router.Use(corsMiddleware.Handler)
 	router.Use(api.WebhookPayloadMiddleware)
-	router.Use(api.WorkspaceDeprecationMiddleware)
 
 	// Establishes the per-request correlation id and the request-scoped logger
 	// every later stage builds on. It has to run before the access log and

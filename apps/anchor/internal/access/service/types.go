@@ -15,38 +15,31 @@ const (
 	SubjectOrganizationAPIKey SubjectType = "organization_api_key"
 )
 
-// ResourceType names what access is asked for: organization, workspace, or
-// any resource type slug the Product declares. A workspace is a resource of
-// the Product's workspace type, which the built-in workspaces are registered
-// as (ADR-0022 A6); until they are deleted, it keeps its deny reason and takes
-// no parent.
+// ResourceType names what access is asked for: organization, or any resource
+// type slug the Product declares.
 type ResourceType string
 
-const (
-	ResourceOrganization ResourceType = "organization"
-	ResourceWorkspace    ResourceType = "workspace"
-)
+const ResourceOrganization ResourceType = "organization"
 
-// builtIn reports whether the type keeps its own rules: an organization is
-// no registered resource, and a workspace takes no parent.
-func (t ResourceType) builtIn() bool { return t == ResourceOrganization || t == ResourceWorkspace }
+// builtIn reports whether the type keeps its own rules: an organization is no
+// registered resource and takes no parent.
+func (t ResourceType) builtIn() bool { return t == ResourceOrganization }
 
 // DenyReason says why access is denied.
 type DenyReason string
 
 const (
-	ReasonSubjectNotSynced           DenyReason = "SUBJECT_NOT_SYNCED"
-	ReasonAPIKeyInvalid              DenyReason = "API_KEY_INVALID"  //nolint:gosec // a reason code, not a credential
-	ReasonAPIKeyInactive             DenyReason = "API_KEY_INACTIVE" //nolint:gosec // a reason code, not a credential
-	ReasonOrganizationNotFound       DenyReason = "ORGANIZATION_NOT_FOUND"
-	ReasonNotAMember                 DenyReason = "NOT_A_MEMBER"
-	ReasonWorkspaceNotInOrganization DenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
-	ReasonMissingPermission          DenyReason = "MISSING_PERMISSION"
-	ReasonNotEvaluated               DenyReason = "NOT_EVALUATED"
-	ReasonResourceTypeNotFound       DenyReason = "RESOURCE_TYPE_NOT_FOUND"
-	ReasonResourceNotFound           DenyReason = "RESOURCE_NOT_FOUND"
-	ReasonResourceNotInOrganization  DenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
-	ReasonParentTypeNotAllowed       DenyReason = "PARENT_TYPE_NOT_ALLOWED"
+	ReasonSubjectNotSynced          DenyReason = "SUBJECT_NOT_SYNCED"
+	ReasonAPIKeyInvalid             DenyReason = "API_KEY_INVALID"  //nolint:gosec // a reason code, not a credential
+	ReasonAPIKeyInactive            DenyReason = "API_KEY_INACTIVE" //nolint:gosec // a reason code, not a credential
+	ReasonOrganizationNotFound      DenyReason = "ORGANIZATION_NOT_FOUND"
+	ReasonNotAMember                DenyReason = "NOT_A_MEMBER"
+	ReasonMissingPermission         DenyReason = "MISSING_PERMISSION"
+	ReasonNotEvaluated              DenyReason = "NOT_EVALUATED"
+	ReasonResourceTypeNotFound      DenyReason = "RESOURCE_TYPE_NOT_FOUND"
+	ReasonResourceNotFound          DenyReason = "RESOURCE_NOT_FOUND"
+	ReasonResourceNotInOrganization DenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
+	ReasonParentTypeNotAllowed      DenyReason = "PARENT_TYPE_NOT_ALLOWED"
 )
 
 // Semantic controls how a batch short-circuits, as AuthZEN's evaluations_semantic does.
@@ -84,8 +77,8 @@ type PermissionCheck struct {
 	APIKeyID      string
 	Object        CheckedObject
 	// Fallback, when set, is checked for the actions the model doesn't define
-	// on Object: a workspace checks an Organization-scoped permission on its
-	// Organization.
+	// on Object. Only a workspace sets it, for one release: see
+	// workspaceCompatibility.
 	Fallback *CheckedObject
 	Actions  []string
 }

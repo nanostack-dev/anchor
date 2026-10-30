@@ -80,11 +80,34 @@ func TestAuthzDecisions(t *testing.T) {
 		require.NoError(t, group.Wait())
 	})
 
+	t.Run("The first decision after a release that compiles a new model writes it", func(t *testing.T) {
+		w := givenSyncWorld(t)
+		externalID, _ := givenMemberWithExternalID(t, w)
+		rebuild(t, w.productID)
+		var before string
+		require.NoError(t, TestDB.QueryRowContext(t.Context(),
+			`UPDATE authz_stores SET model_hash = 'previous release' WHERE product_id = $1 RETURNING model_id`,
+			w.productID).Scan(&before))
+		checker := decision.NewChecker(AuthzStores, AuthzSyncer)
+		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
+			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger)
+
+		decided, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
+
+		require.NoError(t, err)
+		assert.True(t, decided.Allowed)
+		var after, hash string
+		require.NoError(t, TestDB.QueryRowContext(t.Context(),
+			`SELECT model_id, model_hash FROM authz_stores WHERE product_id = $1`, w.productID).Scan(&after, &hash))
+		assert.NotEqual(t, before, after, "the store follows a newly written model")
+		assert.NotEqual(t, "previous release", hash)
+	})
+
 	t.Run("An engine that isn't ready answers 503", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		externalID, _ := givenMemberWithExternalID(t, w)
 		checker := decision.NewChecker(authzstore.New(TestDB, notReady{}, TestLogger), AuthzSyncer)
-		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo, WorkspaceRepo,
+		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
 			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger)
 
 		_, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))

@@ -11,7 +11,7 @@ import (
 // Organizations is the facade for the product's organizations. Obtain one with
 // [Client.Organizations].
 //
-// Everything scoped to a single organization — its members, workspaces, and API
+// Everything scoped to a single organization — its members, resources, and API
 // keys — hangs off the [Org] handle returned by [Client.Organization] instead,
 // so the organization ID is bound once rather than repeated per call.
 type Organizations struct{ c *Client }
@@ -34,8 +34,7 @@ func (o Organizations) Create(name string) *OrgCreateBuilder {
 // Get returns one organization by ID. Name a related resource to read it
 // alongside the organization:
 //
-//	org, err := c.Organizations().Get(ctx, orgID,
-//	    nanoclient.OrganizationIncludeWorkspace, nanoclient.OrganizationIncludeLicense)
+//	org, err := c.Organizations().Get(ctx, orgID, nanoclient.OrganizationIncludeLicense)
 func (o Organizations) Get(
 	ctx context.Context,
 	organizationID string,
@@ -120,12 +119,6 @@ func (b *OrgCreateBuilder) Meta(key string, value any) *OrgCreateBuilder {
 // empty map is a no-op.
 func (b *OrgCreateBuilder) Metadata(m map[string]any) *OrgCreateBuilder {
 	b.req.Metadata = mergeMeta(b.req.Metadata, m)
-	return b
-}
-
-// Workspace creates an ordinary named workspace atomically with a new organization.
-func (b *OrgCreateBuilder) Workspace(name string) *OrgCreateBuilder {
-	b.req.Workspace = &nanoclient.ProductWorkspaceRequest{Name: name}
 	return b
 }
 

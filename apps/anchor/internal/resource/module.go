@@ -16,10 +16,7 @@ func NewModule() fx.Option {
 		fx.Provide(
 			repository.NewRepository,
 			service.NewService,
-			service.NewWorkspaces,
-			service.NewWorkspaceBackfill,
 			events.AsRegistration(EventRegistration),
 		),
-		fx.Invoke(service.RegisterWorkspaceBackfill),
 	)
 }

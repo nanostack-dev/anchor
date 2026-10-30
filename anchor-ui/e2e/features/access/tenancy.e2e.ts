@@ -1,7 +1,6 @@
 import type {
 	CreatedOrganizationApiKeyResponse,
 	OrganizationInvitationResponse,
-	ProductWorkspaceResponse,
 } from "../../../src/client";
 import { expect, test } from "../../support/fixtures";
 import { selectProduct } from "../../support/ui";
@@ -258,56 +257,5 @@ test("access.organization-keys: organization selection, search and status show o
 		.click();
 	await expect(
 		page.getByText("No organization API keys yet", { exact: true }),
-	).toBeVisible();
-});
-
-// Covers: WORKSPACES, WORKSPACE_MEMBERSHIPS
-test("access.workspaces: organization selection scopes read-only search and the hidden membership placeholder", async ({
-	page,
-	world,
-}) => {
-	const organizations = await Promise.all([
-		organization(world, "Workspaces A"),
-		organization(world, "Workspaces B"),
-	]);
-	const workspacePath = `${world.productPath}/organizations/${organizations[0].id}/workspaces`;
-	const tenantAPI = await world.productAPI();
-	const workspaces = await Promise.all(
-		["Workspace first", "Workspace second"].map((prefix) =>
-			tenantAPI.post<ProductWorkspaceResponse>(workspacePath, {
-				name: world.name(prefix),
-				description: "Workspace description",
-			}),
-		),
-	);
-	await selectProduct(page, world.product);
-	await page.goto("/workspaces");
-	await expect(
-		page.getByText("No Organization Selected", { exact: true }),
-	).toBeVisible();
-	await selectOrganization(page, organizations[0].name);
-	await expect(row(page, workspaces[0].name)).toContainText(
-		"Workspace description",
-	);
-	await page.getByRole("textbox").fill(workspaces[0].name);
-	await expect(row(page, workspaces[1].name)).toHaveCount(0);
-	await facet(page, "Name", workspaces[0].name);
-	await expect(row(page, workspaces[0].name)).toBeVisible();
-	await expect(page.getByRole("checkbox")).toHaveCount(0);
-	await selectOrganization(page, organizations[1].name);
-	await expect(
-		page.getByText("No workspaces match your search and filters", {
-			exact: true,
-		}),
-	).toBeVisible();
-	await page
-		.getByRole("button", { name: "Clear search and filters", exact: true })
-		.click();
-	await expect(
-		page.getByText("No workspaces yet", { exact: true }),
-	).toBeVisible();
-	await page.goto("/workspace-memberships");
-	await expect(
-		page.getByRole("heading", { name: "Workspace Memberships", exact: true }),
 	).toBeVisible();
 });

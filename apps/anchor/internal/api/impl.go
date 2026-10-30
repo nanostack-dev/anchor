@@ -35,7 +35,6 @@ type AnchorAPI struct {
 	ResourceService               resourceservice.Service
 	RoleAssignmentService         assignmentservice.Service
 	OrganizationService           service.OrganizationService
-	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
 	IntegrationService            service.IntegrationService
@@ -71,7 +70,6 @@ type Params struct {
 	ResourceService               resourceservice.Service
 	RoleAssignmentService         assignmentservice.Service
 	OrganizationService           service.OrganizationService
-	WorkspaceService              service.WorkspaceService
 	OrganizationMembershipService service.OrganizationMembershipService
 	OrganizationInvitationService invitationsvc.OrganizationInvitationService
 	IntegrationService            service.IntegrationService
@@ -107,7 +105,6 @@ func NewAPI(params Params) *AnchorAPI {
 		ResourceService:               params.ResourceService,
 		RoleAssignmentService:         params.RoleAssignmentService,
 		OrganizationService:           params.OrganizationService,
-		WorkspaceService:              params.WorkspaceService,
 		OrganizationMembershipService: params.OrganizationMembershipService,
 		OrganizationInvitationService: params.OrganizationInvitationService,
 		IntegrationService:            params.IntegrationService,

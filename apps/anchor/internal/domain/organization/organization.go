@@ -7,7 +7,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 
 	"anchor/internal/domain/license"
-	"anchor/internal/domain/workspace"
 )
 
 type Organization struct {
@@ -21,11 +20,9 @@ type Organization struct {
 	// License is set only when the caller asked for it — on create, and on a
 	// read including [IncludeLicense]. Nil otherwise, which says nothing about
 	// whether the organization holds one.
-	License *license.OrganizationLicense
-	// Workspaces is populated only when IncludeWorkspace was requested.
-	Workspaces []workspace.Workspace
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	License   *license.OrganizationLicense
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // GenerateID sets the organization's ID to a new prefixed KSUID.

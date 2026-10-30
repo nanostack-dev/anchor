@@ -328,58 +328,6 @@ func TestConcurrentSameNameWritesReturnConflict(t *testing.T) {
 	)
 
 	t.Run(
-		"Concurrent workspace create requests produce one success and conflicts for all other writers",
-		func(t *testing.T) {
-			t.Parallel()
-			product := createTestProductContext(t)
-			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-			client, _ := product.CreateAPIKeyClientWithScopes([]string{"workspace:create"})
-			assertOneWinnerPerName(t, http.StatusCreated, "WORKSPACE_NAME_DUPLICATE",
-				sameNameCreate(func(name string, _ int) nameRaceOutcome {
-					resp, err := client.CreateOrganizationWorkspaceWithResponse(
-						t.Context(),
-						product.ProductID,
-						org.Id,
-						ct.CreateOrganizationWorkspaceJSONRequestBody{Name: name},
-					)
-					if err != nil {
-						return raceOutcome(0, nil, err)
-					}
-					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
-				}))
-		},
-	)
-
-	t.Run(
-		"Concurrent workspace rename requests produce one success and conflicts for all other writers",
-		func(t *testing.T) {
-			t.Parallel()
-			product := createTestProductContext(t)
-			org := product.CreateOrganization(t, "Org-"+uuid.NewString(), nil)
-			client, _ := product.CreateAPIKeyClientWithScopes([]string{"workspace:create", "workspace:update"})
-			assertOneWinnerPerName(t, http.StatusOK, "WORKSPACE_NAME_DUPLICATE",
-				renameToSameName(t, func(initialName string) string {
-					resp, err := client.CreateOrganizationWorkspaceWithResponse(
-						t.Context(), product.ProductID, org.Id,
-						ct.CreateOrganizationWorkspaceJSONRequestBody{Name: initialName},
-					)
-					require.NoError(t, err)
-					require.Equal(t, http.StatusCreated, resp.StatusCode())
-					return resp.JSON201.Id
-				}, func(id, name string, _ int) nameRaceOutcome {
-					resp, err := client.UpdateOrganizationWorkspaceWithResponse(
-						t.Context(), product.ProductID, org.Id, id,
-						ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: name},
-					)
-					if err != nil {
-						return raceOutcome(0, nil, err)
-					}
-					return raceOutcome(resp.StatusCode(), resp.JSON409, nil)
-				}))
-		},
-	)
-
-	t.Run(
 		"Concurrent product user create requests produce one success and conflicts for all other writers",
 		func(t *testing.T) {
 			t.Parallel()

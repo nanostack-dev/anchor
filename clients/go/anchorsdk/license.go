@@ -17,8 +17,8 @@ import (
 //
 //	license, err := c.Organization(orgID).License().Get(ctx)
 //
-// Every organization has exactly one license, so unlike [Members],
-// [Workspaces], and [APIKeys] this facade has no list or search.
+// Every organization has exactly one license, so unlike [Members] and
+// [APIKeys] this facade has no list or search.
 //
 // # What this does not do
 //

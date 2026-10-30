@@ -60,29 +60,6 @@ func TestNotFoundCodes_Organization(t *testing.T) {
 			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
 		},
 	)
-	t.Run(
-		"The create workspace operation returns the resource-specific error when the organization is absent",
-		func(t *testing.T) {
-			resp, err := client.CreateOrganizationWorkspaceWithResponse(
-				ctx,
-				productCtx.ProductID,
-				missingOrg,
-				ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Missing Org"},
-			)
-			require.NoError(t, err)
-			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
-		},
-	)
-	t.Run(
-		"The search workspaces operation returns the resource-specific error when the organization is absent",
-		func(t *testing.T) {
-			resp, err := client.SearchOrganizationWorkspacesWithResponse(
-				ctx, productCtx.ProductID, missingOrg, ct.SearchOrganizationWorkspacesJSONRequestBody{},
-			)
-			require.NoError(t, err)
-			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_NOT_FOUND")
-		},
-	)
 }
 
 func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
@@ -121,34 +98,6 @@ func TestNotFoundCodes_OrganizationMembership(t *testing.T) {
 			requireNotFoundCode(t, resp.StatusCode(), resp.Body, "ORGANIZATION_MEMBERSHIP_NOT_FOUND")
 		},
 	)
-}
-
-func TestNotFoundCodes_Workspace(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	productCtx := createTestProductContext(t)
-	client, _ := productCtx.CreateAPIKeyClientWithAllScopes()
-	org := productCtx.CreateOrganization(t, "Missing Workspace Org", nil)
-	missingWorkspace := ids.MustNew("wsp")
-
-	t.Run("The get operation returns the resource-specific error when the workspace is absent", func(t *testing.T) {
-		resp, err := client.GetOrganizationWorkspaceWithResponse(ctx, productCtx.ProductID, org.Id, missingWorkspace)
-		require.NoError(t, err)
-		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
-	})
-	t.Run("The update operation returns the resource-specific error when the workspace is absent", func(t *testing.T) {
-		resp, err := client.UpdateOrganizationWorkspaceWithResponse(
-			ctx, productCtx.ProductID, org.Id, missingWorkspace,
-			ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: "Missing"},
-		)
-		require.NoError(t, err)
-		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
-	})
-	t.Run("The delete operation returns the resource-specific error when the workspace is absent", func(t *testing.T) {
-		resp, err := client.DeleteOrganizationWorkspaceWithResponse(ctx, productCtx.ProductID, org.Id, missingWorkspace)
-		require.NoError(t, err)
-		requireNotFoundCode(t, resp.StatusCode(), resp.Body, "WORKSPACE_NOT_FOUND")
-	})
 }
 
 func TestNotFoundCodes_ProductResourcePermission(t *testing.T) {

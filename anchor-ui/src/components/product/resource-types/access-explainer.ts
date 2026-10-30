@@ -195,12 +195,6 @@ function denyCopy(
 				detail:
 					"Its parent's type isn't one of its type's parent types. The resource type tree may have changed.",
 			};
-		case AccessDenyReason.WORKSPACE_NOT_IN_ORGANIZATION:
-			return {
-				title: `The workspace isn't in ${organization}.`,
-				detail:
-					"Until workspaces move into the resource model, a type with the slug workspace is checked as the built-in workspace of that ID, which doesn't exist here or belongs to another Organization.",
-			};
 		case AccessDenyReason.API_KEY_INVALID:
 			return {
 				title: "No Organization API key has this value.",
