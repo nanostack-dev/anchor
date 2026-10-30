@@ -26,7 +26,6 @@ var maintainedPathParams = map[string]struct{}{
 	"resource_type":           {},
 	"resource_type_id":        {},
 	"role_id":                 {},
-	"workspace_id":            {},
 }
 
 func TestOpenAPIPathVariablesStayOnMaintainedList(t *testing.T) {

@@ -61,9 +61,7 @@ func (r *Resource) Get(ctx context.Context) (*nanoclient.ResourceResponse, error
 }
 
 // Delete removes a resource that holds no other resource and no role. Any other
-// answers [ErrConflict]; use [Resource.DeleteTree] for it. A resource that
-// mirrors a workspace of the deprecated workspace routes answers [ErrConflict]
-// from both. A retried delete whose first attempt succeeded answers success:
+// answers [ErrConflict]; use [Resource.DeleteTree] for it. A retried delete whose first attempt succeeded answers success:
 // the resource is gone either way.
 func (r *Resource) Delete(ctx context.Context) error {
 	return r.delete(ctx, "Resource.Delete", false)

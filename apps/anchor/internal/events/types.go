@@ -18,10 +18,6 @@ const (
 	OrganizationInvitationDeleted  Type = "organization.invitation.deleted"
 	OrganizationInvitationAccepted Type = "organization.invitation.accepted"
 
-	WorkspaceCreated Type = "workspace.created"
-	WorkspaceUpdated Type = "workspace.updated"
-	WorkspaceDeleted Type = "workspace.deleted"
-
 	OrganizationAPIKeyCreated Type = "organization.api_key.created"
 	OrganizationAPIKeyUpdated Type = "organization.api_key.updated"
 	OrganizationAPIKeyDeleted Type = "organization.api_key.deleted"
@@ -64,7 +60,6 @@ const (
 const (
 	FieldOrganizationID = "organization_id"
 	FieldProductUserID  = "product_user_id"
-	FieldWorkspaceID    = "workspace_id"
 	FieldInvitationID   = "invitation_id"
 	FieldAPIKeyID       = "api_key_id"
 	FieldRoleID         = "role_id"

@@ -477,8 +477,6 @@ func (r *repositoryImpl) heldRoleIDs(ctx context.Context, ids []string) (map[str
 	holders := []postgres.SelectStatement{
 		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.ProductRoleID.AS("role_id")).
 			WHERE(table.OrganizationMemberships.ProductRoleID.IN(idList...)),
-		table.WorkspaceMemberships.SELECT(table.WorkspaceMemberships.ProductRoleID.AS("role_id")).
-			WHERE(table.WorkspaceMemberships.ProductRoleID.IN(idList...)),
 		table.ResourceRoleAssignments.SELECT(table.ResourceRoleAssignments.RoleID.AS("role_id")).
 			WHERE(table.ResourceRoleAssignments.RoleID.IN(idList...)),
 		invitations.SELECT(invitations.ProductRoleID.AS("role_id")).

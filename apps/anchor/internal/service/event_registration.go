@@ -38,27 +38,6 @@ func OrganizationEventRegistration() events.Registration {
 	)
 }
 
-func WorkspaceEventRegistration() events.Registration {
-	return events.RegisterInternal(
-		events.GroupWorkspaces,
-		events.Definition{
-			Type:        events.WorkspaceCreated,
-			Name:        "Workspace created",
-			Description: "Emitted when a workspace is created.",
-		},
-		events.Definition{
-			Type:        events.WorkspaceUpdated,
-			Name:        "Workspace updated",
-			Description: "Emitted when a workspace is updated.",
-		},
-		events.Definition{
-			Type:        events.WorkspaceDeleted,
-			Name:        "Workspace deleted",
-			Description: "Emitted when a workspace is deleted.",
-		},
-	)
-}
-
 func OrganizationAPIKeyEventRegistration() events.Registration {
 	return events.RegisterInternal(
 		events.GroupAPIKeys,

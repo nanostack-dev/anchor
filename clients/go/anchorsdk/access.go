@@ -7,7 +7,7 @@ import (
 )
 
 // AccessCheck builds one access evaluation: may this subject perform these
-// permissions on this organization, workspace or resource? Start one from
+// permissions on this organization or resource? Start one from
 // [Client.AccessForUser] or [Client.AccessForAPIKey]:
 //
 //	decision, err := c.AccessForUser(externalUserID).
@@ -30,7 +30,7 @@ func (c *Client) AccessForUser(externalUserID string) *AccessCheck {
 }
 
 // AccessForAPIKey evaluates a raw organization API key. The key's own
-// organization is used unless InOrganization, InWorkspace, OnResource or On
+// organization is used unless InOrganization, OnResource or On
 // names one.
 func (c *Client) AccessForAPIKey(rawKey string) *AccessCheck {
 	return c.accessCheck(nanoclient.AccessSubject{Type: nanoclient.OrganizationApiKey, Id: rawKey})
@@ -48,17 +48,6 @@ func (c *Client) accessCheck(subject nanoclient.AccessSubject) *AccessCheck {
 // organization; a user subject needs an ID.
 func (a *AccessCheck) InOrganization(organizationID string) *AccessCheck {
 	a.body.Resource = nanoclient.AccessResource{Type: nanoclient.Organization, Id: optional(organizationID)}
-	return a
-}
-
-// InWorkspace targets a workspace of an organization. organizationID may be
-// empty for an API key subject.
-func (a *AccessCheck) InWorkspace(organizationID, workspaceID string) *AccessCheck {
-	resource := nanoclient.AccessResource{Type: nanoclient.Workspace, Id: &workspaceID}
-	if organizationID != "" {
-		resource.Properties = &nanoclient.AccessResourceProperties{OrganizationId: &organizationID}
-	}
-	a.body.Resource = resource
 	return a
 }
 

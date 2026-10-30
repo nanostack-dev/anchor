@@ -14,7 +14,8 @@ import (
 // chain of ancestors starts at: the resource itself, or the parent an
 // unregistered one names. chainStart is empty when the chain is the
 // Organization alone. fallback, when set, is checked for the actions the
-// model doesn't define on object.
+// model doesn't define on object: a permission scoped to a type above the
+// resource's type is checked on its Organization.
 type located struct {
 	object     CheckedObject
 	fallback   *CheckedObject
@@ -27,64 +28,9 @@ func (e *evaluator) locate(ctx context.Context, request Request, subject reach) 
 	switch request.Resource.Type {
 	case ResourceOrganization:
 		return subject, located{object: OrganizationObject(subject.identity.OrganizationID)}, nil
-	case ResourceWorkspace:
-		return e.reachWorkspace(ctx, request, subject)
 	default:
 		return e.reachResource(ctx, request, subject)
 	}
-}
-
-// reachWorkspace checks a workspace on its resource (ADR-0022 A6), and an
-// action the workspace type doesn't define on the Organization. A mirror whose
-// workspace is gone, and an unknown or foreign workspace, stop the check.
-func (e *evaluator) reachWorkspace(ctx context.Context, request Request, subject reach) (reach, located, error) {
-	organizationID := subject.identity.OrganizationID
-	organization := OrganizationObject(organizationID)
-	registered, found, err := e.workspaceResource(ctx, request, organizationID)
-	if err != nil {
-		return reach{}, located{}, err
-	}
-	if found {
-		if gone, goneErr := e.resources.MirrorsDeletedWorkspace(ctx, registered.RowID); goneErr != nil || gone {
-			return stoppedBy(ReasonWorkspaceNotInOrganization), located{},
-				e.unexpectedOrNil(goneErr, request, "workspace mirror")
-		}
-		return subject, located{
-			object:     CheckedObject{Type: registered.Type, ID: registered.RowID},
-			fallback:   &organization,
-			chainStart: registered.RowID,
-		}, nil
-	}
-	builtIn, err := e.workspaces.FindByID(ctx, request.ProductID, organizationID, request.Resource.ID)
-	if err != nil {
-		return reach{}, located{}, e.unexpected(err, request, "workspace")
-	}
-	if builtIn.IsAbsent() {
-		return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, nil
-	}
-	return subject, located{object: organization}, nil
-}
-
-// workspaceResource finds the resource of the product's workspace type that
-// the request names in the Organization.
-func (e *evaluator) workspaceResource(
-	ctx context.Context, request Request, organizationID string,
-) (resource.Resource, bool, error) {
-	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
-	if err != nil {
-		return resource.Resource{}, false, e.unexpected(err, request, "resource types")
-	}
-	rt, declared := tree.BySlug(resourcetype.WorkspaceSlug).Get()
-	if !declared {
-		return resource.Resource{}, false, nil
-	}
-	found, err := e.resources.Find(ctx, organizationID, rt.ID, request.Resource.ID)
-	if err != nil {
-		return resource.Resource{}, false, e.unexpected(err, request, "workspace resource")
-	}
-	registered, ok := found.Get()
-	registered.Type = rt.Slug
-	return registered, ok, nil
 }
 
 // reachResource resolves a resource of the Product's own types in Postgres,
@@ -106,19 +52,10 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 		return reach{}, located{}, e.unexpected(err, request, "resource")
 	}
 	if registered, ok := found.Get(); ok {
-		if gone, goneErr := e.underDeletedWorkspace(
-			ctx,
-			request,
-			tree,
-			organizationID,
-			registered.RowID,
-		); goneErr != nil ||
-			gone {
-			return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, goneErr
-		}
 		e.reportParentMismatch(ctx, request, registered)
 		return subject, located{
 			object:     CheckedObject{Type: rt.Slug, ID: registered.RowID},
+			fallback:   organizationFallback(organizationID),
 			chainStart: registered.RowID,
 		}, nil
 	}
@@ -149,7 +86,10 @@ func (e *evaluator) reachParent(
 			return stoppedBy(ReasonResourceNotInOrganization), located{}, nil
 		}
 		parentObject := OrganizationObject(organizationID)
-		return subject, located{object: CheckedObject{Type: rt.Slug, Parent: &parentObject}}, nil
+		return subject, located{
+			object:   CheckedObject{Type: rt.Slug, Parent: &parentObject},
+			fallback: organizationFallback(organizationID),
+		}, nil
 	}
 	found, err := e.resources.Find(ctx, organizationID, parentType.ID, parent.ID)
 	if err != nil {
@@ -160,36 +100,16 @@ func (e *evaluator) reachParent(
 		reason, lookupErr := e.missingParent(ctx, request, organizationID, parentType.ID, parent.ID)
 		return stoppedBy(reason), located{}, lookupErr
 	}
-	if gone, goneErr := e.underDeletedWorkspace(
-		ctx,
-		request,
-		tree,
-		organizationID,
-		registered.RowID,
-	); goneErr != nil ||
-		gone {
-		return stoppedBy(ReasonWorkspaceNotInOrganization), located{}, goneErr
-	}
 	return subject, located{
 		object:     CheckedObject{Type: rt.Slug, Parent: &CheckedObject{Type: parentType.Slug, ID: registered.RowID}},
+		fallback:   organizationFallback(organizationID),
 		chainStart: registered.RowID,
 	}, nil
 }
 
-// underDeletedWorkspace reports whether a workspace mirror whose workspace is
-// gone stands at or above the resource: the chain then stops there, as a check
-// on that workspace does.
-func (e *evaluator) underDeletedWorkspace(
-	ctx context.Context, request Request, tree resourcetype.Tree, organizationID, rowID string,
-) (bool, error) {
-	if tree.BySlug(resourcetype.WorkspaceSlug).IsAbsent() {
-		return false, nil
-	}
-	gone, err := e.resources.ChainMirrorsDeletedWorkspace(ctx, organizationID, rowID)
-	if err != nil {
-		return false, e.unexpected(err, request, "workspace mirror")
-	}
-	return gone, nil
+func organizationFallback(organizationID string) *CheckedObject {
+	organization := OrganizationObject(organizationID)
+	return &organization
 }
 
 // missingParent tells a parent another Organization of the Product registered

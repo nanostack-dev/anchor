@@ -4,11 +4,11 @@ info:
   version: 1.0.0 # Initial version
   description: |- # Updated description based on our design
     API for managing organizational structures including Products, Organizations,
-    Workspaces, Users (Platform & Product), Roles, Permissions, and API Keys.
+    Resources, Users (Platform & Product), Roles, Permissions, and API Keys.
     V1 focuses on a single-PlatformTenant deployment model (Open Source).
 tags:
 - name: Access
-  description: Access evaluation. Decides whether a product user or an organization API key may act on an organization or a workspace, following the OpenID AuthZEN Authorization API 1.0 shape.
+  description: Access evaluation. Decides whether a product user or an organization API key may act on an organization or a resource, following the OpenID AuthZEN Authorization API 1.0 shape.
 - name: PlatformAuth
   description: Platform User authentication operations (Login, User Info).
 - name: PlatformInvitation
@@ -36,13 +36,10 @@ tags:
   description: Manage Organization API Keys. (Admin operation)
 - name: Organization
   description: Manage Organizations within a Product. (Requires Product API Key)
-- name: Workspace
-  description: Manage Workspaces within an Organization. (Requires Product API
-    Key) Deprecated (ADR-0022 A6). Use resources of the product's `workspace` resource type instead.
 - name: ProductUser
   description: Manage Product Users (end-users). (Requires Product API Key)
 - name: Membership
-  description: Manage Product User memberships in Organizations and Workspaces. 
+  description: Manage Product User memberships in Organizations. 
     (Requires Product API Key)
 - name: Permissions
   description: Check and list effective permissions for Product Users. (Requires
@@ -95,7 +92,7 @@ components:
       required: false
       description: >-
         Related resources to read alongside each organization, comma separated —
-        `?include=workspace,license`. A resource not named is left out of the response
+        `?include=license`. A resource not named is left out of the response
         entirely, which says nothing about whether the organization has it. Each
         named resource is read for the whole response at once, so including one
         costs one more statement, not one per organization.
@@ -139,14 +136,6 @@ components:
       schema:
         $ref: "#/components/schemas/ksuid"
       example: "org_6jKLM..."
-    WorkspaceIdParameter:
-      name: workspace_id
-      in: path
-      required: true
-      description: The KSUID of the workspace.
-      schema:
-        $ref: "#/components/schemas/ksuid"
-      example: "ws_6jKLM..."
     ProductUserIdParameter:
       name: product_user_id
       in: path
@@ -2313,47 +2302,6 @@ components:
           type: string
           format: date-time
           description: Filter by API keys last used after this date.
-    WorkspaceMembershipFilter:
-      type: object
-      properties:
-        workspace_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/ksuid"
-          description: Filter by specific workspace IDs.
-          x-go-type-skip-optional-pointer: true
-        organization_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/ksuid"
-          description: Filter by parent organization IDs.
-          x-go-type-skip-optional-pointer: true
-        product_user_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/ksuid"
-          description: Filter by specific product Product User IDs.
-          x-go-type-skip-optional-pointer: true
-        user_emails:
-          type: array
-          items:
-            type: string
-            format: email
-            x-go-type: string
-          description: Filter by Product User email addresses.
-          x-go-type-skip-optional-pointer: true
-        product_role_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/ksuid"
-          description: Filter by specific product role IDs.
-          x-go-type-skip-optional-pointer: true
-        role_names:
-          type: array
-          items:
-            type: string
-          description: Filter by role names.
-          x-go-type-skip-optional-pointer: true
     OrganizationFilter:
       type: object
       properties:
@@ -2368,21 +2316,6 @@ components:
           items:
             type: string
           description: Filter by organization names (exact matches).
-          x-go-type-skip-optional-pointer: true
-    WorkspaceFilter:
-      type: object
-      properties:
-        ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/ksuid"
-          description: Filter by specific workspace IDs.
-          x-go-type-skip-optional-pointer: true
-        names:
-          type: array
-          items:
-            type: string
-          description: Filter by workspace names (exact matches).
           x-go-type-skip-optional-pointer: true
     ProductUserFilter:
       type: object
@@ -2763,12 +2696,9 @@ components:
     AccessResourceType:
       type: string
       description: >-
-        `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the
-        product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's
-        `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it
-        through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on
-        its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown
-        or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+        `organization`, or any resource type slug the product declares, such as `document`. A type the product has not
+        declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such
+        as one scoped to `organization`, is checked on the resource's organization.
       examples: ["document"]
     AccessResourceProperties:
       type: object
@@ -2776,7 +2706,7 @@ components:
         organization_id:
           type: string
           description: >-
-            The organization of a workspace or of a resource. Required for a user subject on anything but an
+            The organization of a resource. Required for a user subject on anything but an
             organization. An organization API key subject uses its key's organization; naming another one is denied
             with `NOT_A_MEMBER`.
         parent:
@@ -2785,8 +2715,8 @@ components:
             The parent of a resource the product has not registered: a resource registered in the organization, or
             the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one
             the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered
-            resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace
-            resources take none (400 `INVALID_ACCESS_RESOURCE`).
+            resource's stored parent wins over this one, and Anchor logs the mismatch. An organization resource
+            takes none (400 `INVALID_ACCESS_RESOURCE`).
     AccessResource:
       type: object
       required: [type]
@@ -2796,7 +2726,7 @@ components:
         id:
           type: string
           description: >-
-            The organization or workspace ID, or the product's own ID of a resource. Required except for an
+            The organization ID, or the product's own ID of a resource. Required except for an
             organization resource with an organization API key subject, where an absent ID means the key's own
             organization.
         properties:
@@ -2819,7 +2749,6 @@ components:
       - API_KEY_INACTIVE
       - ORGANIZATION_NOT_FOUND
       - NOT_A_MEMBER
-      - WORKSPACE_NOT_IN_ORGANIZATION
       - MISSING_PERMISSION
       - NOT_EVALUATED
       - RESOURCE_TYPE_NOT_FOUND
@@ -2830,8 +2759,7 @@ components:
         Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet.
         `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired.
         `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member
-        of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does
-        not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an
+        of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an
         ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting.
         `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource
         is not registered in the organization and names no `properties.parent`, whether or not another organization
@@ -3084,14 +3012,6 @@ components:
     ProductOrganizationRequest:
       type: object
       properties:
-        workspace:
-          allOf:
-            - $ref: "#/components/schemas/ProductWorkspaceRequest"
-          description: >-
-            Optionally create this ordinary workspace atomically with a new
-            organization. Omitted leaves the organization without workspaces.
-            Ignored on update and on a founding-member retry that returns an
-            existing organization; such a retry never recreates deleted workspaces.
         name:
           type: string
           minLength: 2
@@ -3129,8 +3049,8 @@ components:
     OrganizationInclude:
       type: string
       description: A related resource an organization read can ask for.
-      enum: [license, workspace]
-      x-enum-varnames: [OrganizationIncludeLicense, OrganizationIncludeWorkspace]
+      enum: [license]
+      x-enum-varnames: [OrganizationIncludeLicense]
       x-go-type: organization.Include
       x-go-type-import:
         path: anchor/internal/domain/organization
@@ -3174,15 +3094,6 @@ components:
         metadata:
           $ref: "#/components/schemas/Metadata"
           description: Key-value metadata for the organization.
-        workspaces:
-          type: array
-          readOnly: true
-          description: >-
-            The organization's ordinary workspaces.
-            Present only when a read requests include=workspace. An included
-            organization with no workspaces returns an empty array.
-          items:
-            $ref: "#/components/schemas/ProductWorkspaceResponse"
         license:
           $ref: "#/components/schemas/OrganizationLicenseResponse"
           description: >-
@@ -3233,86 +3144,6 @@ components:
             type: array
             items:
                 $ref: "#/components/schemas/ProductOrganizationResponse"
-        required:
-        - items
-
-    ProductWorkspaceRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 2
-          maxLength: 100
-          description: Name of the workspace. Must be unique within the organization.
-          examples: ["Production"]
-        description:
-          type: [string, "null"]
-          maxLength: 500
-          description: Optional description of the workspace.
-          examples: ["Workspace for production users and resources."]
-      required:
-      - name
-    ProductWorkspaceResponse:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/ksuid"
-          description: Unique identifier for the workspace.
-          examples: ["ws_3iXYZ..."]
-        organization_id:
-          $ref: "#/components/schemas/ksuid"
-          description: ID of the organization this workspace belongs to.
-          examples: ["org_3iXYZ..."]
-        name:
-          type: string
-          description: Name of the workspace.
-          examples: ["Production"]
-        description:
-          type: [string, "null"]
-          description: Description of the workspace.
-          examples: ["Workspace for production users and resources."]
-        created_at:
-          type: string
-          format: date-time
-          description: Timestamp when the workspace was created.
-        updated_at:
-          type: string
-          format: date-time
-          description: Timestamp when the workspace was last updated.
-      required:
-      - id
-      - organization_id
-      - name
-      - created_at
-      - updated_at
-    ProductWorkspaceSearchRequest:
-      allOf:
-      - $ref: "#/components/schemas/SearchRequest"
-      - type: object
-        properties:
-          filter:
-            $ref: "#/components/schemas/WorkspaceFilter"
-            description: Filter criteria for workspaces.
-          sort_by:
-            type: string
-            enum:
-            - name
-            - created_at
-            - updated_at
-            default: created_at
-            description: Field to sort by.
-            x-go-type: workspace.SortFieldProductWorkspace
-            x-go-type-import:
-              path: anchor/internal/domain/workspace
-    ProductWorkspaceListResponse:
-      allOf:
-      - $ref: "#/components/schemas/PagedListResponse"
-      - type: object
-        properties:
-          items:
-            type: array
-            items:
-              $ref: "#/components/schemas/ProductWorkspaceResponse"
         required:
         - items
 
@@ -7694,13 +7525,13 @@ paths:
       description: >-
         Decides whether a subject may perform one action on a resource, following the OpenID AuthZEN Authorization API 1.0
         Access Evaluation shape. The subject is a product user, named by its external user ID, or a raw organization API key.
-        The resource is an organization, a workspace, or a resource of any type the product declares, named by the
+        The resource is an organization or a resource of any type the product declares, named by the
         product's own ID. A registered resource is checked under its stored parent; one the product has not registered
         names its parent in `properties.parent`. A role held on the resource or on any of its ancestors grants the
         permissions it holds, the organization role included. The action name is a resource permission name such as
         `flows:read`. A denial is a 200 with `decision` false and a `context.reason`; an allow returns the resolved
         identity in `context`, and, with `options.explain` true, what granted it in `context.granted_by`. A membership,
-        role, role assignment, resource, workspace or API key change made through the API usually applies to the next
+        role, role assignment, resource or API key change made through the API usually applies to the next
         call, and otherwise within seconds; one made outside a request, such as a Clerk ingest, applies within seconds.
         Evaluating an organization API key updates its last_used_at as introspection does. The platform session of the
         Product's tenant may call it too; another tenant's session gets 404 PRODUCT_NOT_FOUND.
@@ -7986,191 +7817,6 @@ paths:
                 $ref: "#/components/schemas/ProductOrganizationResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/products/{product_id}/organizations/{organization_id}/workspaces:
-    parameters:
-    - $ref: "#/components/parameters/ProductIdParameter"
-    - $ref: "#/components/parameters/OrganizationIdParameter"
-    post:
-      summary: Create Organization Workspace
-      description: >-
-        Creates a workspace within the specified organization. Requires an API Key with `workspace:create` permission.
-        The workspace is also registered as a resource of the product's `workspace` resource type, with the same ID and
-        name, under the organization; the product gets that type on its first workspace.
-
-        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Register one with `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`
-        and the product's own ID, under `{ "type": "organization", "id": "<organization_id>" }`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming the resource search. The route keeps answering as before until no caller remains.
-      operationId: createOrganizationWorkspace
-      deprecated: true
-      x-deprecated-reason: >-
-        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-      tags: [Workspace]
-      security:
-      - productApiKeyAuth: ["workspace:create"]
-      requestBody:
-        description: Workspace details.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProductWorkspaceRequest"
-      responses:
-        "201":
-          description: Workspace created successfully.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProductWorkspaceResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/products/{product_id}/organizations/{organization_id}/workspaces/search:
-    parameters:
-    - $ref: "#/components/parameters/ProductIdParameter"
-    - $ref: "#/components/parameters/OrganizationIdParameter"
-    post:
-      summary: Search Organization Workspaces
-      description: >-
-        Searches workspaces within the specified organization. Platform bearer callers can read this data; Product API Key callers require `workspace:read` permission.
-
-        Default order is `created_at` ascending, then `id`. Page with a cursor: send the `next_cursor` of the previous response as `pagination.cursor`; an absent `next_cursor` marks the last page.
-
-        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `POST /v1/products/{product_id}/organizations/{organization_id}/resources/search` with `filter.resource_types: ["workspace"]`. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-      operationId: searchOrganizationWorkspaces
-      deprecated: true
-      x-deprecated-reason: >-
-        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-      tags: [Workspace]
-      security:
-      - platformBearerAuth: []
-      - productApiKeyAuth: ["workspace:read"]
-      requestBody:
-        description: Search criteria.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProductWorkspaceSearchRequest"
-      responses:
-        "200":
-          description: A list of workspaces for the organization.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProductWorkspaceListResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}:
-    parameters:
-    - $ref: "#/components/parameters/ProductIdParameter"
-    - $ref: "#/components/parameters/OrganizationIdParameter"
-    - $ref: "#/components/parameters/WorkspaceIdParameter"
-    get:
-      summary: Get Organization Workspace
-      description: >-
-        Retrieves a workspace within the specified organization. Platform bearer callers can read this data; Product API
-        Key callers require `workspace:read` permission.
-
-        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `GET /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-      operationId: getOrganizationWorkspace
-      deprecated: true
-      x-deprecated-reason: >-
-        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-      tags: [Workspace]
-      security:
-      - platformBearerAuth: []
-      - productApiKeyAuth: ["workspace:read"]
-      responses:
-        "200":
-          description: Workspace details.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProductWorkspaceResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    put:
-      summary: Update Organization Workspace
-      description: >-
-        Updates a workspace within the specified organization. Requires an API Key with `workspace:update` permission.
-        A new name is also written to the workspace's resource.
-
-        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `PUT /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-      operationId: updateOrganizationWorkspace
-      deprecated: true
-      x-deprecated-reason: >-
-        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-      tags: [Workspace]
-      security:
-      - productApiKeyAuth: ["workspace:update"]
-      requestBody:
-        description: Workspace update details.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProductWorkspaceRequest"
-      responses:
-        "200":
-          description: Workspace updated successfully.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProductWorkspaceResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        '409':
-          $ref: '#/components/responses/Conflict'
-    delete:
-      summary: Delete Organization Workspace
-      description: >-
-        Deletes a workspace within the specified organization. Requires an API Key with `workspace:delete` permission.
-        The workspace's resource goes with it, with every resource registered under it and every role assignment on
-        them.
-
-        Deprecated (ADR-0022 A6): workspaces are resources of the product's `workspace` resource type. Use `DELETE /v1/products/{product_id}/organizations/{organization_id}/resources/workspace/{workspace_id}`, where the workspace's ID is the resource's ID. Every response carries a `Deprecation` header and a `Link` header with `rel="successor-version"` naming that route. The route keeps answering as before until no caller remains.
-      operationId: deleteOrganizationWorkspace
-      deprecated: true
-      x-deprecated-reason: >-
-        Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-      tags: [Workspace]
-      security:
-      - productApiKeyAuth: ["workspace:delete"]
-      responses:
-        "204":
-          description: Workspace deleted successfully.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -8581,12 +8227,6 @@ paths:
         Emits `resource.created` or `resource.updated`, which stay inside
         Anchor and are never delivered to the product's event endpoint.
         Requires Product API Key with resource:write.
-
-        Each workspace of the deprecated workspace routes is a resource of the
-        `workspace` type with the workspace's ID. Those routes write it too:
-        a workspace create or rename sets its name and puts it back under its
-        Organization, and a workspace delete removes it with its subtree.
-        This route never creates a workspace of those routes.
       operationId: putResource
       tags: [Resource]
       security:
@@ -8759,10 +8399,7 @@ paths:
         `resource.role_assignment.deleted` per role assignment removed, then
         one `resource.deleted` per deleted resource, deepest first. The
         `resource.deleted` events stay inside Anchor and are never delivered to
-        the product's event endpoint. A resource that mirrors a built-in
-        workspace answers 409 RESOURCE_IS_WORKSPACE, also inside a cascaded
-        subtree: delete the workspace with the deprecated workspace route while
-        it exists. Requires Product API Key with resource:delete.
+        the product's event endpoint. Requires Product API Key with resource:delete.
       operationId: deleteResource
       tags: [Resource]
       security:

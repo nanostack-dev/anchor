@@ -681,21 +681,7 @@ export const zOrganizationApiKeyFilter = z.object({
     last_used_after: z.iso.datetime().optional()
 });
 
-export const zWorkspaceMembershipFilter = z.object({
-    workspace_ids: z.array(zKsuid).optional(),
-    organization_ids: z.array(zKsuid).optional(),
-    product_user_ids: z.array(zKsuid).optional(),
-    user_emails: z.array(z.email()).optional(),
-    product_role_ids: z.array(zKsuid).optional(),
-    role_names: z.array(z.string()).optional()
-});
-
 export const zOrganizationFilter = z.object({
-    ids: z.array(zKsuid).optional(),
-    names: z.array(z.string()).optional()
-});
-
-export const zWorkspaceFilter = z.object({
     ids: z.array(zKsuid).optional(),
     names: z.array(z.string()).optional()
 });
@@ -862,7 +848,7 @@ export const zAccessSubject = z.object({
 });
 
 /**
- * `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+ * `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
  */
 export const zAccessResourceType = z.string();
 
@@ -883,7 +869,7 @@ export const zAccessAction = z.object({
 });
 
 /**
- * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
  */
 export const zAccessDenyReason = z.enum([
     'SUBJECT_NOT_SYNCED',
@@ -891,7 +877,6 @@ export const zAccessDenyReason = z.enum([
     'API_KEY_INACTIVE',
     'ORGANIZATION_NOT_FOUND',
     'NOT_A_MEMBER',
-    'WORKSPACE_NOT_IN_ORGANIZATION',
     'MISSING_PERMISSION',
     'NOT_EVALUATED',
     'RESOURCE_TYPE_NOT_FOUND',
@@ -1018,7 +1003,7 @@ export const zUserResponse = z.object({
 /**
  * A related resource an organization read can ask for.
  */
-export const zOrganizationInclude = z.enum(['license', 'workspace']);
+export const zOrganizationInclude = z.enum(['license']);
 
 export const zFoundingMemberRequest = z.object({
     product_user_id: zKsuid,
@@ -1032,33 +1017,6 @@ export const zProductOrganizationSearchRequest = zSearchRequest.and(z.object({
         'created_at',
         'updated_at'
     ]).optional().default('created_at')
-}));
-
-export const zProductWorkspaceRequest = z.object({
-    name: z.string().min(2).max(100),
-    description: z.string().max(500).nullish()
-});
-
-export const zProductWorkspaceResponse = z.object({
-    id: zKsuid,
-    organization_id: zKsuid,
-    name: z.string(),
-    description: z.string().nullish(),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
-});
-
-export const zProductWorkspaceSearchRequest = zSearchRequest.and(z.object({
-    filter: zWorkspaceFilter.optional(),
-    sort_by: z.enum([
-        'name',
-        'created_at',
-        'updated_at'
-    ]).optional().default('created_at')
-}));
-
-export const zProductWorkspaceListResponse = zPagedListResponse.and(z.object({
-    items: z.array(zProductWorkspaceResponse)
 }));
 
 /**
@@ -1685,7 +1643,6 @@ export const zOrganizationLicenseInstantiateRequest = z.object({
 });
 
 export const zProductOrganizationRequest = z.object({
-    workspace: zProductWorkspaceRequest.optional(),
     name: z.string().min(2).max(100),
     description: z.string().max(500).nullish(),
     metadata: zMetadata.optional(),
@@ -1742,7 +1699,6 @@ export const zProductOrganizationResponse = z.object({
     name: z.string(),
     description: z.string().nullish(),
     metadata: zMetadata.optional(),
-    workspaces: z.array(zProductWorkspaceResponse).readonly().optional(),
     license: zOrganizationLicenseResponse.optional(),
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime()
@@ -1954,21 +1910,6 @@ export const zUsageSeriesResponse = zPagedListResponse.and(z.object({
     items: z.array(zUsageSeriesPointResponse)
 }));
 
-export const zProductOrganizationResponseWritable = z.object({
-    id: zKsuid,
-    product_id: zKsuid,
-    name: z.string(),
-    description: z.string().nullish(),
-    metadata: zMetadata.optional(),
-    license: zOrganizationLicenseResponse.optional(),
-    created_at: z.iso.datetime(),
-    updated_at: z.iso.datetime()
-});
-
-export const zProductOrganizationListResponseWritable = zPagedListResponse.and(z.object({
-    items: z.array(zProductOrganizationResponseWritable)
-}));
-
 /**
  * The KSUID of the platform invitation.
  */
@@ -1985,7 +1926,7 @@ export const zPlatformUserIdParameter = zKsuid;
 export const zProductIdParameter = zKsuid;
 
 /**
- * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export const zOrganizationIncludeParameter = z.array(zOrganizationInclude);
 
@@ -2003,11 +1944,6 @@ export const zOrganizationMemberIncludeParameter = z.array(zOrganizationMemberIn
  * The KSUID of the organization.
  */
 export const zOrganizationIdParameter = zKsuid;
-
-/**
- * The KSUID of the workspace.
- */
-export const zWorkspaceIdParameter = zKsuid;
 
 /**
  * The KSUID of the product Product User.
@@ -2912,74 +2848,6 @@ export const zUpdateProductOrganizationPath = z.object({
  * Product organization updated successfully.
  */
 export const zUpdateProductOrganizationResponse = zProductOrganizationResponse;
-
-/**
- * Workspace details.
- */
-export const zCreateOrganizationWorkspaceBody = zProductWorkspaceRequest;
-
-export const zCreateOrganizationWorkspacePath = z.object({
-    product_id: zKsuid,
-    organization_id: zKsuid
-});
-
-/**
- * Workspace created successfully.
- */
-export const zCreateOrganizationWorkspaceResponse = zProductWorkspaceResponse;
-
-/**
- * Search criteria.
- */
-export const zSearchOrganizationWorkspacesBody = zProductWorkspaceSearchRequest;
-
-export const zSearchOrganizationWorkspacesPath = z.object({
-    product_id: zKsuid,
-    organization_id: zKsuid
-});
-
-/**
- * A list of workspaces for the organization.
- */
-export const zSearchOrganizationWorkspacesResponse = zProductWorkspaceListResponse;
-
-export const zDeleteOrganizationWorkspacePath = z.object({
-    product_id: zKsuid,
-    organization_id: zKsuid,
-    workspace_id: zKsuid
-});
-
-/**
- * Workspace deleted successfully.
- */
-export const zDeleteOrganizationWorkspaceResponse = z.void();
-
-export const zGetOrganizationWorkspacePath = z.object({
-    product_id: zKsuid,
-    organization_id: zKsuid,
-    workspace_id: zKsuid
-});
-
-/**
- * Workspace details.
- */
-export const zGetOrganizationWorkspaceResponse = zProductWorkspaceResponse;
-
-/**
- * Workspace update details.
- */
-export const zUpdateOrganizationWorkspaceBody = zProductWorkspaceRequest;
-
-export const zUpdateOrganizationWorkspacePath = z.object({
-    product_id: zKsuid,
-    organization_id: zKsuid,
-    workspace_id: zKsuid
-});
-
-/**
- * Workspace updated successfully.
- */
-export const zUpdateOrganizationWorkspaceResponse = zProductWorkspaceResponse;
 
 export const zAddOrganizationMemberBody = zOrganizationMemberRequest;
 

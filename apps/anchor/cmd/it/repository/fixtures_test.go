@@ -12,7 +12,6 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/tenant"
-	"anchor/internal/domain/workspace"
 
 	"github.com/stretchr/testify/require"
 )
@@ -89,22 +88,6 @@ func createOrganization(t *testing.T, productID string) string {
 	entity.GenerateID()
 
 	created, err := repoCtx.OrganizationRepository.Create(context.Background(), entity)
-	require.NoError(t, err)
-
-	return created.ID
-}
-
-// createWorkspace inserts a workspace fixture under organizationID and returns its ID.
-func createWorkspace(t *testing.T, organizationID string) string {
-	t.Helper()
-
-	entity := workspace.Workspace{
-		OrganizationID: organizationID,
-		Name:           uniqueName(t, "Test Workspace"),
-	}
-	entity.GenerateID()
-
-	created, err := repoCtx.WorkspaceRepository.Create(context.Background(), entity)
 	require.NoError(t, err)
 
 	return created.ID

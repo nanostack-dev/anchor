@@ -63,10 +63,11 @@ func TestCursorSearchIndexesAreValid(t *testing.T) {
 		FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
 		WHERE c.relname ~ '^idx_.*_created_(id|user)$'`).Scan(&valid, &total))
 
-		// Eleven built concurrently on existing tables, plus the resource type
+		// Ten built concurrently on existing tables (000073 dropped the workspaces
+		// one), plus the resource type
 		// search index, built with its table in 000054.
-		assert.Equal(t, 12, total)
-		assert.Equal(t, 12, valid)
+		assert.Equal(t, 11, total)
+		assert.Equal(t, 11, valid)
 	})
 }
 

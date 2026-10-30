@@ -113,39 +113,6 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		})
 	})
 
-	t.Run("Workspace creation, updates, and deletion each emit the matching product event", func(t *testing.T) {
-		org := product.CreateOrganization(t, "Events Workspace Org "+ids.MustNew("org"), nil)
-		created := createWorkspace(t, client, product.ProductID, org.Id, "events-ws-"+ids.MustNew("ws"))
-		sink.WaitFor("workspace.created", map[string]string{
-			"organization_id": org.Id,
-			"workspace_id":    created.Id,
-		})
-
-		updated, err := client.UpdateOrganizationWorkspaceWithResponse(
-			ctx,
-			product.ProductID,
-			org.Id,
-			created.Id,
-			ct.UpdateOrganizationWorkspaceJSONRequestBody{Name: created.Name + "-updated"},
-		)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, updated.StatusCode())
-		sink.WaitFor("workspace.updated", map[string]string{
-			"organization_id": org.Id,
-			"workspace_id":    created.Id,
-		})
-
-		deleted, deleteErr := client.DeleteOrganizationWorkspaceWithResponse(
-			ctx, product.ProductID, org.Id, created.Id,
-		)
-		require.NoError(t, deleteErr)
-		require.Equal(t, http.StatusNoContent, deleted.StatusCode())
-		sink.WaitFor("workspace.deleted", map[string]string{
-			"organization_id": org.Id,
-			"workspace_id":    created.Id,
-		})
-	})
-
 	t.Run(
 		"Organization API-key creation, updates, and deletion each emit the matching product event",
 		func(t *testing.T) {
@@ -320,7 +287,6 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		}
 
 		assert.True(t, internalGroups["Organizations"], "Organizations internal group must be in catalog")
-		assert.True(t, internalGroups["Workspaces"], "Workspaces internal group must be in catalog")
 		assert.True(t, internalGroups["API Keys"], "API Keys internal group must be in catalog")
 		assert.True(t, internalGroups["Users"], "Users internal group must be in catalog")
 		assert.True(t, internalGroups["Licensing"], "Licensing internal group must be in catalog")
@@ -395,17 +361,7 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 		require.NoError(t, updateErr)
 		require.Equal(t, http.StatusOK, updatedOrg.StatusCode())
 
-		// Create workspace -> workspace.created was emitted, but should NOT be delivered
-		createdWs, wsErr := filterClient.CreateOrganizationWorkspaceWithResponse(
-			ctx,
-			filterProduct.ProductID,
-			orgID,
-			ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Filter Workspace"},
-		)
-		require.NoError(t, wsErr)
-		require.Equal(t, http.StatusCreated, createdWs.StatusCode())
-
-		// Wait until both filtered jobs finish before asserting their absence.
+		// Wait until the filtered job finishes before asserting its absence.
 		require.Eventually(t, func() bool {
 			jobs, listErr := EventQueue.ListJobs(ctx, queue.ListJobsParams{
 				QueueName: "product-events", Search: filterProduct.ProductID, Limit: 100,
@@ -423,10 +379,9 @@ func TestProductEventsConfigAndDelivery(t *testing.T) {
 					done[payload.Type] = job.Status == queue.StatusDone
 				}
 			}
-			return done["organization.updated"] && done["workspace.created"]
+			return done["organization.updated"]
 		}, 20*time.Second, 50*time.Millisecond)
 		assert.Equal(t, 0, filterSink.Count("organization.updated"))
-		assert.Equal(t, 0, filterSink.Count("workspace.created"))
 
 		// Update product event subscription to now include organization.updated
 		gotProduct, getErr := filterOwner.GetProductWithResponse(ctx, filterProduct.ProductID)

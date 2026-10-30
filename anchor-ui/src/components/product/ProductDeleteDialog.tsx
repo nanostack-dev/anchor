@@ -74,7 +74,7 @@ export function ProductDeleteDialog({
 					condition: !!product.description,
 				},
 			]}
-			warningMessage="This will permanently remove the product along with all associated data including API keys, users, organizations, and workspaces."
+			warningMessage="This will permanently remove the product along with all associated data including API keys, users, organizations, and resources."
 			onDelete={handleDelete}
 			onDeleted={onDeleted}
 		/>

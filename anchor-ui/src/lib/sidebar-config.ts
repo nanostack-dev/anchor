@@ -12,7 +12,6 @@ import {
 	type LucideIcon,
 	Mail,
 	Network,
-	PanelsTopLeft,
 	Plug,
 	ScrollText,
 	Send,
@@ -151,11 +150,6 @@ export const sidebarConfig: SidebarGroup[] = [
 						title: "API Keys",
 						path: ROUTE_PATHS.ORGANIZATIONS_APIS_KEYS,
 						icon: Key,
-					},
-					{
-						title: "Workspaces",
-						path: ROUTE_PATHS.WORKSPACES,
-						icon: PanelsTopLeft,
 					},
 					{
 						title: "License",

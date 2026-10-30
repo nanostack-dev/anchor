@@ -14,11 +14,6 @@ const (
 	OrganizationSlug = "organization"
 	OrganizationName = "Organization"
 
-	// WorkspaceSlug names the type the built-in workspaces are registered as
-	// (ADR-0022 A6). A product may declare it itself, under organization.
-	WorkspaceSlug = "workspace"
-	WorkspaceName = "Workspace"
-
 	// MaxDepth counts the levels of the type tree, organization included.
 	MaxDepth = 5
 	// MaxOwnTypes caps the types a product declares besides organization.

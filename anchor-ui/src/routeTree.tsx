@@ -12,8 +12,6 @@ import {
 } from "@/routes/organizations/organization-license.$organizationId";
 import { organizationMembershipsRoute } from "@/routes/organizations/organization-memberships";
 import { organizationsRoute } from "@/routes/organizations/organizations";
-import { workspaceMembershipsRoute } from "@/routes/organizations/workspace-memberships";
-import { workspacesRoute } from "@/routes/organizations/workspaces";
 import { productIntegrationClerkRoute } from "@/routes/platform/$productId.integration-clerk";
 import { productIntegrationSmtpRoute } from "@/routes/platform/$productId.integration-smtp";
 import { productIntegrationsRoute } from "@/routes/platform/$productId.integrations";
@@ -85,8 +83,6 @@ const routeTree = rootRoute.addChildren([
 		organizationLicenseValuesRoute,
 		organizationRolesRoute,
 	]),
-	workspacesRoute,
-	workspaceMembershipsRoute,
 	settingsUserRoute,
 	settingsAppRoute,
 	platformUsersRoute,

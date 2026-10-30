@@ -85,7 +85,7 @@ func (r registry) Ancestors(
 }
 
 func evaluatorWith(resources resourcerepository.Repository) accesssvc.Evaluator {
-	return accesssvc.NewEvaluator(nil, nil, nil, nil, keyService{}, holdsAll{}, documentTypes{}, resources, nil,
+	return accesssvc.NewEvaluator(nil, nil, nil, keyService{}, holdsAll{}, documentTypes{}, resources, nil,
 		zerolog.Nop())
 }
 

@@ -1,6 +1,6 @@
 # Anchor architecture
 
-Anchor owns the Product → Organization → Workspace hierarchy, identity directory, RBAC, organization credentials and licensing vocabulary defined in [CONTEXT.md](../../CONTEXT.md). Consumer products authenticate their own users and gate their own licensed actions; Anchor validates and records their state.
+Anchor owns the Product → Organization → resource hierarchy, identity directory, RBAC, organization credentials and licensing vocabulary defined in [CONTEXT.md](../../CONTEXT.md). Consumer products authenticate their own users and gate their own licensed actions; Anchor validates and records their state.
 
 ## Components and data flow
 

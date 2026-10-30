@@ -29,7 +29,6 @@ import (
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/domain/roleassignment"
-	"anchor/internal/domain/workspace"
 	"anchor/internal/events"
 
 	"github.com/go-chi/chi/v5"
@@ -42,18 +41,17 @@ import (
 
 // Defines values for AccessDenyReason.
 const (
-	APIKEYINACTIVE             AccessDenyReason = "API_KEY_INACTIVE"
-	APIKEYINVALID              AccessDenyReason = "API_KEY_INVALID"
-	MISSINGPERMISSION          AccessDenyReason = "MISSING_PERMISSION"
-	NOTAMEMBER                 AccessDenyReason = "NOT_A_MEMBER"
-	NOTEVALUATED               AccessDenyReason = "NOT_EVALUATED"
-	ORGANIZATIONNOTFOUND       AccessDenyReason = "ORGANIZATION_NOT_FOUND"
-	PARENTTYPENOTALLOWED       AccessDenyReason = "PARENT_TYPE_NOT_ALLOWED"
-	RESOURCENOTFOUND           AccessDenyReason = "RESOURCE_NOT_FOUND"
-	RESOURCENOTINORGANIZATION  AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
-	RESOURCETYPENOTFOUND       AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
-	SUBJECTNOTSYNCED           AccessDenyReason = "SUBJECT_NOT_SYNCED"
-	WORKSPACENOTINORGANIZATION AccessDenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
+	APIKEYINACTIVE            AccessDenyReason = "API_KEY_INACTIVE"
+	APIKEYINVALID             AccessDenyReason = "API_KEY_INVALID"
+	MISSINGPERMISSION         AccessDenyReason = "MISSING_PERMISSION"
+	NOTAMEMBER                AccessDenyReason = "NOT_A_MEMBER"
+	NOTEVALUATED              AccessDenyReason = "NOT_EVALUATED"
+	ORGANIZATIONNOTFOUND      AccessDenyReason = "ORGANIZATION_NOT_FOUND"
+	PARENTTYPENOTALLOWED      AccessDenyReason = "PARENT_TYPE_NOT_ALLOWED"
+	RESOURCENOTFOUND          AccessDenyReason = "RESOURCE_NOT_FOUND"
+	RESOURCENOTINORGANIZATION AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
+	RESOURCETYPENOTFOUND      AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
+	SUBJECTNOTSYNCED          AccessDenyReason = "SUBJECT_NOT_SYNCED"
 )
 
 // Valid indicates whether the value is a known member of the AccessDenyReason enum.
@@ -80,8 +78,6 @@ func (e AccessDenyReason) Valid() bool {
 	case RESOURCETYPENOTFOUND:
 		return true
 	case SUBJECTNOTSYNCED:
-		return true
-	case WORKSPACENOTINORGANIZATION:
 		return true
 	default:
 		return false
@@ -327,14 +323,14 @@ type AccessDecisionContext struct {
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
-	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 	//
 	// Examples: RESOURCE_NOT_IN_ORGANIZATION
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
 }
 
-// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 //
 // Examples: RESOURCE_NOT_IN_ORGANIZATION
 type AccessDenyReason string
@@ -433,11 +429,11 @@ type AccessItemDecision struct {
 
 // AccessResource defines model for AccessResource.
 type AccessResource struct {
-	// Id The organization or workspace ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+	// Id The organization ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
 	Id         *string                   `json:"id,omitempty"`
 	Properties *AccessResourceProperties `json:"properties,omitempty"`
 
-	// Type `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+	// Type `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
 	//
 	// Examples: document
 	Type AccessResourceType `json:"type"`
@@ -445,14 +441,14 @@ type AccessResource struct {
 
 // AccessResourceProperties defines model for AccessResourceProperties.
 type AccessResourceProperties struct {
-	// OrganizationId The organization of a workspace or of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
+	// OrganizationId The organization of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
 	OrganizationId *string `json:"organization_id,omitempty"`
 
-	// Parent The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace resources take none (400 `INVALID_ACCESS_RESOURCE`).
+	// Parent The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. An organization resource takes none (400 `INVALID_ACCESS_RESOURCE`).
 	Parent *ResourceParentRef `json:"parent,omitempty"`
 }
 
-// AccessResourceType `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+// AccessResourceType `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
 //
 // Examples: document
 type AccessResourceType = string
@@ -2487,9 +2483,6 @@ type ProductOrganizationRequest struct {
 	//
 	// Examples: Acme Corporation
 	Name string `json:"name"`
-
-	// Workspace Optionally create this ordinary workspace atomically with a new organization. Omitted leaves the organization without workspaces. Ignored on update and on a founding-member retry that returns an existing organization; such a retry never recreates deleted workspaces.
-	Workspace *ProductWorkspaceRequest `json:"workspace,omitempty"`
 }
 
 // ProductOrganizationResponse defines model for ProductOrganizationResponse.
@@ -2527,9 +2520,6 @@ type ProductOrganizationResponse struct {
 
 	// UpdatedAt Timestamp when the organization was last updated.
 	UpdatedAt time.Time `json:"updated_at"`
-
-	// Workspaces The organization's ordinary workspaces. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
-	Workspaces *[]ProductWorkspaceResponse `json:"workspaces,omitempty"`
 }
 
 // ProductOrganizationSearchRequest defines model for ProductOrganizationSearchRequest.
@@ -3102,77 +3092,6 @@ type ProductUserSearchRequest struct {
 // Examples: active
 type ProductUserStatus string
 
-// ProductWorkspaceListResponse defines model for ProductWorkspaceListResponse.
-type ProductWorkspaceListResponse struct {
-	// Count The number of items returned in this response.
-	Count int                        `json:"count"`
-	Items []ProductWorkspaceResponse `json:"items"`
-
-	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
-	NextCursor *string `json:"next_cursor,omitempty"`
-
-	// Total Number of items matching the filter, independent of the cursor.
-	Total int64 `json:"total"`
-}
-
-// ProductWorkspaceRequest defines model for ProductWorkspaceRequest.
-type ProductWorkspaceRequest struct {
-	// Description Optional description of the workspace.
-	//
-	// Examples: Workspace for production users and resources.
-	Description *string `json:"description,omitempty"`
-
-	// Name Name of the workspace. Must be unique within the organization.
-	//
-	// Examples: Production
-	Name string `json:"name"`
-}
-
-// ProductWorkspaceResponse defines model for ProductWorkspaceResponse.
-type ProductWorkspaceResponse struct {
-	// CreatedAt Timestamp when the workspace was created.
-	CreatedAt time.Time `json:"created_at"`
-
-	// Description Description of the workspace.
-	//
-	// Examples: Workspace for production users and resources.
-	Description *string `json:"description,omitempty"`
-
-	// Id Unique identifier for the workspace.
-	//
-	// Examples: ws_3iXYZ...
-	Id Ksuid `json:"id"`
-
-	// Name Name of the workspace.
-	//
-	// Examples: Production
-	Name string `json:"name"`
-
-	// OrganizationId ID of the organization this workspace belongs to.
-	//
-	// Examples: org_3iXYZ...
-	OrganizationId Ksuid `json:"organization_id"`
-
-	// UpdatedAt Timestamp when the workspace was last updated.
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// ProductWorkspaceSearchRequest defines model for ProductWorkspaceSearchRequest.
-type ProductWorkspaceSearchRequest struct {
-	// Filter Filter criteria for workspaces.
-	Filter *WorkspaceFilter `json:"filter,omitempty"`
-
-	// FullTextSearch Full-text search term to match against searchable fields.
-	FullTextSearch *string            `json:"full_text_search,omitempty"`
-	Pagination     *PaginationRequest `json:"pagination,omitempty"`
-
-	// SortBy Field to sort by.
-	SortBy *workspace.SortFieldProductWorkspace `json:"sort_by,omitempty"`
-
-	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
-	SortDirection *SortDirection `json:"sort_direction,omitempty"`
-}
-
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email string `json:"email"`
@@ -3663,15 +3582,6 @@ type UserResponse struct {
 	Role  string `json:"role"`
 }
 
-// WorkspaceFilter defines model for WorkspaceFilter.
-type WorkspaceFilter struct {
-	// Ids Filter by specific workspace IDs.
-	Ids []Ksuid `json:"ids,omitempty"`
-
-	// Names Filter by workspace names (exact matches).
-	Names []string `json:"names,omitempty"`
-}
-
 // Ksuid Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -3763,11 +3673,6 @@ type ResourceTypeIdParameter = Ksuid
 // ResourceTypePathParameter Examples: folder
 type ResourceTypePathParameter = string
 
-// WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
-//
-// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-type WorkspaceIdParameter = Ksuid
-
 // AccessDecisionsUnavailable defines model for AccessDecisionsUnavailable.
 type AccessDecisionsUnavailable = ApiErrorResponse
 
@@ -3826,13 +3731,13 @@ type ListLicenseTemplatesParams struct {
 
 // SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
 type SearchProductOrganizationsParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProductOrganizationParams defines parameters for GetProductOrganization.
 type GetProductOrganizationParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
@@ -4090,21 +3995,6 @@ type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
 
 // UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
 type UpdateOrganizationRoleJSONRequestBody = ProductRoleUpdateRequest
-
-// CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
-
-// SearchOrganizationWorkspacesJSONRequestBody defines body for SearchOrganizationWorkspaces for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
-
-// UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest
@@ -4680,31 +4570,6 @@ type ServerInterface interface {
 	// UpdateOrganizationRole Update Organization Custom Role
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
 	UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter)
-	// CreateOrganizationWorkspace Create Organization Workspace
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
-	// SearchOrganizationWorkspaces Search Organization Workspaces
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
-	// DeleteOrganizationWorkspace Delete Organization Workspace
-	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
-	// GetOrganizationWorkspace Get Organization Workspace
-	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
-	// UpdateOrganizationWorkspace Update Organization Workspace
-	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)
 	SearchProductPermissions(w http.ResponseWriter, r *http.Request, productId ProductIdParameter)
@@ -5437,46 +5302,6 @@ func (_ Unimplemented) GetOrganizationRole(w http.ResponseWriter, r *http.Reques
 // UpdateOrganizationRole Update Organization Custom Role
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
 func (_ Unimplemented) UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// CreateOrganizationWorkspace Create Organization Workspace
-// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (_ Unimplemented) CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// SearchOrganizationWorkspaces Search Organization Workspaces
-// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (_ Unimplemented) SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// DeleteOrganizationWorkspace Delete Organization Workspace
-// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (_ Unimplemented) DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// GetOrganizationWorkspace Get Organization Workspace
-// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (_ Unimplemented) GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// UpdateOrganizationWorkspace Update Organization Workspace
-// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-func (_ Unimplemented) UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -9421,208 +9246,6 @@ func (siw *ServerInterfaceWrapper) UpdateOrganizationRole(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
-// CreateOrganizationWorkspace operation middleware
-func (siw *ServerInterfaceWrapper) CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateOrganizationWorkspace(w, r, productId, organizationId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// SearchOrganizationWorkspaces operation middleware
-func (siw *ServerInterfaceWrapper) SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SearchOrganizationWorkspaces(w, r, productId, organizationId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DeleteOrganizationWorkspace operation middleware
-func (siw *ServerInterfaceWrapper) DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "workspace_id" -------------
-	var workspaceId WorkspaceIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetOrganizationWorkspace operation middleware
-func (siw *ServerInterfaceWrapper) GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "workspace_id" -------------
-	var workspaceId WorkspaceIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateOrganizationWorkspace operation middleware
-func (siw *ServerInterfaceWrapper) UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "product_id" -------------
-	var productId ProductIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "product_id", chi.URLParam(r, "product_id"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "product_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "organization_id" -------------
-	var organizationId OrganizationIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "organization_id", chi.URLParam(r, "organization_id"), &organizationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "organization_id", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "workspace_id" -------------
-	var workspaceId WorkspaceIdParameter
-
-	err = runtime.BindStyledParameterWithOptions("simple", "workspace_id", chi.URLParam(r, "workspace_id"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateOrganizationWorkspace(w, r, productId, organizationId, workspaceId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // SearchProductPermissions operation middleware
 func (siw *ServerInterfaceWrapper) SearchProductPermissions(w http.ResponseWriter, r *http.Request) {
 
@@ -10872,21 +10495,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}", wrapper.UpdateProductOrganization)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces", wrapper.CreateOrganizationWorkspace)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/search", wrapper.SearchOrganizationWorkspaces)
-	})
-	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}", wrapper.DeleteOrganizationWorkspace)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}", wrapper.GetOrganizationWorkspace)
-	})
-	r.Group(func(r chi.Router) {
-		r.Put(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}", wrapper.UpdateOrganizationWorkspace)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/products/{product_id}/organizations/{organization_id}/members", wrapper.AddOrganizationMember)
@@ -19901,429 +19509,6 @@ func (response UpdateOrganizationRole409JSONResponse) VisitUpdateOrganizationRol
 	return err
 }
 
-type CreateOrganizationWorkspaceRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-	Body           *CreateOrganizationWorkspaceJSONRequestBody
-}
-
-type CreateOrganizationWorkspaceResponseObject interface {
-	VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error
-}
-
-type CreateOrganizationWorkspace201JSONResponse ProductWorkspaceResponse
-
-func (response CreateOrganizationWorkspace201JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateOrganizationWorkspace400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response CreateOrganizationWorkspace400JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateOrganizationWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response CreateOrganizationWorkspace401JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateOrganizationWorkspace403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response CreateOrganizationWorkspace403JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateOrganizationWorkspace404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response CreateOrganizationWorkspace404JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateOrganizationWorkspace409JSONResponse struct{ ConflictJSONResponse }
-
-func (response CreateOrganizationWorkspace409JSONResponse) VisitCreateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspacesRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-	Body           *SearchOrganizationWorkspacesJSONRequestBody
-}
-
-type SearchOrganizationWorkspacesResponseObject interface {
-	VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error
-}
-
-type SearchOrganizationWorkspaces200JSONResponse ProductWorkspaceListResponse
-
-func (response SearchOrganizationWorkspaces200JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspaces400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response SearchOrganizationWorkspaces400JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspaces401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response SearchOrganizationWorkspaces401JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspaces403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response SearchOrganizationWorkspaces403JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspaces404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response SearchOrganizationWorkspaces404JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchOrganizationWorkspaces409JSONResponse struct{ ConflictJSONResponse }
-
-func (response SearchOrganizationWorkspaces409JSONResponse) VisitSearchOrganizationWorkspacesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteOrganizationWorkspaceRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
-}
-
-type DeleteOrganizationWorkspaceResponseObject interface {
-	VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error
-}
-
-type DeleteOrganizationWorkspace204Response struct {
-}
-
-func (response DeleteOrganizationWorkspace204Response) VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type DeleteOrganizationWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response DeleteOrganizationWorkspace401JSONResponse) VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteOrganizationWorkspace403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response DeleteOrganizationWorkspace403JSONResponse) VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteOrganizationWorkspace404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response DeleteOrganizationWorkspace404JSONResponse) VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteOrganizationWorkspace409JSONResponse struct{ ConflictJSONResponse }
-
-func (response DeleteOrganizationWorkspace409JSONResponse) VisitDeleteOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetOrganizationWorkspaceRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
-}
-
-type GetOrganizationWorkspaceResponseObject interface {
-	VisitGetOrganizationWorkspaceResponse(w http.ResponseWriter) error
-}
-
-type GetOrganizationWorkspace200JSONResponse ProductWorkspaceResponse
-
-func (response GetOrganizationWorkspace200JSONResponse) VisitGetOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetOrganizationWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response GetOrganizationWorkspace401JSONResponse) VisitGetOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetOrganizationWorkspace403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response GetOrganizationWorkspace403JSONResponse) VisitGetOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetOrganizationWorkspace404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response GetOrganizationWorkspace404JSONResponse) VisitGetOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspaceRequestObject struct {
-	ProductId      ProductIdParameter      `json:"product_id"`
-	OrganizationId OrganizationIdParameter `json:"organization_id"`
-	WorkspaceId    WorkspaceIdParameter    `json:"workspace_id"`
-	Body           *UpdateOrganizationWorkspaceJSONRequestBody
-}
-
-type UpdateOrganizationWorkspaceResponseObject interface {
-	VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error
-}
-
-type UpdateOrganizationWorkspace200JSONResponse ProductWorkspaceResponse
-
-func (response UpdateOrganizationWorkspace200JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspace400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response UpdateOrganizationWorkspace400JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response UpdateOrganizationWorkspace401JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspace403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response UpdateOrganizationWorkspace403JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspace404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response UpdateOrganizationWorkspace404JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateOrganizationWorkspace409JSONResponse struct{ ConflictJSONResponse }
-
-func (response UpdateOrganizationWorkspace409JSONResponse) VisitUpdateOrganizationWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type SearchProductPermissionsRequestObject struct {
 	ProductId ProductIdParameter `json:"product_id"`
 	Body      *SearchProductPermissionsJSONRequestBody
@@ -22775,31 +21960,6 @@ type StrictServerInterface interface {
 	// UpdateOrganizationRole Update Organization Custom Role
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/roles/{role_id})
 	UpdateOrganizationRole(ctx context.Context, request UpdateOrganizationRoleRequestObject) (UpdateOrganizationRoleResponseObject, error)
-	// CreateOrganizationWorkspace Create Organization Workspace
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	CreateOrganizationWorkspace(ctx context.Context, request CreateOrganizationWorkspaceRequestObject) (CreateOrganizationWorkspaceResponseObject, error)
-	// SearchOrganizationWorkspaces Search Organization Workspaces
-	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	SearchOrganizationWorkspaces(ctx context.Context, request SearchOrganizationWorkspacesRequestObject) (SearchOrganizationWorkspacesResponseObject, error)
-	// DeleteOrganizationWorkspace Delete Organization Workspace
-	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	DeleteOrganizationWorkspace(ctx context.Context, request DeleteOrganizationWorkspaceRequestObject) (DeleteOrganizationWorkspaceResponseObject, error)
-	// GetOrganizationWorkspace Get Organization Workspace
-	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	GetOrganizationWorkspace(ctx context.Context, request GetOrganizationWorkspaceRequestObject) (GetOrganizationWorkspaceResponseObject, error)
-	// UpdateOrganizationWorkspace Update Organization Workspace
-	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
-	//
-	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-	UpdateOrganizationWorkspace(ctx context.Context, request UpdateOrganizationWorkspaceRequestObject) (UpdateOrganizationWorkspaceResponseObject, error)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)
 	SearchProductPermissions(ctx context.Context, request SearchProductPermissionsRequestObject) (SearchProductPermissionsResponseObject, error)
@@ -26170,165 +25330,6 @@ func (sh *strictHandler) UpdateOrganizationRole(w http.ResponseWriter, r *http.R
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateOrganizationRoleResponseObject); ok {
 		if err := validResponse.VisitUpdateOrganizationRoleResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateOrganizationWorkspace operation middleware
-func (sh *strictHandler) CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	var request CreateOrganizationWorkspaceRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-
-	var body CreateOrganizationWorkspaceJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateOrganizationWorkspace(ctx, request.(CreateOrganizationWorkspaceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateOrganizationWorkspace")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateOrganizationWorkspaceResponseObject); ok {
-		if err := validResponse.VisitCreateOrganizationWorkspaceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// SearchOrganizationWorkspaces operation middleware
-func (sh *strictHandler) SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
-	var request SearchOrganizationWorkspacesRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-
-	var body SearchOrganizationWorkspacesJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchOrganizationWorkspaces(ctx, request.(SearchOrganizationWorkspacesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchOrganizationWorkspaces")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(SearchOrganizationWorkspacesResponseObject); ok {
-		if err := validResponse.VisitSearchOrganizationWorkspacesResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DeleteOrganizationWorkspace operation middleware
-func (sh *strictHandler) DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
-	var request DeleteOrganizationWorkspaceRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-	request.WorkspaceId = workspaceId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteOrganizationWorkspace(ctx, request.(DeleteOrganizationWorkspaceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteOrganizationWorkspace")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteOrganizationWorkspaceResponseObject); ok {
-		if err := validResponse.VisitDeleteOrganizationWorkspaceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetOrganizationWorkspace operation middleware
-func (sh *strictHandler) GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
-	var request GetOrganizationWorkspaceRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-	request.WorkspaceId = workspaceId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetOrganizationWorkspace(ctx, request.(GetOrganizationWorkspaceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetOrganizationWorkspace")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetOrganizationWorkspaceResponseObject); ok {
-		if err := validResponse.VisitGetOrganizationWorkspaceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UpdateOrganizationWorkspace operation middleware
-func (sh *strictHandler) UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
-	var request UpdateOrganizationWorkspaceRequestObject
-
-	request.ProductId = productId
-	request.OrganizationId = organizationId
-	request.WorkspaceId = workspaceId
-
-	var body UpdateOrganizationWorkspaceJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateOrganizationWorkspace(ctx, request.(UpdateOrganizationWorkspaceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateOrganizationWorkspace")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateOrganizationWorkspaceResponseObject); ok {
-		if err := validResponse.VisitUpdateOrganizationWorkspaceResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

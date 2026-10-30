@@ -9,7 +9,7 @@ branch, device, browser or API coverage.
 Generated from `playwright.app.config.ts` discovery. Refresh with
 `pnpm update:e2e:coverage`; CI checks this block with `pnpm check:e2e:coverage`.
 
-The managed app suite declares **71 scenarios in 17 spec files**.
+The managed app suite declares **70 scenarios in 17 spec files**.
 
 | Spec | Scenarios |
 | --- | ---: |
@@ -18,7 +18,7 @@ The managed app suite declares **71 scenarios in 17 spec files**.
 | [access/resource-types.e2e.ts](../features/access/resource-types.e2e.ts) | 3 |
 | [access/roles.e2e.ts](../features/access/roles.e2e.ts) | 6 |
 | [access/scoped-roles.e2e.ts](../features/access/scoped-roles.e2e.ts) | 5 |
-| [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 6 |
+| [access/tenancy.e2e.ts](../features/access/tenancy.e2e.ts) | 5 |
 | [auth/bootstrap.e2e.ts](../features/auth/bootstrap.e2e.ts) | 1 |
 | [auth/session.e2e.ts](../features/auth/session.e2e.ts) | 4 |
 | [integrations/email.e2e.ts](../features/integrations/email.e2e.ts) | 5 |
@@ -97,7 +97,7 @@ Specs: [management keys](../features/platform/api-keys.e2e.ts),
 | `PRODUCT_ROLE_NEW` — `/products/resources/roles/new` | Scope first (Continue disabled until chosen), details, permissions grouped by type from the scope down with types above left out, group Select all, review, create; an empty scope explains itself and links to a pre-scoped permission; a role with no permission. | API publishes the tree and scoped permissions. | roles, scoped roles |
 | `PRODUCT_ROLE_DETAIL` — `/products/resources/roles/$roleId` | View with scope and key, edit/cancel with the scope fixed and the same filtered permissions, renamed role and grant replacement, reload and missing-role recovery. | API checks persisted name/grants/scope; permission deletion must leave `permissions: []`. | roles, permissions, scoped roles |
 
-## Organization and workspace views
+## Organization views
 
 Spec: [tenancy](../features/access/tenancy.e2e.ts). These are admin views of
 tenant data. API creation or membership assignment is prerequisite setup, not
@@ -108,8 +108,6 @@ coverage of a browser create/assign flow.
 | `ORGANIZATIONS` — `/organizations` | Search, Name facet, name sort, pagination and no selection/mutation controls. | Twelve API organizations; read-only overview. | tenancy |
 | `ORGANIZATIONS_APIS_KEYS` — `/organizations/api-keys` | Organization picker, scoped search/Status facet, obfuscated key and grants, no clear key or mutation controls, empty recovery. | Two organizations and API-created organization keys; read-only list. | tenancy |
 | `ORGANIZATION_MEMBERSHIPS` — `/organization-memberships` | Organization picker, twelve-member pagination, email/name search, role display and empty recovery. Invitations tab: Status facet, cancel, single/bulk delete and organization isolation. | API users, roles, memberships and invitations; invitation create/accept are not browser controls here. | tenancy |
-| `WORKSPACES` — `/workspaces` | Organization picker, search/Name facet, description, scope switch and empty recovery. | API organizations/workspaces; read-only browser view. | tenancy |
-| `WORKSPACE_MEMBERSHIPS` — `/workspace-memberships` | Direct navigation and placeholder heading. | Hidden from sidebar; no membership management UI is implemented. | tenancy |
 
 ## Licensing
 
@@ -182,7 +180,7 @@ External Clerk API reconciliation needs a vendor test tenant and scoped API key.
 It is separate from the signed local ingestion tested here. External SMTP
 provider transport/deliverability likewise needs its own controlled environment;
 the ordinary suite verifies real local SMTP and Mailpit delivery. Placeholder
-settings/workspace-membership pages and read-only tenant lists do not have
+settings pages and read-only tenant lists do not have
 missing browser CRUD coverage: those actions are absent from the implemented UI.
 
 When adding a route or action, update the relevant row and scenario together,

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -34,7 +33,7 @@ func mapMetadataToInput(metadata *Metadata) map[string]any {
 	return functional.FromPtr(metadata).OrElse(nil)
 }
 
-func mapOrganizationToResponse(org organization.Organization, includeWorkspaces bool) ProductOrganizationResponse {
+func mapOrganizationToResponse(org organization.Organization) ProductOrganizationResponse {
 	response := ProductOrganizationResponse{
 		Id:          org.ID,
 		ProductId:   org.ProductID,
@@ -45,13 +44,6 @@ func mapOrganizationToResponse(org organization.Organization, includeWorkspaces 
 		UpdatedAt:   org.UpdatedAt,
 	}
 	response.License = functional.FromPtr(org.License).Map(mapOrganizationLicenseToResponse).ToPtr()
-	if includeWorkspaces {
-		items := functional.Slice(org.Workspaces).Map(mapWorkspaceToResponse).ToSlice()
-		if items == nil {
-			items = []ProductWorkspaceResponse{}
-		}
-		response.Workspaces = &items
-	}
 	return response
 }
 
@@ -89,7 +81,6 @@ func (s *AnchorAPI) CreateProductOrganization(
 
 	if request.Body.FoundingMember != nil {
 		input := organization.CreateOrganizationWithMemberInput{
-			Workspace:         initialWorkspaceInput(request.Body.Workspace),
 			TenantID:          tenantID,
 			ProductID:         request.ProductId,
 			Name:              request.Body.Name,
@@ -111,12 +102,11 @@ func (s *AnchorAPI) CreateProductOrganization(
 		}
 
 		return CreateProductOrganization201JSONResponse(
-			mapOrganizationToResponse(res.Organization, false),
+			mapOrganizationToResponse(res.Organization),
 		), nil
 	}
 
 	input := organization.CreateOrganizationInput{
-		Workspace:         initialWorkspaceInput(request.Body.Workspace),
 		TenantID:          tenantID,
 		ProductID:         request.ProductId,
 		Name:              request.Body.Name,
@@ -131,7 +121,7 @@ func (s *AnchorAPI) CreateProductOrganization(
 		return nil, err
 	}
 
-	return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(created, false)), nil
+	return CreateProductOrganization201JSONResponse(mapOrganizationToResponse(created)), nil
 }
 
 func (s *AnchorAPI) SearchProductOrganizations(
@@ -162,11 +152,8 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		return nil, err
 	}
 
-	includeWorkspaces := slices.Contains(includes, organization.IncludeWorkspace)
 	return SearchProductOrganizations200JSONResponse{
-		Items: functional.Slice(result.Items).Map(func(org organization.Organization) ProductOrganizationResponse {
-			return mapOrganizationToResponse(org, includeWorkspaces)
-		}),
+		Items:      functional.Slice(result.Items).Map(mapOrganizationToResponse),
 		Total:      result.Total,
 		NextCursor: nextCursor(result.NextCursor),
 		Count:      result.Count,
@@ -196,7 +183,7 @@ func (s *AnchorAPI) GetProductOrganization(
 	}
 
 	return GetProductOrganization200JSONResponse(
-		mapOrganizationToResponse(org, slices.Contains(includes, organization.IncludeWorkspace)),
+		mapOrganizationToResponse(org),
 	), nil
 }
 
@@ -235,7 +222,7 @@ func (s *AnchorAPI) UpdateProductOrganization(
 		return nil, err
 	}
 
-	return UpdateProductOrganization200JSONResponse(mapOrganizationToResponse(updatedOrganization, false)), nil
+	return UpdateProductOrganization200JSONResponse(mapOrganizationToResponse(updatedOrganization)), nil
 }
 
 func mapToSearchProductOrganizationInput(
@@ -256,11 +243,4 @@ func mapToSearchProductOrganizationInput(
 			searchReqBody.SortBy,
 			searchReqBody.SortDirection,
 		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
-}
-
-func initialWorkspaceInput(input *ProductWorkspaceRequest) *organization.InitialWorkspaceInput {
-	if input == nil {
-		return nil
-	}
-	return &organization.InitialWorkspaceInput{Name: input.Name, Description: input.Description}
 }

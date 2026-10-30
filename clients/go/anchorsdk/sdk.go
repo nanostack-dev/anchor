@@ -133,7 +133,7 @@ func (c *Client) ProductID() string { return c.productID }
 func (c *Client) Raw() *nanoclient.ClientWithResponses { return c.api }
 
 // Organization returns a handle scoped to one organization, the entry point for
-// its members, workspaces, and API keys.
+// its members, resources, and API keys.
 //
 //	org := c.Organization("org_3iXYZ")
 //	members, err := org.Members().List(ctx)

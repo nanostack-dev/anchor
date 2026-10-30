@@ -33,7 +33,7 @@ func sources() []fgasync.Source {
 func eventWithEveryField(eventType events.Type) events.Event {
 	return events.Event{Type: eventType, ProductID: "prod_tasks", Data: events.Data{
 		events.FieldOrganizationID: "org_acme", events.FieldProductUserID: "pu_ana",
-		events.FieldWorkspaceID: "ws_1", events.FieldInvitationID: "inv_1", events.FieldAPIKeyID: "key_ci",
+		events.FieldInvitationID: "inv_1", events.FieldAPIKeyID: "key_ci",
 		events.FieldRoleID: "role_admin", events.FieldPermissionName: "billing:write",
 		events.FieldResourceTypeID: "rt_1", events.FieldResourceType: "project", events.FieldResourceRowID: "res_1",
 	}}

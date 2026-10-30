@@ -32,7 +32,7 @@ members, err := o.Members().List(ctx)
 key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 ```
 
-`Client.Organization(id)` returns an `*Org` handle exposing `Members()`, `Workspaces()`, `APIKeys()`. That keeps the organization ID out of every sub-call.
+`Client.Organization(id)` returns an `*Org` handle exposing `Members()`, `Resource()`, `Resources()`, `APIKeys()`. That keeps the organization ID out of every sub-call.
 
 **Errors.** Every method returns `*Error` on failure, carrying `Op`, `StatusCode`, and Anchor's structured `Details`. Classify with `errors.Is` against `ErrNotFound`, `ErrForbidden`, `ErrUnauthorized`, `ErrConflict`, `ErrInvalid`, `ErrPermanent`. `ErrPermanent` matches every 4xx except 429.
 
@@ -53,10 +53,9 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `email.go` | done — fluent send; the FAILED-record rule is preserved |
 | `organizations.go` | done — create/update builders, get, delete, search, list |
 | `members.go` | done — list, search, get (plus role permissions), add, remove, set role |
-| `workspaces.go` | deprecated — create, get, update, delete, search, list |
 | `resources.go` | done — `Resource` handle: put (with `Under`), get, delete, delete a tree; `Resources().Search()` |
 | `resource_members.go` | done — roles on a resource: assign, get, remove, search |
-| `access.go` | done — evaluate on an organization, a workspace or a resource; `On(resource)`, `Can` |
+| `access.go` | done — evaluate on an organization or a resource; `On(resource)`, `Can` |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
 | `users.go` | done — create, get, delete, search, list, a user's organizations (`SearchOrganizations`, `Organizations` reads every page) |
 | `paginate.go` | done — the cursor iterator behind every `All` |
@@ -69,7 +68,6 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 Where the build departed from the plan:
 
 - **`ptr` is gone.** The repo's `modernize` linter rejects it outright (`newexpr: ptr can be an inlinable wrapper around new(expr)`) and the module is on Go 1.26, so every call site uses the `new(expr)` builtin. `decode`, `expectSuccess`, `retrying`, `permanentError`, and `transportError` are all in use.
-- **Workspaces gained `Search`/`List`.** The plan listed only CRUD, but Anchor exposes the search endpoint and every sibling facade wraps one; omitting it made `Workspaces` the odd facade out.
 - **Product users have no update.** The generated client has no `UpdateProductUser` operation — Anchor does not expose one. That is documented on the `Users` type. Attach/detach is `Members().Add`/`Remove`, cross-referenced from `users.go`.
 - **Three pre-existing lint findings were cleared** so the module lints at zero: `mnd` on `jitter`'s `d / 2` (now the `jitterSpread` const), `gosec` G101 on `productAPIKeyHeader` (renamed `productAuthHeader` — it names a header, it is not a credential), and `mnd` plus `revive` in the generated-client package's hand-written `config.go`. One suppression was added: `//nolint:gosec` on `rand.Int64N` in `jitter`, since backoff spread is a scheduling decision that needs no CSPRNG.
 - **Tests split into a second file.** `license_test.go` sits alongside `anchorsdk_test.go` in the same `anchorsdk_test` package rather than growing the single file further — the suite crossed 1,100 lines and licensing's own scenarios (routing, error classification, five separate cache-behaviour tests) read better grouped. Both files share the `stubServer`/`newTestClient`/`assertJSONEqual` helpers; `license_test.go` adds one local `newLicenseTestClient` for the one knob (`LicenseCachePolicy`) the shared helper does not take.

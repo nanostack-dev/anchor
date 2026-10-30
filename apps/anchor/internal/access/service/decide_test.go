@@ -62,12 +62,12 @@ func TestDeny(t *testing.T) {
 }
 
 func TestRequestBuilder(t *testing.T) {
-	t.Run("builds a user question on a workspace", func(t *testing.T) {
-		request := accesssvc.Ask("prd").User("user_1").InWorkspace("org", "ws").Can("flows:read")
+	t.Run("builds a user question on a resource", func(t *testing.T) {
+		request := accesssvc.Ask("prd").User("user_1").OnResource("org", "workspace", "ws").Can("flows:read")
 		assert.Equal(t, accesssvc.Request{
 			ProductID: "prd",
 			Subject:   accesssvc.Subject{Type: accesssvc.SubjectUser, ID: "user_1"},
-			Resource:  accesssvc.Resource{Type: accesssvc.ResourceWorkspace, ID: "ws", OrganizationID: "org"},
+			Resource:  accesssvc.Resource{Type: "workspace", ID: "ws", OrganizationID: "org"},
 			Actions:   []string{"flows:read"},
 		}, request)
 		assert.Equal(t, "org", request.Organization())
@@ -84,11 +84,9 @@ func TestCheckResource(t *testing.T) {
 	user := accesssvc.Ask("prd").User("user_1")
 	key := accesssvc.Ask("prd").APIKey("key")
 
-	require.Error(t, accesssvc.CheckResource(key.InWorkspace("org", "")), "a workspace needs an id")
-	require.Error(t, accesssvc.CheckResource(user.InWorkspace("", "ws")), "a user needs the workspace's organization")
 	require.Error(t, accesssvc.CheckResource(user.InOrganization("")), "a user needs an organization id")
 	require.NoError(t, accesssvc.CheckResource(key), "an API key defaults to its organization")
-	require.NoError(t, accesssvc.CheckResource(user.InWorkspace("org", "ws")))
+	require.NoError(t, accesssvc.CheckResource(user.InOrganization("org")))
 }
 
 func TestCheckResourceOnProductTypes(t *testing.T) {
@@ -100,8 +98,6 @@ func TestCheckResourceOnProductTypes(t *testing.T) {
 		"a user needs the resource's organization")
 	require.Error(t, accesssvc.CheckResource(user.InOrganization("org").Under("folder", "f")),
 		"an organization takes no parent")
-	require.Error(t, accesssvc.CheckResource(user.InWorkspace("org", "ws").Under("folder", "f")),
-		"a workspace takes no parent")
 	require.NoError(t, accesssvc.CheckResource(key.OnResource("", "document", "doc").Under("folder", "f")),
 		"an API key defaults to its organization")
 	require.NoError(t, accesssvc.CheckResource(user.OnResource("org", "document", "doc").Under("folder", "f")))

@@ -1283,33 +1283,6 @@ export type OrganizationApiKeyFilter = {
     last_used_after?: string;
 };
 
-export type WorkspaceMembershipFilter = {
-    /**
-     * Filter by specific workspace IDs.
-     */
-    workspace_ids?: Array<Ksuid>;
-    /**
-     * Filter by parent organization IDs.
-     */
-    organization_ids?: Array<Ksuid>;
-    /**
-     * Filter by specific product Product User IDs.
-     */
-    product_user_ids?: Array<Ksuid>;
-    /**
-     * Filter by Product User email addresses.
-     */
-    user_emails?: Array<string>;
-    /**
-     * Filter by specific product role IDs.
-     */
-    product_role_ids?: Array<Ksuid>;
-    /**
-     * Filter by role names.
-     */
-    role_names?: Array<string>;
-};
-
 export type OrganizationFilter = {
     /**
      * Filter by specific organization IDs.
@@ -1317,17 +1290,6 @@ export type OrganizationFilter = {
     ids?: Array<Ksuid>;
     /**
      * Filter by organization names (exact matches).
-     */
-    names?: Array<string>;
-};
-
-export type WorkspaceFilter = {
-    /**
-     * Filter by specific workspace IDs.
-     */
-    ids?: Array<Ksuid>;
-    /**
-     * Filter by workspace names (exact matches).
      */
     names?: Array<string>;
 };
@@ -1587,17 +1549,17 @@ export type AccessSubject = {
 };
 
 /**
- * `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+ * `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
  */
 export type AccessResourceType = string;
 
 export type AccessResourceProperties = {
     /**
-     * The organization of a workspace or of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
+     * The organization of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
      */
     organization_id?: string;
     /**
-     * The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace resources take none (400 `INVALID_ACCESS_RESOURCE`).
+     * The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. An organization resource takes none (400 `INVALID_ACCESS_RESOURCE`).
      */
     parent?: ResourceParentRef;
 };
@@ -1605,7 +1567,7 @@ export type AccessResourceProperties = {
 export type AccessResource = {
     type: AccessResourceType;
     /**
-     * The organization or workspace ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+     * The organization ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
      */
     id?: string;
     properties?: AccessResourceProperties;
@@ -1622,7 +1584,7 @@ export type AccessAction = {
 };
 
 /**
- * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+ * Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
  */
 export enum AccessDenyReason {
     SUBJECT_NOT_SYNCED = 'SUBJECT_NOT_SYNCED',
@@ -1630,7 +1592,6 @@ export enum AccessDenyReason {
     API_KEY_INACTIVE = 'API_KEY_INACTIVE',
     ORGANIZATION_NOT_FOUND = 'ORGANIZATION_NOT_FOUND',
     NOT_A_MEMBER = 'NOT_A_MEMBER',
-    WORKSPACE_NOT_IN_ORGANIZATION = 'WORKSPACE_NOT_IN_ORGANIZATION',
     MISSING_PERMISSION = 'MISSING_PERMISSION',
     NOT_EVALUATED = 'NOT_EVALUATED',
     RESOURCE_TYPE_NOT_FOUND = 'RESOURCE_TYPE_NOT_FOUND',
@@ -1798,10 +1759,6 @@ export type UserResponse = {
 
 export type ProductOrganizationRequest = {
     /**
-     * Optionally create this ordinary workspace atomically with a new organization. Omitted leaves the organization without workspaces. Ignored on update and on a founding-member retry that returns an existing organization; such a retry never recreates deleted workspaces.
-     */
-    workspace?: ProductWorkspaceRequest;
-    /**
      * Name of the organization. Not unique — two Organizations in one Product may share a name, so address an Organization by its ID.
      */
     name: string;
@@ -1830,11 +1787,7 @@ export enum OrganizationInclude {
     /**
      * OrganizationIncludeLicense
      */
-    ORGANIZATION_INCLUDE_LICENSE = 'license',
-    /**
-     * OrganizationIncludeWorkspace
-     */
-    ORGANIZATION_INCLUDE_WORKSPACE = 'workspace'
+    ORGANIZATION_INCLUDE_LICENSE = 'license'
 }
 
 export type FoundingMemberRequest = {
@@ -1870,10 +1823,6 @@ export type ProductOrganizationResponse = {
      */
     metadata?: Metadata;
     /**
-     * The organization's ordinary workspaces. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
-     */
-    readonly workspaces?: Array<ProductWorkspaceResponse>;
-    /**
      * The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
      */
     license?: OrganizationLicenseResponse;
@@ -1900,59 +1849,6 @@ export type ProductOrganizationSearchRequest = SearchRequest & {
 
 export type ProductOrganizationListResponse = PagedListResponse & {
     items: Array<ProductOrganizationResponse>;
-};
-
-export type ProductWorkspaceRequest = {
-    /**
-     * Name of the workspace. Must be unique within the organization.
-     */
-    name: string;
-    /**
-     * Optional description of the workspace.
-     */
-    description?: string | null;
-};
-
-export type ProductWorkspaceResponse = {
-    /**
-     * Unique identifier for the workspace.
-     */
-    id: Ksuid;
-    /**
-     * ID of the organization this workspace belongs to.
-     */
-    organization_id: Ksuid;
-    /**
-     * Name of the workspace.
-     */
-    name: string;
-    /**
-     * Description of the workspace.
-     */
-    description?: string | null;
-    /**
-     * Timestamp when the workspace was created.
-     */
-    created_at: string;
-    /**
-     * Timestamp when the workspace was last updated.
-     */
-    updated_at: string;
-};
-
-export type ProductWorkspaceSearchRequest = SearchRequest & {
-    /**
-     * Filter criteria for workspaces.
-     */
-    filter?: WorkspaceFilter;
-    /**
-     * Field to sort by.
-     */
-    sort_by?: 'name' | 'created_at' | 'updated_at';
-};
-
-export type ProductWorkspaceListResponse = PagedListResponse & {
-    items: Array<ProductWorkspaceResponse>;
 };
 
 /**
@@ -3280,45 +3176,6 @@ export type UsageSeriesResponse = PagedListResponse & {
     items: Array<UsageSeriesPointResponse>;
 };
 
-export type ProductOrganizationResponseWritable = {
-    /**
-     * Unique identifier for the organization (e.g., prefix 'org_').
-     */
-    id: Ksuid;
-    /**
-     * ID of the Product this organization belongs to.
-     */
-    product_id: Ksuid;
-    /**
-     * Name of the organization.
-     */
-    name: string;
-    /**
-     * Description of the organization.
-     */
-    description?: string | null;
-    /**
-     * Key-value metadata for the organization.
-     */
-    metadata?: Metadata;
-    /**
-     * The organization's license. Present on the response to a create call that asked for one, and on a read passing `include=license`. Absent otherwise, which says nothing about whether the organization holds one. It never carries `usage` — the license route is where usage is computed.
-     */
-    license?: OrganizationLicenseResponse;
-    /**
-     * Timestamp when the organization was created.
-     */
-    created_at: string;
-    /**
-     * Timestamp when the organization was last updated.
-     */
-    updated_at: string;
-};
-
-export type ProductOrganizationListResponseWritable = PagedListResponse & {
-    items: Array<ProductOrganizationResponseWritable>;
-};
-
 /**
  * The KSUID of the platform invitation.
  */
@@ -3335,7 +3192,7 @@ export type PlatformUserIdParameter = Ksuid;
 export type ProductIdParameter = Ksuid;
 
 /**
- * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+ * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
  */
 export type OrganizationIncludeParameter = Array<OrganizationInclude>;
 
@@ -3353,11 +3210,6 @@ export type OrganizationMemberIncludeParameter = Array<OrganizationMemberInclude
  * The KSUID of the organization.
  */
 export type OrganizationIdParameter = Ksuid;
-
-/**
- * The KSUID of the workspace.
- */
-export type WorkspaceIdParameter = Ksuid;
 
 /**
  * The KSUID of the product Product User.
@@ -6473,7 +6325,7 @@ export type SearchProductOrganizationsData = {
     };
     query?: {
         /**
-         * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
          */
         include?: Array<OrganizationInclude>;
     };
@@ -6570,7 +6422,7 @@ export type GetProductOrganizationData = {
     };
     query?: {
         /**
-         * Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+         * Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
          */
         include?: Array<OrganizationInclude>;
     };
@@ -6655,265 +6507,6 @@ export type UpdateProductOrganizationResponses = {
 };
 
 export type UpdateProductOrganizationResponse = UpdateProductOrganizationResponses[keyof UpdateProductOrganizationResponses];
-
-export type CreateOrganizationWorkspaceData = {
-    /**
-     * Workspace details.
-     */
-    body: ProductWorkspaceRequest;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the organization.
-         */
-        organization_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces';
-};
-
-export type CreateOrganizationWorkspaceErrors = {
-    /**
-     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
-     */
-    400: ApiErrorResponse;
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
-};
-
-export type CreateOrganizationWorkspaceError = CreateOrganizationWorkspaceErrors[keyof CreateOrganizationWorkspaceErrors];
-
-export type CreateOrganizationWorkspaceResponses = {
-    /**
-     * Workspace created successfully.
-     */
-    201: ProductWorkspaceResponse;
-};
-
-export type CreateOrganizationWorkspaceResponse = CreateOrganizationWorkspaceResponses[keyof CreateOrganizationWorkspaceResponses];
-
-export type SearchOrganizationWorkspacesData = {
-    /**
-     * Search criteria.
-     */
-    body: ProductWorkspaceSearchRequest;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the organization.
-         */
-        organization_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/search';
-};
-
-export type SearchOrganizationWorkspacesErrors = {
-    /**
-     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
-     */
-    400: ApiErrorResponse;
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
-};
-
-export type SearchOrganizationWorkspacesError = SearchOrganizationWorkspacesErrors[keyof SearchOrganizationWorkspacesErrors];
-
-export type SearchOrganizationWorkspacesResponses = {
-    /**
-     * A list of workspaces for the organization.
-     */
-    200: ProductWorkspaceListResponse;
-};
-
-export type SearchOrganizationWorkspacesResponse = SearchOrganizationWorkspacesResponses[keyof SearchOrganizationWorkspacesResponses];
-
-export type DeleteOrganizationWorkspaceData = {
-    body?: never;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the organization.
-         */
-        organization_id: Ksuid;
-        /**
-         * The KSUID of the workspace.
-         */
-        workspace_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}';
-};
-
-export type DeleteOrganizationWorkspaceErrors = {
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
-};
-
-export type DeleteOrganizationWorkspaceError = DeleteOrganizationWorkspaceErrors[keyof DeleteOrganizationWorkspaceErrors];
-
-export type DeleteOrganizationWorkspaceResponses = {
-    /**
-     * Workspace deleted successfully.
-     */
-    204: void;
-};
-
-export type DeleteOrganizationWorkspaceResponse = DeleteOrganizationWorkspaceResponses[keyof DeleteOrganizationWorkspaceResponses];
-
-export type GetOrganizationWorkspaceData = {
-    body?: never;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the organization.
-         */
-        organization_id: Ksuid;
-        /**
-         * The KSUID of the workspace.
-         */
-        workspace_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}';
-};
-
-export type GetOrganizationWorkspaceErrors = {
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-};
-
-export type GetOrganizationWorkspaceError = GetOrganizationWorkspaceErrors[keyof GetOrganizationWorkspaceErrors];
-
-export type GetOrganizationWorkspaceResponses = {
-    /**
-     * Workspace details.
-     */
-    200: ProductWorkspaceResponse;
-};
-
-export type GetOrganizationWorkspaceResponse = GetOrganizationWorkspaceResponses[keyof GetOrganizationWorkspaceResponses];
-
-export type UpdateOrganizationWorkspaceData = {
-    /**
-     * Workspace update details.
-     */
-    body: ProductWorkspaceRequest;
-    path: {
-        /**
-         * The KSUID of the product.
-         */
-        product_id: Ksuid;
-        /**
-         * The KSUID of the organization.
-         */
-        organization_id: Ksuid;
-        /**
-         * The KSUID of the workspace.
-         */
-        workspace_id: Ksuid;
-    };
-    query?: never;
-    url: '/v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id}';
-};
-
-export type UpdateOrganizationWorkspaceErrors = {
-    /**
-     * The request is well-formed HTTP but the server will not process it. An entity named in the request body or the query string does not resolve, a field failed validation, or a non-credential header is absent or malformed. The `code` field says which.
-     */
-    400: ApiErrorResponse;
-    /**
-     * The request carried no credential, or one that failed to authenticate: absent, malformed, expired, revoked, or wrong. Authentication is the subject. Permissions are not consulted.
-     */
-    401: ApiErrorResponse;
-    /**
-     * The request authenticated, and the principal is not permitted to perform it. A resource outside the caller's tenant answers 404 rather than 403, so this status never confirms that an identifier names a real resource.
-     */
-    403: ApiErrorResponse;
-    /**
-     * A resource named in the URI path does not resolve. Every path segment counts: on a nested path, either identifier being absent answers this. The method does not enter the decision, so a custom action answers it exactly as the read does.
-     */
-    404: ApiErrorResponse;
-    /**
-     * The request is well-formed and the target exists, and current state refuses it. A later or different request can succeed — after a refresh, after capacity is freed, or after a licensed limit is raised.
-     */
-    409: ApiErrorResponse;
-};
-
-export type UpdateOrganizationWorkspaceError = UpdateOrganizationWorkspaceErrors[keyof UpdateOrganizationWorkspaceErrors];
-
-export type UpdateOrganizationWorkspaceResponses = {
-    /**
-     * Workspace updated successfully.
-     */
-    200: ProductWorkspaceResponse;
-};
-
-export type UpdateOrganizationWorkspaceResponse = UpdateOrganizationWorkspaceResponses[keyof UpdateOrganizationWorkspaceResponses];
 
 export type AddOrganizationMemberData = {
     body: OrganizationMemberRequest;

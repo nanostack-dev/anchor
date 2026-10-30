@@ -14,18 +14,17 @@ import (
 
 // Defines values for AccessDenyReason.
 const (
-	APIKEYINACTIVE             AccessDenyReason = "API_KEY_INACTIVE"
-	APIKEYINVALID              AccessDenyReason = "API_KEY_INVALID"
-	MISSINGPERMISSION          AccessDenyReason = "MISSING_PERMISSION"
-	NOTAMEMBER                 AccessDenyReason = "NOT_A_MEMBER"
-	NOTEVALUATED               AccessDenyReason = "NOT_EVALUATED"
-	ORGANIZATIONNOTFOUND       AccessDenyReason = "ORGANIZATION_NOT_FOUND"
-	PARENTTYPENOTALLOWED       AccessDenyReason = "PARENT_TYPE_NOT_ALLOWED"
-	RESOURCENOTFOUND           AccessDenyReason = "RESOURCE_NOT_FOUND"
-	RESOURCENOTINORGANIZATION  AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
-	RESOURCETYPENOTFOUND       AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
-	SUBJECTNOTSYNCED           AccessDenyReason = "SUBJECT_NOT_SYNCED"
-	WORKSPACENOTINORGANIZATION AccessDenyReason = "WORKSPACE_NOT_IN_ORGANIZATION"
+	APIKEYINACTIVE            AccessDenyReason = "API_KEY_INACTIVE"
+	APIKEYINVALID             AccessDenyReason = "API_KEY_INVALID"
+	MISSINGPERMISSION         AccessDenyReason = "MISSING_PERMISSION"
+	NOTAMEMBER                AccessDenyReason = "NOT_A_MEMBER"
+	NOTEVALUATED              AccessDenyReason = "NOT_EVALUATED"
+	ORGANIZATIONNOTFOUND      AccessDenyReason = "ORGANIZATION_NOT_FOUND"
+	PARENTTYPENOTALLOWED      AccessDenyReason = "PARENT_TYPE_NOT_ALLOWED"
+	RESOURCENOTFOUND          AccessDenyReason = "RESOURCE_NOT_FOUND"
+	RESOURCENOTINORGANIZATION AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
+	RESOURCETYPENOTFOUND      AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
+	SUBJECTNOTSYNCED          AccessDenyReason = "SUBJECT_NOT_SYNCED"
 )
 
 // Valid indicates whether the value is a known member of the AccessDenyReason enum.
@@ -52,8 +51,6 @@ func (e AccessDenyReason) Valid() bool {
 	case RESOURCETYPENOTFOUND:
 		return true
 	case SUBJECTNOTSYNCED:
-		return true
-	case WORKSPACENOTINORGANIZATION:
 		return true
 	default:
 		return false
@@ -563,16 +560,13 @@ func (e OrganizationAPIKeyStatus) Valid() bool {
 
 // Defines values for OrganizationInclude.
 const (
-	OrganizationIncludeLicense   OrganizationInclude = "license"
-	OrganizationIncludeWorkspace OrganizationInclude = "workspace"
+	OrganizationIncludeLicense OrganizationInclude = "license"
 )
 
 // Valid indicates whether the value is a known member of the OrganizationInclude enum.
 func (e OrganizationInclude) Valid() bool {
 	switch e {
 	case OrganizationIncludeLicense:
-		return true
-	case OrganizationIncludeWorkspace:
 		return true
 	default:
 		return false
@@ -1053,27 +1047,6 @@ func (e ProductUserStatus) Valid() bool {
 	}
 }
 
-// Defines values for ProductWorkspaceSearchRequestSortBy.
-const (
-	ProductWorkspaceSearchRequestSortByCreatedAt ProductWorkspaceSearchRequestSortBy = "created_at"
-	ProductWorkspaceSearchRequestSortByName      ProductWorkspaceSearchRequestSortBy = "name"
-	ProductWorkspaceSearchRequestSortByUpdatedAt ProductWorkspaceSearchRequestSortBy = "updated_at"
-)
-
-// Valid indicates whether the value is a known member of the ProductWorkspaceSearchRequestSortBy enum.
-func (e ProductWorkspaceSearchRequestSortBy) Valid() bool {
-	switch e {
-	case ProductWorkspaceSearchRequestSortByCreatedAt:
-		return true
-	case ProductWorkspaceSearchRequestSortByName:
-		return true
-	case ProductWorkspaceSearchRequestSortByUpdatedAt:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for ResourceMemberSortField.
 const (
 	ResourceMemberSortFieldCreatedAt     ResourceMemberSortField = "created_at"
@@ -1313,14 +1286,14 @@ type AccessDecisionContext struct {
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
-	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 	//
 	// Examples: RESOURCE_NOT_IN_ORGANIZATION
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
 }
 
-// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `WORKSPACE_NOT_IN_ORGANIZATION`: the workspace does not exist or belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 //
 // Examples: RESOURCE_NOT_IN_ORGANIZATION
 type AccessDenyReason string
@@ -1419,11 +1392,11 @@ type AccessItemDecision struct {
 
 // AccessResource defines model for AccessResource.
 type AccessResource struct {
-	// Id The organization or workspace ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
+	// Id The organization ID, or the product's own ID of a resource. Required except for an organization resource with an organization API key subject, where an absent ID means the key's own organization.
 	Id         *string                   `json:"id,omitempty"`
 	Properties *AccessResourceProperties `json:"properties,omitempty"`
 
-	// Type `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+	// Type `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
 	//
 	// Examples: document
 	Type AccessResourceType `json:"type"`
@@ -1431,14 +1404,14 @@ type AccessResource struct {
 
 // AccessResourceProperties defines model for AccessResourceProperties.
 type AccessResourceProperties struct {
-	// OrganizationId The organization of a workspace or of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
+	// OrganizationId The organization of a resource. Required for a user subject on anything but an organization. An organization API key subject uses its key's organization; naming another one is denied with `NOT_A_MEMBER`.
 	OrganizationId *string `json:"organization_id,omitempty"`
 
-	// Parent The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. Organization and workspace resources take none (400 `INVALID_ACCESS_RESOURCE`).
+	// Parent The parent of a resource the product has not registered: a resource registered in the organization, or the organization itself as `{ "type": "organization", "id": "<organization_id>" }`. Its type must be one the resource's type may sit under, or the decision is denied with `PARENT_TYPE_NOT_ALLOWED`. A registered resource's stored parent wins over this one, and Anchor logs the mismatch. An organization resource takes none (400 `INVALID_ACCESS_RESOURCE`).
 	Parent *ResourceParentRef `json:"parent,omitempty"`
 }
 
-// AccessResourceType `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
+// AccessResourceType `organization`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A permission scoped to a type above the resource's type, such as one scoped to `organization`, is checked on the resource's organization.
 //
 // Examples: document
 type AccessResourceType = string
@@ -3558,9 +3531,6 @@ type ProductOrganizationRequest struct {
 	//
 	// Examples: Acme Corporation
 	Name string `json:"name"`
-
-	// Workspace Optionally create this ordinary workspace atomically with a new organization. Omitted leaves the organization without workspaces. Ignored on update and on a founding-member retry that returns an existing organization; such a retry never recreates deleted workspaces.
-	Workspace *ProductWorkspaceRequest `json:"workspace,omitempty"`
 }
 
 // ProductOrganizationResponse defines model for ProductOrganizationResponse.
@@ -3598,9 +3568,6 @@ type ProductOrganizationResponse struct {
 
 	// UpdatedAt Timestamp when the organization was last updated.
 	UpdatedAt time.Time `json:"updated_at"`
-
-	// Workspaces The organization's ordinary workspaces. Present only when a read requests include=workspace. An included organization with no workspaces returns an empty array.
-	Workspaces *[]ProductWorkspaceResponse `json:"workspaces,omitempty"`
 }
 
 // ProductOrganizationSearchRequest defines model for ProductOrganizationSearchRequest.
@@ -4191,80 +4158,6 @@ type ProductUserSearchRequestSortBy string
 // Examples: active
 type ProductUserStatus string
 
-// ProductWorkspaceListResponse defines model for ProductWorkspaceListResponse.
-type ProductWorkspaceListResponse struct {
-	// Count The number of items returned in this response.
-	Count int                        `json:"count"`
-	Items []ProductWorkspaceResponse `json:"items"`
-
-	// NextCursor Cursor for the next page. Absent on the last page: iterate until it is absent. Never infer the end from count or total.
-	NextCursor *string `json:"next_cursor,omitempty"`
-
-	// Total Number of items matching the filter, independent of the cursor.
-	Total int64 `json:"total"`
-}
-
-// ProductWorkspaceRequest defines model for ProductWorkspaceRequest.
-type ProductWorkspaceRequest struct {
-	// Description Optional description of the workspace.
-	//
-	// Examples: Workspace for production users and resources.
-	Description *string `json:"description,omitempty"`
-
-	// Name Name of the workspace. Must be unique within the organization.
-	//
-	// Examples: Production
-	Name string `json:"name"`
-}
-
-// ProductWorkspaceResponse defines model for ProductWorkspaceResponse.
-type ProductWorkspaceResponse struct {
-	// CreatedAt Timestamp when the workspace was created.
-	CreatedAt time.Time `json:"created_at"`
-
-	// Description Description of the workspace.
-	//
-	// Examples: Workspace for production users and resources.
-	Description *string `json:"description,omitempty"`
-
-	// Id Unique identifier for the workspace.
-	//
-	// Examples: ws_3iXYZ...
-	Id Ksuid `json:"id"`
-
-	// Name Name of the workspace.
-	//
-	// Examples: Production
-	Name string `json:"name"`
-
-	// OrganizationId ID of the organization this workspace belongs to.
-	//
-	// Examples: org_3iXYZ...
-	OrganizationId Ksuid `json:"organization_id"`
-
-	// UpdatedAt Timestamp when the workspace was last updated.
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// ProductWorkspaceSearchRequest defines model for ProductWorkspaceSearchRequest.
-type ProductWorkspaceSearchRequest struct {
-	// Filter Filter criteria for workspaces.
-	Filter *WorkspaceFilter `json:"filter,omitempty"`
-
-	// FullTextSearch Full-text search term to match against searchable fields.
-	FullTextSearch *string            `json:"full_text_search,omitempty"`
-	Pagination     *PaginationRequest `json:"pagination,omitempty"`
-
-	// SortBy Field to sort by.
-	SortBy *ProductWorkspaceSearchRequestSortBy `json:"sort_by,omitempty"`
-
-	// SortDirection Direction of the sort. With a `sort_by`, omitted means ASC. Without one, the operation's documented default order applies.
-	SortDirection *SortDirection `json:"sort_direction,omitempty"`
-}
-
-// ProductWorkspaceSearchRequestSortBy Field to sort by.
-type ProductWorkspaceSearchRequestSortBy string
-
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email string `json:"email"`
@@ -4758,15 +4651,6 @@ type UserResponse struct {
 	Role  string `json:"role"`
 }
 
-// WorkspaceFilter defines model for WorkspaceFilter.
-type WorkspaceFilter struct {
-	// Ids Filter by specific workspace IDs.
-	Ids []Ksuid `json:"ids,omitempty"`
-
-	// Names Filter by workspace names (exact matches).
-	Names []string `json:"names,omitempty"`
-}
-
 // Ksuid Unique identifier using KSUID format with a resource-specific prefix.
 //
 // Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
@@ -4858,11 +4742,6 @@ type ResourceTypeIdParameter = Ksuid
 // ResourceTypePathParameter Examples: folder
 type ResourceTypePathParameter = string
 
-// WorkspaceIdParameter Unique identifier using KSUID format with a resource-specific prefix.
-//
-// Examples: prefix_2ikcVW44U7UtqJHCOTqHuwkgrBb
-type WorkspaceIdParameter = Ksuid
-
 // AccessDecisionsUnavailable defines model for AccessDecisionsUnavailable.
 type AccessDecisionsUnavailable = ApiErrorResponse
 
@@ -4921,13 +4800,13 @@ type ListLicenseTemplatesParams struct {
 
 // SearchProductOrganizationsParams defines parameters for SearchProductOrganizations.
 type SearchProductOrganizationsParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetProductOrganizationParams defines parameters for GetProductOrganization.
 type GetProductOrganizationParams struct {
-	// Include Related resources to read alongside each organization, comma separated — `?include=workspace,license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
+	// Include Related resources to read alongside each organization, comma separated — `?include=license`. A resource not named is left out of the response entirely, which says nothing about whether the organization has it. Each named resource is read for the whole response at once, so including one costs one more statement, not one per organization.
 	Include *OrganizationIncludeParameter `form:"include,omitempty" json:"include,omitempty"`
 }
 
@@ -5185,21 +5064,6 @@ type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
 
 // UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
 type UpdateOrganizationRoleJSONRequestBody = ProductRoleUpdateRequest
-
-// CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
-
-// SearchOrganizationWorkspacesJSONRequestBody defines body for SearchOrganizationWorkspaces for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
-
-// UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
-//
-// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
-type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
 type SearchProductPermissionsJSONRequestBody = ProductPermissionSearchRequest

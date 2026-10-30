@@ -9,7 +9,6 @@ func NewModule() fx.Option {
 		fx.Provide(
 			NewProductMapper,
 			NewOrganizationMapper,
-			NewWorkspaceMapper,
 			NewOrganizationAPIKeyMapper,
 			NewTenantMapper,
 			NewUserMapper,

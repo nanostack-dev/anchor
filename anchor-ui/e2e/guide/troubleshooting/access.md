@@ -22,7 +22,7 @@ both the UI and the persisted API resource.
   bulk deletion must report the failed row while deleting an unrelated role.
 - Product users and organizations are read-only browser lists. Their API
   creation is preparation, not browser coverage of a creation flow.
-- Organization members, organization API keys and workspaces are read-only
+- Organization members and organization API keys are read-only
   organization-scoped views. Their fixture APIs create the selected
   organization and related data. Organization invitations expose single/bulk
   deletion; invitation creation/acceptance remain API features.
@@ -49,8 +49,6 @@ both the UI and the persisted API resource.
   chain's types. The API publishes the tree, registers the project, folders and
   document, adds the member with an external ID and assigns the folder role. The
   503 and error states are story-only, because a real outage can't be staged.
-- `/workspace-memberships` is an implemented placeholder heading. The test
-  records that boundary instead of inventing membership controls.
 ## Worker login fails with an invalid URL
 
 Symptom: every scenario fails before its first step at `page.goto('/login')`
@@ -77,7 +75,7 @@ fresh suite run owns runtime startup and teardown through `package.json`.
 
 ## Tenant fixture writes return 401 with a platform login token
 
-Symptom: organization, product user, organization membership, workspace or
+Symptom: organization, product user, organization membership or
 organization API key preparation returns `401` despite a successful UI login.
 
 Cause: these write operations authenticate a product management key in the
@@ -91,8 +89,8 @@ product catalog operations. Follow each operation's contract instead of
 reusing one credential everywhere; never borrow a saved development key.
 
 Verification: `access.product-users`, `access.organizations`,
-`access.organization-members`, `access.organization-invitations`,
-`access.organization-keys` and `access.workspaces` must prepare real resources
+`access.organization-members`, `access.organization-invitations` and
+`access.organization-keys` must prepare real resources
 and then reach their browser assertions.
 
 ## A deleted row vanishes while its resource still exists

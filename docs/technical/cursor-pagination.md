@@ -30,7 +30,6 @@ Each ordering ends with the tiebreak, and the tiebreak follows the direction of 
 | `searchProductUsers` | `created_at` ASC | `id` | email, name (nullable), status, created_at, updated_at | `(product_id, created_at, id)` |
 | `searchOrganizationAPIKeys` | `created_at` ASC | `id` | id, name, created_at, updated_at, status, last_used_at (nullable) | `(organization_id, created_at, id)` |
 | `searchProductOrganizations` | `created_at` ASC | `id` | name, created_at, updated_at | `(product_id, created_at, id)` |
-| `searchOrganizationWorkspaces` | `created_at` ASC | `id` | name, created_at, updated_at | `(organization_id, created_at, id)` |
 | `searchOrganizationMembers` | `joined_at` DESC | `product_user_id` (composite key, organization fixed) | joined_at, email | `(organization_id, created_at, product_user_id)` |
 | `searchOrganizationInvitations`, `searchProductOrganizationInvitations` | `created_at` ASC | `id` | created_at, email, expires_at | `(organization_id, created_at, id)`, `(product_id, created_at, id)` |
 | `searchOrganizationLicenses` | `organization_name` ASC | `organizations.id` | organization_name, instantiated_at (nullable through the left join, NULLs last in both directions) | none for a name order: the scope index finds the product's organizations and the page sorts them |

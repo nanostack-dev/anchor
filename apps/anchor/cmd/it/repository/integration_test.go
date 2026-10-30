@@ -47,7 +47,6 @@ type repositoryTestContext struct {
 	TenantRepository                    repository.TenantRepository
 	ProductRepository                   repository.ProductRepository
 	OrganizationRepository              repository.OrganizationRepository
-	WorkspaceRepository                 repository.WorkspaceRepository
 	OrganizationMembershipRepository    repository.OrganizationMembershipRepository
 	ProductRoleRepository               repository.ProductRoleRepository
 	ProductPermissionRepository         repository.ProductPermissionRepository
@@ -141,7 +140,6 @@ func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, er
 			&testCtx.TenantRepository,
 			&testCtx.ProductRepository,
 			&testCtx.OrganizationRepository,
-			&testCtx.WorkspaceRepository,
 			&testCtx.OrganizationMembershipRepository,
 			&testCtx.ProductRoleRepository,
 			&testCtx.ProductPermissionRepository,

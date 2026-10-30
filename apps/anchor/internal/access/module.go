@@ -7,7 +7,7 @@ import (
 )
 
 // NewModule wires access evaluation: the per-request decision a product asks
-// Anchor for instead of rebuilding memberships, roles and workspaces itself.
+// Anchor for instead of rebuilding memberships, roles and resources itself.
 func NewModule() fx.Option {
 	return fx.Module(
 		"access",

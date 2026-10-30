@@ -9,10 +9,10 @@ Built for developers and organizations creating multi-product platforms or compl
 
 ## ✨ Key Features
 
-* **Hierarchical Structure:** Manage `Product` -> `Organization` -> `Workspace` relationships out-of-the-box.
+* **Hierarchical Structure:** Manage `Product` -> `Organization` -> resource relationships, with resource types each product declares.
 * **User Directory:** Separate management for `PlatformUser` (admins) and `ProductUser` (end-users, directory-only).
 * **Flexible Roles & Permissions:** Define custom `AppRole`s and `AppPermission` strings per `Product`.
-* **Granular Access Control:** Assign roles to users at the `Organization` and `Workspace` levels. Check effective permissions easily via API.
+* **Granular Access Control:** Assign roles to users on an `Organization` or on any resource in it. Check effective permissions easily via API.
 * **API Key Management:** Secure backend access for your products with Product-specific API Keys carrying fine-grained permissions.
 * **API-First Design:** Defined with OpenAPI 3.0, using KSUID identifiers.
 * **Built for Scale:** Go-based, stateless design, PostgreSQL backend.
@@ -25,7 +25,7 @@ This service revolves around a clear hierarchy and distinct user types:
 1.  **Platform Tenant:** Your top-level instance.
 2.  **Product:** Your distinct applications/services managed by the Platform Tenant.
 3.  **Organization:** Your Product's customers or tenants.
-4.  **Workspace:** Sub-units within an Organization (teams, projects, etc.).
+4.  **Resource:** What a Product registers in an Organization, of a type it declares (workspaces, projects, documents, etc.).
 
 And the users:
 

@@ -21,9 +21,6 @@ const (
 	eventTypeOrganizationInvitationUpdated    = "organization.invitation.updated"
 	eventTypeOrganizationInvitationDeleted    = "organization.invitation.deleted"
 	eventTypeOrganizationInvitationAccepted   = "organization.invitation.accepted"
-	eventTypeWorkspaceCreated                 = "workspace.created"
-	eventTypeWorkspaceUpdated                 = "workspace.updated"
-	eventTypeWorkspaceDeleted                 = "workspace.deleted"
 	eventTypeOrganizationAPIKeyCreated        = "organization.api_key.created"
 	eventTypeOrganizationAPIKeyUpdated        = "organization.api_key.updated"
 	eventTypeOrganizationAPIKeyDeleted        = "organization.api_key.deleted"
@@ -115,21 +112,6 @@ type OrganizationInvitationAccepted struct {
 	ProductUserID  string `json:"product_user_id"`
 }
 
-type WorkspaceCreated struct {
-	OrganizationID string `json:"organization_id"`
-	WorkspaceID    string `json:"workspace_id"`
-}
-
-type WorkspaceUpdated struct {
-	OrganizationID string `json:"organization_id"`
-	WorkspaceID    string `json:"workspace_id"`
-}
-
-type WorkspaceDeleted struct {
-	OrganizationID string `json:"organization_id"`
-	WorkspaceID    string `json:"workspace_id"`
-}
-
 type OrganizationAPIKeyCreated struct {
 	OrganizationID string `json:"organization_id"`
 	APIKeyID       string `json:"api_key_id"`
@@ -216,9 +198,6 @@ func EventTypes() []string {
 		eventTypeOrganizationInvitationUpdated,
 		eventTypeOrganizationInvitationDeleted,
 		eventTypeOrganizationInvitationAccepted,
-		eventTypeWorkspaceCreated,
-		eventTypeWorkspaceUpdated,
-		eventTypeWorkspaceDeleted,
 		eventTypeOrganizationAPIKeyCreated,
 		eventTypeOrganizationAPIKeyUpdated,
 		eventTypeOrganizationAPIKeyDeleted,
@@ -260,9 +239,6 @@ type WebhookHandler struct {
 	onOrganizationInvitationUpdated    []func(context.Context, OrganizationInvitationUpdated) error
 	onOrganizationInvitationDeleted    []func(context.Context, OrganizationInvitationDeleted) error
 	onOrganizationInvitationAccepted   []func(context.Context, OrganizationInvitationAccepted) error
-	onWorkspaceCreated                 []func(context.Context, WorkspaceCreated) error
-	onWorkspaceUpdated                 []func(context.Context, WorkspaceUpdated) error
-	onWorkspaceDeleted                 []func(context.Context, WorkspaceDeleted) error
 	onOrganizationAPIKeyCreated        []func(context.Context, OrganizationAPIKeyCreated) error
 	onOrganizationAPIKeyUpdated        []func(context.Context, OrganizationAPIKeyUpdated) error
 	onOrganizationAPIKeyDeleted        []func(context.Context, OrganizationAPIKeyDeleted) error
@@ -355,21 +331,6 @@ func (h *WebhookHandler) OrganizationInvitationAccepted(
 	fn func(context.Context, OrganizationInvitationAccepted) error,
 ) *WebhookHandler {
 	h.onOrganizationInvitationAccepted = append(h.onOrganizationInvitationAccepted, fn)
-	return h
-}
-
-func (h *WebhookHandler) WorkspaceCreated(fn func(context.Context, WorkspaceCreated) error) *WebhookHandler {
-	h.onWorkspaceCreated = append(h.onWorkspaceCreated, fn)
-	return h
-}
-
-func (h *WebhookHandler) WorkspaceUpdated(fn func(context.Context, WorkspaceUpdated) error) *WebhookHandler {
-	h.onWorkspaceUpdated = append(h.onWorkspaceUpdated, fn)
-	return h
-}
-
-func (h *WebhookHandler) WorkspaceDeleted(fn func(context.Context, WorkspaceDeleted) error) *WebhookHandler {
-	h.onWorkspaceDeleted = append(h.onWorkspaceDeleted, fn)
 	return h
 }
 
@@ -554,12 +515,6 @@ func (h *WebhookHandler) dispatch(ctx context.Context, event Event) error {
 		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationDeleted)
 	case eventTypeOrganizationInvitationAccepted:
 		return dispatchTyped(ctx, event.Data, h.onOrganizationInvitationAccepted)
-	case eventTypeWorkspaceCreated:
-		return dispatchTyped(ctx, event.Data, h.onWorkspaceCreated)
-	case eventTypeWorkspaceUpdated:
-		return dispatchTyped(ctx, event.Data, h.onWorkspaceUpdated)
-	case eventTypeWorkspaceDeleted:
-		return dispatchTyped(ctx, event.Data, h.onWorkspaceDeleted)
 	case eventTypeOrganizationAPIKeyCreated:
 		return dispatchTyped(ctx, event.Data, h.onOrganizationAPIKeyCreated)
 	case eventTypeOrganizationAPIKeyUpdated:

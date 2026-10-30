@@ -3,7 +3,7 @@ package service
 import "github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
 // Request is one access question: may this subject perform these actions on
-// this organization, workspace or resource? Build it fluently:
+// this organization or resource? Build it fluently:
 //
 //	accesssvc.Ask(productID).
 //	    User(externalUserID).
@@ -31,7 +31,7 @@ type Subject struct {
 
 type Resource struct {
 	Type ResourceType `validate:"required,notblank"`
-	// ID is the organization or workspace ID, or the product's own ID of a
+	// ID is the organization ID, or the product's own ID of a
 	// resource. Empty only for an organization resource with an API key
 	// subject, meaning the key's organization.
 	ID string
@@ -51,7 +51,7 @@ type ParentRef struct {
 }
 
 // Ask starts a question about the product's subjects, in the key's own
-// organization until InOrganization or InWorkspace names one.
+// organization until InOrganization or OnResource names one.
 func Ask(productID string) Request {
 	return Request{ProductID: productID, Resource: Resource{Type: ResourceOrganization}}
 }
@@ -75,11 +75,6 @@ func (r Request) As(subjectType SubjectType, id string) Request {
 // InOrganization targets an organization; "" means the API key's own.
 func (r Request) InOrganization(organizationID string) Request {
 	return r.On(ResourceOrganization, organizationID, "")
-}
-
-// InWorkspace targets a workspace; organizationID may be "" for an API key.
-func (r Request) InWorkspace(organizationID, workspaceID string) Request {
-	return r.On(ResourceWorkspace, workspaceID, organizationID)
 }
 
 // OnResource targets a resource of one of the Product's types, by the
@@ -128,20 +123,16 @@ func (r Request) Organization() string {
 	return r.Resource.OrganizationID
 }
 
-// checkResource enforces what tags cannot express: a workspace or a resource
-// needs its ID, only a resource of the Product's own types takes a parent,
+// checkResource enforces what tags cannot express: a resource needs its ID, only a resource of the Product's own types takes a parent,
 // and a user needs the organization it acts in.
 func (r Request) checkResource() error {
-	if r.Resource.Type == ResourceWorkspace && r.Resource.ID == "" {
-		return fault.BadRequest("INVALID_ACCESS_RESOURCE", "A workspace resource needs an id.")
-	}
 	if !r.Resource.Type.builtIn() && r.Resource.ID == "" {
 		return fault.BadRequest("INVALID_ACCESS_RESOURCE", "A resource needs its id.")
 	}
 	if r.Resource.Type.builtIn() && r.Resource.Parent != nil {
 		return fault.BadRequest(
 			"INVALID_ACCESS_RESOURCE",
-			"Only a resource of the product's own types takes properties.parent; organization and workspace take none.",
+			"Only a resource of the product's own types takes properties.parent; an organization takes none.",
 		)
 	}
 	if r.Subject.Type == SubjectUser && r.Organization() == "" {

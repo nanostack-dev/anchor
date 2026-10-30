@@ -84,7 +84,7 @@ func TestAuthzDecisions(t *testing.T) {
 		w := givenSyncWorld(t)
 		externalID, _ := givenMemberWithExternalID(t, w)
 		checker := decision.NewChecker(authzstore.New(TestDB, notReady{}, TestLogger), AuthzSyncer)
-		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo, WorkspaceRepo,
+		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
 			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger)
 
 		_, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))

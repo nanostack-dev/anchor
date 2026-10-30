@@ -23,13 +23,12 @@ import (
 // logBurst caps the lines each sampled warning logs a minute.
 const logBurst = 20
 
-// Evaluator decides whether a subject may act on an organization, a workspace
-// or a resource of the Product's own types (ADR-0022 E2).
+// Evaluator decides whether a subject may act on an organization or a
+// resource of the Product's own types (ADR-0022 E2).
 //
 // Postgres resolves who the subject is: the product user and its membership,
 // or the API key through introspection; then what the resource is: the
-// registered resource, a workspace's included, or the parent an unregistered
-// one names. Which actions it holds comes from OpenFGA, which a
+// registered resource, or the parent an unregistered one names. Which actions it holds comes from OpenFGA, which a
 // write that changes access usually reaches before its response, and
 // otherwise within seconds, when the sweeper replays its mark (ADR-0022 E5).
 // Nothing is cached.
@@ -41,7 +40,6 @@ type evaluator struct {
 	productUsers  repository.ProductUserRepository
 	memberships   repository.OrganizationMembershipRepository
 	organizations repository.OrganizationRepository
-	workspaces    repository.WorkspaceRepository
 	apiKeys       coresvc.OrganizationAPIKeyService
 	permissions   PermissionChecker
 	resourceTypes rtservice.Service
@@ -56,7 +54,6 @@ func NewEvaluator(
 	productUsers repository.ProductUserRepository,
 	memberships repository.OrganizationMembershipRepository,
 	organizations repository.OrganizationRepository,
-	workspaces repository.WorkspaceRepository,
 	apiKeys coresvc.OrganizationAPIKeyService,
 	permissions PermissionChecker,
 	resourceTypes rtservice.Service,
@@ -68,7 +65,6 @@ func NewEvaluator(
 		productUsers:  productUsers,
 		memberships:   memberships,
 		organizations: organizations,
-		workspaces:    workspaces,
 		apiKeys:       apiKeys,
 		permissions:   permissions,
 		resourceTypes: resourceTypes,
@@ -134,8 +130,8 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 // reportDrift logs, sampled, each action where OpenFGA and the permissions
 // Anchor's tables list for the identity disagree. A write's own replay window
 // can show one; a lasting one is a sync defect. Only a decision checked on the
-// Organization compares: roles held on a resource, a workspace's included,
-// grant more than the Organization's role lists.
+// Organization compares: roles held on a resource grant more than the
+// Organization's role lists.
 func (e *evaluator) reportDrift(ctx context.Context, request Request, identity *Identity, held map[string]bool) {
 	logger := log.Ctx(ctx).Sample(e.driftSampler)
 	for _, action := range request.Actions {
@@ -238,14 +234,6 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 		APIKeyName:     key.APIKey.Name,
 		Permissions:    key.Permissions,
 	}), nil
-}
-
-// unexpectedOrNil is unexpected for a lookup that may not have failed.
-func (e *evaluator) unexpectedOrNil(err error, request Request, lookup string) error {
-	if err == nil {
-		return nil
-	}
-	return e.unexpected(err, request, lookup)
 }
 
 func (e *evaluator) unexpected(err error, request Request, lookup string) error {

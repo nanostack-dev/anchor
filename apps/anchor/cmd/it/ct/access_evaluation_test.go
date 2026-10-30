@@ -50,6 +50,9 @@ func newAccessWorld(t *testing.T) accessWorld {
 		orgA:    product.CreateOrganization(t, "Org-A-"+uuid.NewString(), nil),
 		orgB:    product.CreateOrganization(t, "Org-B-"+uuid.NewString(), nil),
 	}
+	product.ResourceTypes().Create(ct.CreateProductResourceTypeJSONRequestBody{
+		Slug: workspaceType, Name: "Workspace", ParentTypes: []string{"organization"},
+	})
 	w.workspaceA = w.workspace(w.orgA.Id)
 	w.workspaceB = w.workspace(w.orgB.Id)
 	w.role = createDSLProductRoleWithPermissions(t, product, "reader-"+uuid.NewString(), nil, []string{w.read})
@@ -61,9 +64,11 @@ func newAccessWorld(t *testing.T) accessWorld {
 	return w
 }
 
+// workspace registers a resource of the product's workspace type, as a product
+// that keeps its workspaces in Anchor does.
 func (w accessWorld) workspace(organizationID string) string {
-	return w.product.Workspaces(organizationID).
-		Create(ct.CreateOrganizationWorkspaceJSONRequestBody{Name: "Ws-" + uuid.NewString()}).Id
+	resources := w.product.Resources(organizationID)
+	return resources.Put(workspaceType, "ws_"+resourceID(), "Ws-"+uuid.NewString(), resources.Top()).Id
 }
 
 // member creates a product user with an external ID and a membership.
@@ -91,7 +96,7 @@ func (w accessWorld) organizationAPIKey(
 
 // memberInWorkspaceA is the world's member asking about workspace A.
 func (w accessWorld) memberInWorkspaceA() itdsl.AccessQuestion {
-	return w.access.User(w.externalID).InWorkspace(w.orgA.Id, w.workspaceA)
+	return w.access.User(w.externalID).OnResource(w.orgA.Id, workspaceType, w.workspaceA)
 }
 
 func requireDenied(t *testing.T, response ct.AccessEvaluationsResponse, reason ct.AccessDenyReason) {
@@ -154,15 +159,18 @@ func TestAccessEvaluation(t *testing.T) {
 
 	t.Run("A workspace of another organization and an unknown workspace are refused the same way", func(t *testing.T) {
 		for _, workspaceID := range []string{w.workspaceB, ids.MustNew("ws")} {
-			response := w.access.User(w.externalID).InWorkspace(w.orgA.Id, workspaceID).Can(w.read).Decide()
+			response := w.access.User(w.externalID).
+				OnResource(w.orgA.Id, workspaceType, workspaceID).
+				Can(w.read).
+				Decide()
 
-			requireDenied(t, response, ct.WORKSPACENOTINORGANIZATION)
+			requireDenied(t, response, ct.RESOURCENOTFOUND)
 			assert.Nil(t, response.Context.Organization, "a refusal before the permission check carries no identity")
 		}
 	})
 
 	t.Run("A user who is not a member of the organization is refused", func(t *testing.T) {
-		response := w.access.User(w.externalID).InWorkspace(w.orgB.Id, w.workspaceB).Can(w.read).Decide()
+		response := w.access.User(w.externalID).OnResource(w.orgB.Id, workspaceType, w.workspaceB).Can(w.read).Decide()
 		requireDenied(t, response, ct.NOTAMEMBER)
 	})
 
@@ -172,12 +180,15 @@ func TestAccessEvaluation(t *testing.T) {
 	})
 
 	t.Run("An external ID with no product user yet is refused as not synced", func(t *testing.T) {
-		response := w.access.User("user_"+uuid.NewString()).InWorkspace(w.orgA.Id, w.workspaceA).Can(w.read).Decide()
+		response := w.access.User("user_"+uuid.NewString()).
+			OnResource(w.orgA.Id, workspaceType, w.workspaceA).
+			Can(w.read).
+			Decide()
 		requireDenied(t, response, ct.SUBJECTNOTSYNCED)
 	})
 
 	t.Run("An organization API key is evaluated in its own organization", func(t *testing.T) {
-		response := w.access.APIKey(w.apiKey).InWorkspace("", w.workspaceA).Can(w.read).Decide()
+		response := w.access.APIKey(w.apiKey).OnResource("", workspaceType, w.workspaceA).Can(w.read).Decide()
 
 		assert.True(t, response.Decision)
 		assert.Equal(t, w.orgA.Id, response.Context.Organization.Id)
@@ -187,8 +198,8 @@ func TestAccessEvaluation(t *testing.T) {
 	})
 
 	t.Run("An organization API key cannot reach another organization's workspace", func(t *testing.T) {
-		response := w.access.APIKey(w.apiKey).InWorkspace("", w.workspaceB).Can(w.read).Decide()
-		requireDenied(t, response, ct.WORKSPACENOTINORGANIZATION)
+		response := w.access.APIKey(w.apiKey).OnResource("", workspaceType, w.workspaceB).Can(w.read).Decide()
+		requireDenied(t, response, ct.RESOURCENOTFOUND)
 	})
 
 	t.Run("An organization API key naming another organization is not a member", func(t *testing.T) {
@@ -212,7 +223,7 @@ func TestAccessEvaluation(t *testing.T) {
 
 	t.Run("The SDK decides the same as the API", func(t *testing.T) {
 		decision, err := w.product.SDKClient().AccessForUser(w.externalID).
-			InWorkspace(w.orgA.Id, w.workspaceA).
+			OnResource(w.orgA.Id, workspaceType, w.workspaceA).
 			Permissions(w.read).
 			Do(t.Context())
 
@@ -222,7 +233,7 @@ func TestAccessEvaluation(t *testing.T) {
 	})
 
 	t.Run("A user subject without an organization is a bad request", func(t *testing.T) {
-		resp := w.access.User(w.externalID).InWorkspace("", w.workspaceA).Can(w.read).Send()
+		resp := w.access.User(w.externalID).OnResource("", workspaceType, w.workspaceA).Can(w.read).Send()
 		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
 	})
 
@@ -243,12 +254,12 @@ func TestAccessEvaluationSeesWritesOnTheNextCall(t *testing.T) {
 		t.Parallel()
 		w := newAccessWorld(t)
 		workspaceID := w.workspace(w.orgA.Id)
-		question := w.access.User(w.externalID).InWorkspace(w.orgA.Id, workspaceID).Can(w.read)
+		question := w.access.User(w.externalID).OnResource(w.orgA.Id, workspaceType, workspaceID).Can(w.read)
 		require.True(t, question.Decide().Decision)
 
-		w.product.Workspaces(w.orgA.Id).Delete(workspaceID)
+		w.product.Resources(w.orgA.Id).Delete(workspaceType, workspaceID, false)
 
-		requireDenied(t, question.Decide(), ct.WORKSPACENOTINORGANIZATION)
+		requireDenied(t, question.Decide(), ct.RESOURCENOTFOUND)
 	})
 
 	t.Run("A removed member is refused on the next evaluation", func(t *testing.T) {
@@ -378,7 +389,7 @@ func TestAccessEvaluationBatchFollowsAuthZENDefaults(t *testing.T) {
 	t.Run("A per-item resource override is refused instead of ignored", func(t *testing.T) {
 		resp := w.memberInWorkspaceA().Items(ct.AccessEvaluationItem{
 			Action:   &ct.AccessAction{Name: w.read},
-			Resource: &ct.AccessResource{Type: ct.Workspace, Id: &w.workspaceB},
+			Resource: &ct.AccessResource{Type: workspaceType, Id: &w.workspaceB},
 		}).Send()
 
 		requireStatus(t, http.StatusBadRequest, resp.StatusCode(), resp.Body)
@@ -399,10 +410,12 @@ func TestAccessEvaluationRejectsMalformedRequests(t *testing.T) {
 	w := newAccessWorld(t)
 	cases := map[string]itdsl.AccessQuestion{
 		"A blank subject id is a bad request": w.access.User("  ").
-			InWorkspace(w.orgA.Id, w.workspaceA).
+			OnResource(w.orgA.Id, workspaceType, w.workspaceA).
 			Can(w.read),
-		"An empty action name is a bad request":      w.memberInWorkspaceA().Can(""),
-		"A workspace without an id is a bad request": w.access.APIKey(w.apiKey).InWorkspace("", "").Can(w.read),
+		"An empty action name is a bad request": w.memberInWorkspaceA().Can(""),
+		"A resource without an id is a bad request": w.access.APIKey(w.apiKey).
+			OnResource("", workspaceType, "").
+			Can(w.read),
 		"An item with no action and no default is a bad request": w.access.User(w.externalID).
 			InOrganization(w.orgA.Id).Items(ct.AccessEvaluationItem{}),
 		"An unknown subject type is a bad request": w.access.As("service_account", w.externalID).
@@ -428,7 +441,7 @@ func TestAccessEvaluationForARoleWithoutPermissions(t *testing.T) {
 		w := newAccessWorld(t)
 		empty := createDSLProductRoleWithPermissions(t, w.product, "empty-"+uuid.NewString(), nil, []string{})
 		_, externalID := w.member(t, w.orgA.Id, empty.ID)
-		inWorkspace := w.access.User(externalID).InWorkspace(w.orgA.Id, w.workspaceA)
+		inWorkspace := w.access.User(externalID).OnResource(w.orgA.Id, workspaceType, w.workspaceA)
 
 		reach := inWorkspace.Decide()
 		action := inWorkspace.Can(w.read).Decide()
@@ -454,7 +467,7 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 	createDSLMembership(t, second.product, secondUser.ID, second.orgA.Id, second.role.ID)
 
 	t.Run("The same external user ID resolves to each product's own user", func(t *testing.T) {
-		response := second.access.User(sharedExternalID).InWorkspace(second.orgA.Id, second.workspaceA).
+		response := second.access.User(sharedExternalID).OnResource(second.orgA.Id, workspaceType, second.workspaceA).
 			Can(second.read).Decide()
 
 		assert.True(t, response.Decision)
@@ -462,7 +475,7 @@ func TestAccessEvaluationIsScopedToTheProduct(t *testing.T) {
 	})
 
 	t.Run("A product cannot evaluate another product's organization", func(t *testing.T) {
-		response := second.access.User(sharedExternalID).InWorkspace(first.orgA.Id, first.workspaceA).
+		response := second.access.User(sharedExternalID).OnResource(first.orgA.Id, workspaceType, first.workspaceA).
 			Can(first.read).Decide()
 		requireDenied(t, response, ct.ORGANIZATIONNOTFOUND)
 	})

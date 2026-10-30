@@ -27,7 +27,7 @@ const PRODUCT: ProductResponse = {
 const CONFIGURED_EVENTS: ProductEventsConfigResponse = {
 	endpoint_url: "https://example.com/anchor/events",
 	signing_secret_obfuscated: "whsec_••••",
-	events: ["organization.created", "workspace.created"],
+	events: ["organization.created", "organization.api_key.created"],
 	delivery_status: ProductEventDeliveryStatus.NEVER_ATTEMPTED,
 	consecutive_failed_calls: 0,
 };
@@ -58,11 +58,11 @@ const CATALOG_DATA = {
 			group_name: "Organizations",
 		},
 		{
-			type: "workspace.created",
-			name: "Workspace created",
-			description: "Emitted when a workspace is created.",
+			type: "organization.api_key.created",
+			name: "API key created",
+			description: "Emitted when an organization API key is created.",
 			group_type: "internal" as const,
-			group_name: "Workspaces",
+			group_name: "API Keys",
 		},
 		{
 			type: "clerk.user.created",
@@ -246,7 +246,7 @@ export const WithSearchFilter: Story = {
 		const searchInput = canvas.getByPlaceholderText(/Filter events by name/);
 		await userEvent.type(searchInput, "organization");
 		await expect(await canvas.findByText("Organizations")).toBeInTheDocument();
-		await expect(canvas.queryByText("Workspaces")).not.toBeInTheDocument();
+		await expect(canvas.queryByText("API Keys")).not.toBeInTheDocument();
 	},
 };
 

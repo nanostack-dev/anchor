@@ -10,7 +10,6 @@ func NewModule() fx.Option {
 		fx.Provide(
 			NewPlatformInvitationRepository,
 			NewOrganizationRepository,
-			NewWorkspaceRepository,
 			NewOrganizationAPIKeyRepository,
 			NewProductRepository,
 			NewProductPermissionRepository,

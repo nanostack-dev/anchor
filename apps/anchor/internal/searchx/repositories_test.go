@@ -25,7 +25,6 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/domain/resource"
-	"anchor/internal/domain/workspace"
 	emailrepository "anchor/internal/email/repository"
 	invitationrepository "anchor/internal/invitation/repository"
 	licenserepository "anchor/internal/license/repository"
@@ -125,13 +124,6 @@ func TestSearchRepositoriesRefuseASortTheyDoNotMap(t *testing.T) {
 			_, err := repository.NewOrganizationRepository(nil, nil, logger).SearchByProductID(
 				ctx, "product", unknownSort[
 					organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization,
-				]())
-			return err
-		},
-		"searchOrganizationWorkspaces": func() error {
-			_, err := repository.NewWorkspaceRepository(nil, nil, logger).SearchByOrganizationID(
-				ctx, "product", "organization", unknownSort[
-					workspace.SearchWorkspaceFilter, workspace.SortFieldProductWorkspace,
 				]())
 			return err
 		},

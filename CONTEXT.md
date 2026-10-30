@@ -11,7 +11,7 @@ This file is the project's glossary. When output names a domain concept — an i
 | **Platform Tenant** | The top-level instance. Currently one per deployment. |
 | **Product** | An application built on Anchor. Owns its own permission catalog, roles, email templates, and license schema. |
 | **Organization** | A Product's customer. The unit a license attaches to. |
-| **Workspace** | Deprecated as an Anchor term ([ADR-0022](docs/adr/0022-resource-types-scope-roles-and-permissions.md) A6). A built-in sub-unit of an Organization, served by the deprecated workspace routes until no Product calls them; each one is also a resource of the Product's `workspace` resource type, with the same ID. New work uses resource types and resources; a Product may declare a type of that name, or call it a project or a space. Not "workspace role": a role held on a workspace is a role assignment. |
+| **Workspace** | Not an Anchor term ([ADR-0022](docs/adr/0022-resource-types-scope-roles-and-permissions.md) A6). A Product that has workspaces declares a `workspace` resource type and registers each one as a resource. Not "workspace role": a role held on a workspace is a role assignment. |
 | **Platform User** | An administrator of the platform. Authenticates with a bearer token. |
 | **Product User** | An end user of a Product. Directory-only: Anchor never authenticates it. The identity provider is a Clerk integration or the Product itself ([ADR-0023](docs/adr/0023-a-product-can-be-its-own-identity-provider.md)). |
 
@@ -95,7 +95,7 @@ A Product stays current by receiving **events** from Anchor. The subscriber is t
 
 Inbound Clerk callbacks stay **integration webhooks**. They are a different path.
 
-The catalog is the Product SDK surface: organizations, members, organization invitations, workspaces, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
+The catalog is the Product SDK surface: organizations, members, organization invitations, organization API keys, product users, licenses. Admin writes (products, platform users, platform invitations, permission and role catalog) do not emit.
 
 | term | means | not |
 | --- | --- | --- |

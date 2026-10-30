@@ -1,6 +1,6 @@
 # Resource types
 
-A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The model compiles the tree and the scopes, and [access evaluation](access-evaluation.md#resources) takes any declared type; every check on an organization answers as before. A workspace is a resource of the Product's `workspace` type ([below](#the-workspace-type)).
+A Product declares a tree of **resource types** under the built-in `organization` type, and every role and permission is **scoped** to one of them ([ADR-0022](../adr/0022-resource-types-scope-roles-and-permissions.md) A1–A5, C1–C4, D1–D2). The model compiles the tree and the scopes, and [access evaluation](access-evaluation.md#resources) takes any declared type; every check on an organization answers as before.
 
 ## The tree
 
@@ -72,10 +72,6 @@ Migration `000054` adds the tables and a nullable `resource_type_id` on `product
 Once that release runs in production, migration `000058` closes G1. It scopes any role or permission the backfill missed to its Product's `organization` type, then sets `resource_type_id` `NOT NULL`; the backfill and every read that took a null scope for `organization` are gone. A row whose Product has no `organization` type stops the migration. Production starts with `autoFixDirty`, which marks a failed migration as applied, so the resource type module refuses to start while either column is still nullable (`CheckSchema`). To recover, run `migrate force 57`, fix the data, then redeploy.
 
 A role the release before resource types gave an organization permission outside its scope keeps it: renaming a type stays possible, and a change to parent types or nesting, on one type or through the tree `PUT`, is refused with `role_ids` until that role is fixed, since it checks every role of the Product. Creating a Product seeds its `organization` type in the same transaction. A tree read or write still seeds it when a Product lacks it, which also gives the catalog lock its row.
-
-### The workspace type
-
-The workspace migration (ADR-0022 A6) adds one type to each Product that has a built-in workspace: `workspace`, under `organization`, not nesting, created on the first start of this release or by the Product's first workspace. It counts toward the 50 types a Product declares besides `organization`; a Product at that limit gets no `workspace` type, and its workspaces stay unregistered until it frees a slot. It is an ordinary type: the Product may rename it, add parent types, open custom roles on it or scope roles and permissions to it. A Product that already declared `workspace` keeps it when it may sit under `organization`; otherwise its catalog is left alone and its workspaces stay unregistered ([resources](resources.md#workspaces)). While its resources exist, A5 refuses to delete it or to remove `organization` from its parent types, as for any type.
 
 ## Tests
 

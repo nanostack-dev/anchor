@@ -38,8 +38,6 @@ func WithoutAccess() []events.Type {
 		// An accepted invitation adds its member through MembershipCreated.
 		events.OrganizationInvitationCreated, events.OrganizationInvitationUpdated,
 		events.OrganizationInvitationDeleted, events.OrganizationInvitationAccepted,
-		// Workspaces are not modelled yet.
-		events.WorkspaceCreated, events.WorkspaceUpdated, events.WorkspaceDeleted,
 		// A product user holds access only through memberships.
 		events.ProductUserCreated, events.ProductUserUpdated,
 		// A deleted Clerk user also emits ProductUserDeleted.

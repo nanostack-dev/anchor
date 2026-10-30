@@ -478,17 +478,6 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 				`"founding_member":{"product_user_id":"pusr_1","role_id":"prole_1"}}`,
 		},
 		{
-			name:  "organization create with initial workspace",
-			reply: stubResponse{status: http.StatusCreated, body: orgBody},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Organizations().Create("Acme").Workspace("Engineering").Do(ctx)
-				return err
-			},
-			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/organizations",
-			wantBody:   `{"name":"Acme","workspace":{"name":"Engineering"}}`,
-		},
-		{
 			name:  "organization search",
 			reply: stubResponse{status: http.StatusOK, body: listBody},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
@@ -586,20 +575,6 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantBody:   `{"product_user_id":"pusr_1"}`,
 		},
 		{
-			name:  "workspace create",
-			reply: stubResponse{status: http.StatusCreated, body: `{"id":"wsp_1","name":"Production"}`},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.Organization(testOrgID).Workspaces().
-					Create("Production").
-					Description("Production workloads").
-					Do(ctx)
-				return err
-			},
-			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/organizations/org_1/workspaces",
-			wantBody:   `{"name":"Production","description":"Production workloads"}`,
-		},
-		{
 			name:  "api key create",
 			reply: stubResponse{status: http.StatusCreated, body: `{"id":"oak_1","value":"anchor_org_apikey_x"}`},
 			call: func(ctx context.Context, c *anchorsdk.Client) error {
@@ -659,19 +634,6 @@ func TestBuildersProduceExpectedRequests(t *testing.T) {
 			wantMethod: http.MethodPost,
 			wantPath:   "/v1/products/prd_test/auth/introspect",
 			wantBody:   `{"api_key":"anchor_org_apikey_x","required_scopes":[]}`,
-		},
-		{
-			name:  "access for a user on a workspace",
-			reply: stubResponse{status: http.StatusOK, body: `{"decision":true,"context":{},"evaluations":[{"decision":true}]}`},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				_, err := c.AccessForUser("user_1").InWorkspace("org_1", "ws_1").Permissions("flows:read").Do(ctx)
-				return err
-			},
-			wantMethod: http.MethodPost,
-			wantPath:   "/v1/products/prd_test/access/v1/evaluations",
-			wantBody: `{"evaluations":[{"action":{"name":"flows:read"}}],` +
-				`"resource":{"id":"ws_1","properties":{"organization_id":"org_1"},"type":"workspace"},` +
-				`"subject":{"id":"user_1","type":"user"}}`,
 		},
 		{
 			name:  "access for a user on an unregistered resource, parent named first",
@@ -847,15 +809,6 @@ func TestReadOperationsUseExpectedRoutes(t *testing.T) {
 			},
 			wantMethod: http.MethodPost,
 			wantPath:   "/v1/products/prd_test/organizations/org_1/api-keys/validate",
-		},
-		{
-			name:  "workspace delete",
-			reply: stubResponse{status: http.StatusNoContent},
-			call: func(ctx context.Context, c *anchorsdk.Client) error {
-				return c.Organization(testOrgID).Workspaces().Delete(ctx, "wsp_1")
-			},
-			wantMethod: http.MethodDelete,
-			wantPath:   "/v1/products/prd_test/organizations/org_1/workspaces/wsp_1",
 		},
 		{
 			name:  "user organizations",
