@@ -31,6 +31,7 @@ type Node struct {
 }
 
 type Repository interface {
+	WorkspaceMirrors
 	// LockOrganization holds the Organization's resources until the
 	// transaction ends, so registrations, moves and deletes in one
 	// Organization run one at a time and each sees the chains the previous
@@ -334,7 +335,8 @@ func (r *repositoryImpl) Search(
 	}
 
 	where := table.Resources.OrganizationID.EQ(postgres.String(organizationID)).
-		AND(table.Resources.ProductID.EQ(postgres.String(productID)))
+		AND(table.Resources.ProductID.EQ(postgres.String(productID))).
+		AND(postgres.RawBool(notMirroringDeletedWorkspace))
 	if request.Filter != nil {
 		where = where.AND(filterCondition(productID, organizationID, *request.Filter))
 	}

@@ -54,6 +54,14 @@ func (s *Syncer) Replay(ctx context.Context, marked []Scope) {
 	}
 }
 
+// Collect returns a context in which writes collect their marks, and the
+// function that replays them once the writes' transaction has committed: what
+// the replay middleware does, for a write made outside a request.
+func (s *Syncer) Collect(ctx context.Context) (context.Context, func(context.Context)) {
+	collectCtx, marked := CollectMarks(ctx)
+	return collectCtx, func(after context.Context) { s.Replay(after, marked()) }
+}
+
 // Sweep runs one pass: it syncs the oldest marks, then rebuilds the Product
 // rebuilt longest ago if it is due, then removes one page of orphan stores.
 func (s *Syncer) Sweep(ctx context.Context) {

@@ -11,9 +11,15 @@ import (
 // [Org] handle:
 //
 //	ws, err := c.Organization(orgID).Workspaces().Create("Production").Do(ctx)
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type
+// (ADR-0022 A6). Use the resource routes instead.
 type Workspaces struct{ o *Org }
 
 // Workspaces returns the workspace facade for this organization.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type
+// (ADR-0022 A6). Use the resource routes instead.
 func (o *Org) Workspaces() Workspaces { return Workspaces{o: o} }
 
 // Create starts building a workspace. The name must be unique within the

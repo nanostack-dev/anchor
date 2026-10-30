@@ -53,8 +53,9 @@ func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
 // Holds checks every action on the object. An unregistered resource is
 // checked as an object of its type that exists for the check only, with its
 // parent given as a contextual tuple (ADR-0022 B1). A permission the model
-// doesn't define on the object's type is not held; neither is anything on a
-// type the model lacks, or under a parent its parent relation refuses.
+// doesn't define on the object's type is asked on the check's fallback
+// object, when it names one, or is not held; neither is anything on a type the
+// model lacks, or under a parent its parent relation refuses.
 // Anything OpenFGA can't answer, or can't answer in time, fails with
 // accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
@@ -70,18 +71,29 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	if check.APIKeyID != "" {
 		subject = model.APIKey(check.APIKeyID)
 	}
-	object, contextual := checkedObject(check.Object)
-	tuples := functional.Slice(check.Actions).Map(func(action string) fga.Tuple {
-		return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
-	})
 	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
 	defer cancel()
-	answers, err := opened.Holds(ctx, tuples, contextual...)
-	if err != nil {
-		return nil, unavailable(err)
-	}
-	for i, action := range check.Actions {
-		held[action] = held[action] || answers[i]
+	remaining := check.Actions
+	for _, on := range []*accessservice.CheckedObject{&check.Object, check.Fallback} {
+		if on == nil || len(remaining) == 0 {
+			continue
+		}
+		object, contextual := checkedObject(*on)
+		split := functional.Slice(remaining).Partition(func(action string) bool {
+			return opened.Relations.Defines(fga.Tuple{Object: object, Relation: model.CanRelation(action)})
+		})
+		asked := split.First
+		remaining = split.Second
+		tuples := functional.Slice(asked).Map(func(action string) fga.Tuple {
+			return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
+		})
+		answers, holdsErr := opened.Holds(ctx, tuples, contextual...)
+		if holdsErr != nil {
+			return nil, unavailable(holdsErr)
+		}
+		for i, action := range asked {
+			held[action] = held[action] || answers[i]
+		}
 	}
 	return held, nil
 }

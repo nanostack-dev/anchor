@@ -437,7 +437,7 @@ type AccessResource struct {
 	Id         *string                   `json:"id,omitempty"`
 	Properties *AccessResourceProperties `json:"properties,omitempty"`
 
-	// Type `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+	// Type `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
 	//
 	// Examples: document
 	Type AccessResourceType `json:"type"`
@@ -452,7 +452,7 @@ type AccessResourceProperties struct {
 	Parent *ResourceParentRef `json:"parent,omitempty"`
 }
 
-// AccessResourceType `organization`, the built-in `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. Until workspaces move into the generic resource model, `workspace` always names the built-in workspace, even when the product declares a type of that slug.
+// AccessResourceType `organization`, `workspace`, or any resource type slug the product declares, such as `document`. A type the product has not declared is denied with `RESOURCE_TYPE_NOT_FOUND`. A `workspace` is a resource of the product's `workspace` type, which every workspace of the workspace routes is registered as: Organization roles reach it through its parent, and roles assigned on it grant too. A permission scoped above the `workspace` type is checked on its organization. Until the workspace routes are removed, a workspace takes no `properties.parent`, and an unknown or foreign one is denied with `WORKSPACE_NOT_IN_ORGANIZATION`.
 //
 // Examples: document
 type AccessResourceType = string
@@ -4092,12 +4092,18 @@ type SearchOrganizationRolesJSONRequestBody = OrganizationRoleSearchRequest
 type UpdateOrganizationRoleJSONRequestBody = ProductRoleUpdateRequest
 
 // CreateOrganizationWorkspaceJSONRequestBody defines body for CreateOrganizationWorkspace for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type CreateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchOrganizationWorkspacesJSONRequestBody defines body for SearchOrganizationWorkspaces for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type SearchOrganizationWorkspacesJSONRequestBody = ProductWorkspaceSearchRequest
 
 // UpdateOrganizationWorkspaceJSONRequestBody defines body for UpdateOrganizationWorkspace for application/json ContentType.
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 type UpdateOrganizationWorkspaceJSONRequestBody = ProductWorkspaceRequest
 
 // SearchProductPermissionsJSONRequestBody defines body for SearchProductPermissions for application/json ContentType.
@@ -4676,18 +4682,28 @@ type ServerInterface interface {
 	UpdateOrganizationRole(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, roleId ProductRoleIdParameter)
 	// CreateOrganizationWorkspace Create Organization Workspace
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// SearchOrganizationWorkspaces Search Organization Workspaces
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter)
 	// DeleteOrganizationWorkspace Delete Organization Workspace
 	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
 	// GetOrganizationWorkspace Get Organization Workspace
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
 	// UpdateOrganizationWorkspace Update Organization Workspace
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)
@@ -5426,30 +5442,40 @@ func (_ Unimplemented) UpdateOrganizationRole(w http.ResponseWriter, r *http.Req
 
 // CreateOrganizationWorkspace Create Organization Workspace
 // (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 func (_ Unimplemented) CreateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // SearchOrganizationWorkspaces Search Organization Workspaces
 // (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 func (_ Unimplemented) SearchOrganizationWorkspaces(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // DeleteOrganizationWorkspace Delete Organization Workspace
 // (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 func (_ Unimplemented) DeleteOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // GetOrganizationWorkspace Get Organization Workspace
 // (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 func (_ Unimplemented) GetOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // UpdateOrganizationWorkspace Update Organization Workspace
 // (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+//
+// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 func (_ Unimplemented) UpdateOrganizationWorkspace(w http.ResponseWriter, r *http.Request, productId ProductIdParameter, organizationId OrganizationIdParameter, workspaceId WorkspaceIdParameter) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -22751,18 +22777,28 @@ type StrictServerInterface interface {
 	UpdateOrganizationRole(ctx context.Context, request UpdateOrganizationRoleRequestObject) (UpdateOrganizationRoleResponseObject, error)
 	// CreateOrganizationWorkspace Create Organization Workspace
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces)
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	CreateOrganizationWorkspace(ctx context.Context, request CreateOrganizationWorkspaceRequestObject) (CreateOrganizationWorkspaceResponseObject, error)
 	// SearchOrganizationWorkspaces Search Organization Workspaces
 	// (POST /v1/products/{product_id}/organizations/{organization_id}/workspaces/search)
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	SearchOrganizationWorkspaces(ctx context.Context, request SearchOrganizationWorkspacesRequestObject) (SearchOrganizationWorkspacesResponseObject, error)
 	// DeleteOrganizationWorkspace Delete Organization Workspace
 	// (DELETE /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	DeleteOrganizationWorkspace(ctx context.Context, request DeleteOrganizationWorkspaceRequestObject) (DeleteOrganizationWorkspaceResponseObject, error)
 	// GetOrganizationWorkspace Get Organization Workspace
 	// (GET /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	GetOrganizationWorkspace(ctx context.Context, request GetOrganizationWorkspaceRequestObject) (GetOrganizationWorkspaceResponseObject, error)
 	// UpdateOrganizationWorkspace Update Organization Workspace
 	// (PUT /v1/products/{product_id}/organizations/{organization_id}/workspaces/{workspace_id})
+	//
+	// Deprecated: Workspaces are resources of the product's workspace resource type (ADR-0022 A6); use the resource routes.
 	UpdateOrganizationWorkspace(ctx context.Context, request UpdateOrganizationWorkspaceRequestObject) (UpdateOrganizationWorkspaceResponseObject, error)
 	// SearchProductPermissions Search built-in Product Permissions
 	// (POST /v1/products/{product_id}/permissions/search)

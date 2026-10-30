@@ -185,6 +185,15 @@ func (s *service) resolveParent(
 	if !ok {
 		return nil, resource.NewParentNotRegisteredError(input.Parent)
 	}
+	// A workspace mirror whose workspace is gone counts as absent, there and
+	// below it.
+	gone, err := s.repo.ChainMirrorsDeletedWorkspace(ctx, input.OrganizationID, parent.RowID)
+	if err != nil {
+		return nil, err
+	}
+	if gone {
+		return nil, resource.NewParentNotRegisteredError(input.Parent)
+	}
 	return &parent.RowID, nil
 }
 
@@ -205,7 +214,7 @@ func (s *service) Get(
 	if err != nil {
 		return resource.Resource{}, err
 	}
-	found, err := s.repo.Find(ctx, organizationID, rt.ID, id)
+	found, err := repository.FindLive(ctx, s.repo, organizationID, rt.ID, id)
 	if err != nil {
 		return resource.Resource{}, s.unexpected(err, productID, "get")
 	}
@@ -249,6 +258,14 @@ func (s *service) Delete(
 		subtree, err := s.repo.Subtree(txCtx, organizationID, target.RowID)
 		if err != nil {
 			return err
+		}
+		live, err := s.repo.LiveWorkspaceMirrors(txCtx, organizationID,
+			functional.Slice(subtree).Map(func(n repository.Node) string { return n.RowID }))
+		if err != nil {
+			return err
+		}
+		if len(live) > 0 {
+			return resource.NewWorkspaceMirrorError(live[0])
 		}
 		// The rows go with the resources through their foreign key; their
 		// events are emitted first, while the rows can still be read.

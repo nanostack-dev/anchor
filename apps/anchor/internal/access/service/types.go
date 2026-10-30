@@ -15,10 +15,11 @@ const (
 	SubjectOrganizationAPIKey SubjectType = "organization_api_key"
 )
 
-// ResourceType names what access is asked for: organization, the built-in
-// workspace, or any resource type slug the Product declares. The built-in
-// workspace wins over a declared type of the same slug until workspaces move
-// into the generic model (ADR-0022 A6, milestone M5).
+// ResourceType names what access is asked for: organization, workspace, or
+// any resource type slug the Product declares. A workspace is a resource of
+// the Product's workspace type, which the built-in workspaces are registered
+// as (ADR-0022 A6); until they are deleted, it keeps its deny reason and takes
+// no parent.
 type ResourceType string
 
 const (
@@ -26,7 +27,8 @@ const (
 	ResourceWorkspace    ResourceType = "workspace"
 )
 
-// builtIn reports whether the type has its own path rather than the registry.
+// builtIn reports whether the type keeps its own rules: an organization is
+// no registered resource, and a workspace takes no parent.
 func (t ResourceType) builtIn() bool { return t == ResourceOrganization || t == ResourceWorkspace }
 
 // DenyReason says why access is denied.
@@ -81,7 +83,11 @@ type PermissionCheck struct {
 	ProductUserID string
 	APIKeyID      string
 	Object        CheckedObject
-	Actions       []string
+	// Fallback, when set, is checked for the actions the model doesn't define
+	// on Object: a workspace checks an Organization-scoped permission on its
+	// Organization.
+	Fallback *CheckedObject
+	Actions  []string
 }
 
 // CheckedObject is an object of the Product's model: the Organization, by its

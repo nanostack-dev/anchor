@@ -423,7 +423,7 @@ func (s *service) lockedResource(
 	if err = s.resources.ShareOrganization(txCtx, target.OrganizationID); err != nil {
 		return resource.Resource{}, resourcetype.Tree{}, err
 	}
-	found, err := s.resources.Find(txCtx, target.OrganizationID, rt.ID, target.ResourceID)
+	found, err := resourcerepository.FindLive(txCtx, s.resources, target.OrganizationID, rt.ID, target.ResourceID)
 	if err != nil {
 		return resource.Resource{}, resourcetype.Tree{}, err
 	}
@@ -449,7 +449,7 @@ func (s *service) findResource(
 	if err != nil {
 		return resource.Resource{}, err
 	}
-	found, err := s.resources.Find(ctx, organizationID, rt.ID, resourceID)
+	found, err := resourcerepository.FindLive(ctx, s.resources, organizationID, rt.ID, resourceID)
 	if err != nil {
 		return resource.Resource{}, err
 	}
