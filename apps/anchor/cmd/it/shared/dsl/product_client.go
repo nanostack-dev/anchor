@@ -146,3 +146,18 @@ func (tp *ProductContext) createAPIKeyClientWithScopes(scopes []string) (
 
 	return client, createdKey.ID
 }
+
+// ClientWithProductKeyHeader sends a raw key as the product API key, for
+// tests that hand the route a credential of the wrong kind.
+func (tp *ProductContext) ClientWithProductKeyHeader(rawKey string) *nanostackClient.ClientWithResponses {
+	tp.testingContext.Helper()
+	client, err := nanostackClient.NewClientWithResponses(
+		tp.ServerURL,
+		nanostackClient.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
+			req.Header.Add("X-Product-Api-Key", rawKey)
+			return nil
+		}),
+	)
+	require.NoError(tp.testingContext, err)
+	return client
+}
