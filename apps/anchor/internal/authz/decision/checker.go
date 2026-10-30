@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"golang.org/x/sync/singleflight"
 
@@ -31,6 +33,9 @@ const (
 	// modelCheckInterval is how long a decision trusts that its Product's store
 	// follows the model this release compiles.
 	modelCheckInterval = 30 * time.Second
+	// modelRetryDelay is how long decisions wait before they try a failed
+	// model check again.
+	modelRetryDelay = 5 * time.Second
 )
 
 // errNotBuilt reports a Product whose store is still not built after a build.
@@ -62,8 +67,9 @@ func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
 // Holds checks every action on the object. An unregistered resource is
 // checked as an object of its type that exists for the check only, with its
 // parent given as a contextual tuple (ADR-0022 B1). A permission the model
-// doesn't define on the object's type is not held; neither is anything on a
-// type the model lacks, or under a parent its parent relation refuses.
+// doesn't define on the object's type is asked on the check's fallback
+// object, when it names one, or is not held; neither is anything on a type the
+// model lacks, or under a parent its parent relation refuses.
 // Anything OpenFGA can't answer, or can't answer in time, fails with
 // accessservice.ErrPermissionStoreUnavailable.
 func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck) (map[string]bool, error) {
@@ -81,19 +87,27 @@ func (c *Checker) Holds(ctx context.Context, check accessservice.PermissionCheck
 	}
 	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
 	defer cancel()
-	object, contextual := checkedObject(check.Object)
-	asked := functional.Slice(check.Actions).Filter(func(action string) bool {
-		return opened.Relations.Defines(fga.Tuple{Object: object, Relation: model.CanRelation(action)})
-	})
-	tuples := functional.Slice(asked).Map(func(action string) fga.Tuple {
-		return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
-	})
-	answers, holdsErr := opened.Holds(ctx, tuples, contextual...)
-	if holdsErr != nil {
-		return nil, unavailable(holdsErr)
-	}
-	for i, action := range asked {
-		held[action] = answers[i]
+	remaining := check.Actions
+	for _, on := range []*accessservice.CheckedObject{&check.Object, check.Fallback} {
+		if on == nil || len(remaining) == 0 {
+			continue
+		}
+		object, contextual := checkedObject(*on)
+		split := functional.Slice(remaining).Partition(func(action string) bool {
+			return opened.Relations.Defines(fga.Tuple{Object: object, Relation: model.CanRelation(action)})
+		})
+		asked := split.First
+		remaining = split.Second
+		tuples := functional.Slice(asked).Map(func(action string) fga.Tuple {
+			return fga.Tuple{Object: object, Relation: model.CanRelation(action), User: subject}
+		})
+		answers, holdsErr := opened.Holds(ctx, tuples, contextual...)
+		if holdsErr != nil {
+			return nil, unavailable(holdsErr)
+		}
+		for i, action := range asked {
+			held[action] = answers[i]
+		}
 	}
 	return held, nil
 }
@@ -152,8 +166,8 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 // currentModel brings the store's model up to date at most every
 // modelCheckInterval, while the other decisions for the Product wait. It runs
 // again later because a replica of the previous release, during a rolling
-// deploy, writes its own model back. A failure keeps the store as it is and
-// leaves the next decision to try again.
+// deploy, writes its own model back. A failure keeps the store as it is, is
+// logged, and is tried again after modelRetryDelay.
 func (c *Checker) currentModel(ctx context.Context, productID string, opened store.Opened) store.Opened {
 	if checked, found := c.current.Load(productID); found {
 		if at, isTime := checked.(time.Time); isTime && time.Since(at) < modelCheckInterval {
@@ -161,9 +175,11 @@ func (c *Checker) currentModel(ctx context.Context, productID string, opened sto
 		}
 	}
 	result := c.builds.DoChan("model:"+productID, func() (any, error) {
-		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), buildTimeout)
+		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkTimeout)
 		defer cancel()
 		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
+			c.current.Store(productID, time.Now().Add(modelRetryDelay-modelCheckInterval))
+			log.Ctx(ctx).Warn().Err(err).Str("product_id", productID).Msg("authz model check failed")
 			return nil, err
 		}
 		c.current.Store(productID, time.Now())
