@@ -28,6 +28,9 @@ const (
 	// buildTimeout bounds the first build of a Product's store, which runs
 	// detached from the request that asked for it.
 	buildTimeout = 30 * time.Second
+	// modelCheckInterval is how long a decision trusts that its Product's store
+	// follows the model this release compiles.
+	modelCheckInterval = 30 * time.Second
 )
 
 // errNotBuilt reports a Product whose store is still not built after a build.
@@ -47,7 +50,8 @@ type Checker struct {
 	stores    store.Stores
 	rebuilder Rebuilder
 	builds    singleflight.Group
-	// current holds the Products whose model this process brought up to date.
+	// current holds when this process last made sure each Product's model is
+	// the one it compiles.
 	current sync.Map
 }
 
@@ -134,7 +138,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		if buildErr := c.rebuilder.Reconcile(buildCtx, productID); buildErr != nil {
 			return nil, buildErr
 		}
-		c.current.Store(productID, true)
+		c.current.Store(productID, time.Now())
 		return c.stores.Open(buildCtx, productID)
 	})
 	select {
@@ -145,12 +149,16 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 	}
 }
 
-// currentModel brings the store's model up to date once per process, while
-// the other decisions for the Product wait. A failure keeps the store as it is
-// and leaves the next decision to try again.
+// currentModel brings the store's model up to date at most every
+// modelCheckInterval, while the other decisions for the Product wait. It runs
+// again later because a replica of the previous release, during a rolling
+// deploy, writes its own model back. A failure keeps the store as it is and
+// leaves the next decision to try again.
 func (c *Checker) currentModel(ctx context.Context, productID string, opened store.Opened) store.Opened {
-	if _, done := c.current.Load(productID); done {
-		return opened
+	if checked, found := c.current.Load(productID); found {
+		if at, isTime := checked.(time.Time); isTime && time.Since(at) < modelCheckInterval {
+			return opened
+		}
 	}
 	result := c.builds.DoChan("model:"+productID, func() (any, error) {
 		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), buildTimeout)
@@ -158,7 +166,7 @@ func (c *Checker) currentModel(ctx context.Context, productID string, opened sto
 		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
 			return nil, err
 		}
-		c.current.Store(productID, true)
+		c.current.Store(productID, time.Now())
 		return c.stores.Open(modelCtx, productID)
 	})
 	select {

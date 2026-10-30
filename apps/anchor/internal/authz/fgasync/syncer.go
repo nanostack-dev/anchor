@@ -124,6 +124,13 @@ func (s *Syncer) Sync(ctx context.Context, scope Scope) error {
 // a different model. The tuples stay: a new model version only adds relations
 // computed from them.
 func (s *Syncer) EnsureModel(ctx context.Context, productID string) error {
+	source, _, recorded, err := s.modelState(ctx, productID)
+	if err != nil {
+		return err
+	}
+	if recorded.Hash == source.Hash && recorded.ID != "" {
+		return nil
+	}
 	engine, storeID, err := s.open(ctx, productID)
 	if err != nil {
 		return err
