@@ -79,7 +79,9 @@ func (auth *AuthMiddleware) authenticateProductAPIKey(
 	}
 
 	authorized := security.SetTenantID(ctx, prod.PlatformTenantID)
-	authorized = security.SetProductAPIKeyCaller(authorized, security.ProductAPIKeyCaller{ID: key.ID, Name: key.Name})
+	authorized = security.SetProductAPIKeyCaller(authorized, security.ProductAPIKeyCaller{
+		ID: key.ID, Name: key.Name, Permissions: key.ToStringsPermissions(),
+	})
 	return security.SetProductScope(
 		authorized, security.ProductScope{ProductID: productIDPath},
 	), nil

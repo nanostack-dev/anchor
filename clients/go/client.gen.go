@@ -1548,8 +1548,9 @@ type ClientInterface interface {
 	// PutResourceMemberWithBody Assign Resource Roles
 	//
 	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1559,8 +1560,9 @@ type ClientInterface interface {
 	// PutResourceMember Assign Resource Roles
 	//
 	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -5030,8 +5032,9 @@ func (c *Client) GetResourceMember(ctx context.Context, productId ProductIdParam
 // PutResourceMemberWithBody Assign Resource Roles
 //
 // Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 // `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 //
 // Takes any type of body and a specified content type.
 //
@@ -5051,8 +5054,9 @@ func (c *Client) PutResourceMemberWithBody(ctx context.Context, productId Produc
 // PutResourceMember Assign Resource Roles
 //
 // Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 // `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -14266,8 +14270,9 @@ type ClientWithResponsesInterface interface {
 	// PutResourceMemberWithBodyWithResponse Assign Resource Roles
 	//
 	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -14277,8 +14282,9 @@ type ClientWithResponsesInterface interface {
 	// PutResourceMemberWithResponse Assign Resource Roles
 	//
 	// Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+	// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 	// `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+	// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -21805,6 +21811,8 @@ type PutResourceMemberResponse struct {
 	JSON403 *Forbidden
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *ApiErrorResponse
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiErrorResponse
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -21830,6 +21838,11 @@ func (r PutResourceMemberResponse) GetJSON403() *Forbidden {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r PutResourceMemberResponse) GetJSON404() *ApiErrorResponse {
 	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r PutResourceMemberResponse) GetJSON409() *ApiErrorResponse {
+	return r.JSON409
 }
 
 // GetBody returns the raw response body bytes
@@ -26512,8 +26525,9 @@ func (c *ClientWithResponses) GetResourceMemberWithResponse(ctx context.Context,
 // PutResourceMemberWithBodyWithResponse Assign Resource Roles
 //
 // Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 // `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -26529,8 +26543,9 @@ func (c *ClientWithResponses) PutResourceMemberWithBodyWithResponse(ctx context.
 // PutResourceMemberWithResponse Assign Resource Roles
 //
 // Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+// With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
 // `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
-// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+// Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -32972,6 +32987,13 @@ func ParsePutResourceMemberResponse(rsp *http.Response) (*PutResourceMemberRespo
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 

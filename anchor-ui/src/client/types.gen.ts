@@ -656,6 +656,10 @@ export type ResourceMemberPutRequest = {
      * IDs of roles a member of the Organization may hold: a role the Product manages or a custom role of this Organization. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Every role must be scoped to the resource's type, or it answers 400 ROLE_SCOPE_MISMATCH. More than one ID answers 400 SINGLE_ROLE_PER_RESOURCE.
      */
     role_ids: Array<Ksuid>;
+    /**
+     * Optional. The resource's name and parent, as on the resource PUT. A resource that is not registered is registered with them before the roles are set, in the same transaction, so sharing one item takes one call. A registered resource is renamed or moved as the resource PUT does. The parent must be registered already, or be the Organization. Without it, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
+     */
+    resource?: ResourcePutRequest;
 };
 
 /**
@@ -7413,7 +7417,7 @@ export type PutResourceMemberData = {
 
 export type PutResourceMemberErrors = {
     /**
-     * The body is refused. `SINGLE_ROLE_PER_RESOURCE`: more than one role ID. `ROLE_NOT_FOUND_IN_REQUEST`: a role ID names no role of the Organization nor a role template of the product. `ROLE_SCOPE_MISMATCH`: the role is scoped to another type than the resource; an Organization role is held through the membership. `VALIDATION_ERROR`: `role_ids` is missing, empty or longer than 10.
+     * The body is refused. `SINGLE_ROLE_PER_RESOURCE`: more than one role ID. `ROLE_NOT_FOUND_IN_REQUEST`: a role ID names no role of the Organization nor a role template of the product. `ROLE_SCOPE_MISMATCH`: the role is scoped to another type than the resource; an Organization role is held through the membership. `VALIDATION_ERROR`: `role_ids` is missing, empty or longer than 10, or a field of `resource` is missing or too long. With `resource`, also `INVALID_RESOURCE_PARENT` and `INVALID_RESOURCE_ID` as on the resource PUT.
      */
     400: ApiErrorResponse;
     /**
@@ -7428,6 +7432,10 @@ export type PutResourceMemberErrors = {
      * `ORGANIZATION_MEMBERSHIP_NOT_FOUND`: the product user is not a member of the Organization. `RESOURCE_NOT_FOUND`, `RESOURCE_TYPE_NOT_FOUND`, `RESOURCE_TYPE_NOT_REGISTRABLE` and `ORGANIZATION_NOT_FOUND` as on the resource routes.
      */
     404: ApiErrorResponse;
+    /**
+     * Only with `resource`: the registry refuses the change in its current state, and nothing is written. `PARENT_NOT_REGISTERED`: register the parent first. `RESOURCE_CYCLE`: the resource would sit under itself. `RESOURCE_TOO_DEEP`: the chain would pass 15 levels, counting the Organization.
+     */
+    409: ApiErrorResponse;
 };
 
 export type PutResourceMemberError = PutResourceMemberErrors[keyof PutResourceMemberErrors];

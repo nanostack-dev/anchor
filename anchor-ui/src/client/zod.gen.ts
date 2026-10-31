@@ -383,7 +383,8 @@ export const zResourceListResponse = zPagedListResponse.and(z.object({
  * The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
  */
 export const zResourceMemberPutRequest = z.object({
-    role_ids: z.array(zKsuid).min(1).max(10)
+    role_ids: z.array(zKsuid).min(1).max(10),
+    resource: zResourcePutRequest.optional()
 });
 
 /**

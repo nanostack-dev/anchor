@@ -43,6 +43,9 @@ const (
 type ProductAPIKeyCaller struct {
 	ID   string
 	Name string
+	// Permissions are the key's scopes, for a route whose body can demand more
+	// than the route declares.
+	Permissions []string
 }
 
 // GetCurrentUserID safely retrieves the current user Name from context.
@@ -87,6 +90,13 @@ func SetTenantID(ctx context.Context, tenantID string) context.Context {
 
 func SetProductAPIKeyCaller(ctx context.Context, caller ProductAPIKeyCaller) context.Context {
 	return context.WithValue(ctx, productAPIKeyKey, caller)
+}
+
+// GetProductAPIKeyCaller returns the product API key that authenticated the
+// request, if one did.
+func GetProductAPIKeyCaller(ctx context.Context) (ProductAPIKeyCaller, bool) {
+	caller, ok := ctx.Value(productAPIKeyKey).(ProductAPIKeyCaller)
+	return caller, ok && caller.ID != ""
 }
 func IsValidProductAPIKey(apiKey string) bool {
 	return validateSecretFormat(DefaultProductAPIKeyPrefix, apiKey)

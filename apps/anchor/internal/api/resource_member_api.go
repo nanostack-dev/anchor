@@ -2,12 +2,17 @@ package api
 
 import (
 	"context"
+	"slices"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"anchor/internal/domain/resource"
 	"anchor/internal/domain/roleassignment"
 	"anchor/internal/searchx"
+	"anchor/internal/security"
+	"anchor/internal/service"
 )
 
 func mapResourceMemberToResponse(m roleassignment.Member) ResourceMemberResponse {
@@ -33,19 +38,49 @@ func resourceMemberTarget(
 	}
 }
 
+// resourceWriteScope is what the resource PUT demands. A member PUT that
+// registers, renames or moves its resource demands it too.
+const resourceWriteScope = "resource:write"
+
 func (s *AnchorAPI) PutResourceMember(
 	ctx context.Context, request PutResourceMemberRequestObject,
 ) (PutResourceMemberResponseObject, error) {
-	stored, err := s.RoleAssignmentService.Put(ctx, roleassignment.PutInput{
+	input := roleassignment.PutInput{
 		Target: resourceMemberTarget(
 			request.ProductId, request.OrganizationId, request.ResourceType, request.ResourceId, request.ProductUserId,
 		),
 		RoleIDs: request.Body.RoleIds,
-	})
+	}
+	if request.Body.Resource == nil {
+		stored, err := s.RoleAssignmentService.Put(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		return PutResourceMember200JSONResponse(mapResourceMemberToResponse(stored)), nil
+	}
+	if err := requireProductAPIKeyScope(ctx, resourceWriteScope); err != nil {
+		return nil, err
+	}
+	block := request.Body.Resource
+	stored, err := s.ResourceService.PutWithMember(ctx, input, block.Name,
+		resource.Ref{Type: block.Parent.Type, ID: block.Parent.Id})
 	if err != nil {
 		return nil, err
 	}
 	return PutResourceMember200JSONResponse(mapResourceMemberToResponse(stored)), nil
+}
+
+// requireProductAPIKeyScope refuses a request whose product API key lacks a
+// scope its body demands beyond the route's own.
+func requireProductAPIKeyScope(ctx context.Context, scope string) error {
+	caller, ok := security.GetProductAPIKeyCaller(ctx)
+	if !ok {
+		return fault.ErrUnauthorized
+	}
+	if slices.Contains(caller.Permissions, scope) {
+		return nil
+	}
+	return service.NewProductAPIKeyInsufficientPermissionsError(caller.ID, []string{scope}, caller.Permissions)
 }
 
 func (s *AnchorAPI) GetResourceMember(
