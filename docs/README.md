@@ -33,7 +33,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [engineering best practices](engineering-best-practices.md)
 - [product events spec](product-events-spec.md)
 
-Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md). Each has its `.json` source and the standalone `.html` report beside it.
+Postmortems: [2026-10-07 duplicate Clerk reconcile](postmortems/2026-10-07-duplicate-clerk-reconcile.md), [2026-10-16 concurrent API key creates answered 500](postmortems/2026-10-16-api-key-name-race-500.md), [2026-10-31 concurrent catalog writes deadlocked across replicas](postmortems/2026-10-31-tx-observer-order-deadlock.md). Each has its `.json` source and the standalone `.html` report beside it.
 
 [Research](research/) contains sourced unresolved proposals; read each document's status before treating it as implementation.
 
