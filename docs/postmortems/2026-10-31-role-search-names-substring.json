@@ -132,7 +132,7 @@
     ]
   },
   "actions": [
-    {"id": "A1", "what": "Filter `names` by equality, map `name_contains` (escaped, case-insensitive, like resources), add a near-miss role to the CT and repository tests", "type": "prevent", "owner": "Anchor maintainers (review)", "due": "2026-11-07", "status": "open", "fixes": ["R1", "R2"]},
+    {"id": "A1", "what": "Filter `names` by equality, map `name_contains` (escaped, case-insensitive, like resources), add a near-miss role to the CT and repository tests", "type": "prevent", "owner": "Anchor maintainers (review)", "due": "2026-11-07", "status": "open", "ticket": {"label": "anchor#316", "url": "https://github.com/nanostack-dev/anchor/pull/316"}, "fixes": ["R1", "R2"]},
     {"id": "A2", "what": "Testing guide line: a filter test includes a near-miss row, so exact and substring answer differently", "type": "process", "owner": "Nanostack routine (echopoint-investigation)", "due": "2026-10-31", "status": "done", "fixes": ["R1"]},
     {"id": "A3", "what": "Test that every field of each generated search filter is read by its mapper (reflection over the generated structs, with an allowlist)", "type": "detect", "owner": "Anchor maintainers", "due": "2026-11-14", "status": "open", "fixes": ["R2"]},
     {"id": "A4", "what": "Run the `anchor` and `echopoint` flow tags after the Anchor catalog apply on dev, before apply-prod", "type": "detect", "owner": "Infra maintainers", "due": "2026-11-14", "status": "open", "fixes": ["R3"]},

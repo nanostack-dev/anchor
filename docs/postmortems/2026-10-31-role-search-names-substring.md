@@ -151,7 +151,7 @@ flowchart TD
 
 | ID | Action | Type | Owner | Due | Status | Ticket | Fixes |
 |---|---|---|---|---|---|---|---|
-| A1 | Filter `names` by equality, map `name_contains` (escaped, case-insensitive, like resources), add a near-miss role to the CT and repository tests | prevent | Anchor maintainers (review) | 2026-11-07 | open |  | R1, R2 |
+| A1 | Filter `names` by equality, map `name_contains` (escaped, case-insensitive, like resources), add a near-miss role to the CT and repository tests | prevent | Anchor maintainers (review) | 2026-11-07 | open | [anchor#316](https://github.com/nanostack-dev/anchor/pull/316) | R1, R2 |
 | A2 | Testing guide line: a filter test includes a near-miss row, so exact and substring answer differently | process | Nanostack routine (echopoint-investigation) | 2026-10-31 | done |  | R1 |
 | A3 | Test that every field of each generated search filter is read by its mapper (reflection over the generated structs, with an allowlist) | detect | Anchor maintainers | 2026-11-14 | open |  | R2 |
 | A4 | Run the `anchor` and `echopoint` flow tags after the Anchor catalog apply on dev, before apply-prod | detect | Infra maintainers | 2026-11-14 | open |  | R3 |
