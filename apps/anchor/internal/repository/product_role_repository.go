@@ -526,13 +526,12 @@ func (r *productRoleRepositoryImpl) search(
 			expressions := jetx.ToStringExpressions(input.Filter.ProductRoleIDs)
 			whereStmt = whereStmt.AND(table.ProductRoles.ID.IN(expressions...))
 		}
-		if len(input.Filter.Names) > 0 {
-			nameConditions := functional.Slice(input.Filter.Names).Map(
-				func(name string) postgres.BoolExpression {
-					return table.ProductRoles.Name.LIKE(postgres.String("%" + name + "%"))
-				},
-			)
-			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
+		if names := jetx.BuildStringArrayFilter(table.ProductRoles.Name, input.Filter.Names); names != nil {
+			whereStmt = whereStmt.AND(names)
+		}
+		if input.Filter.NameContains != nil {
+			pattern := "%" + escapeRoleNameLike(strings.ToLower(*input.Filter.NameContains)) + "%"
+			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductRoles.Name).LIKE(postgres.String(pattern)))
 		}
 		if input.Filter.Scopes.Active() {
 			whereStmt = whereStmt.AND(scopeCondition(table.ProductRoles.ResourceTypeID, input.Filter.Scopes))
@@ -660,4 +659,10 @@ func (r *productRoleRepositoryImpl) findOne(
 			return r.productRoleMapper.ToDomain(permission.ProductRoles, permission.Permissions)
 		},
 	)
+}
+
+// escapeRoleNameLike makes LIKE match the characters of a name_contains term
+// literally, as the resource search does.
+func escapeRoleNameLike(text string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(text)
 }

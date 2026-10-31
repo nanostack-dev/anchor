@@ -1,0 +1,154 @@
+{
+  "title": "Role search returned roles nobody asked for: `names` matched substrings and `name_contains` was ignored",
+  "short": "Role names substring",
+  "service": "anchor",
+  "date": "2026-10-31",
+  "severity": "SEV3",
+  "status": "in review",
+  "authors": [
+    "Nanostack routine (echopoint-investigation)"
+  ],
+  "summary": "`POST /v1/products/{product}/roles/search` has filtered `filter.names` with `LIKE '%name%'` since the v1 snapshot (2026-05-11), although the contract says \"exact matches\". The `filter.name_contains` field that the contract offers for substrings was never mapped, so the server silently ignored it and returned every role. Nobody noticed until infra#271 added a `workspace_admin` role to the Echopoint product on dev and prod at 22:29Z on 2026-10-31, the first role name that contains another one. At 23:13Z the routine's echopoint suite failed: `echopoint: cursor searches — members, invitations & api keys` looked up `names: [\"admin\"]` and got two roles. The flow was narrowed by `resource_types` at 23:32Z and the exact-match checks moved to `anchor: known bugs`; the server fix (exact `names`, mapped `name_contains`, near-miss tests) waits for review because clients see the change.",
+  "impact": {
+    "text": "Every Anchor API client on dev and prod that searched roles by `names` got every role whose name contains the searched name, and a client that used `name_contains` got every role of the product. The responses looked plausible (more rows, never an error), so the impact on customers is unmeasurable. Echopoint does not call the role search. One routine suite run lost the cursor-search checks for members, invitations and API keys (one flow of 40); the next echopoint post-deploy gate would have failed on the same flow and held the deploy.",
+    "numbers": [
+      {"value": "173 days", "label": "contract drift in prod (2026-05-11 to 2026-10-31)"},
+      {"value": "1 of 71", "label": "suite flows red (cursor searches)"},
+      {"value": "0", "label": "gates blocked (no deploy in the window)"}
+    ]
+  },
+  "trigger": "infra#271 applied the Echopoint `workspace_admin`, `workspace_editor` and `workspace_viewer` managed roles to the Echopoint product on dev (22:29:12Z) and prod (22:29:26Z). `workspace_admin` contains `admin`, so `names: [\"admin\"]` started to return two roles.",
+  "detection": "The routine's echopoint suite run at 23:13Z: node `admin-role` asserted `$.total equals 1` and got 2. Detection took 44 minutes after the trigger. It took 173 days after the defect, because every fixture and every caller used role names where none contained another, and the existing tests could not tell exact from substring: the repository test even pinned the substring behaviour.",
+  "resolution": "At 23:31Z `anchor: known bugs` gained an own-product reproduction (`kbadmin`, `ws_kbadmin`, `kbviewer`): `names` gives 2 for 1 and `name_contains` gives 3 for 2, twice. At 23:32Z the cursor-search flow's `admin-role` lookup added `resource_types: [\"organization\"]` and ran green three times. The fix PR filters `names` by equality, maps `name_contains` to an escaped, case-insensitive substring match like the resource search, and adds a near-miss role to the CT and repository tests.",
+  "timeline": {
+    "events": [
+      {"t": "2026-05-11T21:16:14Z", "approx": true, "kind": "change", "label": "v1 snapshot: role `names` filter is `LIKE '%name%'`", "detail": "`product_role_repository.go` builds one `LIKE` per name; the API mapper never copies `NameContains`. The contract already said \"exact matches\" and offered `name_contains`.", "link": "https://github.com/nanostack-dev/anchor/commit/98d19607"},
+      {"t": "2026-10-16T02:40:37Z", "kind": "change", "label": "Cursor-search flow finds role `admin` by `names`, total 1", "detail": "Created by another session for echopoint#645; it reads the shared dev Echopoint product's catalog. Source: flow `updated_at`."},
+      {"t": "2026-10-31T22:28:47Z", "kind": "change", "label": "infra#271 merged: Echopoint workspace roles", "link": "https://github.com/nanostack-dev/infra/pull/271"},
+      {"t": "2026-10-31T22:29:08Z", "kind": "trigger", "label": "`workspace_admin` created on the dev Echopoint product", "detail": "`created_at` of the role in the failing search response; Terraform job `apply-dev` 22:28:57-22:29:12Z.", "link": "https://github.com/nanostack-dev/infra/actions/runs/41248358677"},
+      {"t": "2026-10-31T22:29:26Z", "kind": "note", "label": "Same roles applied to the prod Echopoint product", "detail": "Terraform job `apply-prod` 22:29:13-22:29:26Z. No flow suite runs after an Anchor catalog apply.", "link": "https://github.com/nanostack-dev/infra/actions/runs/41248358677"},
+      {"t": "2026-10-31T23:13:11Z", "kind": "detect", "label": "Suite: `admin-role` expected total 1, got 2", "detail": "Execution `01a1943d-038f`; 112 later nodes skipped, cleanup ran. The five org API keys whose cleanup failed (403: the tester never became a member) were removed by the org delete's `ON DELETE CASCADE`."},
+      {"t": "2026-10-31T23:20:00Z", "approx": true, "kind": "note", "label": "Contract read: `names` exact, `name_contains` unmapped"},
+      {"t": "2026-10-31T23:31:21Z", "kind": "note", "label": "`anchor: known bugs` reproduces both drifts twice"},
+      {"t": "2026-10-31T23:32:06Z", "kind": "mitigate", "label": "Cursor-search flow narrowed by `resource_types`"},
+      {"t": "2026-10-31T23:34:00Z", "approx": true, "kind": "resolve", "label": "Cursor-search flow green three times"},
+      {"t": "2026-10-31T23:55:00Z", "approx": true, "kind": "followup", "label": "Fix PR opened, waiting for human review"}
+    ]
+  },
+  "whys": {
+    "problem": "A client that searched roles by `names: [\"admin\"]` got `admin` and `workspace_admin`; one that used `name_contains` got every role",
+    "because": [
+      {
+        "text": "The repository filters `names` with `LIKE '%name%'` instead of equality",
+        "evidence": "`apps/anchor/internal/repository/product_role_repository.go` (`Name.LIKE(\"%\" + name + \"%\")`); the failing node's response holds both roles",
+        "because": [
+          {
+            "text": "The v1 code was written that way and no test compared it with the contract's \"exact matches\"",
+            "evidence": "Repository test `TestProductRoleRepositorySearchByProductIDFilterByNames` asserted \"a partial name is enough\"",
+            "because": [
+              {
+                "text": "The CT searched names that share no substring (`Editor_…`, `Admin_…`), so exact and substring answer alike",
+                "evidence": "`cmd/it/ct/product_role_search_test.go` before the fix",
+                "because": [
+                  {"id": "R1", "root": true, "text": "Filter tests use fixtures without a near-miss row, so they cannot tell an exact filter from a substring one"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "`name_contains` reaches the server and is dropped: the API mapper never copies it to the domain filter",
+        "evidence": "`mapToSearchProductRoleInput` in `internal/api/product_role_api.go` copies ids, names, permissions, resource types only",
+        "because": [
+          {
+            "text": "Mappers from generated filter types are written by hand, field by field",
+            "because": [
+              {
+                "text": "An unread generated field compiles and passes every test; only a test that sends it would fail",
+                "because": [
+                  {"id": "R2", "root": true, "text": "Nothing checks that every contract filter field of a search reaches its query"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "It surfaced as a red suite flow, and would have held the next echopoint deploy, though no app code changed",
+        "evidence": "The echopoint post-deploy gate runs the `echopoint` tag, which holds the cursor-search flow",
+        "because": [
+          {
+            "text": "infra#271 changed the shared dev Echopoint catalog that the gate reads, from Terraform, outside any app deploy",
+            "evidence": "Run 41248358677: prep, apply-dev, apply-prod, notify; no flow job",
+            "because": [
+              {
+                "text": "The Anchor catalog Terraform applies dev and prod in one run, with no suite between them",
+                "because": [
+                  {"id": "R3", "root": true, "text": "Anchor catalog applies reach dev and prod without running the flow suites that read that catalog"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "The drift lived 173 days in prod with no report",
+        "because": [
+          {
+            "text": "Both defects return extra rows, never an error, and no caller had a name containing another",
+            "because": [
+              {
+                "text": "The suites searched only shared catalogs whose names happened to be distinct",
+                "because": [
+                  {"id": "R4", "root": true, "text": "No flow checked a search filter on its own fixture with a lookalike value, so the shared data decided what was tested"}
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "contributing": [
+    "The other `names` filters (organizations, API keys, workspaces) already use `jetx.BuildStringArrayFilter`; only roles kept the hand-built `LIKE`.",
+    "The cursor-search flow's API key cleanup used the tester's session, whose access comes from a later step (accepting the invitation), so it answered 403 when an earlier node failed."
+  ],
+  "lessons": {
+    "well": [
+      "A count assertion on a lookup (`total equals 1`) caught a filter defect that 173 days of green results had hidden.",
+      "The reproduction went into `anchor: known bugs` on an own product before the feature flow changed, so the defect stays visible."
+    ],
+    "wrong": [
+      "The repository test documented the substring behaviour as intended, against the contract next to it.",
+      "A catalog change to dev and prod shipped with a Terraform plan as its only check."
+    ],
+    "lucky": [
+      "No echopoint or anchor deploy ran between 22:29Z and 23:32Z, so no post-deploy gate failed and no promotion was held.",
+      "Echopoint does not call the role search, so the new workspace roles did not change any Echopoint authorization.",
+      "The org delete cascades to its API keys; the flow's own key cleanup failed and would otherwise have leaked five keys."
+    ]
+  },
+  "actions": [
+    {"id": "A1", "what": "Filter `names` by equality, map `name_contains` (escaped, case-insensitive, like resources), add a near-miss role to the CT and repository tests", "type": "prevent", "owner": "Anchor maintainers (review)", "due": "2026-11-07", "status": "open", "fixes": ["R1", "R2"]},
+    {"id": "A2", "what": "Testing guide line: a filter test includes a near-miss row, so exact and substring answer differently", "type": "process", "owner": "Nanostack routine (echopoint-investigation)", "due": "2026-10-31", "status": "done", "fixes": ["R1"]},
+    {"id": "A3", "what": "Test that every field of each generated search filter is read by its mapper (reflection over the generated structs, with an allowlist)", "type": "detect", "owner": "Anchor maintainers", "due": "2026-11-14", "status": "open", "fixes": ["R2"]},
+    {"id": "A4", "what": "Run the `anchor` and `echopoint` flow tags after the Anchor catalog apply on dev, before apply-prod", "type": "detect", "owner": "Infra maintainers", "due": "2026-11-14", "status": "open", "fixes": ["R3"]},
+    {"id": "A5", "what": "Own-product reproduction in `anchor: known bugs`; cursor-search lookup narrowed by `resource_types`", "type": "mitigate", "owner": "Nanostack routine (echopoint-investigation)", "due": "2026-10-31", "status": "done", "fixes": ["R3", "R4"]},
+    {"id": "A6", "what": "Flow-suite-testing skill line: test a search filter on an owned fixture with a lookalike value, and narrow lookups in shared catalogs by every discriminator", "type": "process", "owner": "Nanostack routine (echopoint-investigation)", "due": "2026-10-31", "status": "done", "fixes": ["R4"]}
+  ],
+  "responders": [
+    {"role": "Detection, diagnosis and fix", "name": "Nanostack routine (echopoint-investigation)"}
+  ],
+  "messaging": {
+    "internal": "SEV3 anchor: role search `names` matched substrings and `name_contains` was ignored since v1, in dev and prod. infra#271's `workspace_admin` exposed it. Flow narrowed and reproduction in `anchor: known bugs`; fix waits for review because clients see the change.",
+    "external": "Role search now treats `filter.names` as exact matches and supports `filter.name_contains`, as documented. Clients that relied on partial matches in `names` should move them to `name_contains`."
+  },
+  "links": [
+    {"label": "Report", "url": "https://claude.ai/artifact/TDFZ5F5nMnaYhUsDtV9VeL"},
+    {"label": "infra#271", "url": "https://github.com/nanostack-dev/infra/pull/271"},
+    {"label": "Terraform run 41248358677", "url": "https://github.com/nanostack-dev/infra/actions/runs/41248358677"}
+  ]
+}

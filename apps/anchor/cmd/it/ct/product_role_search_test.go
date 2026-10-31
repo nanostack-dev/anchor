@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -21,6 +22,8 @@ func TestProductRole_Search(t *testing.T) {
 	role1Name := "Editor_" + ids.MustNew("test")
 	role2Name := "Viewer_" + ids.MustNew("test")
 	role3Name := "Admin_" + ids.MustNew("test")
+	// Contains role3Name: an exact names filter must not return it.
+	role4Name := "Workspace_" + role3Name
 
 	createResp1, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
 		ctx, productID, ct.CreateProductRoleJSONRequestBody{
@@ -58,6 +61,17 @@ func TestProductRole_Search(t *testing.T) {
 		createResp3.StatusCode(),
 	)
 
+	createResp4, err := testCtx.OwnerAuthenticatedClient().CreateProductRoleWithResponse(
+		ctx, productID, ct.CreateProductRoleJSONRequestBody{
+			Name: role4Name,
+		},
+	)
+	require.NoError(t, err)
+	require.Equal(
+		t, http.StatusCreated,
+		createResp4.StatusCode(),
+	)
+
 	t.Run(
 		"Searching all product roles succeeds", func(t *testing.T) {
 			searchResp, searchErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
@@ -92,6 +106,30 @@ func TestProductRole_Search(t *testing.T) {
 			assert.True(t, roleNames[role1Name])
 			assert.True(t, roleNames[role3Name])
 			assert.False(t, roleNames[role2Name])
+			assert.False(t, roleNames[role4Name], "names matches whole names only")
+			assert.Equal(t, int64(2), searchResp.JSON200.Total)
+		},
+	)
+
+	t.Run(
+		"Searching product roles by name_contains matches part of the name regardless of case", func(t *testing.T) {
+			term := strings.ToLower(role3Name)
+			searchResp, containsErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
+				ctx, productID, ct.SearchProductRolesJSONRequestBody{
+					Filter: &ct.ProductRoleFilter{
+						NameContains: &term,
+					},
+				},
+			)
+			require.NoError(t, containsErr)
+			require.Equal(t, 200, searchResp.StatusCode())
+			roleNames := make(map[string]bool)
+			for _, role := range searchResp.JSON200.Items {
+				roleNames[role.Name] = true
+			}
+			assert.True(t, roleNames[role3Name])
+			assert.True(t, roleNames[role4Name])
+			assert.Equal(t, int64(2), searchResp.JSON200.Total)
 		},
 	)
 

@@ -263,12 +263,34 @@ func TestProductRoleRepositorySearchByProductIDFilterByNames(t *testing.T) {
 
 	_ = createProductRole(t, productID) // unrelated role, must not match
 
-	// Names filter is a substring LIKE match (see the manual LIKE construction
-	// in SearchByProductID), so a partial name is enough.
-	result, err := repoCtx.ProductRoleRepository.SearchByProductID(
+	// Names matches whole names only: a partial name finds nothing.
+	partial, err := repoCtx.ProductRoleRepository.SearchByProductID(
 		context.Background(), productID,
 		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
 			Filter:     &role.SearchProductRoleFilter{Names: []string{"Editor Role"}},
+			Pagination: search.Pagination{Limit: 10, Offset: 0},
+		},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), partial.Total)
+
+	exact, err := repoCtx.ProductRoleRepository.SearchByProductID(
+		context.Background(), productID,
+		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
+			Filter:     &role.SearchProductRoleFilter{Names: []string{matching.Name}},
+			Pagination: search.Pagination{Limit: 10, Offset: 0},
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, exact.Items, 1)
+	assert.Equal(t, matching.ID, exact.Items[0].ID)
+
+	// NameContains is the substring match.
+	contains := "Editor Role"
+	result, err := repoCtx.ProductRoleRepository.SearchByProductID(
+		context.Background(), productID,
+		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
+			Filter:     &role.SearchProductRoleFilter{NameContains: &contains},
 			Pagination: search.Pagination{Limit: 10, Offset: 0},
 		},
 	)
