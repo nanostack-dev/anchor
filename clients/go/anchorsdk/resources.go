@@ -120,6 +120,35 @@ func (b *ResourcePutBuilder) Do(ctx context.Context) (*nanoclient.ResourceRespon
 	})
 }
 
+// Assign registers the resource, or renames or moves it, as [ResourcePutBuilder.Do]
+// does, then gives the member this role on it, replacing the role they held
+// there before. Both happen in one transaction, so sharing an item Anchor
+// does not know yet takes one call:
+//
+//	_, err := org.Resource("document", docID).Put("Pricing page").Under("folder", folderID).
+//	    Assign(ctx, productUserID, viewerRoleID)
+//
+// The parent must be registered already, or be the organization. The API key
+// needs resource:write besides resource_member:write. The same call again
+// changes nothing, so it is retried on transient failures.
+func (b *ResourcePutBuilder) Assign(
+	ctx context.Context,
+	productUserID, roleID string,
+) (*nanoclient.ResourceMemberResponse, error) {
+	const op = "Resource.Put.Assign"
+
+	c := b.r.o.c
+	body := nanoclient.ResourceMemberPutRequest{RoleIds: []string{roleID}, Resource: &b.req}
+
+	return retrying(ctx, c, func(ctx context.Context) (*nanoclient.ResourceMemberResponse, error) {
+		resp, err := c.api.PutResourceMemberWithResponse(ctx, c.productID, b.r.o.id, b.r.typ, b.r.id, productUserID, body)
+		if err != nil {
+			return nil, transportError(op, err)
+		}
+		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
+	})
+}
+
 // Resources is the facade for finding an organization's resources; one resource
 // is read and changed through its [Resource] handle. Obtain one from an [Org]
 // handle:

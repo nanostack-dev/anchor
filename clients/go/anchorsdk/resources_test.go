@@ -54,6 +54,19 @@ func TestResourceOperationsUseExpectedRoutes(t *testing.T) {
 			wantBody:   `{"name":"Specs","parent":{"type":"workspace","id":"ws_1"}}`,
 		},
 		{
+			name:  "a put that assigns sends the resource with the role on the member route",
+			reply: stubResponse{status: http.StatusOK, body: resourceMemberBody},
+			call: func(ctx context.Context, c *anchorsdk.Client) error {
+				_, err := c.Organization(testOrgID).Resource("folder", "f_1").Put("Specs").
+					Under("workspace", "ws_1").Assign(ctx, testUserID, testRoleID)
+				return err
+			},
+			wantMethod: http.MethodPut,
+			wantPath:   "/v1/products/prd_test/organizations/org_1/resources/folder/f_1/members/" + testUserID,
+			wantBody: `{"resource":{"name":"Specs","parent":{"type":"workspace","id":"ws_1"}},` +
+				`"role_ids":["` + testRoleID + `"]}`,
+		},
+		{
 			name:       "a resource get",
 			reply:      stubResponse{status: http.StatusOK, body: resourceBody},
 			call:       func(ctx context.Context, c *anchorsdk.Client) error { _, err := workspace(c).Get(ctx); return err },
@@ -297,6 +310,27 @@ func TestResourceCallsRetryWhatIsSafe(t *testing.T) {
 			replies: []stubResponse{unavailable, notFound},
 			call: func(ctx context.Context, r *anchorsdk.Resource) error {
 				return r.Members().Remove(ctx, testUserID)
+			},
+			wantCalls: 2,
+		},
+		{
+			name: "a put that assigns under an unregistered parent is a conflict and is not retried",
+			replies: []stubResponse{{
+				status: http.StatusConflict, body: `{"errors":[{"code":"PARENT_NOT_REGISTERED"}]}`,
+			}},
+			call: func(ctx context.Context, r *anchorsdk.Resource) error {
+				_, err := r.Put("Default").Under("folder", "f_missing").Assign(ctx, testUserID, testRoleID)
+				return err
+			},
+			wantErr:   anchorsdk.ErrConflict,
+			wantCalls: 1,
+		},
+		{
+			name:    "a put that assigns, retried after an outage, succeeds",
+			replies: []stubResponse{unavailable, {status: http.StatusOK, body: resourceMemberBody}},
+			call: func(ctx context.Context, r *anchorsdk.Resource) error {
+				_, err := r.Put("Default").Assign(ctx, testUserID, testRoleID)
+				return err
 			},
 			wantCalls: 2,
 		},
