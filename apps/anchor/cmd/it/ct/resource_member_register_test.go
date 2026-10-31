@@ -1,190 +1,173 @@
 package ct_test
 
 import (
-	"net/http"
 	"sync"
 	"testing"
 
-	ct "github.com/nanostack-dev/anchor/clients/go"
+	"github.com/nanostack-dev/anchor/clients/go/anchorsdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// putMemberRegistering assigns the role on a document and sends the resource
-// block, so a document that is not registered is registered under parent.
-func (w resourceAccessWorld) putMemberRegistering(
-	t *testing.T,
-	client *ct.ClientWithResponses,
-	document, productUserID, roleID, name string,
-	parent ct.ResourceParentRef,
-) *ct.PutResourceMemberResponse {
+// The member PUT with a resource block is driven through anchorsdk's
+// Put(...).Under(...).Assign, so each case tests the route and the SDK call
+// that wraps it.
+
+// requireSDKError asserts a refused SDK call's sentinel and its one error
+// code, and returns the error's metadata.
+func requireSDKError(t *testing.T, err error, sentinel error, code string) map[string]any {
 	t.Helper()
-	resp, err := client.PutResourceMemberWithResponse(t.Context(), w.product.ProductID, w.org.Id, "document",
-		document, productUserID, ct.PutResourceMemberJSONRequestBody{
-			RoleIds:  []string{roleID},
-			Resource: &ct.ResourcePutRequest{Name: name, Parent: parent},
-		})
-	require.NoError(t, err)
-	return resp
+	require.ErrorIs(t, err, sentinel)
+	var apiErr *anchorsdk.Error
+	require.ErrorAs(t, err, &apiErr)
+	require.Len(t, apiErr.Details, 1, string(apiErr.Body))
+	require.Equal(t, code, apiErr.Details[0].Code, string(apiErr.Body))
+	return apiErr.Details[0].Metadata
+}
+
+// documentHandle is a document of the world's first Organization, through the
+// SDK client.
+func (w resourceAccessWorld) documentHandle(sdk *anchorsdk.Client, id string) *anchorsdk.Resource {
+	return sdk.Organization(w.org.Id).Resource("document", id)
 }
 
 func TestResourceMemberPutRegistersTheResource(t *testing.T) {
 	t.Parallel()
 
-	t.Run("One call registers a document under its folder and gives the member a role on it", func(t *testing.T) {
+	t.Run("One SDK call registers a document under its folder and gives the member a role on it", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, danExternalID := w.newMember(t, w.orgMember.Id)
 		sink := w.product.CaptureEvents()
-		pricing := resourceID()
+		pricing := w.documentHandle(w.product.SDKClient(), resourceID())
 
-		resp := w.putMemberRegistering(t, w.product.AllScopeAPIKeyClient(), pricing, dan, w.documentViewer.Id,
-			"Pricing page", ct.ResourceParentRef{Type: "folder", Id: w.folder})
+		assigned, err := pricing.Put("Pricing page").Under("folder", w.folder).
+			Assign(t.Context(), dan, w.documentViewer.Id)
 
-		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		assert.Equal(t, w.documentViewer.Id, resp.JSON200.Roles[0].Id)
-		registered := w.resources.Get("document", pricing)
+		require.NoError(t, err)
+		assert.Equal(t, w.documentViewer.Id, assigned.Roles[0].Id)
+		registered, err := pricing.Get(t.Context())
+		require.NoError(t, err)
 		assert.Equal(t, "Pricing page", registered.Name)
-		assert.Equal(t, ct.ResourceParentRef{Type: "folder", Id: w.folder}, registered.Parent)
+		assert.Equal(t, "folder", registered.Parent.Type)
+		assert.Equal(t, w.folder, registered.Parent.Id)
 		sink.WaitFor("resource.role_assignment.created", map[string]string{
-			"organization_id": w.org.Id, "resource_type": "document", "resource_id": pricing,
+			"organization_id": w.org.Id, "resource_type": "document", "resource_id": pricing.ID(),
 			"product_user_id": dan, "role_id": w.documentViewer.Id,
 		})
 		// Dan's role is on the document; the world's member reaches it only
 		// through the folder, so this also proves the stored parent.
-		requireAllowed(t, w.access.User(danExternalID).OnResource(w.org.Id, "document", pricing).
+		requireAllowed(t, w.access.User(danExternalID).OnResource(w.org.Id, "document", pricing.ID()).
 			Can(documentView).Decide())
-		requireAllowed(t, w.asMember("document", pricing).Can(documentView).Decide())
+		requireAllowed(t, w.asMember("document", pricing.ID()).Can(documentView).Decide())
 	})
 
-	t.Run("A block on a registered document renames and moves it, then sets the role", func(t *testing.T) {
+	t.Run("A put that assigns on a registered document renames and moves it, then sets the role", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, _ := w.newMember(t, w.orgMember.Id)
+		brief := w.documentHandle(w.product.SDKClient(), w.document)
 
-		resp := w.putMemberRegistering(t, w.product.AllScopeAPIKeyClient(), w.document, dan, w.documentViewer.Id,
-			"Brief v2", ct.ResourceParentRef{Type: "folder", Id: w.subfolder})
+		_, err := brief.Put("Brief v2").Under("folder", w.subfolder).Assign(t.Context(), dan, w.documentViewer.Id)
 
-		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
-		moved := w.resources.Get("document", w.document)
+		require.NoError(t, err)
+		moved, err := brief.Get(t.Context())
+		require.NoError(t, err)
 		assert.Equal(t, "Brief v2", moved.Name)
-		assert.Equal(t, ct.ResourceParentRef{Type: "folder", Id: w.subfolder}, moved.Parent)
-		assert.Equal(t, w.documentViewer.Id, w.members("document", w.document).Get(dan).Roles[0].Id)
+		assert.Equal(t, w.subfolder, moved.Parent.Id)
+		held, err := brief.Members().Get(t.Context(), dan)
+		require.NoError(t, err)
+		assert.Equal(t, w.documentViewer.Id, held.Roles[0].Id)
 	})
 
-	t.Run("A parent that is not registered answers 409 and writes nothing", func(t *testing.T) {
+	t.Run("A parent that is not registered is a 409 conflict, and nothing is written", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, _ := w.newMember(t, w.orgMember.Id)
-		pricing := resourceID()
+		pricing := w.documentHandle(w.product.SDKClient(), resourceID())
 
-		resp := w.putMemberRegistering(t, w.product.AllScopeAPIKeyClient(), pricing, dan, w.documentViewer.Id,
-			"Pricing page", ct.ResourceParentRef{Type: "folder", Id: resourceID()})
+		_, err := pricing.Put("Pricing page").Under("folder", resourceID()).
+			Assign(t.Context(), dan, w.documentViewer.Id)
 
-		requireAPIError(t, resp, resp.Body, http.StatusConflict, "PARENT_NOT_REGISTERED")
-		got := w.resources.GetRaw("document", pricing)
-		assert.Equal(t, http.StatusNotFound, got.StatusCode(), string(got.Body))
+		requireSDKError(t, err, anchorsdk.ErrConflict, "PARENT_NOT_REGISTERED")
+		_, err = pricing.Get(t.Context())
+		assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
 	})
 
-	t.Run("A role the document can't hold answers 400 and leaves the document unregistered", func(t *testing.T) {
+	t.Run("A role the document can't hold is a 400, and the document stays unregistered", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, _ := w.newMember(t, w.orgMember.Id)
-		pricing := resourceID()
+		pricing := w.documentHandle(w.product.SDKClient(), resourceID())
 
-		resp := w.putMemberRegistering(t, w.product.AllScopeAPIKeyClient(), pricing, dan, w.folderViewer.Id,
-			"Pricing page", ct.ResourceParentRef{Type: "folder", Id: w.folder})
+		_, err := pricing.Put("Pricing page").Under("folder", w.folder).Assign(t.Context(), dan, w.folderViewer.Id)
 
-		requireAPIError(t, resp, resp.Body, http.StatusBadRequest, "ROLE_SCOPE_MISMATCH")
-		got := w.resources.GetRaw("document", pricing)
-		assert.Equal(t, http.StatusNotFound, got.StatusCode(), string(got.Body))
+		requireSDKError(t, err, anchorsdk.ErrInvalid, "ROLE_SCOPE_MISMATCH")
+		_, err = pricing.Get(t.Context())
+		assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
 	})
 
-	t.Run("Without the block, a document that is not registered answers 404", func(t *testing.T) {
+	t.Run("Assigning without the resource block on a document that is not registered is a 404", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, _ := w.newMember(t, w.orgMember.Id)
 
-		resp := w.members("document", resourceID()).PutRaw(dan, w.documentViewer.Id)
+		_, err := w.documentHandle(w.product.SDKClient(), resourceID()).Members().
+			Assign(t.Context(), dan, w.documentViewer.Id)
 
-		requireAPIError(t, resp, resp.Body, http.StatusNotFound, "RESOURCE_NOT_FOUND")
+		requireSDKError(t, err, anchorsdk.ErrNotFound, "RESOURCE_NOT_FOUND")
 	})
 
-	t.Run("A key without resource:write can't send the block, and can still assign without it", func(t *testing.T) {
+	t.Run("A key without resource:write can't register on assign, and can still assign", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
 		dan, _ := w.newMember(t, w.orgMember.Id)
-		memberOnly, _ := w.product.CreateAPIKeyClientWithScopes([]string{"resource_member:write"})
-		pricing := resourceID()
+		memberOnly := w.product.SDKClient("resource_member:write", "resource:read")
+		pricing := w.documentHandle(memberOnly, resourceID())
 
-		resp := w.putMemberRegistering(t, memberOnly, pricing, dan, w.documentViewer.Id,
-			"Pricing page", ct.ResourceParentRef{Type: "folder", Id: w.folder})
+		_, err := pricing.Put("Pricing page").Under("folder", w.folder).Assign(t.Context(), dan, w.documentViewer.Id)
 
-		metadata := requireAPIError(
-			t,
-			resp,
-			resp.Body,
-			http.StatusForbidden,
-			"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS",
-		)
+		metadata := requireSDKError(t, err, anchorsdk.ErrForbidden, "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS")
 		assert.Equal(t, []any{"resource:write"}, metadata["required_scopes"])
-		got := w.resources.GetRaw("document", pricing)
-		assert.Equal(t, http.StatusNotFound, got.StatusCode(), string(got.Body))
-		plain := w.product.ResourceMembers(w.org.Id, "document", w.document, "resource_member:write").
-			PutRaw(dan, w.documentViewer.Id)
-		assert.Equal(t, http.StatusOK, plain.StatusCode(), string(plain.Body))
+		_, err = pricing.Get(t.Context())
+		require.ErrorIs(t, err, anchorsdk.ErrNotFound)
+		_, err = w.documentHandle(memberOnly, w.document).Members().Assign(t.Context(), dan, w.documentViewer.Id)
+		require.NoError(t, err)
 	})
 }
 
 func TestResourceMemberPutRegisteringRacesAParentDelete(t *testing.T) {
 	t.Parallel()
 	t.Run(
-		"Registering under a folder while it is deleted either lands and goes with the folder, or answers 409",
+		"Registering under a folder while it is deleted either lands and goes with the folder, or is a 409",
 		func(t *testing.T) {
 			t.Parallel()
 			w := givenResourceAccessWorld(t)
 			dan, _ := w.newMember(t, w.orgMember.Id)
-			client := w.product.AllScopeAPIKeyClient()
+			org := w.product.SDKClient().Organization(w.org.Id)
 
 			for range 5 {
-				folder, document := resourceID(), resourceID()
-				w.resources.Put("folder", folder, "Scratch", ct.ResourceParentRef{Type: "project", Id: w.project})
+				folder := org.Resource("folder", resourceID())
+				_, err := folder.Put("Scratch").Under("project", w.project).Do(t.Context())
+				require.NoError(t, err)
+				document := org.Resource("document", resourceID())
 				var (
 					wg                   sync.WaitGroup
-					assigned             *ct.PutResourceMemberResponse
-					deleted              *ct.DeleteResourceResponse
 					assignErr, deleteErr error
 				)
 				wg.Go(func() {
-					assigned, assignErr = client.PutResourceMemberWithResponse(
-						t.Context(),
-						w.product.ProductID,
-						w.org.Id,
-						"document",
-						document,
-						dan,
-						ct.PutResourceMemberJSONRequestBody{
-							RoleIds: []string{w.documentViewer.Id},
-							Resource: &ct.ResourcePutRequest{
-								Name: "Draft", Parent: ct.ResourceParentRef{Type: "folder", Id: folder},
-							},
-						},
-					)
+					_, assignErr = document.Put("Draft").Under("folder", folder.ID()).
+						Assign(t.Context(), dan, w.documentViewer.Id)
 				})
-				wg.Go(func() {
-					deleted, deleteErr = client.DeleteResourceWithResponse(t.Context(), w.product.ProductID, w.org.Id,
-						"folder", folder, &ct.DeleteResourceParams{Cascade: new(true)})
-				})
+				wg.Go(func() { deleteErr = folder.DeleteTree(t.Context()) })
 				wg.Wait()
 
-				require.NoError(t, assignErr)
 				require.NoError(t, deleteErr)
-				require.Equal(t, http.StatusNoContent, deleted.StatusCode(), string(deleted.Body))
-				if assigned.StatusCode() != http.StatusOK {
-					requireAPIError(t, assigned, assigned.Body, http.StatusConflict, "PARENT_NOT_REGISTERED")
+				if assignErr != nil {
+					requireSDKError(t, assignErr, anchorsdk.ErrConflict, "PARENT_NOT_REGISTERED")
 				}
-				got := w.resources.GetRaw("document", document)
-				assert.Equal(t, http.StatusNotFound, got.StatusCode(), string(got.Body))
+				_, err = document.Get(t.Context())
+				assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
 			}
 		},
 	)

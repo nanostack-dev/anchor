@@ -92,44 +92,6 @@ func TestAnchorSDKResources(t *testing.T) {
 			assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
 		})
 
-	t.Run("A put that assigns registers a document and gives the member a role on it in one call", func(t *testing.T) {
-		t.Parallel()
-		w := givenResourceAccessWorld(t)
-		sdk := w.product.SDKClient()
-		org := sdk.Organization(w.org.Id)
-		dan, danExternalID := w.newMember(t, w.orgMember.Id)
-		pricing := org.Resource("document", resourceID())
-
-		assigned, err := pricing.Put("Pricing page").Under("folder", w.folder).
-			Assign(t.Context(), dan, w.documentViewer.Id)
-		require.NoError(t, err)
-		registered, err := pricing.Get(t.Context())
-		require.NoError(t, err)
-		canView, err := sdk.AccessForUser(danExternalID).On(pricing).Can(t.Context(), documentView)
-		require.NoError(t, err)
-
-		assert.Equal(t, w.documentViewer.Id, assigned.Roles[0].Id)
-		assert.Equal(t, "Pricing page", registered.Name)
-		assert.Equal(t, w.folder, registered.Parent.Id)
-		assert.True(t, canView)
-	})
-
-	t.Run("A put that assigns under a parent that is not registered is a conflict and registers nothing",
-		func(t *testing.T) {
-			t.Parallel()
-			w := givenResourceAccessWorld(t)
-			org := w.product.SDKClient().Organization(w.org.Id)
-			dan, _ := w.newMember(t, w.orgMember.Id)
-			pricing := org.Resource("document", resourceID())
-
-			_, err := pricing.Put("Pricing page").Under("folder", resourceID()).
-				Assign(t.Context(), dan, w.documentViewer.Id)
-
-			require.ErrorIs(t, err, anchorsdk.ErrConflict)
-			_, err = pricing.Get(t.Context())
-			assert.ErrorIs(t, err, anchorsdk.ErrNotFound)
-		})
-
 	t.Run("A member search lists who holds roles on a resource", func(t *testing.T) {
 		t.Parallel()
 		w := givenResourceAccessWorld(t)
