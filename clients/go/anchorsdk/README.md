@@ -174,13 +174,18 @@ _, err = ws.Put("Default").Do(ctx)                                 // under the 
 _, err = o.Resource("folder", folderID).Put("Specs").Under("workspace", workspaceID).Do(ctx)
 _, err = ws.Members().Assign(ctx, productUserID, editorRoleID)    // pusr_...; replaces their role there
 
+// Share a document Anchor does not know yet: register it under its folder and give the member a role
+// on it, in one transaction. The API key needs resource:write besides resource_member:write.
+_, err = o.Resource("document", docID).Put("Pricing page").Under("folder", folderID).
+    Assign(ctx, productUserID, viewerRoleID)
+
 ok, err := c.AccessForUser(externalUserID).On(ws).Can(ctx, "flow:run")
 decision, err := c.AccessForAPIKey(rawKey).On(ws).Permissions("flow:run", "flow:edit").Do(ctx)
 
 for r, err := range o.Resources().Search().Types("workspace").All(ctx) { ... }
 ```
 
-Every call is retried on transient failures: `Put` and `Assign` change nothing when sent again, and
+Every call is retried on transient failures: `Put`, `Assign` and `Put(...).Assign` change nothing when sent again, and
 a retried delete whose first attempt succeeded answers success. `Delete` refuses a resource that
 holds another resource or a role (`ErrConflict`); `DeleteTree` removes them too. `Can` needs at
 least one permission and answers false on a denial; `Do` returns the decision with the reason.

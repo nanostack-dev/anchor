@@ -53,7 +53,7 @@ key, err := o.APIKeys().Create("ci").Permissions("flow:read").Do(ctx)
 | `email.go` | done — fluent send; the FAILED-record rule is preserved |
 | `organizations.go` | done — create/update builders, get, delete, search, list |
 | `members.go` | done — list, search, get (plus role permissions), add, remove, set role |
-| `resources.go` | done — `Resource` handle: put (with `Under`), get, delete, delete a tree; `Resources().Search()` |
+| `resources.go` | done — `Resource` handle: put (with `Under`), put and assign a member in one call (`Put(...).Assign`), get, delete, delete a tree; `Resources().Search()` |
 | `resource_members.go` | done — roles on a resource: assign, get, remove, search |
 | `access.go` | done — evaluate on an organization or a resource; `On(resource)`, `Can` |
 | `apikeys.go` | done — create/update builders, get, delete, search, list, validate, `Client.Introspect` |
