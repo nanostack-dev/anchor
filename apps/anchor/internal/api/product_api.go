@@ -309,12 +309,10 @@ func (s *AnchorAPI) CreateProductUser(
 		return user.ProductUserStatus(s)
 	}).OrElse(user.ProductUserStatusActive)
 
-	name := functional.FromPtr(request.Body.Name).OrElse("")
-
 	input := user.CreateProductUserInput{
 		ProductID:  request.ProductId,
 		Email:      request.Body.Email,
-		Name:       name,
+		Name:       request.Body.Name,
 		Status:     status,
 		ExternalID: request.Body.ExternalId,
 	}
