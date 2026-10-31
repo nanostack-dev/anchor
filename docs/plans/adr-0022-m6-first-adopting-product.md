@@ -71,21 +71,55 @@ Echopoint adopts first. Workspaces are its only container type, and almost no cu
 - Echopoint registers each workspace through the SDK resource API, keeps no copy of it, and gives every Organization a "Default" workspace (echopoint#694).
 - Echopoint asks every check on `workspace/{X-Workspace-Id}`. Each of its permissions is scoped to `organization`, and the one managed role, `admin`, holds them all, so the parent chain answers (ADR-0022, "a resource type answers a permission scoped above it through its parent").
 
-Anchor is the only store of workspaces, their members and their roles. Echopoint calls Anchor for each change and each decision; it syncs nothing.
+Anchor decides every request. Echopoint keeps each workspace membership in its own database and pushes it to Anchor through an outbox, as described in [Workspace membership](#workspace-membership).
 
 **What is left.**
 
 | # | Repository | Slice | Kind |
 | :-- | :-- | :-- | :-- |
-| 1 | infra | Workspace-scoped permissions for what lives in a workspace, and managed roles on `workspace` that hold them (for example `workspace_viewer` and `workspace_editor`). The Organization role `admin` also holds them, so every current member keeps access. | invisible |
-| 3 | Echopoint | The member who creates a workspace gets a workspace role on it | invisible |
-| 4 | Echopoint | Workspace settings: create, rename and delete a workspace; add, change and remove its members. Each route calls the SDK. | new behind a switch |
+| 1 | infra | Workspace-scoped permissions for what lives in a workspace, and managed roles on `workspace` that hold them (for example `workspace_viewer` and `workspace_editor`). The Organization role `admin` also holds them, so every current member keeps access. Custom roles open on `workspace` (D9). | invisible |
+| 2 | Echopoint | The `workspace_memberships` table, its state machine, the outbox job and the reconcile | invisible |
+| 3 | Echopoint | The member who creates a workspace gets a workspace membership on it | invisible |
+| 4 | Echopoint | Workspace settings: create, rename and delete a workspace; add, change and remove its members, with managed or custom roles. A member change writes the membership and its job in one transaction. | new behind a switch |
 | 6 | Echopoint | Checks ask the workspace-scoped permissions; the Organization-scoped ones they replace leave the catalog | switch-over |
 | 7 | Echopoint | The flow suite cases in "Done when" 3, on workspaces | invisible |
 
 **No shadow slice.** Slice 1 gives `admin` every new permission, so slice 6 denies no current member. A workspace role only adds access for a member who has no Organization role, which a membership allows (D5).
 
-**Delete.** Echopoint deletes a workspace's own data, then deletes the resource with `cascade=true`. A workspace deleted in Anchor's admin UI reaches Echopoint through a webhook, and Echopoint deletes its data then.
+### Workspace membership
+
+Echopoint owns each workspace membership: which member holds which role on which workspace. A membership is a row in Echopoint's database with a state. A change writes the row and enqueues a pgqueue job in the same transaction; the job is the outbox. Only the queue worker calls Anchor's member routes, as for license usage (echopoint ADR-0001).
+
+```mermaid
+stateDiagram-v2
+  [*] --> granting: add member
+  granting --> active: Anchor PUT member 2xx
+  active --> granting: change role
+  active --> revoking: remove member
+  granting --> revoking: remove member
+  revoking --> [*]: Anchor DELETE member 2xx or 404
+  granting --> failed: permanent error
+  revoking --> failed: permanent error
+  failed --> granting: retry
+  failed --> revoking: remove member
+```
+
+| State | Meaning | Access |
+| :-- | :-- | :-- |
+| `granting` | Anchor doesn't hold this role yet | none from this membership until `active` |
+| `active` | Anchor holds exactly the row's role | Anchor's decision |
+| `revoking` | Anchor may still hold the role | Echopoint denies the workspace itself, before asking Anchor |
+| `failed` | Anchor refused the change for good (for example `404` on the product user, or a role that no longer exists) | as `granting` or `revoking` were; an admin retries or removes it |
+
+**Desired state, not events.** The row holds the role it wants and a `version` that each change increments. The job carries only the membership ID. The worker reads the row, sends the whole desired state (`PUT …/members/{product_user}` with `role_ids`, or `DELETE`), and moves the row to `active` or deletes it only when `version` is still the one it sent. Duplicate jobs, retries and out-of-order runs then converge, and a change made while a job runs enqueues its own job.
+
+**Synced with OpenFGA.** Anchor writes a member change to the Product's OpenFGA store before it answers (ADR-0022 E5), so a `2xx` means the decision already reflects it. Anchor's sweeper and its 15-minute rebuild cover a write that its flush could not send. Echopoint does not talk to OpenFGA.
+
+**Retries.** A transient error (`5xx`, timeout, `409 PARENT_NOT_REGISTERED` while the workspace registration is not done) retries with backoff. After the queue's attempt limit, the row goes to `failed`, and Echopoint logs it with the membership ID.
+
+**Reconcile.** A cron enqueues one job per workspace every 15 minutes. The job compares the workspace's members in Anchor with Echopoint's rows, and pushes Echopoint's state for each difference. A `resource.role_assignment.*` webhook enqueues the same job for its workspace at once. Echopoint is the source of truth, so a change made to a workspace member in Anchor's admin UI is undone.
+
+**Delete.** Echopoint deletes a workspace's own data and its membership rows, then deletes the resource with `cascade=true`. A workspace deleted in Anchor's admin UI reaches Echopoint through a webhook, and Echopoint deletes its data then.
 
 ## Open questions
 
@@ -93,5 +127,5 @@ For Echopoint, before slice 1:
 
 - Which permissions move to `workspace`? A proposal: `collections:*`, `environment:*`, `flows:*`, `specs:*`, `status_pages:*` and `webhooks:*` move. `api_key:*`, `invitations:*`, `members:*` and `runner:*` stay on `organization`.
 - A permission's scope can't change in place, and replacing one deletes it from every role and Organization API key that holds it. Do the workspace-scoped permissions take new names, or replace the current ones once no Organization API key holds them?
-- Which managed roles go on `workspace`, and does Echopoint open custom roles on it?
+- Which managed roles go on `workspace`? (Custom roles open on it.)
 - What observation period after slice 6 closes M6?
