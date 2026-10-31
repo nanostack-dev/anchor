@@ -79,3 +79,41 @@ func TestDeliveredData(t *testing.T) {
 		require.Equal(t, "res_1", data[events.FieldResourceRowID], "the observers still read it")
 	})
 }
+
+type callLog struct{ calls []string }
+
+type alphaObserver struct{ log *callLog }
+
+func (o alphaObserver) ObserveTx(context.Context, events.Event) error {
+	o.log.calls = append(o.log.calls, "alpha")
+	return nil
+}
+
+type betaObserver struct{ log *callLog }
+
+func (o betaObserver) ObserveTx(context.Context, events.Event) error {
+	o.log.calls = append(o.log.calls, "beta")
+	return nil
+}
+
+func TestEmitterRunsObserversInOneOrderWhateverTheGroupOrder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Observers given in either order run in the same order", func(t *testing.T) {
+		t.Parallel()
+		catalog := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{
+			events.RegisterInternal("Test", events.Definition{Type: "test.kept", Undelivered: true}),
+		}})
+		ctx := transactor.WithTx(context.Background(), &sql.Tx{})
+		event := events.Event{Type: "test.kept", ProductID: "prd_test", Data: events.Data{"id": "1"}}
+
+		forward, backward := &callLog{}, &callLog{}
+		require.NoError(t, events.NewEmitter(nil, catalog,
+			alphaObserver{forward}, betaObserver{forward}).Emit(ctx, event))
+		require.NoError(t, events.NewEmitter(nil, catalog,
+			betaObserver{backward}, alphaObserver{backward}).Emit(ctx, event))
+
+		require.Equal(t, []string{"alpha", "beta"}, forward.calls)
+		require.Equal(t, forward.calls, backward.calls)
+	})
+}
