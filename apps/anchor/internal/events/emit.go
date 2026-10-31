@@ -1,9 +1,12 @@
 package events
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -49,11 +52,19 @@ type emitter struct {
 	now       func() time.Time
 }
 
+// NewEmitter runs the observers in the order of their type names. fx hands a
+// value group over in a random order per process, and observers take locks:
+// two replicas running them in opposite orders deadlock their writes
+// ([postmortem](../../../../docs/postmortems/2026-10-31-tx-observer-order-deadlock.md)).
 func NewEmitter(queueClient *queue.Client, catalog Catalog, observers ...TxObserver) Emitter {
+	ordered := slices.Clone(observers)
+	slices.SortStableFunc(ordered, func(a, b TxObserver) int {
+		return cmp.Compare(fmt.Sprintf("%T", a), fmt.Sprintf("%T", b))
+	})
 	return &emitter{
 		queue:     queueClient,
 		catalog:   catalog,
-		observers: observers,
+		observers: ordered,
 		now:       time.Now,
 	}
 }
