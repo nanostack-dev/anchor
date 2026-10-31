@@ -3165,6 +3165,9 @@ type ResourceMemberListResponse struct {
 
 // ResourceMemberPutRequest The roles the member holds on the resource. The call replaces what the member held there before. The list holds exactly one role while the product allows one role per member per resource, which is the only setting for now; the list shape stays when several roles are allowed.
 type ResourceMemberPutRequest struct {
+	// Resource Optional. The resource's name and parent, as on the resource PUT. A resource that is not registered is registered with them before the roles are set, in the same transaction, so sharing one item takes one call. A registered resource is renamed or moved as the resource PUT does. The parent must be registered already, or be the Organization. Without it, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
+	Resource *ResourcePutRequest `json:"resource,omitempty"`
+
 	// RoleIds IDs of roles a member of the Organization may hold: a role the Product manages or a custom role of this Organization. Any other role answers 400 ROLE_NOT_FOUND_IN_REQUEST. Every role must be scoped to the resource's type, or it answers 400 ROLE_SCOPE_MISMATCH. More than one ID answers 400 SINGLE_ROLE_PER_RESOURCE.
 	//
 	// Examples: ["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"]
@@ -19096,6 +19099,20 @@ func (response PutResourceMember404JSONResponse) VisitPutResourceMemberResponse(
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutResourceMember409JSONResponse ApiErrorResponse
+
+func (response PutResourceMember409JSONResponse) VisitPutResourceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }

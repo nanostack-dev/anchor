@@ -1352,6 +1352,16 @@ components:
           items:
             $ref: "#/components/schemas/ksuid"
           examples: [["role_2qLBedXr4kT9vN2xQ6pK1wAbCdEf"]]
+        resource:
+          $ref: "#/components/schemas/ResourcePutRequest"
+          description: >-
+            Optional. The resource's name and parent, as on the resource PUT.
+            A resource that is not registered is registered with them before
+            the roles are set, in the same transaction, so sharing one item
+            takes one call. A registered resource is renamed or moved as the
+            resource PUT does. The parent must be registered already, or be
+            the Organization. Without it, a resource that is not registered
+            answers 404 RESOURCE_NOT_FOUND.
 
     ResourceMemberRole:
       type: object
@@ -8517,6 +8527,13 @@ paths:
         resource, replacing the ones they held there before. The same body
         twice changes nothing the second time.
 
+        With `resource`, the call first registers the resource, or renames or
+        moves it, exactly as the resource PUT does, then sets the roles, in
+        one transaction: either both change or neither does. It then also
+        emits `resource.created` or `resource.updated`, which stay inside
+        Anchor, and needs resource:write too. Without `resource`, a resource
+        that is not registered answers 404 RESOURCE_NOT_FOUND.
+
         `role_ids` holds exactly one role: a product allows one role per member
         per resource. Each role is one of the Organization's roles, scoped to
         the resource's type; a role template's ID names the Organization's copy
@@ -8526,7 +8543,8 @@ paths:
         Emits `resource.role_assignment.created` when the member held no role
         on the resource, `resource.role_assignment.updated` when the role
         changed, and nothing when it did not. Requires Product API Key with
-        resource_member:write.
+        resource_member:write, and resource:write when the body has
+        `resource`.
       operationId: putResourceMember
       tags: [Resource]
       security:
@@ -8558,7 +8576,9 @@ paths:
             `ROLE_SCOPE_MISMATCH`: the role is scoped to another type than the
             resource; an Organization role is held through the membership.
             `VALIDATION_ERROR`: `role_ids` is missing, empty or longer than
-            10.
+            10, or a field of `resource` is missing or too long. With
+            `resource`, also `INVALID_RESOURCE_PARENT` and
+            `INVALID_RESOURCE_ID` as on the resource PUT.
           content:
             application/json:
               schema:
@@ -8599,6 +8619,25 @@ paths:
                     errors:
                     - code: ORGANIZATION_MEMBERSHIP_NOT_FOUND
                       message: This organization has no membership for that product user
+        "409":
+          description: >-
+            Only with `resource`: the registry refuses the change in its
+            current state, and nothing is written. `PARENT_NOT_REGISTERED`:
+            register the parent first. `RESOURCE_CYCLE`: the resource would sit
+            under itself. `RESOURCE_TOO_DEEP`: the chain would pass 15 levels,
+            counting the Organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+              examples:
+                parentNotRegistered:
+                  summary: The parent is not registered in this Organization
+                  value:
+                    errors:
+                    - code: PARENT_NOT_REGISTERED
+                      message: Register the parent before its children.
+                      metadata: { parent: { type: folder, id: specs } }
     get:
       summary: Get Resource Member
       description: >-

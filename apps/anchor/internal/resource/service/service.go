@@ -16,6 +16,7 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
+	"anchor/internal/domain/roleassignment"
 	"anchor/internal/events"
 	orgrepository "anchor/internal/repository"
 	"anchor/internal/resource/repository"
@@ -27,6 +28,11 @@ import (
 type Service interface {
 	// Put creates, renames or moves one resource, and answers it as stored.
 	Put(ctx context.Context, input resource.PutInput) (resource.Resource, error)
+	// PutWithMember puts the resource as Put does, then replaces the member's
+	// roles on it, in one transaction (anchor#300).
+	PutWithMember(
+		ctx context.Context, member roleassignment.PutInput, name string, parent resource.Ref,
+	) (roleassignment.Member, error)
 	Get(ctx context.Context, productID, organizationID, resourceType, id string) (resource.Resource, error)
 	// Delete removes one resource; with cascade, its whole subtree.
 	Delete(ctx context.Context, productID, organizationID, resourceType, id string, cascade bool) error
@@ -131,6 +137,37 @@ func (s *service) Put(ctx context.Context, input resource.PutInput) (resource.Re
 	})
 	if err != nil {
 		return resource.Resource{}, s.unexpected(err, input.ProductID, "put")
+	}
+	return result, nil
+}
+
+// PutWithMember takes the Organization's resources lock exclusively through
+// Put before the assignment asks for it in share mode, which the transaction
+// then already holds: a shared lock never has to be upgraded.
+func (s *service) PutWithMember(
+	ctx context.Context, member roleassignment.PutInput, name string, parent resource.Ref,
+) (roleassignment.Member, error) {
+	if err := member.Validate(); err != nil {
+		return roleassignment.Member{}, err
+	}
+	var result roleassignment.Member
+	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if _, err := s.Put(txCtx, resource.PutInput{
+			ProductID:      member.ProductID,
+			OrganizationID: member.OrganizationID,
+			Type:           member.ResourceType,
+			ID:             member.ResourceID,
+			Name:           name,
+			Parent:         parent,
+		}); err != nil {
+			return err
+		}
+		var err error
+		result, err = s.assignments.Put(txCtx, member)
+		return err
+	})
+	if err != nil {
+		return roleassignment.Member{}, err
 	}
 	return result, nil
 }

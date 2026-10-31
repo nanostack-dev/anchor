@@ -1879,8 +1879,9 @@ export const getResourceMemberOptions = (options: Options<GetResourceMemberData>
  * Assign Resource Roles
  *
  * Sets the roles a member of the Organization holds on one registered resource, replacing the ones they held there before. The same body twice changes nothing the second time.
+ * With `resource`, the call first registers the resource, or renames or moves it, exactly as the resource PUT does, then sets the roles, in one transaction: either both change or neither does. It then also emits `resource.created` or `resource.updated`, which stay inside Anchor, and needs resource:write too. Without `resource`, a resource that is not registered answers 404 RESOURCE_NOT_FOUND.
  * `role_ids` holds exactly one role: a product allows one role per member per resource. Each role is one of the Organization's roles, scoped to the resource's type; a role template's ID names the Organization's copy of it. Removing the member from the Organization removes their roles on every resource of it.
- * Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write.
+ * Emits `resource.role_assignment.created` when the member held no role on the resource, `resource.role_assignment.updated` when the role changed, and nothing when it did not. Requires Product API Key with resource_member:write, and resource:write when the body has `resource`.
  */
 export const putResourceMemberMutation = (options?: Partial<Options<PutResourceMemberData>>): UseMutationOptions<PutResourceMemberResponse, PutResourceMemberError, Options<PutResourceMemberData>> => {
     const mutationOptions: UseMutationOptions<PutResourceMemberResponse, PutResourceMemberError, Options<PutResourceMemberData>> = {
