@@ -61,7 +61,7 @@ Not searches, with the reason stated in their operation descriptions: `listInteg
 - Sort only on bounded columns. Every sortable column is `VARCHAR(n)` or a timestamp.
 - `search.Request.WithSort(nil, nil)` injects `created_at` ASC. A resource whose default is not that sets its default in its API mapper with `searchx.Sort`, so the default always names a mapped field: `StrictKeys` would refuse an injected `created_at` that the key map lacks.
 - A nullable key sorts NULLs last when ascending and first when descending, the Postgres placement, unless the key pins it with `NullsLast()` or `NullsFirst()`. `last_used_at` on API keys and `name` on product users keep the default. `instantiated_at` on organization licenses is `NullsLast()`, so organizations holding no license come after every licensed one in both directions, and the cursor follows that placement.
-- Internal loops that walked pages by offset follow `next_cursor`: the license adjustment backfill reads the history this way, and so does the permission sync at startup.
+- Internal loops that walked pages by offset follow `next_cursor`: the permission sync at startup reads this way.
 
 ## Index migrations
 

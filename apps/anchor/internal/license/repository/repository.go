@@ -110,12 +110,8 @@ type TemplateRepository interface {
 // OrganizationLicenseRepository persists one Organization's copy of a template's
 // values.
 //
-// Tenant-facing methods are scoped by tenant and product. The sole cross-tenant
-// read is the startup-only adjustment backfill, never exposed by a handler.
+// Every method is scoped by tenant and product.
 type OrganizationLicenseRepository interface {
-	// ListUninitializedAdjustmentsInternal is exclusively for startup backfill.
-	// It bypasses tenant scope to find legacy rows marked by migration 000036.
-	ListUninitializedAdjustmentsInternal(ctx context.Context, limit int) ([]license.OrganizationLicense, error)
 	// FindByOrganization returns the Organization's license, or an absent Option
 	// when it has never been instantiated. Scoping by product as well is what
 	// stops a caller reading another Product's license by guessing a KSUID.
