@@ -51,7 +51,6 @@ func TestMain(m *testing.M) {
 				&IntegrationRepo,
 				&reconcileQueue,
 				&testDB,
-				&adjustmentBackfill,
 				&templateSync,
 				&authzStores,
 			},

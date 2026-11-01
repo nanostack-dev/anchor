@@ -29,7 +29,7 @@ An integration instance derives `CanIngest` and its diagnostic `IngestionBlockRe
 
 Licensing uses the existing framework transactor context for locked repository reads: call `FindByOrganization(transactor.ForUpdate(txCtx), ...)` inside the existing transaction. The retained repository lookup keeps its tenant/product/organization predicate and one-row limit. Keep the decorator inline on the read; subsequent writes use the undecorated transaction context.
 
-Template synchronization and adjustment retain their product advisory lock before the row read. Adjustment backfill uses its existing transaction without that advisory lock; migration inherits its outer session lock. These arrangements are distinct and must not be combined during a readability refactor.
+Template synchronization and adjustment retain their product advisory lock before the row read; migration inherits its outer session lock. These arrangements are distinct and must not be combined during a readability refactor.
 
 ## Service operation phases
 

@@ -19,7 +19,6 @@ import (
 // being a hypertable.
 var testDB *sql.DB
 
-var adjustmentBackfill *licenseservice.LicenseAdjustmentBackfill
 var templateSync licenseservice.LicenseTemplateSyncService
 
 // License component tests cover the licensing HTTP API: the per-product license

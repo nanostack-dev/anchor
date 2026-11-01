@@ -29,7 +29,6 @@ func NewModule() fx.Option {
 			service.NewLicenseTemplateService,
 			service.NewLicenseTemplateSyncEnqueuer,
 			service.NewLicenseTemplateSyncService,
-			service.NewLicenseAdjustmentBackfill,
 			service.NewOrganizationLicenseService,
 			service.NewLicenseHistoryService,
 			service.NewLicenseMigrationService,
@@ -37,6 +36,6 @@ func NewModule() fx.Option {
 			service.NewUsageSeriesService,
 			events.AsRegistration(EventRegistration),
 		),
-		fx.Invoke(service.RegisterLicenseAdjustmentBackfill, service.RegisterLicenseTemplateSyncWorker),
+		fx.Invoke(service.RegisterLicenseTemplateSyncWorker),
 	)
 }

@@ -175,15 +175,6 @@ func TestTemplateSyncContinuesPastOnePage(t *testing.T) {
 			handle.Instantiate(w.TemplateID())
 			licenses = append(licenses, handle)
 		}
-		_, err := testDB.ExecContext(t.Context(),
-			`UPDATE organization_licenses SET adjusted_fields = 'null'::jsonb WHERE product_id = $1`, w.productID())
-		require.NoError(t, err)
-		require.NoError(t, adjustmentBackfill.Run(t.Context()))
-		var uninitialized int
-		require.NoError(t, testDB.QueryRowContext(t.Context(),
-			`SELECT count(*) FROM organization_licenses WHERE product_id = $1 AND adjusted_fields = 'null'::jsonb`,
-			w.productID()).Scan(&uninitialized))
-		require.Zero(t, uninitialized)
 		updated := ct.LicenseTemplateValues{
 			"flows": 50, "sso": false, "support_tier": "basic", "region": "eu-west",
 		}

@@ -50,18 +50,6 @@ func organizationLicenseScope(tenantID, productID string) postgres.BoolExpressio
 		AND(table.OrganizationLicenses.ProductID.EQ(postgres.String(productID)))
 }
 
-// ListUninitializedAdjustmentsInternal is only used by the startup backfill;
-// tenant-facing services must never use this cross-tenant query.
-func (r *organizationLicenseRepositoryImpl) ListUninitializedAdjustmentsInternal(
-	ctx context.Context, limit int,
-) ([]license.OrganizationLicense, error) {
-	stmt := table.OrganizationLicenses.SELECT(table.OrganizationLicenses.AllColumns).
-		FROM(table.OrganizationLicenses).
-		WHERE(table.OrganizationLicenses.AdjustedFields.EQ(postgres.RawString("'null'::jsonb"))).
-		ORDER_BY(table.OrganizationLicenses.ID.ASC()).LIMIT(int64(limit))
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
-}
-
 func (r *organizationLicenseRepositoryImpl) FindByOrganization(
 	ctx context.Context, tenantID string, productID string, organizationID string,
 ) (functional.Option[license.OrganizationLicense], error) {
