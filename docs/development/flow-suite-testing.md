@@ -14,6 +14,8 @@ These API suites are Echopoint flow definitions stored per organization in the s
 
 Independent branches share their real prerequisites; order nodes only when they consume an earlier output or observe its write. Keep independent mutations on separate fixtures. Baseline counts precede every writer in their scope; post-write counts wait for all relevant writers. Poll asynchronous projections by this run's identifiers rather than fixed sleeps.
 
+Every email address a test sends is `garbage+<tag>@nanostack.dev`: tests run against real instances, so invitations and email sends deliver for real. Give each address a readable tag with `{{$runId}}` (for example `garbage+member-{{$runId}}@nanostack.dev`), and keep a case variant on the same mailbox (`garbage+Ana.{{$runId}}@Nanostack.DEV`). Never use `{{$email}}`, `example.com`, `.test` or `.invalid` addresses, or any other domain; the faker generator produces deliverable random addresses. The standing login variables (`email`, `atelierEmail`) are accounts, not recipients.
+
 Survey existing variable names and their precedence before adding inputs. Generate disposable identifiers once and reuse the value wherever the same resource is intended. Keep credentials in supported secret inputs and secure provisioning, outside definitions, command arguments, commits, PR text and shared execution evidence. Check request/result/event redaction before publishing.
 
 The optional Nanostack `flow-suite-testing` skill provides additional graph guidance. This local procedure and the installed CLI schema/help remain sufficient for a standalone checkout.
