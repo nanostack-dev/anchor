@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -427,7 +428,7 @@ func (s *productAPIKeyService) validateAPIKey(
 	)
 
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to validate API key")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to validate API key")
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
