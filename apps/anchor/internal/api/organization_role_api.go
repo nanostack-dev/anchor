@@ -16,7 +16,7 @@ func (s *AnchorAPI) SearchOrganizationRoles(
 	filter := functional.FromPtr(body.Filter).Map(func(f OrganizationRoleFilter) role.SearchProductRoleFilter {
 		return role.SearchProductRoleFilter{
 			ProductRoleIDs: f.Ids,
-			Names:          f.Names,
+			NameSubstrings: f.Names,
 			Permissions:    f.Permissions,
 			ResourceTypes:  f.ResourceTypes,
 			Types:          f.Types,

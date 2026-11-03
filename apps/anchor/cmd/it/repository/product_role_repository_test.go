@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -263,12 +264,12 @@ func TestProductRoleRepositorySearchByProductIDFilterByNames(t *testing.T) {
 
 	_ = createProductRole(t, productID) // unrelated role, must not match
 
-	// Names filter is a substring LIKE match (see the manual LIKE construction
-	// in SearchByProductID), so a partial name is enough.
+	// Names matches exact role names, ignoring letter case, so a substring of
+	// another role's name must not widen the result.
 	result, err := repoCtx.ProductRoleRepository.SearchByProductID(
 		context.Background(), productID,
 		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
-			Filter:     &role.SearchProductRoleFilter{Names: []string{"Editor Role"}},
+			Filter:     &role.SearchProductRoleFilter{Names: []string{strings.ToUpper(name)}},
 			Pagination: search.Pagination{Limit: 10, Offset: 0},
 		},
 	)
@@ -287,6 +288,56 @@ func TestProductRoleRepositorySearchByProductIDFilterByNames(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), none.Total)
 	assert.Empty(t, none.Items)
+}
+
+func TestProductRoleRepositorySearchByProductIDFilterByNameContains(t *testing.T) {
+	productID := tenantProductChain(t)
+
+	name := uniqueName(t, "Editor Role")
+	entity := role.NewManaged(productID, name, "fixture")
+	entity.ResourceTypeID = organizationTypeID(t, productID)
+	matching, err := repoCtx.ProductRoleRepository.Create(context.Background(), entity)
+	require.NoError(t, err)
+
+	_ = createProductRole(t, productID) // unrelated role, must not match
+
+	fragment := strings.ToUpper(name[2:])
+	result, err := repoCtx.ProductRoleRepository.SearchByProductID(
+		context.Background(), productID,
+		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
+			Filter:     &role.SearchProductRoleFilter{NameContains: &fragment},
+			Pagination: search.Pagination{Limit: 10, Offset: 0},
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, matching.ID, result.Items[0].ID)
+}
+
+// The Organization role search documents its names filter as substring
+// matching, so its route maps names to NameSubstrings.
+func TestProductRoleRepositorySearchByProductIDFilterByNameSubstrings(t *testing.T) {
+	productID := tenantProductChain(t)
+
+	name := uniqueName(t, "Editor Role")
+	entity := role.NewManaged(productID, name, "fixture")
+	entity.ResourceTypeID = organizationTypeID(t, productID)
+	matching, err := repoCtx.ProductRoleRepository.Create(context.Background(), entity)
+	require.NoError(t, err)
+
+	_ = createProductRole(t, productID) // unrelated role, must not match
+
+	fragment := strings.ToUpper(name[2:])
+	result, err := repoCtx.ProductRoleRepository.SearchByProductID(
+		context.Background(), productID,
+		search.Request[role.SearchProductRoleFilter, role.SortFieldProductRole]{
+			Filter:     &role.SearchProductRoleFilter{NameSubstrings: []string{fragment}},
+			Pagination: search.Pagination{Limit: 10, Offset: 0},
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, matching.ID, result.Items[0].ID)
 }
 
 func TestProductRoleRepositorySearchByProductIDScopesToProduct(t *testing.T) {

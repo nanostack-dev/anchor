@@ -87,7 +87,7 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
-		"Creating a product user with missing name returns a bad request", func(t *testing.T) {
+		"Creating a product user with only an email succeeds", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 
 			email := itshared.Faker.Internet().Email()
@@ -104,15 +104,18 @@ func TestCreateProductUser(t *testing.T) {
 			)
 
 			require.NoError(
-				t, err, "create product user with missing name should not error",
+				t, err, "create product user without a name should not error",
 			)
 			assert.Equal(
-				t, 400, resp.StatusCode(),
-				"create product user with missing name should return 400 Bad Request",
+				t, http.StatusCreated,
+				resp.StatusCode(),
+				"create product user without a name should return 201 Created",
 			)
-			assert.NotNil(t, resp.JSON400)
-			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
-			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name is a required field")
+			assert.NotNil(t, resp.JSON201)
+			assert.Equal(t, email, resp.JSON201.Email)
+			assert.Nil(t, resp.JSON201.Name, "an omitted name stays unset")
+			assert.Equal(t, ct.Active, resp.JSON201.Status)
+			assert.NotEmpty(t, resp.JSON201.Id)
 		},
 	)
 
@@ -144,7 +147,7 @@ func TestCreateProductUser(t *testing.T) {
 			)
 			assert.NotNil(t, resp.JSON400)
 			assert.Contains(t, resp.JSON400.Errors[0].Code, "VALIDATION_ERROR")
-			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name is a required field")
+			assert.Contains(t, resp.JSON400.Errors[0].Message, "Name cannot be blank")
 		},
 	)
 
