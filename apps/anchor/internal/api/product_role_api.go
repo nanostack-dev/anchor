@@ -195,6 +195,7 @@ func mapToSearchProductRoleInput(
 		return role.SearchProductRoleFilter{
 			ProductRoleIDs: f.Ids,
 			Names:          f.Names,
+			NameContains:   f.NameContains,
 			Permissions:    f.Permissions,
 			ResourceTypes:  f.ResourceTypes,
 		}

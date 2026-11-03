@@ -657,8 +657,8 @@ func (s *productRoleService) markRoleUpdated(
 func (s *productRoleService) nameDuplicationValidation(
 	ctx context.Context, productID, roleName, currentRoleID string, logger zerolog.Logger,
 ) error {
-	// Exact-name lookup. The search filter matches names as substrings, which
-	// would wrongly flag e.g. "role" as a duplicate of "role-admin".
+	// Exact-name lookup. It runs as its own query rather than through the
+	// search, which returns a page for a filter the check only tests.
 	found, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
 	if err != nil {
 		logger.Error().

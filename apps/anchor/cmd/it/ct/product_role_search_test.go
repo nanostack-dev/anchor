@@ -3,6 +3,7 @@ package ct_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
@@ -92,6 +93,44 @@ func TestProductRole_Search(t *testing.T) {
 			assert.True(t, roleNames[role1Name])
 			assert.True(t, roleNames[role3Name])
 			assert.False(t, roleNames[role2Name])
+		},
+	)
+
+	t.Run(
+		"Searching product roles by names matches them exactly", func(t *testing.T) {
+			// A substring of a role name must not match it: filter.names is
+			// documented as exact matching.
+			searchResp, nameFilterErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
+				ctx, productID, ct.SearchProductRolesJSONRequestBody{
+					Filter: &ct.ProductRoleFilter{
+						Names: []string{role1Name[1:]},
+					},
+				},
+			)
+			require.NoError(t, nameFilterErr)
+			assert.Equal(t, 200, searchResp.StatusCode())
+			assert.NotNil(t, searchResp.JSON200)
+			assert.Empty(t, searchResp.JSON200.Items)
+			assert.Equal(t, int64(0), searchResp.JSON200.Total)
+		},
+	)
+
+	t.Run(
+		"Searching product roles by name_contains matches a substring", func(t *testing.T) {
+			upperRole1Name := strings.ToUpper(role1Name)
+			searchResp, filterErr := testCtx.OwnerAuthenticatedClient().SearchProductRolesWithResponse(
+				ctx, productID, ct.SearchProductRolesJSONRequestBody{
+					Filter: &ct.ProductRoleFilter{
+						NameContains: &upperRole1Name,
+					},
+				},
+			)
+			require.NoError(t, filterErr)
+			assert.Equal(t, 200, searchResp.StatusCode())
+			assert.NotNil(t, searchResp.JSON200)
+			require.Len(t, searchResp.JSON200.Items, 1)
+			assert.Equal(t, role1Name, searchResp.JSON200.Items[0].Name)
+			assert.Equal(t, int64(1), searchResp.JSON200.Total)
 		},
 	)
 

@@ -240,8 +240,7 @@ func (r *productRoleRepositoryImpl) ExistsManaged(ctx context.Context, productID
 }
 
 // GetByProductIDAndName looks up a role by its exact name within a product.
-// Used for uniqueness checks — exact match, not the substring match the search
-// filter applies.
+// Used for uniqueness checks.
 func (r *productRoleRepositoryImpl) GetByProductIDAndName(
 	ctx context.Context, productID, name string,
 ) (functional.Option[role.ProductRole], error) {
@@ -522,32 +521,7 @@ func (r *productRoleRepositoryImpl) search(
 	}
 
 	if input.Filter != nil {
-		if len(input.Filter.ProductRoleIDs) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.ProductRoleIDs)
-			whereStmt = whereStmt.AND(table.ProductRoles.ID.IN(expressions...))
-		}
-		if len(input.Filter.Names) > 0 {
-			nameConditions := functional.Slice(input.Filter.Names).Map(
-				func(name string) postgres.BoolExpression {
-					return table.ProductRoles.Name.LIKE(postgres.String("%" + name + "%"))
-				},
-			)
-			whereStmt = whereStmt.AND(postgres.OR(nameConditions...))
-		}
-		if input.Filter.Scopes.Active() {
-			whereStmt = whereStmt.AND(scopeCondition(table.ProductRoles.ResourceTypeID, input.Filter.Scopes))
-		}
-		if len(input.Filter.Permissions) > 0 {
-			whereStmt = whereStmt.AND(postgres.EXISTS(
-				table.ProductRoleResourcePermissions.SELECT(postgres.Int(1)).WHERE(
-					table.ProductRoleResourcePermissions.ProductRoleID.EQ(table.ProductRoles.ID).
-						AND(table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID))).
-						AND(postgres.LOWER(table.ProductRoleResourcePermissions.PermissionName).IN(
-							jetx.ToStringExpressions(lowerResourcePermissionStrings(input.Filter.Permissions))...,
-						)),
-				),
-			))
-		}
+		whereStmt = whereStmt.AND(roleSearchFilterCondition(productID, *input.Filter))
 	}
 
 	// Page over roles, not over the role⋈permissions join. Applying LIMIT/OFFSET
@@ -637,6 +611,66 @@ func (r *productRoleRepositoryImpl) search(
 		Count:      len(items),
 		NextCursor: pageResult.NextCursor,
 	}, nil
+}
+
+// roleSearchFilterCondition narrows a role search to what the filter names.
+// Names match exactly; NameSubstrings and NameContains match case-insensitive
+// substrings, comparing letter case with LOWER.
+func roleSearchFilterCondition(
+	productID string, filter role.SearchProductRoleFilter,
+) postgres.BoolExpression {
+	condition := postgres.Bool(true)
+	if len(filter.ProductRoleIDs) > 0 {
+		condition = condition.AND(
+			table.ProductRoles.ID.IN(jetx.ToStringExpressions(filter.ProductRoleIDs)...),
+		)
+	}
+	if len(filter.Names) > 0 {
+		names := functional.Slice(filter.Names).Map(strings.ToLower)
+		condition = condition.AND(
+			postgres.LOWER(table.ProductRoles.Name).IN(jetx.ToStringExpressions(names)...),
+		)
+	}
+	if len(filter.NameSubstrings) > 0 {
+		substrings := functional.Slice(filter.NameSubstrings).Map(
+			func(name string) postgres.BoolExpression {
+				return postgres.LOWER(table.ProductRoles.Name).LIKE(
+					postgres.String(roleNameLikePattern(name)),
+				)
+			},
+		)
+		condition = condition.AND(postgres.OR(substrings...))
+	}
+	if filter.NameContains != nil {
+		condition = condition.AND(
+			postgres.LOWER(table.ProductRoles.Name).LIKE(
+				postgres.String(roleNameLikePattern(*filter.NameContains)),
+			),
+		)
+	}
+	if filter.Scopes.Active() {
+		condition = condition.AND(scopeCondition(table.ProductRoles.ResourceTypeID, filter.Scopes))
+	}
+	if len(filter.Permissions) > 0 {
+		condition = condition.AND(postgres.EXISTS(
+			table.ProductRoleResourcePermissions.SELECT(postgres.Int(1)).WHERE(
+				table.ProductRoleResourcePermissions.ProductRoleID.EQ(table.ProductRoles.ID).
+					AND(table.ProductRoleResourcePermissions.ProductID.EQ(postgres.String(productID))).
+					AND(postgres.LOWER(table.ProductRoleResourcePermissions.PermissionName).IN(
+						jetx.ToStringExpressions(lowerResourcePermissionStrings(filter.Permissions))...,
+					)),
+			),
+		))
+	}
+	return condition
+}
+
+// roleNameLikePattern builds the case-insensitive substring pattern the name
+// filters match. % and _ match themselves under PostgreSQL's default LIKE
+// escape character.
+func roleNameLikePattern(term string) string {
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term))
+	return "%" + escaped + "%"
 }
 
 // findOne runs the shared row-and-permissions query. Each caller passes its

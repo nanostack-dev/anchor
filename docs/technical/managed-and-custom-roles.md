@@ -59,6 +59,8 @@ POST /v1/products/prd_1/organizations/org_acme/roles
 | `PUT …/roles/{role_id}` | changes a custom role's name, description and permissions | a managed role: `409 ROLE_NOT_EDITABLE`; switch off: `400 CUSTOM_ROLES_DISABLED` |
 | `DELETE …/roles/{role_id}` | deletes a custom role, also with the switch off | a managed role: `409 ROLE_NOT_EDITABLE`; a role in use: `409 ROLE_IN_USE` |
 
+The product role search matches `filter.names` exactly and `filter.name_contains` as a case-insensitive substring. The Organization role search keeps its documented substring matching for `filter.names`.
+
 Turning the switch off keeps the custom roles that exist, and the access they grant: no member loses a permission. The Organization can no longer create or change them, and can still delete them.
 
 The create counts the Organization's custom roles under its row lock (`transactor.ForNoKeyUpdate` on the `organizations` row, written inline in the service), so two creates at 49 can't both pass the limit of 50. The lock leaves member adds alone: their foreign key takes `FOR KEY SHARE`, which `FOR NO KEY UPDATE` lets through. A managed role may later take a custom role's name, so a customer never blocks the Product.

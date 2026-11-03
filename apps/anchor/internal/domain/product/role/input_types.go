@@ -60,9 +60,17 @@ func (in SearchProductRolesInput) Validate() error {
 
 type SearchProductRoleFilter struct {
 	ProductRoleIDs []string `validate:"omitempty,dive"`
-	Names          []string `validate:"omitempty,dive,min=1"`
-	Permissions    []string `validate:"omitempty,dive,notblank,max=200"`
-	ResourceTypes  []string `validate:"omitempty,max=50,dive,notblank"`
+	// Names matches role names exactly, ignoring letter case.
+	Names []string `validate:"omitempty,dive,min=1"`
+	// NameSubstrings matches roles whose names contain one of these values.
+	// The Organization role search documents its names filter as substring
+	// matching, so its route maps names here instead of Names.
+	NameSubstrings []string `validate:"omitempty,dive,min=1"`
+	// NameContains matches roles whose names contain this value, ignoring
+	// letter case.
+	NameContains  *string  `validate:"omitempty,min=1"`
+	Permissions   []string `validate:"omitempty,dive,notblank,max=200"`
+	ResourceTypes []string `validate:"omitempty,max=50,dive,notblank"`
 	// Types narrows an Organization's role search to managed or custom roles.
 	Types []Type `validate:"omitempty,max=2"`
 	// Scopes is what the service resolves ResourceTypes to.
