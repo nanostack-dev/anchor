@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/product/apikey"
 	"anchor/internal/security"
@@ -70,7 +71,7 @@ func (auth *AuthMiddleware) authenticateProductAPIKey(
 
 	prod, err := auth.productService.GetInternal(ctx, productIDPath)
 	if err != nil {
-		auth.logger.Error().Err(err).Str("product_id", productIDPath).
+		log.Event(&auth.logger, err).Str("product_id", productIDPath).
 			Msg("failed to resolve product tenant for API key auth")
 		return nil, &schemeError{fault: fault.ErrUnexpected, reason: "product lookup failed"}
 	}

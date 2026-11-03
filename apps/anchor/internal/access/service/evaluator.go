@@ -236,7 +236,7 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 }
 
 func (e *evaluator) unexpected(err error, request Request, lookup string) error {
-	e.logger.Error().Err(err).Str("product_id", request.ProductID).Str("lookup", lookup).
+	log.Event(&e.logger, err).Str("product_id", request.ProductID).Str("lookup", lookup).
 		Msg("access evaluation lookup failed")
 	return fault.ErrUnexpected
 }

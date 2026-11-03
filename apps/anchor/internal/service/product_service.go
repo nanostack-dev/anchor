@@ -106,7 +106,7 @@ func (s *productService) GetInternal(
 
 	found, err := s.productRepo.FindByIDInternal(ctx, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product internally")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to find product internally")
 		return nil, err
 	}
 
