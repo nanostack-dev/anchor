@@ -321,7 +321,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 
 		if len(request.Filter.Statuses) > 0 {
 			// Rows written before 2026-11-04 may hold ACTIVE; match both spellings.
-			statuses := make([]string, 0, 2*len(request.Filter.Statuses))
+			var statuses []string
 			for _, status := range request.Filter.Statuses {
 				statuses = append(statuses, string(status), strings.ToUpper(string(status)))
 			}
