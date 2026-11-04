@@ -8,7 +8,7 @@
   "authors": [
     "Nanostack routine (echopoint-investigation)"
   ],
-  "summary": "Since the v1 snapshot (2026-05-11), `POST /v1/products/{id}/product-users` without `status` stored the user as `ACTIVE` and answered `\"status\": \"ACTIVE\"`, although the contract enum is `active`, `invited`, `suspended`. Every Clerk-synced user was stored the same way. A `statuses: [\"active\"]` search does not match those rows, and a client that decodes the enum strictly cannot read the response. The flow suite found it on 2026-11-04 at 00:13Z, when an email-only create added to `anchor: product-user` after anchor#321 got `ACTIVE` back. The fix stores and returns the contract spelling, folds a requested status to lower case, validates it against the enum in the service, and rewrites stored rows; it waits for human review because it rewrites data and changes a visible response.",
+  "summary": "Since the v1 snapshot (2026-05-11), `POST /v1/products/{id}/product-users` without `status` stored the user as `ACTIVE` and answered `\"status\": \"ACTIVE\"`, although the contract enum is `active`, `invited`, `suspended`. Every Clerk-synced user was stored the same way. A `statuses: [\"active\"]` search does not match those rows, and a client that decodes the enum strictly cannot read the response. The flow suite found it on 2026-11-04 at 00:13Z, when an email-only create added to `anchor: product-user` after anchor#321 got `ACTIVE` back. The fix stores and returns the contract spelling, folds a requested status to lower case, validates it against the enum in the service, and reads stored `ACTIVE` rows back as `active` (search matches both spellings); it waits for human review because it changes a visible response.",
   "impact": {
     "text": "Prod and dev, every product. Responses for default and Clerk-synced users carry a value outside the documented enum, and status searches with the documented values miss those users. The number of affected clients is unknown: nothing logs enum mismatches. This is the same class as the 2026-10-26 name contract drift.",
     "numbers": [
@@ -126,7 +126,7 @@
             ]
           },
           {
-            "text": "Stored rows mix `ACTIVE` and `active`, so a fix must rewrite data, which needs review",
+            "text": "Stored rows mix `ACTIVE` and `active`, so the fix must read both spellings (a migration backfill is refused by migration lint)",
             "because": [
               {
                 "text": "The service accepted any status string: the create input validated `required` only, and the request validator let `ACTIVE` through",
@@ -160,13 +160,13 @@
     ],
     "lucky": [
       "The bug surfaced only because the gate check for #321 needed rewriting that night; the default path had no other test.",
-      "Lower-casing is a lossless rewrite for both spellings seen in code (`ACTIVE`, `active`), so the data fix is one `UPDATE`."
+      "Lower-casing on read is lossless for both spellings seen in code (`ACTIVE`, `active`), so no backfill is needed."
     ]
   },
   "actions": [
     {
       "id": "A1",
-      "what": "Store and return contract statuses, fold input case, validate the enum in the service, rewrite rows",
+      "what": "Store and return contract statuses, fold input case, validate the enum in the service, read legacy rows as active",
       "type": "prevent",
       "owner": "anchor maintainers (review)",
       "due": "2026-11-11",
@@ -236,7 +236,7 @@
     }
   ],
   "messaging": {
-    "internal": "Anchor returns product user status ACTIVE for users created without a status and for Clerk-synced users; the contract says active. Fix waiting for review (migration rewrites rows).",
+    "internal": "Anchor returns product user status ACTIVE for users created without a status and for Clerk-synced users; the contract says active. Fix waiting for review.",
     "external": "Product users created without a status, and users synced from Clerk, were returned with status ACTIVE instead of active. Responses now use the documented values, and searches by status find these users."
   },
   "links": [

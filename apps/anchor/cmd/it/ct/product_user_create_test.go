@@ -81,6 +81,22 @@ func TestCreateProductUser(t *testing.T) {
 			require.NoError(t, err, "search product users should not error")
 			require.Equal(t, http.StatusOK, search.StatusCode(), "search should return 200 OK")
 			assert.Equal(t, int64(1), search.JSON200.Total, "a statuses: [active] search finds the user")
+
+			// Rows written before 2026-11-04 hold ACTIVE: they read back as active and match the search.
+			_, err = testDB.ExecContext(ctx, "UPDATE product_users SET status = 'ACTIVE' WHERE id = $1", resp.JSON201.Id)
+			require.NoError(t, err, "store the legacy spelling on this CT's own user")
+			legacy, err := apiKeyClient.GetProductUserWithResponse(ctx, productContext.ProductID, resp.JSON201.Id)
+			require.NoError(t, err, "get product user should not error")
+			require.Equal(t, http.StatusOK, legacy.StatusCode(), "get should return 200 OK")
+			assert.Equal(t, ct.Active, legacy.JSON200.Status, "a legacy ACTIVE row reads back as active")
+			search, err = apiKeyClient.SearchProductUsersWithResponse(
+				ctx, productContext.ProductID,
+				ct.SearchProductUsersJSONRequestBody{
+					Filter: &ct.ProductUserFilter{Emails: []string{email}, Statuses: &statuses},
+				},
+			)
+			require.NoError(t, err, "search product users should not error")
+			assert.Equal(t, int64(1), search.JSON200.Total, "a statuses: [active] search finds a legacy ACTIVE row")
 		},
 	)
 

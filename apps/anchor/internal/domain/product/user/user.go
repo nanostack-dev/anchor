@@ -20,9 +20,9 @@ const (
 	ProductUserStatusSuspended ProductUserStatus = "suspended"
 )
 
-// ParseProductUserStatus folds a requested status to the contract's spelling.
-// Clients that sent "ACTIVE" (accepted and stored as-is before 2026-11-04)
-// keep working.
+// ParseProductUserStatus folds a status to the contract's spelling. Clients
+// that send "ACTIVE" keep working, and rows stored as ACTIVE before 2026-11-04
+// read back as active.
 func ParseProductUserStatus(status string) ProductUserStatus {
 	return ProductUserStatus(strings.ToLower(status))
 }

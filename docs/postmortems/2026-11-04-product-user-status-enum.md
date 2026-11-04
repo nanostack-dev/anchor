@@ -15,7 +15,7 @@
 
 ## Summary
 
-Since the v1 snapshot (2026-05-11), `POST /v1/products/{id}/product-users` without `status` stored the user as `ACTIVE` and answered `"status": "ACTIVE"`, although the contract enum is `active`, `invited`, `suspended`. Every Clerk-synced user was stored the same way. A `statuses: ["active"]` search does not match those rows, and a client that decodes the enum strictly cannot read the response. The flow suite found it on 2026-11-04 at 00:13Z, when an email-only create added to `anchor: product-user` after anchor#321 got `ACTIVE` back. The fix stores and returns the contract spelling, folds a requested status to lower case, validates it against the enum in the service, and rewrites stored rows; it waits for human review because it rewrites data and changes a visible response.
+Since the v1 snapshot (2026-05-11), `POST /v1/products/{id}/product-users` without `status` stored the user as `ACTIVE` and answered `"status": "ACTIVE"`, although the contract enum is `active`, `invited`, `suspended`. Every Clerk-synced user was stored the same way. A `statuses: ["active"]` search does not match those rows, and a client that decodes the enum strictly cannot read the response. The flow suite found it on 2026-11-04 at 00:13Z, when an email-only create added to `anchor: product-user` after anchor#321 got `ACTIVE` back. The fix stores and returns the contract spelling, folds a requested status to lower case, validates it against the enum in the service, and reads stored `ACTIVE` rows back as `active` (search matches both spellings); it waits for human review because it changes a visible response.
 
 ## Impact
 
@@ -65,7 +65,7 @@ flowchart TD
   W5["Nothing flagged the value for six months"]
   W6["Responses are not checked against the OpenAPI schema in CTs, and requests with `ACTIVE` passed validation too"]
   R3["R3 · Neither CTs nor the server validate responses (and request enums) against openapi.yaml"]
-  W7["Stored rows mix `ACTIVE` and `active`, so a fix must rewrite data, which needs review"]
+  W7["Stored rows mix `ACTIVE` and `active`, so the fix must read both spellings (a migration backfill is refused by migration lint)"]
   W8["The service accepted any status string: the create input validated `required` only, and the request validator let `ACTIVE` through"]
   R4["R4 · Status writes had no enum validation in the service layer, which owns business rules in Anchor"]
   P -->|why?| W1
@@ -97,7 +97,7 @@ flowchart TD
   - **Why so bad?** Nothing flagged the value for six months
     - **Why?** Responses are not checked against the OpenAPI schema in CTs, and requests with `ACTIVE` passed validation too _Evidence: The DSL's `ACTIVE` create returns 201 on main; CT asserts compare to generated constants only_
       - **Why?** Neither CTs nor the server validate responses (and request enums) against openapi.yaml → **Root cause R3** (fixed by A3, A4)
-    - **Why?** Stored rows mix `ACTIVE` and `active`, so a fix must rewrite data, which needs review
+    - **Why?** Stored rows mix `ACTIVE` and `active`, so the fix must read both spellings (a migration backfill is refused by migration lint)
       - **Why?** The service accepted any status string: the create input validated `required` only, and the request validator let `ACTIVE` through _Evidence: `CreateProductUserInput.Status validate:"required"`; the CT DSL's `ACTIVE` create answers 201_
         - **Why?** Status writes had no enum validation in the service layer, which owns business rules in Anchor → **Root cause R4** (fixed by A1)
 
@@ -128,13 +128,13 @@ flowchart TD
 ### Where we got lucky
 
 - The bug surfaced only because the gate check for #321 needed rewriting that night; the default path had no other test.
-- Lower-casing is a lossless rewrite for both spellings seen in code (`ACTIVE`, `active`), so the data fix is one `UPDATE`.
+- Lower-casing on read is lossless for both spellings seen in code (`ACTIVE`, `active`), so no backfill is needed.
 
 ## Action items
 
 | ID | Action | Type | Owner | Due | Status | Ticket | Fixes |
 |---|---|---|---|---|---|---|---|
-| A1 | Store and return contract statuses, fold input case, validate the enum in the service, rewrite rows | prevent | anchor maintainers (review) | 2026-11-11 | open | [anchor#323](https://github.com/nanostack-dev/anchor/pull/323) | R1, R4 |
+| A1 | Store and return contract statuses, fold input case, validate the enum in the service, read legacy rows as active | prevent | anchor maintainers (review) | 2026-11-11 | open | [anchor#323](https://github.com/nanostack-dev/anchor/pull/323) | R1, R4 |
 | A2 | CT per create operation with only the contract's required fields, asserting every defaulted field | prevent | anchor maintainers | 2026-11-18 | open |  | R2 |
 | A3 | Validate CT responses against openapi.yaml (kin-openapi response validation in the CT client) | detect | anchor maintainers | 2026-11-18 | open |  | R3 |
 | A4 | Known-bugs reproduction; move into `anchor: product-user` once the fix is live | detect | Nanostack routine (echopoint-investigation) | 2026-11-04 | done |  | R3 |
@@ -148,7 +148,7 @@ flowchart TD
 
 ### Internal
 
-Anchor returns product user status ACTIVE for users created without a status and for Clerk-synced users; the contract says active. Fix waiting for review (migration rewrites rows).
+Anchor returns product user status ACTIVE for users created without a status and for Clerk-synced users; the contract says active. Fix waiting for review.
 
 ### Customers
 

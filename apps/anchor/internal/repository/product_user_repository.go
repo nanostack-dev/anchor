@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -319,7 +320,12 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		}
 
 		if len(request.Filter.Statuses) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.Statuses)
+			// Rows written before 2026-11-04 may hold ACTIVE; match both spellings.
+			statuses := make([]string, 0, 2*len(request.Filter.Statuses))
+			for _, status := range request.Filter.Statuses {
+				statuses = append(statuses, string(status), strings.ToUpper(string(status)))
+			}
+			expressions := jetx.ToStringExpressions(statuses)
 			whereStmt = whereStmt.AND(table.ProductUsers.Status.IN(expressions...))
 		}
 
