@@ -11,7 +11,7 @@ type CreateProductUserInput struct {
 	ProductID  string            `validate:"required,notblank"`
 	Email      string            `validate:"required,email"`
 	Name       *string           `validate:"omitempty,notblank"`
-	Status     ProductUserStatus `validate:"required"`
+	Status     ProductUserStatus `validate:"required,oneof=active invited suspended"`
 	ExternalID *string           `validate:"omitempty,notblank,max=255,printascii"`
 }
 
@@ -42,7 +42,7 @@ type SearchProductUserFilter struct {
 	IDs         []string            `validate:"omitempty,dive,notblank"`
 	Emails      []string            `validate:"omitempty,dive,email"`
 	Names       []string            `validate:"omitempty,dive,notblank"`
-	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended ACTIVE INACTIVE"`
+	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended"`
 	ExternalIDs []string            `validate:"omitempty,dive,notblank"`
 }
 

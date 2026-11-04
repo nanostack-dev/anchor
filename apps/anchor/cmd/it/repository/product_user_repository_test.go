@@ -138,7 +138,7 @@ func TestProductUserRepositorySearchByProductIDSortDirections(t *testing.T) {
 		ProductID: productID,
 		Name:      "Bravo",
 		Email:     "bravo@example.com",
-		Status:    user.ProductUserStatusInactive,
+		Status:    user.ProductUserStatusSuspended,
 	})
 	charlie := createProductUserWithDetails(t, user.ProductUser{
 		ProductID: productID,
@@ -357,7 +357,7 @@ func TestProductUserRepositorySearchByProductIDFilterByStatuses(t *testing.T) {
 		ProductID: productID,
 		Name:      uniqueName(t, "Inactive User"),
 		Email:     uniqueName(t, "inactive") + "@example.com",
-		Status:    user.ProductUserStatusInactive,
+		Status:    user.ProductUserStatusSuspended,
 	})
 
 	result, err := repoCtx.ProductUserRepository.SearchByProductID(
