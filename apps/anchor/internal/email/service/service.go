@@ -708,7 +708,7 @@ func (s *emailService) Send(
 
 	rendered, err := s.renderer.Render(version, in.Variables)
 	if err != nil {
-		return email.SendRecord{}, err
+		return email.SendRecord{}, fault.BadRequest("EMAIL_TEMPLATE_RENDER_ERROR", err.Error())
 	}
 	// A retry resends the recorded message, so the send record always matches what was delivered.
 	if retryRecord != nil && (retryRecord.ToAddress != in.ToAddress || retryRecord.ToName != in.ToName ||
