@@ -51,11 +51,6 @@ on:
 # compromise, where a moved tag dumped runner memory into public build logs.
 permissions: {}
 
-env:
-  DAGGER_VERSION: v1.0.0-beta.24
-  DAGGER_ENGINE: image://registry.dagger.io/engine:v1.0.0-beta.24
-  DAGGER_NO_NAG: '1'
-
 concurrency:
   group: go-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && 'main') || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -118,12 +113,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6.0.2
-      - name: Install the Dagger CLI
-        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
+      - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Run the frontend checks
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
           dagger check --progress=report 'dag://anchor/frontend-*' 'dag://anchor/storybook-test' 'dag://anchor/api-client/stale'
 
   dagger-backend:
@@ -134,8 +128,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6.0.2
-      - name: Install the Dagger CLI
-        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
+      - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Run the backend checks
         env:
           # Two at a time on the runner's 4 vCPUs: lint, three Go suites and the
@@ -143,7 +137,6 @@ jobs:
           DAGGER_CHECK_PARALLEL: '2'
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
           dagger check --progress=report 'dag://anchor/lint' 'dag://anchor/*-tests' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
@@ -169,8 +162,8 @@ jobs:
       deploy_image_tag: ${{ steps.publish.outputs.deploy_image_tag }}
     steps:
       - uses: actions/checkout@v6.0.2
-      - name: Install the Dagger CLI
-        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
+      - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Build and push the image
         id: publish
         env:
@@ -184,7 +177,6 @@ jobs:
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
           # The tags docker/metadata-action gave: the branch or pr-N, sha-<7>,
           # and latest on the default branch.
           short="sha-${GITHUB_SHA:0:7}"
