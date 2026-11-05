@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"anchor/internal/integration/provider"
 	"anchor/internal/security/encryption"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/rs/zerolog"
 	"go.uber.org/fx"
@@ -189,6 +191,13 @@ func (p *Provider) PrepareUpdatedConfigForStorage(
 		return nil, fmt.Errorf("invalid existing smtp config: %w", err)
 	}
 
+	// The stored password authenticates to the stored server only; a new destination needs it sent again.
+	effectivePort := func(port int) int { return cmp.Or(port, defaultPort) }
+	if !strings.EqualFold(strings.TrimSpace(cfg.Host), strings.TrimSpace(currentCfg.Host)) ||
+		effectivePort(cfg.Port) != effectivePort(currentCfg.Port) {
+		return nil, fault.BadRequest("SMTP_PASSWORD_REQUIRED",
+			"Send the SMTP password again when the host or the port changes.")
+	}
 	cfg.Password = currentCfg.Password
 	// #nosec G117 -- password is already encrypted or preserved from stored config.
 	mergedConfigJSON, err := json.Marshal(cfg)
@@ -252,15 +261,22 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 	if err != nil {
 		return err
 	}
+	// last_error is returned to the tenant, so it names the step, never the peer's reply or dial outcome.
 	client, err := dialSMTP(ctx, cfg)
 	if err != nil {
-		return err
+		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification could not connect")
+		return errors.New("smtp: could not connect to the server")
 	}
 	defer func() { _ = client.Close() }()
 	if err = authenticate(client, cfg); err != nil {
-		return fmt.Errorf("smtp auth: %w", err)
+		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification was refused")
+		return errors.New("smtp: the server refused the credentials")
 	}
-	return client.Quit()
+	if err = client.Quit(); err != nil {
+		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification did not close cleanly")
+		return errors.New("smtp: the server ended the session with an error")
+	}
+	return nil
 }
 
 // Send transmits a fully rendered OutboundMessage through the configured SMTP
