@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/product"
+	"anchor/internal/repository"
 	"anchor/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,7 @@ type AuthMiddleware struct {
 	jwtHelper               service.JWTHelper
 	productAPIKeyKeyService service.ProductAPIKeyService
 	productService          service.ProductService
+	members                 repository.PlatformTenantUserRepository
 	logger                  zerolog.Logger
 	// resolver reads each operation's security requirements from the OpenAPI
 	// document, replacing oapi-codegen's generated `<Scheme>Scopes` context
@@ -34,13 +36,14 @@ type AuthMiddleware struct {
 // NewAuthMiddleware creates a new AuthMiddleware instance.
 func NewAuthMiddleware(
 	jwtHelper service.JWTHelper, productAPIKeyKeyService service.ProductAPIKeyService,
-	productService service.ProductService, logger zerolog.Logger,
+	productService service.ProductService, members repository.PlatformTenantUserRepository, logger zerolog.Logger,
 	resolver *apisec.Resolver,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtHelper:               jwtHelper,
 		productAPIKeyKeyService: productAPIKeyKeyService,
 		productService:          productService,
+		members:                 members,
 		logger:                  logger.With().Str("component", "auth_middleware").Logger(),
 		resolver:                resolver,
 	}
@@ -105,6 +108,14 @@ func (auth *AuthMiddleware) validateAccessToken(r *http.Request) (*service.AuthC
 	token, err := auth.jwtHelper.ValidateAccessToken(bearer[len(bearerPrefix):])
 	if err != nil {
 		return nil, unauthorized("access token rejected")
+	}
+	// A deleted platform user keeps a signed token until it expires; the token must stop with the user.
+	member, err := auth.members.FindByTenantIDAndUserID(r.Context(), token.TenantID, token.UserID)
+	if err != nil {
+		return nil, &schemeError{fault: fault.ErrUnexpected, reason: "platform user lookup failed"}
+	}
+	if member.IsAbsent() {
+		return nil, unauthorized("platform user no longer exists")
 	}
 	return token, nil
 }
