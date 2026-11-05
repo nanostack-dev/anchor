@@ -12,9 +12,13 @@ const docsHTML = `<!doctype html>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Anchor API Documentation</title>
-    <!-- Embed elements Elements via Web Component -->
-    <script src="https://unpkg.com/@stoplight/elements/web-components.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/@stoplight/elements/styles.min.css">
+    <!-- Pinned with an integrity hash: this page shares the API origin and its refresh cookie. -->
+    <script src="https://unpkg.com/@stoplight/elements@9.0.29/web-components.min.js"
+      integrity="sha384-enyjBaVmV00WFIo0D7AIVgtZ/4x0idVNWHotG8WUpvQo9HXgMSGAAW2YEOpiJTpP"
+      crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@stoplight/elements@9.0.29/styles.min.css"
+      integrity="sha384-iVQBHadsD+eV0M5+ubRCEVXrXEBj+BqcuwjUwPoVJc0Pb1fmrhYSAhL+BFProHdV"
+      crossorigin="anonymous">
   </head>
   <body>
     <elements-api

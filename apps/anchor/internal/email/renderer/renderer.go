@@ -19,6 +19,7 @@ import (
 	htmltemplate "html/template"
 	"maps"
 	"regexp"
+	"strconv"
 	"strings"
 	texttemplate "text/template"
 
@@ -175,12 +176,46 @@ func softValidate(schema []email.VariableSchema, vars map[string]any, templates 
 	return warnings, padded
 }
 
+const (
+	// maxRenderedBytes bounds one rendered part: a template can double its output with nested defines.
+	maxRenderedBytes = 256 << 10
+	// maxRangeCount bounds a range over an integer literal, which can loop without writing anything.
+	maxRangeCount = 10_000
+)
+
+var (
+	errRenderTooLarge   = fmt.Errorf("the rendered part exceeds %d bytes", maxRenderedBytes)
+	errRangeCountTooBig = fmt.Errorf("a range over a number is limited to %d iterations", maxRangeCount)
+	integerRange        = regexp.MustCompile(`\{\{-?\s*range\s+(?:\$\w+\s*:?=\s*)?(\d+)\s*-?\}\}`)
+)
+
+type cappedBuffer struct{ bytes.Buffer }
+
+func (b *cappedBuffer) Write(p []byte) (int, error) {
+	if b.Len()+len(p) > maxRenderedBytes {
+		return 0, errRenderTooLarge
+	}
+	return b.Buffer.Write(p)
+}
+
+func checkIntegerRanges(src string) error {
+	for _, match := range integerRange.FindAllStringSubmatch(src, -1) {
+		if count, err := strconv.Atoi(match[1]); err != nil || count > maxRangeCount {
+			return errRangeCountTooBig
+		}
+	}
+	return nil
+}
+
 func (r *Renderer) renderText(name, src string, vars map[string]any) (string, error) {
+	if err := checkIntegerRanges(src); err != nil {
+		return "", err
+	}
 	t, err := texttemplate.New(name).Option("missingkey=zero").Parse(src)
 	if err != nil {
 		return "", err
 	}
-	var buf bytes.Buffer
+	var buf cappedBuffer
 	if execErr := t.Execute(&buf, vars); execErr != nil {
 		return "", execErr
 	}
@@ -188,11 +223,14 @@ func (r *Renderer) renderText(name, src string, vars map[string]any) (string, er
 }
 
 func (r *Renderer) renderHTML(name, src string, vars map[string]any) (string, error) {
+	if err := checkIntegerRanges(src); err != nil {
+		return "", err
+	}
 	t, err := htmltemplate.New(name).Option("missingkey=zero").Parse(src)
 	if err != nil {
 		return "", err
 	}
-	var buf bytes.Buffer
+	var buf cappedBuffer
 	if execErr := t.Execute(&buf, vars); execErr != nil {
 		return "", execErr
 	}

@@ -1026,6 +1026,11 @@ func (s *integrationService) reconcileInstance(
 		)
 	}
 	instance := found.ToPtr()
+	if !instance.IsEnabled {
+		logger.Info().Str("integration_instance_id", instance.ID).
+			Msg("integration reconcile skipped: the instance is disabled")
+		return nil
+	}
 
 	prov, provErr := s.registry.GetProvider(string(instance.ProviderType))
 	if provErr != nil {
