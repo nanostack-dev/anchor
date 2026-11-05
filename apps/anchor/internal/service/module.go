@@ -47,5 +47,6 @@ func NewModule() fx.Option {
 		fx.Invoke(RegisterProductPermissionStartupSync),
 		fx.Invoke(RegisterAPIKeyEventWorker),
 		fx.Invoke(RegisterIntegrationEventWorker),
+		fx.Invoke(RegisterQueueRetention),
 	)
 }
