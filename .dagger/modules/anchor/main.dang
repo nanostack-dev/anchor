@@ -1,0 +1,229 @@
+pub description = "Anchor's checks: Go tests with a Docker daemon, the anchor-ui frontend, the lint tooling and the image"
+
+"""
+Anchor's CI, the same shape as echopoint's module. Checks read the whole
+repository minus build output: this repository runs on GitHub-hosted runners,
+where every run starts cold, so narrower inputs would save nothing.
+"""
+type Anchor {
+  """
+  Go toolchain image. Keep it equal to the toolchain line in apps/anchor/go.mod.
+  """
+  pub goImage: String!
+
+  """
+  Playwright image matching anchor-ui's playwright package.
+  """
+  pub playwrightImage: String!
+
+  """
+  pnpm release for the workspace.
+  """
+  pub pnpmVersion: String!
+
+  new(
+    goImage: String! = "golang:1.27.3-bookworm",
+    playwrightImage: String! = "mcr.microsoft.com/playwright:v1.60.0-noble",
+    pnpmVersion: String! = "11.1.0",
+  ) {
+    self.goImage = goImage
+    self.playwrightImage = playwrightImage
+    self.pnpmVersion = pnpmVersion
+    self
+  }
+
+  """
+  The repository minus dependencies and build output.
+  """
+  pub source(ws: Workspace!): Directory! {
+    ws.directory(
+      "/",
+      exclude: [
+        ".git",
+        ".dagger",
+        "dagger.toml",
+        "dagger.lock",
+        "**/node_modules",
+        "anchor-ui/dist",
+        "anchor-ui/storybook-static",
+        "anchor-ui/test-results",
+      ],
+    )
+  }
+
+  """
+  A Docker daemon for testcontainers, one per run; pulled images persist.
+  """
+  pub docker(ws: Workspace!): Service! {
+    container
+      .from("docker:29-dind")
+      .withMountedCache("/var/lib/docker", cacheVolume("anchor-dind"), sharing: CacheSharingMode.PRIVATE)
+      .withDirectory("/src", source(ws))
+      .withEnvVariable("DOCKER_TLS_CERTDIR", "")
+      .withExposedPort(2375)
+      .asService(args: ["--host=tcp://0.0.0.0:2375", "--tls=false"], useEntrypoint: true, insecureRootCapabilities: true)
+  }
+
+  let goTests(ws: Workspace!, dir: String!): Void {
+    container
+      .from(goImage)
+      .withMountedCache("/go/pkg/mod", cacheVolume("go-mod"))
+      .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
+      .withExec(["go", "install", "gotest.tools/gotestsum@v1.13.0"])
+      .withServiceBinding("docker", docker(ws))
+      .withEnvVariable("DOCKER_HOST", "tcp://docker:2375")
+      .withEnvVariable("TESTCONTAINERS_RYUK_DISABLED", "true")
+      .withDirectory("/src", source(ws))
+      .withWorkdir("/src/apps/anchor/" + dir)
+      .withExec(["gotestsum", "--format", "pkgname-and-test-fails", "--", "./..."])
+      .sync
+    null
+  }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct).
+  """
+  componentTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/ct") }
+
+  """
+  Service tests (apps/anchor/cmd/it/service).
+  """
+  serviceTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/service") }
+
+  """
+  Unit tests (apps/anchor/internal).
+  """
+  unitTests(ws: Workspace!): Void @check { goTests(ws, "internal") }
+
+  """
+  The lint wrapper's command boundary (scripts/lint.sh) behaves as tested.
+  """
+  lintTooling(ws: Workspace!): Void @check {
+    container
+      .from("python:3.13-bookworm")
+      .withDirectory("/src", source(ws))
+      .withWorkdir("/src")
+      .withExec(["python3", "scripts/test_lint.py"])
+      .sync
+    null
+  }
+
+  """
+  anchor-ui with the workspace's dependencies installed. The install layer
+  depends only on the manifests and lockfile.
+  """
+  pub frontend(ws: Workspace!): Container! {
+    container
+      .from(playwrightImage)
+      .withExec(["npm", "install", "--global", "pnpm@" + pnpmVersion])
+      .withEnvVariable("npm_config_store_dir", "/pnpm-store")
+      .withMountedCache("/pnpm-store", cacheVolume("anchor-pnpm-store"))
+      .withEnvVariable("CI", "true")
+      .withEnvVariable("VITE_API_BASE_URL", "https://apidev.tryanchor.dev")
+      .withDirectory("/src", ws.directory("/", include: ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc", "anchor-ui/package.json", "anchor-ui/.npmrc"]))
+      .withWorkdir("/src")
+      .withExec(["pnpm", "install", "--frozen-lockfile"])
+      .withDirectory("/src", source(ws))
+      .withWorkdir("/src/anchor-ui")
+      .withMountedTemp("/dev/shm", size: 2147483648)
+  }
+
+  """
+  anchor-ui's API client, generated from the OpenAPI document. `dagger
+  generate` writes it; its stale check fails when the committed client differs.
+  """
+  apiClient(ws: Workspace!): Changeset! @generate {
+    let path = "anchor-ui/src/client"
+    let generated = frontend(ws).withExec(["pnpm", "openapi-ts"]).directory("/src/" + path)
+    directory.withDirectory(path, generated).changes(directory.withDirectory(path, ws.directory(path)))
+  }
+
+  """
+  Biome, the UI contract and the E2E inventory (pnpm check).
+  """
+  frontendCheck(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "check"]).sync
+    null
+  }
+
+  """
+  TypeScript type check.
+  """
+  frontendTypecheck(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "typecheck"]).sync
+    null
+  }
+
+  """
+  Unit tests (Vitest).
+  """
+  frontendTest(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "test"]).sync
+    null
+  }
+
+  """
+  Production build.
+  """
+  frontendBuild(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "build"]).sync
+    null
+  }
+
+  """
+  Storybook interaction tests in Chromium.
+  """
+  storybookTest(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "test-storybook"]).sync
+    null
+  }
+
+  """
+  The image, built from the Dockerfile.
+  """
+  pub image(
+    ws: Workspace!,
+    version: String! = "dev",
+    commitSha: String! = "unknown",
+    buildDate: String! = "",
+  ): Container! {
+    source(ws)
+      .dockerBuild(
+        dockerfile: "Dockerfile",
+        platform: "linux/amd64",
+        buildArgs: [
+          {{name: "VERSION", value: version}},
+          {{name: "COMMIT_SHA", value: commitSha}},
+          {{name: "BUILD_DATE", value: buildDate}},
+        ],
+      )
+      .withLabel("org.opencontainers.image.revision", commitSha)
+      .withLabel("org.opencontainers.image.version", version)
+  }
+
+  """
+  The Dockerfile builds.
+  """
+  imageBuilds(ws: Workspace!): Void @check {
+    image(ws).sync
+    null
+  }
+
+  """
+  Push the image under each tag and return the pushed references.
+  """
+  pub publish(
+    ws: Workspace!,
+    repository: String!,
+    tags: [String!]!,
+    username: String!,
+    password: Secret!,
+    version: String! = "dev",
+    commitSha: String! = "unknown",
+    buildDate: String! = "",
+  ): [String!]! {
+    let built = image(ws, version: version, commitSha: commitSha, buildDate: buildDate)
+      .withRegistryAuth(repository, username, password)
+    tags.map { tag => built.publish(repository + ":" + tag) }
+  }
+}

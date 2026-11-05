@@ -22,6 +22,10 @@ on:
       - 'pnpm-workspace.yaml'
       - 'apps/anchor/cmd/http/openapi.yaml'
       - '.github/workflows/go.yml'
+      - '.dagger/**'
+      - 'dagger.toml'
+      - 'dagger.lock'
+      - 'scripts/ci/**'
   # No `paths:` filter on pull_request, on purpose: a filter that matches nothing
   # starts no run and so creates no ci-ok check, which would block a docs-only PR
   # forever once ci-ok is required. detect_changes is the only gate here.
@@ -47,6 +51,11 @@ on:
 # compromise, where a moved tag dumped runner memory into public build logs.
 permissions: {}
 
+env:
+  DAGGER_VERSION: v1.0.0-beta.24
+  DAGGER_ENGINE: image://registry.dagger.io/engine:v1.0.0-beta.24
+  DAGGER_NO_NAG: '1'
+
 concurrency:
   group: go-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && 'main') || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -58,7 +67,7 @@ jobs:
     permissions:
       contents: read
     with:
-      # Backend and frontend are two surfaces. go-build-test is gated on the
+      # Backend and frontend are two surfaces. dagger-publish is gated on the
       # backend surface for pull requests only. On a push to main it always runs,
       # because infra's anchor-deploy.yml runs its wrangler frontend deploy
       # downstream of backend, so skipping the backend track on a frontend-only
@@ -85,6 +94,10 @@ jobs:
         lint-fix.sh
         apps/anchor/cmd/http/openapi.yaml
         .github/workflows/go.yml
+        .dagger/**
+        dagger.toml
+        dagger.lock
+        scripts/ci/**
       frontend_patterns: |
         anchor-ui/**
         pnpm-lock.yaml
@@ -92,107 +105,97 @@ jobs:
         apps/anchor/cmd/http/openapi.yaml
         .github/workflows/go.yml
 
-  frontend-verify:
-    needs: detect_changes
-    if: needs.detect_changes.outputs.frontend_changed == 'true'
-    uses: nanostack-dev/ci-workflows/.github/workflows/frontend-verify.yml@main
+  # The checks are Dagger checks (dagger.toml, .dagger/modules/anchor):
+  # `dagger check` runs them the same way on a laptop. Two jobs, so a flaky
+  # Storybook or Playwright step never holds the backend deploy, as before.
+  # This public repository stays on GitHub-hosted runners: each job starts a
+  # cold engine.
+  dagger-frontend:
+    name: dagger-frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
-    with:
-      app_name: Anchor
-      working_directory: anchor-ui
-      # The workspace root lockfile, which is the one pnpm actually reads: the
-      # root pnpm-workspace.yaml makes anchor-ui a package, so `pnpm install` in
-      # anchor-ui resolves upward. anchor-ui/pnpm-lock.yaml was a pre-workspace
-      # leftover that never changed again, which froze this cache key at one
-      # value for the repo's whole life and redownloaded 14-81 packages a run.
-      cache_dependency_path: pnpm-lock.yaml
-      pnpm_version: '11.1.0'
-      # anchor-ui/src/client is generated from the backend spec and committed, so
-      # a spec change could merge against a stale client with CI green.
-      # Regenerating and diffing closes that, and running before typecheck means
-      # a spec change that breaks a caller fails on the type error.
-      generate_command: pnpm openapi-ts
-      verify_generated_path: anchor-ui/src/client
-      lint_command: pnpm check
-      typecheck_command: pnpm typecheck
-      test_command: pnpm test
-      build_command: pnpm build
-      # Story tests run on every PR; real dev login smoke is a separate manual
-      # workflow so normal PR verification does not require dev credentials.
-      storybook_test_command: pnpm test-storybook
-      # The production Storybook build is push-only. Story tests already exercise
-      # the stories through Vite in dev mode, so this only adds coverage of
-      # production bundling and autodocs generation — the way a Storybook or
-      # addon upgrade breaks. Running it on push catches that within one merge at
-      # a fraction of the minutes. Same split echopoint uses.
-      #
-      # Phrased as "not a PR" rather than "is a push" so a manual
-      # workflow_dispatch — when you most want full verification — also runs it.
-      storybook_build_command: ${{ github.event_name != 'pull_request' && 'pnpm build-storybook' || '' }}
-      build_env: |
-        VITE_API_BASE_URL=https://apidev.tryanchor.dev
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Install the Dagger CLI
+        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      - name: Run the frontend checks
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
+          dagger check --progress=report 'dag://anchor/frontend-*' 'dag://anchor/storybook-test' 'dag://anchor/api-client/stale'
 
-  go-build-test:
-    # Backend build/test has no dependency on the frontend — run it in parallel
-    # with frontend-verify rather than after it. Gating them in series meant a
-    # flaky Storybook/Playwright step skipped the backend build, and with it the
-    # deploy dispatch, silently leaving prod behind. The dispatch jobs below
-    # still read frontend-verify's result; go-build-test success is the gate.
+  dagger-backend:
+    name: dagger-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Install the Dagger CLI
+        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      - name: Run the backend checks
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
+          dagger check --progress=report 'dag://golangci-lint/**' 'dag://anchor/*-tests' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
+
+  # Pushes the image while the checks run, as go-build-test did. The deploy and
+  # preview dispatches gate on dagger-backend. A pull request builds when it
+  # touches the backend, or when its author asked for a preview of a frontend
+  # change. !cancelled() because preview-flag is skipped off pull requests.
+  dagger-publish:
+    name: dagger-publish
     needs: [detect_changes, preview-flag]
-    # A pull request builds when it touches the backend, or when its author asked
-    # for a preview of a frontend change: the preview deploys this job's image.
-    # Every other event builds unconditionally, so a push to main keeps its
-    # deploy dispatch. !cancelled() because preview-flag is skipped off pull
-    # requests and a skipped need would otherwise skip this job too.
     if: |
       !cancelled() && (
         github.event_name != 'pull_request' ||
         needs.detect_changes.outputs.backend_changed == 'true' ||
         (needs.preview-flag.outputs.enabled == 'true' && needs.detect_changes.outputs.frontend_changed == 'true')
-      )
-    uses: nanostack-dev/ci-workflows/.github/workflows/go-build-test.yml@main
+      ) &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
-      id-token: write
-    with:
-      app_name: anchor
-      # 1.27.3 matches the toolchain go.mod pins. It is not in the
-      # actions/go-versions manifest yet, but setup-go falls back to the
-      # official Go distribution site when the manifest misses.
-      #
-      # It cannot stay on 1.26.5 and rely on the toolchain directive: setup-go
-      # exports GOTOOLCHAIN=local, so Go refuses to fetch a newer toolchain and
-      # fails with "go.mod requires go >= 1.27 (running go 1.26.5)".
-      go_version: '1.27.3'
-      cache_dependency_path: apps/anchor/go.sum
-      download_dependencies_dir: apps/anchor
-      lint_working_directory: ./apps/anchor
-      lint_version_file: ../../.golangci-lint-version
-      lint_args: --config ../../.golangci.yml --timeout 5m --path-mode=abs ./...
-      lint_skip_cache: true
-      lint_skip_save_cache: true
-      test_suites_json: >-
-        [{"name":"Component Tests","working_directory":"./apps/anchor/cmd/it/ct","command":"gotestsum --format github-actions -- ./..."},{"name":"Service Tests","working_directory":"./apps/anchor/cmd/it/service","command":"gotestsum --format github-actions -- ./..."},{"name":"Unit Tests","working_directory":"./apps/anchor/internal","command":"gotestsum --format github-actions -- ./..."}]
-      image_repository: ghcr.io/${{ github.repository_owner }}/anchor
-      image_title: anchor
-      image_description: Multi-tenant service platform
-      docker_context: .
-      dockerfile_path: ./Dockerfile
-      build_platforms: linux/amd64,linux/arm64
-      sha_tag_format: short
-      publish_image: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    outputs:
+      deploy_image_tag: ${{ steps.publish.outputs.deploy_image_tag }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Install the Dagger CLI
+        run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
+      - name: Build and push the image
+        id: publish
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ghcr.io/${{ github.repository_owner }}/anchor
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+        run: |
+          set -euo pipefail
+          export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
+          # The tags docker/metadata-action gave: the branch or pr-N, sha-<7>,
+          # and latest on the default branch.
+          short="sha-${GITHUB_SHA:0:7}"
+          if [ "$EVENT_NAME" = pull_request ]; then
+            tags="pr-${PR_NUMBER},${short}"; version="pr-${PR_NUMBER}"
+          else
+            ref_tag="$(printf '%s' "$REF_NAME" | tr -c 'A-Za-z0-9_.-' '-')"
+            tags="${ref_tag},${short}"; version="$ref_tag"
+            [ "$REF_NAME" = "$DEFAULT_BRANCH" ] && tags="${tags},latest"
+          fi
+          dagger api call anchor publish --repository="$REPOSITORY" --tags="$tags" \
+            --username="$ACTOR" --password=env://GHCR_TOKEN --version="$version" \
+            --commit-sha="$GITHUB_SHA" --build-date="$BUILD_DATE" --progress=plain
+          echo "deploy_image_tag=${short}" >> "$GITHUB_OUTPUT"
 
-  # Fails a pull request that adds or modifies an unsafe Postgres migration: a
-  # plain CREATE INDEX that blocks writes, CONCURRENTLY sharing a file with
-  # another statement, a one-statement backfill, a hypertable index built
-  # without transaction_per_chunk. Only the files the PR touches are linted;
-  # migrations are append-only. Rules, exclusions and opt-out comments:
-  # nanostack-dev/ci-workflows docs/technical/migration-lint.md.
-  #
-  # Gated on backend_changed, whose patterns include apps/anchor/migrations/**,
-  # and on pull_request: a push to main has nothing left to review.
   migration-lint:
     needs: detect_changes
     if: github.event_name == 'pull_request' && needs.detect_changes.outputs.backend_changed == 'true'
@@ -204,7 +207,7 @@ jobs:
       pg_version: '18'
 
   # One status summarizing the run. A context that lives under a skipped job
-  # never materializes, so reading "frontend-verify / ..." directly would say
+  # never materializes, so reading "dagger-publish" directly would say
   # nothing on a backend-only PR. This passes when each verification job either
   # succeeded or was legitimately skipped, and fails if any failed or was
   # cancelled.
@@ -215,7 +218,7 @@ jobs:
   # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
-    needs: [detect_changes, frontend-verify, go-build-test, migration-lint]
+    needs: [detect_changes, dagger-frontend, dagger-backend, dagger-publish, migration-lint]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -230,9 +233,6 @@ jobs:
           sparse-checkout: |
             apps/anchor/migrations
             scripts
-      - name: Verify lint command behavior
-        if: needs.detect_changes.outputs.backend_changed == 'true'
-        run: python3 scripts/test_lint.py
       - name: Reject duplicate migration versions
         shell: bash
         run: |
@@ -257,25 +257,27 @@ jobs:
         shell: bash
         env:
           DETECT_RESULT: ${{ needs.detect_changes.result }}
-          FRONTEND_RESULT: ${{ needs.frontend-verify.result }}
-          GO_RESULT: ${{ needs.go-build-test.result }}
+          FRONTEND_RESULT: ${{ needs.dagger-frontend.result }}
+          BACKEND_RESULT: ${{ needs.dagger-backend.result }}
+          PUBLISH_RESULT: ${{ needs.dagger-publish.result }}
           MIGRATION_LINT_RESULT: ${{ needs.migration-lint.result }}
         run: |
           set -euo pipefail
-          echo "detect_changes=$DETECT_RESULT frontend-verify=$FRONTEND_RESULT go-build-test=$GO_RESULT migration-lint=$MIGRATION_LINT_RESULT"
-          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$GO_RESULT" "$MIGRATION_LINT_RESULT"; do
+          echo "detect_changes=$DETECT_RESULT dagger-frontend=$FRONTEND_RESULT dagger-backend=$BACKEND_RESULT dagger-publish=$PUBLISH_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$BACKEND_RESULT" "$PUBLISH_RESULT" "$MIGRATION_LINT_RESULT"; do
             [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
           done
 
   dispatch-deploy-dev:
-    needs: [frontend-verify, go-build-test]
-    # always() so a failed or skipped frontend-verify does not skip the backend
-    # deploy dispatch; go-build-test success is the real gate.
+    needs: [dagger-frontend, dagger-backend, dagger-publish]
+    # always() so a failed or skipped dagger-frontend does not skip the backend
+    # deploy dispatch; dagger-backend and dagger-publish success is the gate.
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.go-build-test.result == 'success'
+      needs.dagger-publish.result == 'success' &&
+      needs.dagger-backend.result == 'success'
     uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
     permissions:
       contents: read
@@ -283,7 +285,7 @@ jobs:
       deploy_repository: nanostack-dev/infra
       event_type: deploy-service
       payload: >-
-        {"service":"anchor","environment":"dev","promote_to_prod":true,"source_repository":"${{ github.repository }}","source_ref":"${{ github.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","git_sha":"${{ github.sha }}"}
+        {"service":"anchor","environment":"dev","promote_to_prod":true,"source_repository":"${{ github.repository }}","source_ref":"${{ github.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.dagger-publish.outputs.deploy_image_tag }}","git_sha":"${{ github.sha }}"}
     secrets:
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
 
@@ -327,15 +329,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   dispatch-preview-upsert:
-    needs: [frontend-verify, go-build-test, preview-flag]
+    needs: [dagger-frontend, dagger-backend, dagger-publish, preview-flag]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'main' &&
       needs.preview-flag.outputs.enabled == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.go-build-test.result == 'success' &&
-      needs.frontend-verify.result != 'failure'
+      needs.dagger-publish.result == 'success' &&
+      needs.dagger-backend.result == 'success' &&
+      needs.dagger-frontend.result != 'failure'
     uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
     permissions:
       contents: read
@@ -343,6 +346,6 @@ jobs:
       deploy_repository: nanostack-dev/infra
       event_type: preview-upsert
       payload: >-
-        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.go-build-test.outputs.deploy_image_tag }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}","git_sha":"${{ github.event.pull_request.head.sha }}"}
+        {"service":"anchor","source_repository":"${{ github.repository }}","source_ref":"${{ github.event.pull_request.head.sha }}","image_repository":"ghcr.io/${{ github.repository_owner }}/anchor","image_tag":"${{ needs.dagger-publish.outputs.deploy_image_tag }}","pr_number":${{ github.event.pull_request.number }},"branch_ref":"${{ github.event.pull_request.head.ref }}","git_sha":"${{ github.event.pull_request.head.sha }}"}
     secrets:
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
