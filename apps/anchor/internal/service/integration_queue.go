@@ -12,10 +12,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var queueRetention = queue.RetentionPolicy{
-	KeepDone:   7 * 24 * time.Hour,
-	KeepFailed: 30 * 24 * time.Hour,
-}
+const (
+	queueKeepDoneJobs   = 7 * 24 * time.Hour
+	queueKeepFailedJobs = 30 * 24 * time.Hour
+)
 
 // NewIntegrationLock creates the pglock client used for distributed advisory
 // locking (e.g. to ensure only one replica seeds the reconcile scheduler job).
@@ -42,7 +42,7 @@ func NewIntegrationQueue(
 }
 
 // RegisterQueueRetention deletes finished pgqueue jobs of every Anchor queue
-// once they are older than queueRetention keeps them.
+// once they are older than queueKeepDoneJobs or queueKeepFailedJobs.
 func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger zerolog.Logger) {
 	retentionCtx, stopRetention := context.WithCancel(context.Background())
 	stopped := make(chan struct{})
@@ -50,7 +50,10 @@ func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger z
 		OnStart: func(context.Context) error {
 			go func() {
 				defer close(stopped)
-				if err := queueClient.RunRetention(retentionCtx, queueRetention); err != nil {
+				if err := queueClient.RunRetention(retentionCtx, queue.RetentionPolicy{
+					KeepDone:   queueKeepDoneJobs,
+					KeepFailed: queueKeepFailedJobs,
+				}); err != nil {
 					logger.Error().Err(err).Msg("pgqueue retention stopped with error")
 				}
 			}()
