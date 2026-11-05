@@ -2,7 +2,8 @@
 # Any Dagger command may update this file; always commit it with your changes.
 # Run `dagger lock update` to refresh the pinned versions.
 [["version","2"]]
-["","git-latest",["github.com/dagger/go",["tagPrefix","golangci-lint"]],"refs/tags/v0.4.0"]
-["","git-latest",["github.com/dagger/go",["tagPrefix","gomod"],["version","v0.4.0"]],"refs/tags/v0.4.0"]
-["","git-sha",["github.com/dagger/go","refs/tags/v0.4.0"],"e327bee9103fe60cb66c9d11bf2e1604686021df"]
-["","vanity-url",["https://dagger.io/go/golangci-lint"],"https://github.com/dagger/go/golangci-lint"]
+["","oci-sha",["docker.io/golangci/golangci-lint:v2.14.0"],"sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f"]
+["","oci-sha",["docker.io/library/docker:29-dind"],"sha256:d035bd30886e451b2727ef3cdb9af9a5c537a10d4bc5d18c08d0ffa597e46aeb"]
+["","oci-sha",["docker.io/library/golang:1.27.3-alpine"],"sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb"]
+["","oci-sha",["docker.io/library/golang:1.27.3-bookworm"],"sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9"]
+["","oci-sha",["mcr.microsoft.com/playwright:v1.60.0-noble"],"sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948"]

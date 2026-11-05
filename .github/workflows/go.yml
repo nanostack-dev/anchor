@@ -140,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
-          dagger check --progress=report 'dag://golangci-lint/**' 'dag://anchor/*-tests' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
+          dagger check --progress=report 'dag://anchor/lint' 'dag://anchor/*-tests' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
   # preview dispatches gate on dagger-backend. A pull request builds when it

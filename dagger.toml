@@ -9,10 +9,6 @@ source = ".dagger/modules/anchor"
 goImage = "golang:1.27.3-bookworm"
 playwrightImage = "mcr.microsoft.com/playwright:v1.60.0-noble"
 pnpmVersion = "11.1.0"
-
-[modules.golangci-lint]
-source = "dagger.io/go/golangci-lint"
-
-[modules.golangci-lint.settings]
+goVersion = "1.27.3"
 # Same release as .golangci-lint-version.
-version = "2.14.0"
+golangciLintVersion = "2.14.0"
