@@ -1,0 +1,271 @@
+pub description = "Anchor's checks: Go tests with a Docker daemon, the anchor-ui frontend, the lint tooling and the image"
+
+"""
+Anchor's CI, the same shape as echopoint's module. Checks read the whole
+repository minus build output, mounted at /repo (not /src: Biome 1.9 matches
+anchor-ui's include glob "src/*" against absolute paths): this repository runs on GitHub-hosted runners,
+where every run starts cold, so narrower inputs would save nothing.
+"""
+type Anchor {
+  """
+  Go toolchain image. Keep it equal to the toolchain line in apps/anchor/go.mod.
+  """
+  pub goImage: String!
+
+  """
+  Playwright image matching anchor-ui's playwright package.
+  """
+  pub playwrightImage: String!
+
+  """
+  pnpm release for the workspace.
+  """
+  pub pnpmVersion: String!
+
+  """
+  Go release for the test container's toolchain, as in apps/anchor/go.mod.
+  """
+  pub goVersion: String!
+
+  """
+  golangci-lint release, as in .golangci-lint-version (without the v).
+  """
+  pub golangciLintVersion: String!
+
+  new(
+    goImage: String! = "golang:1.27.3-bookworm",
+    playwrightImage: String! = "mcr.microsoft.com/playwright:v1.60.0-noble",
+    pnpmVersion: String! = "11.1.0",
+    goVersion: String! = "1.27.3",
+    golangciLintVersion: String! = "2.14.0",
+  ) {
+    self.goImage = goImage
+    self.playwrightImage = playwrightImage
+    self.pnpmVersion = pnpmVersion
+    self.goVersion = goVersion
+    self.golangciLintVersion = golangciLintVersion
+    self
+  }
+
+  """
+  The repository minus dependencies and build output.
+  """
+  pub source(ws: Workspace!): Directory! {
+    ws.directory(
+      "/",
+      exclude: [
+        ".git",
+        ".dagger",
+        "dagger.toml",
+        "dagger.lock",
+        "**/node_modules",
+        "anchor-ui/dist",
+        "anchor-ui/storybook-static",
+        "anchor-ui/test-results",
+      ],
+    )
+  }
+
+  """
+  The Go test container: Go on the Docker image, so each test run starts its
+  own daemon inside the container. Every port testcontainers publishes is on
+  localhost, which the SMTP client requires before it sends PLAIN auth over
+  the unencrypted Mailpit connection, and bind mounts resolve on the same
+  filesystem.
+  """
+  pub goTestBase(ws: Workspace!): Container! {
+    container
+      .from("docker:29-dind")
+      .withExec(["apk", "add", "--no-cache", "git", "bash"])
+      .withDirectory("/usr/local/go", container.from("golang:" + goVersion + "-alpine").directory("/usr/local/go"))
+      .withEnvVariable("PATH", "/usr/local/go/bin:/root/go/bin:${PATH}", expand: true)
+      .withEnvVariable("CGO_ENABLED", "0")
+      .withMountedCache("/root/go/pkg/mod", cacheVolume("go-mod"))
+      .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
+      # dockerd needs a real filesystem for its overlay storage.
+      .withMountedCache("/var/lib/docker", cacheVolume("anchor-test-docker"), sharing: CacheSharingMode.PRIVATE)
+      .withExec(["go", "install", "gotest.tools/gotestsum@v1.13.0"])
+      .withEnvVariable("TESTCONTAINERS_RYUK_DISABLED", "true")
+      .withDirectory("/repo", source(ws))
+  }
+
+  let goTests(ws: Workspace!, dir: String!): Void {
+    goTestBase(ws)
+      .withWorkdir("/repo/apps/anchor/" + dir)
+      .withExec(
+        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; gotestsum --format pkgname-and-test-fails -- ./..."],
+        insecureRootCapabilities: true,
+      )
+      .sync
+    null
+  }
+
+  """
+  golangci-lint over apps/anchor with the repository-root configuration, as
+  scripts/lint.sh runs it: the ruleguard rules in .golangci.yml are paths
+  relative to apps/anchor.
+  """
+  lint(ws: Workspace!): Void @check {
+    container
+      # The released binary on the Go toolchain go.mod pins, as CI ran it
+      # before (golangci-lint-action on setup-go).
+      .from(goImage)
+      .withExec(["sh", "-c", "curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v" + golangciLintVersion + "/golangci-lint-" + golangciLintVersion + "-linux-$(go env GOARCH).tar.gz | tar -xz -C /usr/local --strip-components=1 --wildcards '*/golangci-lint' && mv /usr/local/golangci-lint /usr/local/bin/"])
+      .withMountedCache("/go/pkg/mod", cacheVolume("go-mod"))
+      .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
+      .withDirectory("/repo", source(ws))
+      .withWorkdir("/repo/apps/anchor")
+      # Module downloads stay outside golangci-lint's own 5 m timeout.
+      .withExec(["go", "mod", "download"])
+      .withExec(["golangci-lint", "run", "--config", "../../.golangci.yml", "--timeout", "5m", "--path-mode=abs", "./..."])
+      .sync
+    null
+  }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct).
+  """
+  componentTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/ct") }
+
+  """
+  Service tests (apps/anchor/cmd/it/service).
+  """
+  serviceTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/service") }
+
+  """
+  Unit tests (apps/anchor/internal).
+  """
+  unitTests(ws: Workspace!): Void @check { goTests(ws, "internal") }
+
+  """
+  The lint wrapper's command boundary (scripts/lint.sh) behaves as tested.
+  """
+  lintTooling(ws: Workspace!): Void @check {
+    container
+      .from("python:3.13-bookworm")
+      .withDirectory("/repo", source(ws))
+      .withWorkdir("/repo")
+      .withExec(["python3", "scripts/test_lint.py"])
+      .sync
+    null
+  }
+
+  """
+  anchor-ui with the workspace's dependencies installed. The install layer
+  depends only on the manifests and lockfile.
+  """
+  pub frontend(ws: Workspace!): Container! {
+    container
+      .from(playwrightImage)
+      .withExec(["npm", "install", "--global", "pnpm@" + pnpmVersion])
+      .withEnvVariable("npm_config_store_dir", "/pnpm-store")
+      .withMountedCache("/pnpm-store", cacheVolume("anchor-pnpm-store"))
+      .withEnvVariable("CI", "true")
+      .withEnvVariable("VITE_API_BASE_URL", "https://apidev.tryanchor.dev")
+      .withDirectory("/repo", ws.directory("/", include: ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc", "anchor-ui/package.json", "anchor-ui/.npmrc"]))
+      .withWorkdir("/repo")
+      .withExec(["pnpm", "install", "--frozen-lockfile"])
+      .withDirectory("/repo", source(ws))
+      .withWorkdir("/repo/anchor-ui")
+      .withMountedTemp("/dev/shm", size: 2147483648)
+  }
+
+  """
+  anchor-ui's API client, generated from the OpenAPI document. `dagger
+  generate` writes it; its stale check fails when the committed client differs.
+  """
+  apiClient(ws: Workspace!): Changeset! @generate {
+    let path = "anchor-ui/src/client"
+    let generated = frontend(ws).withExec(["pnpm", "openapi-ts"]).directory("/repo/" + path)
+    directory.withDirectory(path, generated).changes(directory.withDirectory(path, ws.directory(path)))
+  }
+
+  """
+  Biome, the UI contract and the E2E inventory (pnpm check).
+  """
+  frontendCheck(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "check"]).sync
+    null
+  }
+
+  """
+  TypeScript type check.
+  """
+  frontendTypecheck(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "typecheck"]).sync
+    null
+  }
+
+  """
+  Unit tests (Vitest).
+  """
+  frontendTest(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "test"]).sync
+    null
+  }
+
+  """
+  Production build.
+  """
+  frontendBuild(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "build"]).sync
+    null
+  }
+
+  """
+  Storybook interaction tests in Chromium.
+  """
+  storybookTest(ws: Workspace!): Void @check {
+    frontend(ws).withExec(["pnpm", "test-storybook"]).sync
+    null
+  }
+
+  """
+  The image, built from the Dockerfile.
+  """
+  pub image(
+    ws: Workspace!,
+    version: String! = "dev",
+    commitSha: String! = "unknown",
+    buildDate: String! = "",
+  ): Container! {
+    source(ws)
+      .dockerBuild(
+        dockerfile: "Dockerfile",
+        platform: "linux/amd64",
+        buildArgs: [
+          {{name: "VERSION", value: version}},
+          {{name: "COMMIT_SHA", value: commitSha}},
+          {{name: "BUILD_DATE", value: buildDate}},
+        ],
+      )
+      .withLabel("org.opencontainers.image.revision", commitSha)
+      .withLabel("org.opencontainers.image.version", version)
+  }
+
+  """
+  The Dockerfile builds.
+  """
+  imageBuilds(ws: Workspace!): Void @check {
+    image(ws).sync
+    null
+  }
+
+  """
+  Push the image under each tag and return the pushed references.
+  """
+  pub publish(
+    ws: Workspace!,
+    repository: String!,
+    tags: [String!]!,
+    username: String!,
+    password: Secret!,
+    version: String! = "dev",
+    commitSha: String! = "unknown",
+    buildDate: String! = "",
+  ): [String!]! {
+    let built = image(ws, version: version, commitSha: commitSha, buildDate: buildDate)
+      .withRegistryAuth(repository, username, password)
+    tags.map { tag => built.publish(repository + ":" + tag) }
+  }
+}

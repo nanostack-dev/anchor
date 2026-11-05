@@ -94,6 +94,8 @@ func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, er
 	container, err := tcpostgres.Run(
 		ctx,
 		"timescale/timescaledb:2.23.0-pg18",
+		// timescaledb-tune panics in a nested Docker daemon (no memory.max).
+		testcontainers.WithEnv(map[string]string{"NO_TS_TUNE": "true"}),
 		tcpostgres.WithDatabase(repoTestDatabaseName),
 		tcpostgres.WithUsername(repoTestDatabaseName),
 		tcpostgres.WithPassword(repoTestDatabaseName),

@@ -1,0 +1,14 @@
+# Anchor's CI as Dagger checks (.github/workflows/go.yml). `dagger check` runs
+# them the same way on a laptop and in CI.
+
+[modules.anchor]
+source = ".dagger/modules/anchor"
+
+[modules.anchor.settings]
+# Tool versions live here, so a bump is one line.
+goImage = "golang:1.27.3-bookworm"
+playwrightImage = "mcr.microsoft.com/playwright:v1.60.0-noble"
+pnpmVersion = "11.1.0"
+goVersion = "1.27.3"
+# Same release as .golangci-lint-version.
+golangciLintVersion = "2.14.0"

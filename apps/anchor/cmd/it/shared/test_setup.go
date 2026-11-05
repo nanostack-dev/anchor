@@ -179,6 +179,10 @@ func setupPostgres(ctx context.Context, testLogger zerolog.Logger) testcontainer
 			"POSTGRES_DB":       defaultTestPostgresValue,
 			"POSTGRES_USER":     defaultTestPostgresValue,
 			"POSTGRES_PASSWORD": defaultTestPostgresValue,
+			// timescaledb-tune reads the container's memory.max, which a nested
+			// Docker daemon (CI's Dagger engine) does not provide; it panics and
+			// Postgres exits with code 2. The tests need no tuning.
+			"NO_TS_TUNE": "true",
 		},
 	}
 	container, err := testcontainers.GenericContainer(
