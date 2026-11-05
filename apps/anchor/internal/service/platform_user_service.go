@@ -137,6 +137,15 @@ func (s *platformUserService) DeletePlatformUser(
 		)
 	}
 
+	target, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
+	if err != nil {
+		return err
+	}
+	callerIsOwner := currentPlatformUser != nil && currentPlatformUser.Role == platform.TenantRoleOwner
+	if target.IsPresent() && target.Value().Role == platform.TenantRoleOwner && !callerIsOwner {
+		return fault.Forbidden("OWNER_DELETION_NOT_ALLOWED", "Only an owner can delete the tenant owner.")
+	}
+
 	err = s.platformUserRepo.DeleteByID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		logger.Error().

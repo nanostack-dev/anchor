@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	ct "github.com/nanostack-dev/anchor/clients/go"
 
 	"github.com/stretchr/testify/assert"
@@ -92,4 +95,36 @@ func TestLogin(t *testing.T) {
 			assert.Equal(t, "Password is a required field", resp.JSON400.Errors[0].Message)
 		},
 	)
+}
+
+func TestLoginTakesAsLongForAnUnknownEmail(t *testing.T) {
+	t.Run("A wrong password and an unknown email take about the same time", func(t *testing.T) {
+		known := createPlatformAdmin(t)
+		client := testTenant(t).NoAuthClient
+		unknown := "absent-" + uuid.NewString() + "@example.test"
+		login := func(email string) time.Duration {
+			started := time.Now()
+			resp, err := client.LoginWithResponse(context.Background(),
+				ct.LoginJSONRequestBody{Email: email, Password: "WrongPassword!1"})
+			elapsed := time.Since(started)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+			return elapsed
+		}
+		median := func(email string) time.Duration {
+			samples := make([]time.Duration, 15)
+			for i := range samples {
+				samples[i] = login(email)
+			}
+			slices.Sort(samples)
+			return samples[len(samples)/2]
+		}
+		login(known.Email)
+		login(unknown)
+
+		knownMedian, unknownMedian := median(known.Email), median(unknown)
+
+		assert.Greater(t, unknownMedian, knownMedian/2,
+			"known %s, unknown %s: an unknown email must not skip the password hash", knownMedian, unknownMedian)
+	})
 }
