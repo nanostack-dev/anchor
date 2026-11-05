@@ -710,6 +710,13 @@ func (s *emailService) Send(
 	if err != nil {
 		return email.SendRecord{}, err
 	}
+	// A retry resends the recorded message, so the send record always matches what was delivered.
+	if retryRecord != nil && (retryRecord.ToAddress != in.ToAddress || retryRecord.ToName != in.ToName ||
+		retryRecord.Subject != rendered.Subject || retryRecord.BodyHTML != rendered.BodyHTML ||
+		retryRecord.BodyText != rendered.BodyText) {
+		return email.SendRecord{}, fault.Conflict("EMAIL_DEDUPE_KEY_REUSED",
+			"The dedupe key belongs to a failed send of another message; use a new dedupe key.")
+	}
 
 	varsJSON := json.RawMessage("{}")
 	if len(in.Variables) > 0 {

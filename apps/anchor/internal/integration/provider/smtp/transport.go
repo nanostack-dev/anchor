@@ -269,11 +269,13 @@ func buildRFC5322Message(
 	boundary := "anchor-bnd-" + ids.MustNew("mp")
 	hdr.Set("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 
+	// A line break in a value would end the header and start one the caller chose.
+	unfold := strings.NewReplacer("\r", " ", "\n", " ")
 	for k, vs := range hdr {
 		for _, v := range vs {
 			b.WriteString(k)
 			b.WriteString(": ")
-			b.WriteString(v)
+			b.WriteString(unfold.Replace(v))
 			b.WriteString("\r\n")
 		}
 	}
