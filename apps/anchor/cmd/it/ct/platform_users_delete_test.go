@@ -9,6 +9,8 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itdsl "anchor/cmd/it/shared/dsl"
 )
 
 func TestDeletePlatformUser(t *testing.T) {
@@ -116,4 +118,26 @@ func TestDeletePlatformUser(t *testing.T) {
 			)
 		},
 	)
+}
+
+func TestDeletePlatformUserKeepsTheOwner(t *testing.T) {
+	t.Parallel()
+
+	t.Run("An admin cannot delete the tenant owner, who keeps working access", func(t *testing.T) {
+		t.Parallel()
+		state := itdsl.Given(t).
+			Tenant(itdsl.TenantOpts{Alias: "tenant.ownerdel", Isolated: true}).
+			PlatformAdmin(itdsl.PlatformAdminOpts{Alias: "admin.ownerdel", TenantAlias: "tenant.ownerdel"}).
+			Build()
+		owner := state.Tenant("tenant.ownerdel").OwnerUser
+		admin := state.PlatformUser("admin.ownerdel")
+
+		deleted, err := admin.AuthenticatedClient.DeletePlatformUserWithResponse(t.Context(), owner.ID)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusForbidden, deleted.StatusCode())
+
+		self, err := owner.AuthenticatedClient.GetCurrentUserWithResponse(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, self.StatusCode())
+	})
 }

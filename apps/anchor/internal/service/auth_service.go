@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -48,6 +49,7 @@ type authService struct {
 	authCfg                config.AuthConfig
 	jwt                    JWTHelper
 	logger                 zerolog.Logger
+	absentUserHash         func() []byte
 }
 
 func NewAuthService(
@@ -72,6 +74,10 @@ func NewAuthService(
 		authCfg:                authCfg,
 		jwt:                    jwtHelper,
 		logger:                 logger.With().Str("component", "auth_service").Logger(),
+		absentUserHash: sync.OnceValue(func() []byte {
+			hash, _ := bcrypt.GenerateFromPassword([]byte("anchor-absent-user"), bcrypt.DefaultCost)
+			return hash
+		}),
 	}
 }
 
@@ -237,6 +243,8 @@ func (s *authService) Login(
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
 	}
 	if foundUser.IsAbsent() {
+		// Compare anyway so an unknown email costs what a wrong password does.
+		_ = bcrypt.CompareHashAndPassword(s.absentUserHash(), []byte(input.Password))
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
 	user := foundUser.ToPtr()
