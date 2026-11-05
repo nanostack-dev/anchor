@@ -2,21 +2,48 @@ package mapper
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/integration"
+	"anchor/internal/security/encryption"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
+	"github.com/rs/zerolog"
 )
 
-type IntegrationInstanceMapper struct{}
+// webhookSecretCipherContext isolates the Svix signing secrets from the other secret classes.
+const webhookSecretCipherContext = "integration-webhook-secret"
 
-func NewIntegrationInstanceMapper() *IntegrationInstanceMapper {
-	return &IntegrationInstanceMapper{}
+// IntegrationInstanceMapper stores the webhook signing secret encrypted. A row written before encryption
+// holds plaintext, which ToDomain still reads; the next write of that instance encrypts it.
+type IntegrationInstanceMapper struct {
+	cipher *secrets.VersionedCipher
+	logger zerolog.Logger
+}
+
+func NewIntegrationInstanceMapper(
+	encryptionService *encryption.Service, logger zerolog.Logger,
+) (*IntegrationInstanceMapper, error) {
+	cipher, err := encryptionService.NewCipher(webhookSecretCipherContext)
+	if err != nil {
+		return nil, fmt.Errorf("webhook secret cipher: %w", err)
+	}
+	return &IntegrationInstanceMapper{cipher: cipher, logger: logger}, nil
 }
 
 func (m *IntegrationInstanceMapper) ToDomain(entity model.IntegrationInstances) integration.Instance {
 	webhookSecret := functional.FromPtr(entity.WebhookSecret).ToPtr()
+	if webhookSecret != nil && secrets.IsVersionedEncryptedSecret(*webhookSecret) {
+		decrypted, err := m.cipher.DecryptString(*webhookSecret)
+		if err != nil {
+			// Without the secret every signature check fails closed.
+			m.logger.Error().Err(err).Str("instance_id", entity.ID).Msg("decrypt webhook secret")
+			decrypted = ""
+		}
+		webhookSecret = &decrypted
+	}
 	lastError := functional.FromPtr(entity.LastError).ToPtr()
 
 	return integration.Instance{
@@ -37,6 +64,15 @@ func (m *IntegrationInstanceMapper) ToDomain(entity model.IntegrationInstances) 
 
 func (m *IntegrationInstanceMapper) ToEntity(domain integration.Instance) model.IntegrationInstances {
 	webhookSecret := functional.FromPtr(domain.WebhookSecret).ToPtr()
+	if webhookSecret != nil && *webhookSecret != "" && !secrets.IsVersionedEncryptedSecret(*webhookSecret) {
+		encrypted, err := m.cipher.EncryptString(*webhookSecret)
+		if err != nil {
+			// Never store the plaintext when encryption fails; the instance then needs its secret again.
+			m.logger.Error().Err(err).Str("instance_id", domain.ID).Msg("encrypt webhook secret")
+			encrypted = ""
+		}
+		webhookSecret = &encrypted
+	}
 	lastError := functional.FromPtr(domain.LastError).ToPtr()
 
 	configStr := "{}"
