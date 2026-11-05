@@ -30,6 +30,8 @@ Tables page by `offset` for their page numbers, and pass the `sort_by` and `sort
 
 ## Testing
 
+Managed test startup or reuse: use `pnpm test:e2e:preflight` (or `--reuse`) for an actionable readiness gate; application/review/verification/UI commands enforce it automatically. Read [the preflight procedure](e2e/README.md#managed-test-preflight) for ownership, blocked states and cleanup.
+
 Writing, extending, diagnosing, tuning or showing browser tests: read `e2e/guide/README.md` first. Reviewing browser changes or asynchronously populated forms: read `e2e/guide/review.md`.
 
 Before implementing a browser-visible feature or behavior change, read `../.claude/skills/anchor-feature-review/SKILL.md`. It loads the repo-owned review procedure and Anchor bindings for responsive tests, screenshot inspection, independent validation and readable PR videos.
