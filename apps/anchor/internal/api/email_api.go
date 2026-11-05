@@ -7,6 +7,8 @@ import (
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
+
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -405,6 +407,10 @@ func (s *AnchorAPI) SendEmail(
 	in.ToName = functional.FromPtr(b.ToName).OrElse("")
 	in.UseDraft = functional.FromPtr(b.UseDraft).OrElse(false)
 	in.Variables = functional.FromPtr(b.Variables).OrElse(nil)
+	if _, isProductKey := security.GetProductAPIKeyCaller(ctx); in.UseDraft && isProductKey {
+		return nil, fault.Forbidden("EMAIL_DRAFT_SEND_FORBIDDEN",
+			"A product API key sends the published version; use_draft needs a platform user.")
+	}
 
 	record, err := s.EmailService.Send(ctx, in)
 	if err != nil {
