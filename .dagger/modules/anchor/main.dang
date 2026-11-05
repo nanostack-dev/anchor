@@ -115,6 +115,8 @@ type Anchor {
       .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
       .withDirectory("/repo", source(ws))
       .withWorkdir("/repo/apps/anchor")
+      # Module downloads stay outside golangci-lint's own 5 m timeout.
+      .withExec(["go", "mod", "download"])
       .withExec(["golangci-lint", "run", "--config", "../../.golangci.yml", "--timeout", "5m", "--path-mode=abs", "./..."])
       .sync
     null

@@ -137,6 +137,10 @@ jobs:
       - name: Install the Dagger CLI
         run: ./scripts/ci/install-dagger.sh "$RUNNER_TEMP/dagger-bin"
       - name: Run the backend checks
+        env:
+          # Two at a time on the runner's 4 vCPUs: lint, three Go suites and the
+          # image build together starved golangci-lint past its timeout.
+          DAGGER_CHECK_PARALLEL: '2'
         run: |
           set -euo pipefail
           export PATH="$RUNNER_TEMP/dagger-bin:$PATH"
