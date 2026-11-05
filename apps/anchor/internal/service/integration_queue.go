@@ -3,11 +3,18 @@ package service
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
+	"go.uber.org/fx"
 
 	"github.com/rs/zerolog"
+)
+
+const (
+	queueKeepDoneJobs   = 7 * 24 * time.Hour
+	queueKeepFailedJobs = 30 * 24 * time.Hour
 )
 
 // NewIntegrationLock creates the pglock client used for distributed advisory
@@ -32,6 +39,36 @@ func NewIntegrationQueue(
 	}
 
 	return queueClient, nil
+}
+
+// RegisterQueueRetention deletes finished pgqueue jobs of every Anchor queue
+// once they are older than queueKeepDoneJobs or queueKeepFailedJobs.
+func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger zerolog.Logger) {
+	retentionCtx, stopRetention := context.WithCancel(context.Background())
+	stopped := make(chan struct{})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				defer close(stopped)
+				if err := queueClient.RunRetention(retentionCtx, queue.RetentionPolicy{
+					KeepDone:   queueKeepDoneJobs,
+					KeepFailed: queueKeepFailedJobs,
+				}); err != nil {
+					logger.Error().Err(err).Msg("pgqueue retention stopped with error")
+				}
+			}()
+			return nil
+		},
+		OnStop: func(stopCtx context.Context) error {
+			stopRetention()
+			select {
+			case <-stopped:
+				return nil
+			case <-stopCtx.Done():
+				return stopCtx.Err()
+			}
+		},
+	})
 }
 
 type zerologQueueAdapter struct {

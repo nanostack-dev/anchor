@@ -18,7 +18,7 @@ require (
 	github.com/moby/moby/api v1.56.1
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
 	github.com/nanostack-dev/nanostack-framework v0.20.0
-	github.com/nanostack-dev/pgkit v0.0.44
+	github.com/nanostack-dev/pgkit v0.0.45
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/nullable v1.1.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
