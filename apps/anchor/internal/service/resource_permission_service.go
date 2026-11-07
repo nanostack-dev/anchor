@@ -7,7 +7,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -40,9 +39,6 @@ type ResourcePermissionService interface {
 	SearchByProduct(
 		ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
 	) (search.Result[resourcepermission.ProductResourcePermission], error)
-	GetByRole(
-		ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
-	) ([]resourcepermission.ProductResourcePermission, error)
 }
 
 type resourcePermissionService struct {
@@ -361,30 +357,4 @@ func (s *resourcePermissionService) SearchByProduct(
 	return scopedSearch(ctx, s.resourceTypes, logger, input.ProductID, input.Request,
 		resourcepermission.SearchProductResourcePermissionFilter.WithScopes,
 		s.resourcePermissionRepo.SearchByProduct, withPermissionScope)
-}
-
-func (s *resourcePermissionService) GetByRole(
-	ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
-) ([]resourcepermission.ProductResourcePermission, error) {
-	logger := s.logger.With().Str("operation", "GetByRole").Logger()
-
-	if err := validate.ValidateStruct(input); err != nil {
-		return nil, err
-	}
-
-	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID)
-	if err != nil {
-		logger.Error().
-			Str("product_role_id", input.ProductRoleID).
-			Err(err).
-			Msg("failed to get resource permissions by role")
-		return nil, fault.ErrUnexpected
-	}
-	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
-	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
-		return nil, fault.ErrUnexpected
-	}
-
-	return functional.Slice(permissions).Map(withPermissionScope(tree)), nil
 }

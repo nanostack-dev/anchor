@@ -62,11 +62,6 @@ func (in SearchProductResourcePermissionInput) Validate() error {
 		SortFieldProductResourcePermissionName)
 }
 
-type GetProductRoleResourcePermissionsInput struct {
-	ProductID     string `json:"product_id"      validate:"required,notblank"`
-	ProductRoleID string `json:"product_role_id" validate:"required,notblank"`
-}
-
 // WithScopes resolves the filter's resource types against the product's tree.
 func (f SearchProductResourcePermissionFilter) WithScopes(
 	tree resourcetype.Tree,
