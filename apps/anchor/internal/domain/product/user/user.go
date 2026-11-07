@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -11,10 +12,20 @@ import (
 
 type ProductUserStatus string
 
+// Product user statuses are stored and returned in the contract's spelling
+// (ProductUserStatus enum in openapi.yaml).
 const (
-	ProductUserStatusActive   ProductUserStatus = "ACTIVE"
-	ProductUserStatusInactive ProductUserStatus = "INACTIVE"
+	ProductUserStatusActive    ProductUserStatus = "active"
+	ProductUserStatusInvited   ProductUserStatus = "invited"
+	ProductUserStatusSuspended ProductUserStatus = "suspended"
 )
+
+// ParseProductUserStatus folds a status to the contract's spelling. Clients
+// that send "ACTIVE" keep working, and rows stored as ACTIVE before 2026-11-04
+// read back as active.
+func ParseProductUserStatus(status string) ProductUserStatus {
+	return ProductUserStatus(strings.ToLower(status))
+}
 
 type ProductUser struct {
 	ID         string

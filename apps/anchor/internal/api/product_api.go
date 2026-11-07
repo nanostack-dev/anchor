@@ -271,7 +271,9 @@ func mapToSearchProductUserInput(
 		}
 		if f.Statuses != nil {
 			result.Statuses = functional.Slice(*f.Statuses).Map(
-				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) })
+				func(status ProductUserStatus) user.ProductUserStatus {
+					return user.ParseProductUserStatus(string(status))
+				})
 		}
 		if f.ExternalIds != nil {
 			result.ExternalIDs = f.ExternalIds
@@ -306,7 +308,7 @@ func (s *AnchorAPI) CreateProductUser(
 	ctx context.Context, request CreateProductUserRequestObject,
 ) (CreateProductUserResponseObject, error) {
 	status := functional.FromPtr(request.Body.Status).Map(func(s ProductUserStatus) user.ProductUserStatus {
-		return user.ProductUserStatus(s)
+		return user.ParseProductUserStatus(string(s))
 	}).OrElse(user.ProductUserStatusActive)
 
 	input := user.CreateProductUserInput{

@@ -55,6 +55,56 @@ func TestCreateProductUser(t *testing.T) {
 	)
 
 	t.Run(
+		"Creating a product user without a status stores it as active", func(t *testing.T) {
+			productContext := createTestProductContext(t)
+
+			email := itshared.Faker.Internet().Email()
+
+			apiKeyClient, _ := productContext.CreateAPIKeyClientWithScopes(
+				[]string{"product_user:create", "product_user:read"})
+
+			resp, err := apiKeyClient.CreateProductUserWithResponse(
+				ctx, productContext.ProductID,
+				ct.CreateProductUserJSONRequestBody{Email: email},
+			)
+			require.NoError(t, err, "create product user with only an email should not error")
+			require.Equal(t, http.StatusCreated, resp.StatusCode(), "create should return 201 Created")
+			assert.Equal(t, ct.Active, resp.JSON201.Status, "an omitted status is the contract's active")
+
+			statuses := []ct.ProductUserStatus{ct.Active}
+			search, err := apiKeyClient.SearchProductUsersWithResponse(
+				ctx, productContext.ProductID,
+				ct.SearchProductUsersJSONRequestBody{
+					Filter: &ct.ProductUserFilter{Emails: []string{email}, Statuses: &statuses},
+				},
+			)
+			require.NoError(t, err, "search product users should not error")
+			require.Equal(t, http.StatusOK, search.StatusCode(), "search should return 200 OK")
+			assert.Equal(t, int64(1), search.JSON200.Total, "a statuses: [active] search finds the user")
+
+			// Rows written before 2026-11-04 hold ACTIVE: they read back as active and match the search.
+			_, err = testDB.ExecContext(
+				ctx,
+				"UPDATE product_users SET status = 'ACTIVE' WHERE id = $1",
+				resp.JSON201.Id,
+			)
+			require.NoError(t, err, "store the legacy spelling on this CT's own user")
+			legacy, err := apiKeyClient.GetProductUserWithResponse(ctx, productContext.ProductID, resp.JSON201.Id)
+			require.NoError(t, err, "get product user should not error")
+			require.Equal(t, http.StatusOK, legacy.StatusCode(), "get should return 200 OK")
+			assert.Equal(t, ct.Active, legacy.JSON200.Status, "a legacy ACTIVE row reads back as active")
+			search, err = apiKeyClient.SearchProductUsersWithResponse(
+				ctx, productContext.ProductID,
+				ct.SearchProductUsersJSONRequestBody{
+					Filter: &ct.ProductUserFilter{Emails: []string{email}, Statuses: &statuses},
+				},
+			)
+			require.NoError(t, err, "search product users should not error")
+			assert.Equal(t, int64(1), search.JSON200.Total, "a statuses: [active] search finds a legacy ACTIVE row")
+		},
+	)
+
+	t.Run(
 		"Creating a product user with invalid email returns a bad request", func(t *testing.T) {
 			productContext := createTestProductContext(t)
 

@@ -24,7 +24,7 @@ func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) user.ProductUser
 		Email:      entity.Email,
 		Name:       name,
 		ExternalID: entity.ExternalID,
-		Status:     user.ProductUserStatus(entity.Status),
+		Status:     user.ParseProductUserStatus(entity.Status),
 		CreatedAt:  entity.CreatedAt,
 		UpdatedAt:  entity.UpdatedAt,
 	}

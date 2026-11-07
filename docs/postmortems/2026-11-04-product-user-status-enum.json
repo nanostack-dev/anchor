@@ -1,0 +1,264 @@
+{
+  "title": "Product users created without a status were stored and returned as ACTIVE, outside the contract enum",
+  "short": "Product user status enum",
+  "service": "anchor (product users)",
+  "date": "2026-11-04",
+  "severity": "SEV3",
+  "status": "in review",
+  "authors": [
+    "Nanostack routine (echopoint-investigation)"
+  ],
+  "summary": "Since the v1 snapshot (2026-05-11), `POST /v1/products/{id}/product-users` without `status` stored the user as `ACTIVE` and answered `\"status\": \"ACTIVE\"`, although the contract enum is `active`, `invited`, `suspended`. Every Clerk-synced user was stored the same way. A `statuses: [\"active\"]` search does not match those rows, and a client that decodes the enum strictly cannot read the response. The flow suite found it on 2026-11-04 at 00:13Z, when an email-only create added to `anchor: product-user` after anchor#321 got `ACTIVE` back. The fix stores and returns the contract spelling, folds a requested status to lower case, validates it against the enum in the service, and reads stored `ACTIVE` rows back as `active` (search matches both spellings); it waits for human review because it changes a visible response.",
+  "impact": {
+    "text": "Prod and dev, every product. Responses for default and Clerk-synced users carry a value outside the documented enum, and status searches with the documented values miss those users. The number of affected clients is unknown: nothing logs enum mismatches. This is the same class as the 2026-10-26 name contract drift.",
+    "numbers": [
+      {
+        "value": "~6 months",
+        "label": "since the v1 snapshot"
+      },
+      {
+        "value": "2",
+        "label": "write paths storing ACTIVE (API default, Clerk sync)"
+      },
+      {
+        "value": "0",
+        "label": "tests that created a user without a status"
+      }
+    ]
+  },
+  "trigger": "The routine's email-only create in `anchor: product-user` (run 01a1a3e7, 00:13:56Z) asserted `$.status` equals `active` and got `ACTIVE`; the same flow's creates that send `status: active` get `active` back.",
+  "detection": "Detected by a new flow check written from the contract, not from observed responses, while the routine updated the check for anchor#321. No test, alert or customer report had shown it in six months.",
+  "resolution": "Not resolved on dev or prod yet. The fix, anchor#323, passes the product user CTs and repository tests locally (full CT suite with shuffle and race pending at writing) and waits for review. The reproduction moved to `anchor: known bugs`; the gate flow no longer asserts the default status.",
+  "timeline": {
+    "events": [
+      {
+        "t": "2026-05-11T21:16:14Z",
+        "kind": "change",
+        "label": "v1 snapshot: domain status ACTIVE, API enum active",
+        "link": "https://github.com/nanostack-dev/anchor/commit/98d19607"
+      },
+      {
+        "t": "2026-05-11T21:16:14Z",
+        "approx": true,
+        "kind": "trigger",
+        "label": "Users created without status return ACTIVE"
+      },
+      {
+        "t": "2026-10-26T05:13:10Z",
+        "kind": "note",
+        "label": "Same class found: name required against the contract",
+        "link": "https://claude.ai/artifact/9cd5VjqLrPT86J5Kr7rsVq"
+      },
+      {
+        "t": "2026-11-03T18:59:33Z",
+        "kind": "change",
+        "label": "anchor#321: email-only create accepted (CT still sends status)",
+        "link": "https://github.com/nanostack-dev/anchor/pull/321"
+      },
+      {
+        "t": "2026-11-04T00:13:56Z",
+        "kind": "detect",
+        "label": "Flow email-only create: status ACTIVE, expected active"
+      },
+      {
+        "t": "2026-11-04T00:14:51Z",
+        "kind": "mitigate",
+        "label": "Gate flow stops asserting the default; known bug flow added"
+      },
+      {
+        "t": "2026-11-04T00:40:00Z",
+        "approx": true,
+        "kind": "resolve",
+        "label": "Fix branch green locally; PR waiting for review"
+      }
+    ]
+  },
+  "whys": {
+    "problem": "Clients get `status: ACTIVE`, outside the documented enum, and status searches miss those users",
+    "because": [
+      {
+        "text": "A create without `status` defaulted to the domain constant `ACTIVE` and the response cast it unchanged",
+        "evidence": "`product_api.go` `OrElse(user.ProductUserStatusActive)`; `user.go` `ProductUserStatusActive = \"ACTIVE\"`; mapper `ProductUserStatus(user.Status)`",
+        "because": [
+          {
+            "text": "The domain and the contract spell statuses differently, and the API converts between them with a type cast",
+            "evidence": "Domain `ACTIVE`/`INACTIVE` vs contract `active`/`invited`/`suspended`; Clerk upsert also writes `ACTIVE`",
+            "because": [
+              {
+                "id": "R1",
+                "root": true,
+                "text": "Enum values are declared twice (domain and contract) with no single source or mapping test"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "No test ever created a user without a status, so the default path never met an assertion",
+        "evidence": "CT DSL `product_links_builder.go` sends `ACTIVE`; #321's email-only CT sends `status: active`; every flow create sent a status",
+        "because": [
+          {
+            "text": "The shared create helpers fill every optional field so one helper serves every test",
+            "evidence": "`createDSLProductUser` always sends name and status; flows copied full bodies",
+            "because": [
+              {
+                "id": "R2",
+                "root": true,
+                "text": "Create tests send convenient bodies, not the contract's minimum body; this is open action A2 of the 2026-10-26 postmortem"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "Nothing flagged the value for six months",
+        "because": [
+          {
+            "text": "Responses are not checked against the OpenAPI schema in CTs, and requests with `ACTIVE` passed validation too",
+            "evidence": "The DSL's `ACTIVE` create returns 201 on main; CT asserts compare to generated constants only",
+            "because": [
+              {
+                "id": "R3",
+                "root": true,
+                "text": "Neither CTs nor the server validate responses (and request enums) against openapi.yaml"
+              }
+            ]
+          },
+          {
+            "text": "Stored rows mix `ACTIVE` and `active`, so the fix must read both spellings (a migration backfill is refused by migration lint)",
+            "because": [
+              {
+                "text": "The service accepted any status string: the create input validated `required` only, and the request validator let `ACTIVE` through",
+                "evidence": "`CreateProductUserInput.Status validate:\"required\"`; the CT DSL's `ACTIVE` create answers 201",
+                "because": [
+                  {
+                    "id": "R4",
+                    "root": true,
+                    "text": "Status writes had no enum validation in the service layer, which owns business rules in Anchor"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "contributing": [
+    "Clerk upsert compares `existing.Status != ACTIVE`, so a user created through the API with `active` counted as changed on every sync.",
+    "The 2026-10-26 postmortem's contract-minimum action was still open."
+  ],
+  "lessons": {
+    "well": [
+      "Writing the new check from the contract, not from the observed response, found the bug at once.",
+      "The fix keeps clients that send `ACTIVE` working by folding the case instead of refusing them."
+    ],
+    "wrong": [
+      "The same class of drift was found nine days earlier and its prevention action is still open.",
+      "#321 fixed the name default but its CT still sent a status, so the minimum body stayed untested."
+    ],
+    "lucky": [
+      "The bug surfaced only because the gate check for #321 needed rewriting that night; the default path had no other test.",
+      "Lower-casing on read is lossless for both spellings seen in code (`ACTIVE`, `active`), so no backfill is needed."
+    ]
+  },
+  "actions": [
+    {
+      "id": "A1",
+      "what": "Store and return contract statuses, fold input case, validate the enum in the service, read legacy rows as active",
+      "type": "prevent",
+      "owner": "anchor maintainers (review)",
+      "due": "2026-11-11",
+      "status": "open",
+      "fixes": [
+        "R1",
+        "R4"
+      ],
+      "ticket": {
+        "label": "anchor#323",
+        "url": "https://github.com/nanostack-dev/anchor/pull/323"
+      }
+    },
+    {
+      "id": "A2",
+      "what": "CT per create operation with only the contract's required fields, asserting every defaulted field",
+      "type": "prevent",
+      "owner": "anchor maintainers",
+      "due": "2026-11-18",
+      "status": "open",
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A3",
+      "what": "Validate CT responses against openapi.yaml (kin-openapi response validation in the CT client)",
+      "type": "detect",
+      "owner": "anchor maintainers",
+      "due": "2026-11-18",
+      "status": "open",
+      "fixes": [
+        "R3"
+      ]
+    },
+    {
+      "id": "A4",
+      "what": "Known-bugs reproduction; move into `anchor: product-user` once the fix is live",
+      "type": "detect",
+      "owner": "Nanostack routine (echopoint-investigation)",
+      "due": "2026-11-04",
+      "status": "done",
+      "fixes": [
+        "R3"
+      ]
+    },
+    {
+      "id": "A5",
+      "what": "flow-suite-testing skill: a create check sends only required fields and asserts each default against the contract",
+      "type": "process",
+      "owner": "Nanostack routine (echopoint-investigation)",
+      "due": "2026-11-04",
+      "status": "done",
+      "fixes": [
+        "R2"
+      ],
+      "ticket": {
+        "label": "skills#48",
+        "url": "https://github.com/nanostack-dev/skills/pull/48"
+      }
+    }
+  ],
+  "responders": [
+    {
+      "role": "Detection and fix",
+      "name": "Nanostack routine (echopoint-investigation)"
+    }
+  ],
+  "messaging": {
+    "internal": "Anchor returns product user status ACTIVE for users created without a status and for Clerk-synced users; the contract says active. Fix waiting for review.",
+    "external": "Product users created without a status, and users synced from Clerk, were returned with status ACTIVE instead of active. Responses now use the documented values, and searches by status find these users."
+  },
+  "links": [
+    {
+      "label": "Report (artifact)",
+      "url": "https://claude.ai/artifact/NXLTbTpn4q1aJo85G41tUC"
+    },
+    {
+      "label": "SEV3 name contract drift (same class)",
+      "url": "https://claude.ai/artifact/9cd5VjqLrPT86J5Kr7rsVq"
+    },
+    {
+      "label": "anchor#321",
+      "url": "https://github.com/nanostack-dev/anchor/pull/321"
+    },
+    {
+      "label": "anchor#323 (fix, waiting review)",
+      "url": "https://github.com/nanostack-dev/anchor/pull/323"
+    },
+    {
+      "label": "skills#48",
+      "url": "https://github.com/nanostack-dev/skills/pull/48"
+    }
+  ]
+}
