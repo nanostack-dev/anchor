@@ -12,6 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -547,7 +548,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
-		logger.Error().Str("organization_id", organizationID).Err(err).Msg("failed to validate organization API key")
+		log.Event(&logger, err).Str("organization_id", organizationID).Msg("failed to validate organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -574,7 +575,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to introspect organization API key")
+		log.Event(&logger, err).Str("product_id", productID).Msg("failed to introspect organization API key")
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
