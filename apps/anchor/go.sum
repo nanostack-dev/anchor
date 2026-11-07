@@ -269,8 +269,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nanostack-dev/nanostack-framework v0.20.0 h1:PYORa9RCgGp4xgO8W5AfFl+KTcer/rI1iAbgVdNiG+o=
 github.com/nanostack-dev/nanostack-framework v0.20.0/go.mod h1:PevmmXgQbNjgf5S986IB5uIznu2PX2uJ8wCXQYk1lZ4=
-github.com/nanostack-dev/pgkit v0.0.45 h1:o1Rdh2M0RFRmHyCbL85jAtguy/F2mVYILPJLZ1w7Xhk=
-github.com/nanostack-dev/pgkit v0.0.45/go.mod h1:OLCH3GsT7Pu713TIZRPB+jjuJZhFLFQVro7JH2kw30Y=
+github.com/nanostack-dev/pgkit v0.0.46 h1:s0Psqx5yo6/ZdhMsN96vJ6lOzzFRaCeDQ4uBcLYuqB0=
+github.com/nanostack-dev/pgkit v0.0.46/go.mod h1:OLCH3GsT7Pu713TIZRPB+jjuJZhFLFQVro7JH2kw30Y=
 github.com/natefinch/wrap v0.2.0 h1:IXzc/pw5KqxJv55gV0lSOcKHYuEZPGbQrOOXr/bamRk=
 github.com/natefinch/wrap v0.2.0/go.mod h1:6gMHlAl12DwYEfKP3TkuykYUfLSEAvHw67itm4/KAS8=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
