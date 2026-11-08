@@ -1,0 +1,1851 @@
+{
+ "id": "9c309cd2-bde7-43d6-9522-5a642845f675",
+ "name": "anchor: register on assign & organization role scope",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#312: the resource member PUT with a `resource` block registers a document, then renames and moves it, and sets the role in one call; refusals write nothing (409 PARENT_NOT_REGISTERED, 400 ROLE_SCOPE_MISMATCH, 403 without resource:write while the same key still assigns); without the block an unregistered resource is 404. anchor#311: member add, member role update, invitation create and update and a founding member refuse a project-scoped role with 400 ROLE_NOT_ORGANIZATION_SCOPED (role_id, resource_type metadata) and keep the current role. Own product, deleted always. Generator: echopoint-investigation/gen_register_assign.py.",
+ "updated_at": "2026-11-03T15:14:22.338778Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "a323504a-27c7-4176-926b-637c40ca0030",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "8647fcf1-eb32-4b84-8407-daa18ba45b9f",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "010ab999-c993-44b4-8080-ab02c60b93d0",
+    "source": "create-key",
+    "target": "create-member-key",
+    "type": "success"
+   },
+   {
+    "id": "66669f81-4db2-42b7-bc46-d711aa936186",
+    "source": "create-member-key",
+    "target": "type-project",
+    "type": "success"
+   },
+   {
+    "id": "648db6e7-d118-4b71-8ad8-97bb8336b29d",
+    "source": "type-project",
+    "target": "type-folder",
+    "type": "success"
+   },
+   {
+    "id": "df9aa3b5-407c-45e8-9421-cf6c1d4faecc",
+    "source": "type-folder",
+    "target": "type-document",
+    "type": "success"
+   },
+   {
+    "id": "5589e8fa-0576-4146-8def-f7f8dc0d370d",
+    "source": "type-document",
+    "target": "perm-document-view",
+    "type": "success"
+   },
+   {
+    "id": "4b66ed55-3282-44ff-8362-cc461cfd0543",
+    "source": "perm-document-view",
+    "target": "perm-project-manage",
+    "type": "success"
+   },
+   {
+    "id": "d30dbbf5-63e7-4458-9953-bf95f4789276",
+    "source": "perm-project-manage",
+    "target": "role-doc-viewer",
+    "type": "success"
+   },
+   {
+    "id": "2ad50fc5-f706-4d6d-8571-6950e19d5016",
+    "source": "role-doc-viewer",
+    "target": "role-project-admin",
+    "type": "success"
+   },
+   {
+    "id": "9ab49608-907b-41df-bd98-cb2fa50b087c",
+    "source": "role-project-admin",
+    "target": "role-member",
+    "type": "success"
+   },
+   {
+    "id": "d194be82-b51c-4bbf-a9f7-c654e211464c",
+    "source": "role-member",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "5a31e429-9e15-4eeb-8c70-ab75f5736f86",
+    "source": "create-org",
+    "target": "user-dan",
+    "type": "success"
+   },
+   {
+    "id": "85912740-a936-4d07-973b-fac4c905c9f1",
+    "source": "user-dan",
+    "target": "user-ana",
+    "type": "success"
+   },
+   {
+    "id": "f872fe2e-7a92-46d1-acf4-a56d2446bc70",
+    "source": "user-ana",
+    "target": "user-eve",
+    "type": "success"
+   },
+   {
+    "id": "145c51c9-6bbe-4275-bb53-92a2944f5740",
+    "source": "user-eve",
+    "target": "member-dan",
+    "type": "success"
+   },
+   {
+    "id": "2e924371-8d8c-4dc9-80d1-58fdc7d40019",
+    "source": "member-dan",
+    "target": "put-website",
+    "type": "success"
+   },
+   {
+    "id": "a87c9839-ddca-4fbd-af65-28411992a00f",
+    "source": "put-website",
+    "target": "put-design",
+    "type": "success"
+   },
+   {
+    "id": "8d27ac74-3d88-4a02-8c0d-d3b3c0e5ed7a",
+    "source": "put-design",
+    "target": "put-specs",
+    "type": "success"
+   },
+   {
+    "id": "31747e62-f7c6-4ee6-ae34-b94a3353e6fd",
+    "source": "put-specs",
+    "target": "reg-assign",
+    "type": "success"
+   },
+   {
+    "id": "b33498d0-5f6a-4546-9073-32ee74b17a1f",
+    "source": "reg-assign",
+    "target": "reg-get",
+    "type": "success"
+   },
+   {
+    "id": "d5bae064-2c52-4a4f-9e06-e52f592f6fdf",
+    "source": "reg-get",
+    "target": "reg-can",
+    "type": "success"
+   },
+   {
+    "id": "6ecd73bc-e95e-4d62-bf57-d4b6628ec355",
+    "source": "reg-can",
+    "target": "reg-move",
+    "type": "success"
+   },
+   {
+    "id": "d7b47580-67d2-42f8-b00c-2ba30dfff2e1",
+    "source": "reg-move",
+    "target": "reg-moved",
+    "type": "success"
+   },
+   {
+    "id": "ea37e3e8-7f1f-4aef-b648-7a5bf151c4a3",
+    "source": "reg-moved",
+    "target": "reg-held",
+    "type": "success"
+   },
+   {
+    "id": "0f541684-ef94-4ebf-86af-a909f368f15f",
+    "source": "reg-held",
+    "target": "reg-parent-missing",
+    "type": "success"
+   },
+   {
+    "id": "c6a348e2-9ed7-42c2-82e0-1cc0ec4e79d6",
+    "source": "reg-parent-missing",
+    "target": "reg-orphan-absent",
+    "type": "success"
+   },
+   {
+    "id": "a91ea305-ca03-4644-ba07-f6a67a5b0541",
+    "source": "reg-orphan-absent",
+    "target": "reg-scope-mismatch",
+    "type": "success"
+   },
+   {
+    "id": "e545b526-ac16-4a92-b465-ab47b349da38",
+    "source": "reg-scope-mismatch",
+    "target": "reg-draft-absent",
+    "type": "success"
+   },
+   {
+    "id": "a7ea2d4e-b8c5-40b4-9ae2-89ce9e9d14fd",
+    "source": "reg-draft-absent",
+    "target": "reg-no-block",
+    "type": "success"
+   },
+   {
+    "id": "896a5f3b-9aa7-405c-8334-a567deda1d18",
+    "source": "reg-no-block",
+    "target": "reg-no-write-scope",
+    "type": "success"
+   },
+   {
+    "id": "8497c215-36a2-4cdf-9e0b-ea13e5f74d13",
+    "source": "reg-no-write-scope",
+    "target": "reg-memo-absent",
+    "type": "success"
+   },
+   {
+    "id": "9ae96d62-8e7e-42dc-a4a6-e6601e7af70c",
+    "source": "reg-memo-absent",
+    "target": "reg-member-key-assign",
+    "type": "success"
+   },
+   {
+    "id": "82aec3a7-93ee-4ed5-a7d5-39c496335330",
+    "source": "reg-member-key-assign",
+    "target": "scope-add",
+    "type": "success"
+   },
+   {
+    "id": "d441840e-d187-4f76-a0d3-7f312e5579f3",
+    "source": "scope-add",
+    "target": "scope-add-none",
+    "type": "success"
+   },
+   {
+    "id": "80eab154-7bb3-4c53-958d-9036cc608951",
+    "source": "scope-add-none",
+    "target": "scope-add-ok",
+    "type": "success"
+   },
+   {
+    "id": "bb2271df-dd18-4eb3-9776-c406fd10e1bd",
+    "source": "scope-add-ok",
+    "target": "scope-update",
+    "type": "success"
+   },
+   {
+    "id": "b09b38ee-7e26-4610-aacc-4ca98a28b0a6",
+    "source": "scope-update",
+    "target": "scope-update-kept",
+    "type": "success"
+   },
+   {
+    "id": "c62fde57-1640-426c-9fd3-6207cfc6b9f6",
+    "source": "scope-update-kept",
+    "target": "scope-invite",
+    "type": "success"
+   },
+   {
+    "id": "c787f661-17f9-4178-a1f0-eff80f3d1016",
+    "source": "scope-invite",
+    "target": "scope-invite-ok",
+    "type": "success"
+   },
+   {
+    "id": "a8cc1fa5-423d-403c-bdff-c29ecf1de555",
+    "source": "scope-invite-ok",
+    "target": "scope-invite-update",
+    "type": "success"
+   },
+   {
+    "id": "2f8ba968-5a72-4abe-92aa-852f498d1aea",
+    "source": "scope-invite-update",
+    "target": "scope-invite-kept",
+    "type": "success"
+   },
+   {
+    "id": "f7634292-2d09-4ba9-8fe4-fe8eb51eca59",
+    "source": "scope-invite-kept",
+    "target": "scope-founding",
+    "type": "success"
+   },
+   {
+    "id": "469a3e1e-02c7-45e4-8ceb-e17bd444c2ac",
+    "source": "scope-founding",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: register on assign & organization role scope",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Setup · Log in to the platform"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-regassign-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create the Product → 201"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-regassign-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization_member:create\", \"product_user:create\", \"product_user:read\", \"organization_api_key:read\", \"resource:read\", \"resource:write\", \"resource_member:write\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create a key with resource:write and resource_member:write → 201"
+   },
+   {
+    "id": "create-member-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-regassign-member\", \"mutable\": false, \"permissions\": [\"resource_member:write\", \"resource:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create a key with resource_member:write and resource:read only → 201"
+   },
+   {
+    "id": "type-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type project under organization → 201"
+   },
+   {
+    "id": "type-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"folder\", \"name\": \"Folder\", \"parent_types\": [\"project\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type folder under project → 201"
+   },
+   {
+    "id": "type-document",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"document\", \"name\": \"Document\", \"parent_types\": [\"folder\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type document under folder → 201"
+   },
+   {
+    "id": "perm-document-view",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"document:view\", \"resource_type\": \"document\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create permission document:view on document → 201"
+   },
+   {
+    "id": "perm-project-manage",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"project:manage\", \"resource_type\": \"project\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create permission project:manage on project → 201"
+   },
+   {
+    "id": "role-doc-viewer",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-doc-viewer\", \"resource_type\": \"document\", \"permissions\": [\"document:view\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role doc-viewer on document → 201"
+   },
+   {
+    "id": "role-project-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-project-admin\", \"resource_type\": \"project\", \"permissions\": [\"project:manage\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role project-admin on project → 201"
+   },
+   {
+    "id": "role-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-member\", \"resource_type\": \"organization\", \"permissions\": []}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role member on organization → 201"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-regassign-org-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create Organization Acme → 201"
+   },
+   {
+    "id": "user-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-regassign-dan-{{$runId}}@nanostack.dev\", \"name\": \"eptest dan\", \"external_id\": \"ext-regassign-dan-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create product user dan → 201"
+   },
+   {
+    "id": "user-ana",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-regassign-ana-{{$runId}}@nanostack.dev\", \"name\": \"eptest ana\", \"external_id\": \"ext-regassign-ana-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create product user ana → 201"
+   },
+   {
+    "id": "user-eve",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-regassign-eve-{{$runId}}@nanostack.dev\", \"name\": \"eptest eve\", \"external_id\": \"ext-regassign-eve-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create product user eve → 201"
+   },
+   {
+    "id": "member-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-dan.id}}\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Add Dan to Acme as member → 201"
+   },
+   {
+    "id": "put-website",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/project/website",
+     "body": "{\"name\": \"Website\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Register project website under Acme → 200"
+   },
+   {
+    "id": "put-design",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/design",
+     "body": "{\"name\": \"Design\", \"parent\": {\"type\": \"project\", \"id\": \"website\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Register folder design under website → 200"
+   },
+   {
+    "id": "put-specs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/specs",
+     "body": "{\"name\": \"Specs\", \"parent\": {\"type\": \"project\", \"id\": \"website\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Register folder specs under website → 200"
+   },
+   {
+    "id": "reg-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"], \"resource\": {\"name\": \"Pricing page\", \"parent\": {\"type\": \"folder\", \"id\": \"design\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{user-dan.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-doc-viewer.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.roles[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · One PUT registers document pricing under design and gives Dan doc-viewer → 200"
+   },
+   {
+    "id": "reg-get",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Pricing page"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "folder"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.parent.type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "design"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.parent.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · pricing is registered: name Pricing page, parent design → 200"
+   },
+   {
+    "id": "reg-can",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-regassign-dan-{{$runId}}\"}, \"resource\": {\"type\": \"document\", \"id\": \"pricing\", \"properties\": {\"organization_id\": \"{{create-org.orgId}}\"}}, \"action\": {\"name\": \"document:view\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · Dan document:view on pricing → allowed"
+   },
+   {
+    "id": "reg-move",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"], \"resource\": {\"name\": \"Pricing v2\", \"parent\": {\"type\": \"folder\", \"id\": \"specs\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-doc-viewer.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.roles[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · The same PUT on a registered document renames it and moves it under specs → 200"
+   },
+   {
+    "id": "reg-moved",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Pricing v2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "specs"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.parent.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · pricing is now Pricing v2 under specs → 200"
+   },
+   {
+    "id": "reg-held",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-doc-viewer.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.roles[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · Dan still holds doc-viewer on pricing → 200"
+   },
+   {
+    "id": "reg-parent-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"], \"resource\": {\"name\": \"Orphan\", \"parent\": {\"type\": \"folder\", \"id\": \"nope\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PARENT_NOT_REGISTERED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · A parent that is not registered → 409 PARENT_NOT_REGISTERED"
+   },
+   {
+    "id": "reg-orphan-absent",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · orphan was not written → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "reg-scope-mismatch",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/draft/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-project-admin.id}}\"], \"resource\": {\"name\": \"Draft\", \"parent\": {\"type\": \"folder\", \"id\": \"design\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_SCOPE_MISMATCH"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · A project role on a document → 400 ROLE_SCOPE_MISMATCH"
+   },
+   {
+    "id": "reg-draft-absent",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/draft",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · draft stays unregistered → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "reg-no-block",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/ghost/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · Without the resource block an unregistered document → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "reg-no-write-scope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"], \"resource\": {\"name\": \"Memo\", \"parent\": {\"type\": \"folder\", \"id\": \"design\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-member-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "resource:write"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.required_scopes"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · A key without resource:write sends the block → 403"
+   },
+   {
+    "id": "reg-memo-absent",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register on assign · memo stays unregistered → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "reg-member-key-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-doc-viewer.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-member-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register on assign · The same key still assigns on a registered document → 200"
+   },
+   {
+    "id": "scope-add",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-ana.id}}\", \"role_id\": \"{{role-project-admin.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_ORGANIZATION_SCOPED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project-admin.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Add Ana with project-admin → 400 ROLE_NOT_ORGANIZATION_SCOPED"
+   },
+   {
+    "id": "scope-add-none",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org role scope · Ana was not added → 404"
+   },
+   {
+    "id": "scope-add-ok",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-ana.id}}\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org role scope · Add Ana with member → 201"
+   },
+   {
+    "id": "scope-update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}}",
+     "body": "{\"role_id\": \"{{role-project-admin.id}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_ORGANIZATION_SCOPED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project-admin.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Change Ana's role to project-admin → 400 ROLE_NOT_ORGANIZATION_SCOPED"
+   },
+   {
+    "id": "scope-update-kept",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-member.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Ana keeps member → 200"
+   },
+   {
+    "id": "scope-invite",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\": \"garbage+eptest-regassign-inv1-{{$runId}}@nanostack.dev\", \"role_id\": \"{{role-project-admin.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_ORGANIZATION_SCOPED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project-admin.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Invite with project-admin → 400 ROLE_NOT_ORGANIZATION_SCOPED"
+   },
+   {
+    "id": "scope-invite-ok",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\": \"garbage+eptest-regassign-inv2-{{$runId}}@nanostack.dev\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "expiresAt",
+      "secret": false,
+      "extractor": {
+       "path": "$.expires_at",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org role scope · Invite with member → 201"
+   },
+   {
+    "id": "scope-invite-update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{scope-invite-ok.id}}",
+     "body": "{\"role_id\": \"{{role-project-admin.id}}\", \"expires_at\": \"{{scope-invite-ok.expiresAt}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_ORGANIZATION_SCOPED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project-admin.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Change the invitation's role to project-admin → 400 ROLE_NOT_ORGANIZATION_SCOPED"
+   },
+   {
+    "id": "scope-invite-kept",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{scope-invite-ok.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-member.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · The invitation keeps member → 200"
+   },
+   {
+    "id": "scope-founding",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-regassign-founding-{{$runId}}\", \"founding_member\": {\"product_user_id\": \"{{user-eve.id}}\", \"role_id\": \"{{role-project-admin.id}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_ORGANIZATION_SCOPED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project-admin.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org role scope · Create an Organization whose founding member holds project-admin → 400"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup · Delete the Product → 204"
+   }
+  ],
+  "version": "1.0"
+ }
+}

@@ -1,0 +1,1084 @@
+{
+ "id": "19b3483f-fe1e-4ea5-8fbf-ea86ab0d513c",
+ "name": "anchor: cursor search",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#234 cursor-paginated searches on organization workspaces (5): created_at ASC 2+2 by next_cursor, then a cursor without limit takes the default page and ends; name DESC 2+2 by cursor. 400 INVALID_CURSOR for a malformed cursor, cursor + offset, cursor of another sort, an oversized cursor (#241); 400 VALIDATION_ERROR for an unknown sort_by. Own product without event endpoint, deleted always. Generator: echopoint-investigation/gen_cursor_search.py anchor.",
+ "updated_at": "2026-10-30T18:23:50.398376Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "3650530e-5839-4350-931c-641d2e71d178",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "319b91ee-8635-4384-a2e2-e5feeed8aa01",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "ee38ba09-a477-4c89-a86c-439fd82f22b2",
+    "source": "declare-workspace-type",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "45773ff3-78b0-4ba7-9cfb-16d7004d95a3",
+    "source": "create-org",
+    "target": "ws-1",
+    "type": "success"
+   },
+   {
+    "id": "457914a7-c696-49e5-9b60-e13514c72c68",
+    "source": "ws-1",
+    "target": "ws-2",
+    "type": "success"
+   },
+   {
+    "id": "37d083ca-66ee-4d5a-9c91-962098336937",
+    "source": "ws-2",
+    "target": "ws-3",
+    "type": "success"
+   },
+   {
+    "id": "ad9346be-9b16-49a1-aafc-b7391f4ab2f5",
+    "source": "ws-3",
+    "target": "ws-4",
+    "type": "success"
+   },
+   {
+    "id": "e93b8ab6-2f97-4e0f-b47d-869a889975ad",
+    "source": "ws-4",
+    "target": "ws-5",
+    "type": "success"
+   },
+   {
+    "id": "3a251551-0edf-45f6-814b-04b64c7bb559",
+    "source": "ws-5",
+    "target": "p1",
+    "type": "success"
+   },
+   {
+    "id": "220a2435-fc4d-4c38-8ecb-636a05859420",
+    "source": "p1",
+    "target": "p2",
+    "type": "success"
+   },
+   {
+    "id": "027c4ac9-5156-4dd6-ad5e-b400e0d0694e",
+    "source": "p2",
+    "target": "p3",
+    "type": "success"
+   },
+   {
+    "id": "7ffa8cd1-5048-4104-8de3-52b58d0f624e",
+    "source": "ws-5",
+    "target": "name-p1",
+    "type": "success"
+   },
+   {
+    "id": "9b170b36-7c3e-4717-ac26-a43fbc15fc23",
+    "source": "name-p1",
+    "target": "name-p2",
+    "type": "success"
+   },
+   {
+    "id": "b48855f3-cd6c-498a-8f39-d522f9143170",
+    "source": "create-org",
+    "target": "bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "81f538ec-aec7-4547-84a1-593db215c8ae",
+    "source": "p1",
+    "target": "cursor-offset",
+    "type": "success"
+   },
+   {
+    "id": "15632e8b-8cd6-457c-ad16-4584b74d92f3",
+    "source": "p1",
+    "target": "cursor-other-sort",
+    "type": "success"
+   },
+   {
+    "id": "12570aa5-d1f9-4fd3-b88c-06ec8b4468ea",
+    "source": "create-org",
+    "target": "bad-sort",
+    "type": "success"
+   },
+   {
+    "id": "07d4f49a-606e-44a0-bdc7-b100616c7e8e",
+    "source": "create-org",
+    "target": "huge-cursor",
+    "type": "success"
+   },
+   {
+    "id": "fc7e78a0-4ed7-46de-9ba0-597bead2bcef",
+    "source": "p3",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "e72aa774-27fc-4732-b6b3-823b7ed93bac",
+    "source": "name-p2",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "e636350e-bd51-41a9-8b83-40a2b025abee",
+    "source": "bad-cursor",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "4bb11739-bb2b-4170-884d-d714fcb7b85d",
+    "source": "cursor-offset",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "0daa772c-4364-4935-b7f5-bc615c56da83",
+    "source": "cursor-other-sort",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "8dd36a1c-b0b2-4228-abfa-fe495b4435a4",
+    "source": "bad-sort",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "7fc1635e-3f72-4ba5-8022-95a0bc8eee30",
+    "source": "huge-cursor",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "a0e3b4e5-8757-43fe-b291-071aa89e6647",
+    "source": "create-key",
+    "target": "declare-workspace-type",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: cursor search",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-cursor-{{$runId}}\", \"description\": \"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-cursor-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"resource_type:create\", \"resource:read\", \"resource:write\", \"resource:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key (201)"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-cursor-org-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "ws-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/ws-1-{{$runId}}",
+     "body": "{\"name\": \"ws-a-{{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ws-a (200)"
+   },
+   {
+    "id": "ws-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/ws-2-{{$runId}}",
+     "body": "{\"name\": \"ws-b-{{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ws-b (200)"
+   },
+   {
+    "id": "ws-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/ws-3-{{$runId}}",
+     "body": "{\"name\": \"ws-c-{{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ws-c (200)"
+   },
+   {
+    "id": "ws-4",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/ws-4-{{$runId}}",
+     "body": "{\"name\": \"ws-d-{{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ws-d (200)"
+   },
+   {
+    "id": "ws-5",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/ws-5-{{$runId}}",
+     "body": "{\"name\": \"ws-e-{{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ws-e (200)"
+   },
+   {
+    "id": "p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-1.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-2.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "created_at ASC Page 1: 1, 2 + next_cursor"
+   },
+   {
+    "id": "p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2, \"cursor\": \"{{p1.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-3.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-4.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Page 2 By Cursor: 3, 4 + next_cursor"
+   },
+   {
+    "id": "p3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"cursor\": \"{{p2.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-5.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"next_cursor\""
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Cursor Without limit Ends: 5, No next_cursor"
+   },
+   {
+    "id": "name-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"sort_by\": \"name\", \"sort_direction\": \"DESC\", \"pagination\": {\"limit\": 2}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-5.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-4.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "name DESC Page 1: e, d"
+   },
+   {
+    "id": "name-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"sort_by\": \"name\", \"sort_direction\": \"DESC\", \"pagination\": {\"limit\": 2, \"cursor\": \"{{name-p1.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-3.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ws-2.wsId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "name DESC Page 2 By Cursor: c, b"
+   },
+   {
+    "id": "bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2, \"cursor\": \"not-a-cursor\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Malformed Cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "cursor-offset",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2, \"offset\": 2, \"cursor\": \"{{p1.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Cursor With Offset (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "cursor-other-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"sort_by\": \"name\", \"sort_direction\": \"DESC\", \"pagination\": {\"limit\": 2, \"cursor\": \"{{p1.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Cursor Of Another Sort (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "bad-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"sort_by\": \"nope\", \"pagination\": {\"limit\": 2}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "sort_by"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.field"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Unknown sort_by (400 VALIDATION_ERROR on sort_by)"
+   },
+   {
+    "id": "huge-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2, \"cursor\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Oversized Cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "cleanup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (always)"
+   },
+   {
+    "id": "declare-workspace-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"workspace\", \"name\": \"Workspace\", \"parent_types\": [\"organization\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Declare The Workspace Type (201)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

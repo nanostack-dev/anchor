@@ -1,0 +1,957 @@
+{
+ "id": "1411b9e0-fbc9-4544-9bca-6c91d64f9e09",
+ "name": "anchor: product user external id",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#268: a product user created with external_id (product is its own identity provider) is named by that id in access evaluation, no Clerk. Duplicate 409 PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS, case-sensitive (upper case = another user), blank/empty/256-char/non-ASCII 400, no update route (405), NOT_A_MEMBER before membership, allow with role + email after, unknown id SUBJECT_NOT_SYNCED. Own product deleted always. Generator: echopoint-investigation/gen_external_id.py.",
+ "updated_at": "2026-11-03T15:14:18.116945Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "d99bb7bd-09ab-4021-8598-de7b51006bf9",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "0d5e6c5a-76e7-4119-bbba-5aee51b0920e",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "dc1c50c0-0aa6-46e8-8b40-60584d4b7750",
+    "source": "create-product",
+    "target": "perm",
+    "type": "success"
+   },
+   {
+    "id": "d53d7927-88e5-419b-8f0a-4933f90cf56d",
+    "source": "perm",
+    "target": "role",
+    "type": "success"
+   },
+   {
+    "id": "ee0d4fc9-06a7-4d1f-9944-93f16e1a1cca",
+    "source": "create-key",
+    "target": "org",
+    "type": "success"
+   },
+   {
+    "id": "d75a4158-9818-4db0-b512-73d999a84613",
+    "source": "create-key",
+    "target": "user-a",
+    "type": "success"
+   },
+   {
+    "id": "619d2c7d-154f-4f7e-aafe-922e439d894e",
+    "source": "user-a",
+    "target": "user-dup",
+    "type": "success"
+   },
+   {
+    "id": "67ced1e6-5bf8-43e8-a58d-d4bc8d8ca33b",
+    "source": "user-a",
+    "target": "user-blank",
+    "type": "success"
+   },
+   {
+    "id": "6999a1e3-705c-4eb5-b0e2-9f2903ad3e8f",
+    "source": "user-a",
+    "target": "user-empty",
+    "type": "success"
+   },
+   {
+    "id": "b0a53e2c-688d-4e35-bb5c-249286721e40",
+    "source": "user-a",
+    "target": "user-long",
+    "type": "success"
+   },
+   {
+    "id": "52384214-8fa5-4739-bf5f-b662a8c9954c",
+    "source": "user-a",
+    "target": "user-nonascii",
+    "type": "success"
+   },
+   {
+    "id": "6558acc0-5840-4d48-b3a7-64094bac8c84",
+    "source": "user-a",
+    "target": "user-patch",
+    "type": "success"
+   },
+   {
+    "id": "1badd639-1537-4e27-90a3-48f5f22bbb93",
+    "source": "user-dup",
+    "target": "user-b",
+    "type": "success"
+   },
+   {
+    "id": "327d5d58-86e3-40aa-be1f-066c8c01c91b",
+    "source": "user-patch",
+    "target": "user-a-read",
+    "type": "success"
+   },
+   {
+    "id": "5c3831bf-8ffa-4776-8b3d-cbc9a971eb9a",
+    "source": "user-a",
+    "target": "eval-not-member",
+    "type": "success"
+   },
+   {
+    "id": "cbd5ecf7-faac-4da1-9d2c-0a94904a83aa",
+    "source": "role",
+    "target": "eval-not-member",
+    "type": "success"
+   },
+   {
+    "id": "8b55e90f-f7c1-48a4-9d6d-cb823eff1a9f",
+    "source": "org",
+    "target": "eval-not-member",
+    "type": "success"
+   },
+   {
+    "id": "e364038f-590e-4cf8-95ac-d92f4b510a9d",
+    "source": "eval-not-member",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "030c8b0a-b186-4e8d-a76d-dbe5be7823a6",
+    "source": "add-member",
+    "target": "eval-allow",
+    "type": "success"
+   },
+   {
+    "id": "5ce05331-9972-4a48-bac6-d1d582504684",
+    "source": "add-member",
+    "target": "eval-case",
+    "type": "success"
+   },
+   {
+    "id": "aa2d5b99-8aac-45a1-9b10-4020363a9790",
+    "source": "user-b",
+    "target": "eval-case",
+    "type": "success"
+   },
+   {
+    "id": "f5dd1599-50b5-49b3-8556-4c4bc92292d8",
+    "source": "add-member",
+    "target": "eval-unknown",
+    "type": "success"
+   },
+   {
+    "id": "2b5b9d81-5ace-429e-8520-667d39c9d05b",
+    "source": "eval-allow",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "4115c062-1957-4a4e-8ace-694c1c79ddda",
+    "source": "eval-case",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "c1ef96f4-e029-470e-955c-28806308f1d0",
+    "source": "eval-unknown",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "2b8c316f-a2ab-4a3c-b52e-b9e19b2960de",
+    "source": "user-a-read",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "0c38550d-6348-4de7-ae31-4d6ddd396b9d",
+    "source": "user-dup",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "0326d192-22ab-490e-9c79-964786807a18",
+    "source": "user-blank",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "bb57952b-d687-4be7-a9f3-4e4bdf3f8cef",
+    "source": "user-empty",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "0692048e-8081-4acf-be83-bbed025fc236",
+    "source": "user-long",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "71322cec-c3de-43fa-b48a-7a27b9fc8d9a",
+    "source": "user-nonascii",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "bbda918a-ae55-41ff-8fe1-5093071167df",
+    "source": "user-patch",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: product user external id",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-extid-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-extid-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization_member:create\", \"product_user:create\", \"product_user:read\", \"organization_api_key:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key (201)"
+   },
+   {
+    "id": "perm",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"ext:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create ext:read (201)"
+   },
+   {
+    "id": "role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-ext-reader\", \"resource_type\": \"organization\", \"permissions\": [\"ext:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Reader Role (201)"
+   },
+   {
+    "id": "org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-extid-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "user-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-a-{{$runId}}@nanostack.dev\", \"name\": \"eptest a\", \"external_id\": \"ext-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ext-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.external_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "pusr_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create User With external_id (201)"
+   },
+   {
+    "id": "user-dup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-dup-{{$runId}}@nanostack.dev\", \"name\": \"eptest dup\", \"external_id\": \"ext-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Same external_id, Other Email (409 PRODUCT_USER_EXTERNAL_ID_ALREADY_EXISTS)"
+   },
+   {
+    "id": "user-blank",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-blank-{{$runId}}@nanostack.dev\", \"name\": \"eptest blank\", \"external_id\": \"   \"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Blank external_id (400 VALIDATION_ERROR)"
+   },
+   {
+    "id": "user-empty",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-empty-{{$runId}}@nanostack.dev\", \"name\": \"eptest empty\", \"external_id\": \"\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Empty external_id (400 VALIDATION_ERROR)"
+   },
+   {
+    "id": "user-long",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-long-{{$runId}}@nanostack.dev\", \"name\": \"eptest long\", \"external_id\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "256-char external_id (400 VALIDATION_ERROR)"
+   },
+   {
+    "id": "user-nonascii",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-utf-{{$runId}}@nanostack.dev\", \"name\": \"eptest utf\", \"external_id\": \"ext-\\u00e9\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Non-ASCII external_id (400 VALIDATION_ERROR)"
+   },
+   {
+    "id": "user-patch",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{user-a.id}}",
+     "body": "{\"external_id\": \"ext-other-{{$runId}}\"}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "405"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Change external_id Later (405, no update route)"
+   },
+   {
+    "id": "user-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-b-{{$runId}}@nanostack.dev\", \"name\": \"eptest b\", \"external_id\": \"EXT-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EXT-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.external_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Upper-Case external_id Is Another User (201)"
+   },
+   {
+    "id": "user-a-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{user-a.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ext-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.external_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read User A Keeps external_id (200)"
+   },
+   {
+    "id": "eval-not-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org.orgId}}\"}, \"action\": {\"name\": \"ext:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Evaluate By external_id Before Membership (NOT_A_MEMBER)"
+   },
+   {
+    "id": "add-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-a.id}}\", \"role_id\": \"{{role.rid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Add User A As Reader (201)"
+   },
+   {
+    "id": "eval-allow",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org.orgId}}\"}, \"action\": {\"name\": \"ext:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{user-a.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.product_user.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Evaluate By external_id (allow, role + email)"
+   },
+   {
+    "id": "eval-case",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"EXT-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org.orgId}}\"}, \"action\": {\"name\": \"ext:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Evaluate Upper-Case ID (user B, NOT_A_MEMBER)"
+   },
+   {
+    "id": "eval-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-nobody-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org.orgId}}\"}, \"action\": {\"name\": \"ext:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "SUBJECT_NOT_SYNCED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Evaluate Unknown external_id (SUBJECT_NOT_SYNCED)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

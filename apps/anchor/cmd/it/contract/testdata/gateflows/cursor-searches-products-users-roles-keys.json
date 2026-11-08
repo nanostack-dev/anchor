@@ -1,0 +1,4356 @@
+{
+ "id": "04de3711-f53a-4ca0-8a2d-1055ccb152b9",
+ "name": "anchor: cursor searches — products, users, roles, keys",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: cursor searches — products, users, roles, keys\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Cursor walks (limit 2): three products with one name (filtered by that name; default created_at order and sort_by name, all tie), and in a throwaway product three product users, roles, product API keys and resource permissions, the built-in permission catalog (walked to its end against a reference page), and three platform invitations to per-run example.com addresses. Each walk must return the reference page's rows in order, once each, with next_cursor until the last page. Products assert the 400 INVALID_CURSOR refusals. Platform users are only read (creating one means registering an account): the tenant's users walked one per page. Products and invitations are deleted (always) and verified gone.",
+ "updated_at": "2026-11-03T15:14:16.981151Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "e-login--create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--product-key",
+    "source": "create-product",
+    "target": "product-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--product-2",
+    "source": "create-product",
+    "target": "product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-2--product-3",
+    "source": "product-2",
+    "target": "product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-3--products-ref",
+    "source": "product-3",
+    "target": "products-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-products-ref--products-p1",
+    "source": "products-ref",
+    "target": "products-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--products-p2",
+    "source": "products-p1",
+    "target": "products-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-3--products-by-name-ref",
+    "source": "product-3",
+    "target": "products-by-name-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-ref--products-by-name-p1",
+    "source": "products-by-name-ref",
+    "target": "products-by-name-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--products-by-name-p2",
+    "source": "products-by-name-p1",
+    "target": "products-by-name-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--products-bad-cursor",
+    "source": "products-p1",
+    "target": "products-bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--products-cursor-offset",
+    "source": "products-p1",
+    "target": "products-cursor-offset",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--products-cursor-other-sort",
+    "source": "products-p1",
+    "target": "products-cursor-other-sort",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--user-1",
+    "source": "product-key",
+    "target": "user-1",
+    "type": "success"
+   },
+   {
+    "id": "e-user-1--user-2",
+    "source": "user-1",
+    "target": "user-2",
+    "type": "success"
+   },
+   {
+    "id": "e-user-2--user-3",
+    "source": "user-2",
+    "target": "user-3",
+    "type": "success"
+   },
+   {
+    "id": "e-user-3--product-users-ref",
+    "source": "user-3",
+    "target": "product-users-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-ref--product-users-p1",
+    "source": "product-users-ref",
+    "target": "product-users-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--product-users-p2",
+    "source": "product-users-p1",
+    "target": "product-users-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--role-1",
+    "source": "create-product",
+    "target": "role-1",
+    "type": "success"
+   },
+   {
+    "id": "e-role-1--role-2",
+    "source": "role-1",
+    "target": "role-2",
+    "type": "success"
+   },
+   {
+    "id": "e-role-2--role-3",
+    "source": "role-2",
+    "target": "role-3",
+    "type": "success"
+   },
+   {
+    "id": "e-role-3--roles-ref",
+    "source": "role-3",
+    "target": "roles-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-ref--roles-p1",
+    "source": "roles-ref",
+    "target": "roles-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--roles-p2",
+    "source": "roles-p1",
+    "target": "roles-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--product-key-1",
+    "source": "product-key",
+    "target": "product-key-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key-1--product-key-2",
+    "source": "product-key-1",
+    "target": "product-key-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key-2--product-key-3",
+    "source": "product-key-2",
+    "target": "product-key-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key-3--product-keys-ref",
+    "source": "product-key-3",
+    "target": "product-keys-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-ref--product-keys-p1",
+    "source": "product-keys-ref",
+    "target": "product-keys-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--product-keys-p2",
+    "source": "product-keys-p1",
+    "target": "product-keys-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--resource-permission-1",
+    "source": "create-product",
+    "target": "resource-permission-1",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permission-1--resource-permission-2",
+    "source": "resource-permission-1",
+    "target": "resource-permission-2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permission-2--resource-permission-3",
+    "source": "resource-permission-2",
+    "target": "resource-permission-3",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permission-3--resource-permissions-ref",
+    "source": "resource-permission-3",
+    "target": "resource-permissions-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-ref--resource-permissions-p1",
+    "source": "resource-permissions-ref",
+    "target": "resource-permissions-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--resource-permissions-p2",
+    "source": "resource-permissions-p1",
+    "target": "resource-permissions-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permission-3--product-permissions-ref",
+    "source": "resource-permission-3",
+    "target": "product-permissions-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-ref--product-permissions-p1",
+    "source": "product-permissions-ref",
+    "target": "product-permissions-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--product-permissions-p2",
+    "source": "product-permissions-p1",
+    "target": "product-permissions-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--product-permissions-last",
+    "source": "product-permissions-p2",
+    "target": "product-permissions-last",
+    "type": "success"
+   },
+   {
+    "id": "e-login--platform-invitation-1",
+    "source": "login",
+    "target": "platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitation-1--platform-invitation-2",
+    "source": "platform-invitation-1",
+    "target": "platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitation-2--platform-invitation-3",
+    "source": "platform-invitation-2",
+    "target": "platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitation-3--platform-invitations-ref",
+    "source": "platform-invitation-3",
+    "target": "platform-invitations-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-ref--platform-invitations-p1",
+    "source": "platform-invitations-ref",
+    "target": "platform-invitations-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--platform-invitations-p2",
+    "source": "platform-invitations-p1",
+    "target": "platform-invitations-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-login--platform-users-me",
+    "source": "login",
+    "target": "platform-users-me",
+    "type": "success"
+   },
+   {
+    "id": "e-login--platform-users-ref",
+    "source": "login",
+    "target": "platform-users-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-ref--platform-users-p1",
+    "source": "platform-users-ref",
+    "target": "platform-users-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--platform-users-last",
+    "source": "platform-users-p1",
+    "target": "platform-users-last",
+    "type": "success"
+   },
+   {
+    "id": "e-login--platform-users-bad-cursor",
+    "source": "login",
+    "target": "platform-users-bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--platform-users-cursor-other-sort",
+    "source": "platform-users-p1",
+    "target": "platform-users-cursor-other-sort",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--delete-product-2",
+    "source": "products-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p2--delete-product-2",
+    "source": "products-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--delete-product-2",
+    "source": "products-by-name-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p2--delete-product-2",
+    "source": "products-by-name-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-bad-cursor--delete-product-2",
+    "source": "products-bad-cursor",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-offset--delete-product-2",
+    "source": "products-cursor-offset",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-other-sort--delete-product-2",
+    "source": "products-cursor-other-sort",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--delete-product-2",
+    "source": "product-users-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p2--delete-product-2",
+    "source": "product-users-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--delete-product-2",
+    "source": "roles-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p2--delete-product-2",
+    "source": "roles-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--delete-product-2",
+    "source": "product-keys-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p2--delete-product-2",
+    "source": "product-keys-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--delete-product-2",
+    "source": "resource-permissions-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p2--delete-product-2",
+    "source": "resource-permissions-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--delete-product-2",
+    "source": "product-permissions-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--delete-product-2",
+    "source": "product-permissions-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-last--delete-product-2",
+    "source": "product-permissions-last",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--delete-product-2",
+    "source": "platform-invitations-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p2--delete-product-2",
+    "source": "platform-invitations-p2",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--delete-product-2",
+    "source": "platform-users-p1",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-last--delete-product-2",
+    "source": "platform-users-last",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-me--delete-product-2",
+    "source": "platform-users-me",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-bad-cursor--delete-product-2",
+    "source": "platform-users-bad-cursor",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-cursor-other-sort--delete-product-2",
+    "source": "platform-users-cursor-other-sort",
+    "target": "delete-product-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--delete-product-3",
+    "source": "products-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p2--delete-product-3",
+    "source": "products-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--delete-product-3",
+    "source": "products-by-name-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p2--delete-product-3",
+    "source": "products-by-name-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-bad-cursor--delete-product-3",
+    "source": "products-bad-cursor",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-offset--delete-product-3",
+    "source": "products-cursor-offset",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-other-sort--delete-product-3",
+    "source": "products-cursor-other-sort",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--delete-product-3",
+    "source": "product-users-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p2--delete-product-3",
+    "source": "product-users-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--delete-product-3",
+    "source": "roles-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p2--delete-product-3",
+    "source": "roles-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--delete-product-3",
+    "source": "product-keys-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p2--delete-product-3",
+    "source": "product-keys-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--delete-product-3",
+    "source": "resource-permissions-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p2--delete-product-3",
+    "source": "resource-permissions-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--delete-product-3",
+    "source": "product-permissions-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--delete-product-3",
+    "source": "product-permissions-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-last--delete-product-3",
+    "source": "product-permissions-last",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--delete-product-3",
+    "source": "platform-invitations-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p2--delete-product-3",
+    "source": "platform-invitations-p2",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--delete-product-3",
+    "source": "platform-users-p1",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-last--delete-product-3",
+    "source": "platform-users-last",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-me--delete-product-3",
+    "source": "platform-users-me",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-bad-cursor--delete-product-3",
+    "source": "platform-users-bad-cursor",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-cursor-other-sort--delete-product-3",
+    "source": "platform-users-cursor-other-sort",
+    "target": "delete-product-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--delete-platform-invitation-1",
+    "source": "products-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p2--delete-platform-invitation-1",
+    "source": "products-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--delete-platform-invitation-1",
+    "source": "products-by-name-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p2--delete-platform-invitation-1",
+    "source": "products-by-name-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-bad-cursor--delete-platform-invitation-1",
+    "source": "products-bad-cursor",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-offset--delete-platform-invitation-1",
+    "source": "products-cursor-offset",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-other-sort--delete-platform-invitation-1",
+    "source": "products-cursor-other-sort",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--delete-platform-invitation-1",
+    "source": "product-users-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p2--delete-platform-invitation-1",
+    "source": "product-users-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--delete-platform-invitation-1",
+    "source": "roles-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p2--delete-platform-invitation-1",
+    "source": "roles-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--delete-platform-invitation-1",
+    "source": "product-keys-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p2--delete-platform-invitation-1",
+    "source": "product-keys-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--delete-platform-invitation-1",
+    "source": "resource-permissions-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p2--delete-platform-invitation-1",
+    "source": "resource-permissions-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--delete-platform-invitation-1",
+    "source": "product-permissions-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--delete-platform-invitation-1",
+    "source": "product-permissions-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-last--delete-platform-invitation-1",
+    "source": "product-permissions-last",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--delete-platform-invitation-1",
+    "source": "platform-invitations-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p2--delete-platform-invitation-1",
+    "source": "platform-invitations-p2",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--delete-platform-invitation-1",
+    "source": "platform-users-p1",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-last--delete-platform-invitation-1",
+    "source": "platform-users-last",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-me--delete-platform-invitation-1",
+    "source": "platform-users-me",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-bad-cursor--delete-platform-invitation-1",
+    "source": "platform-users-bad-cursor",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-cursor-other-sort--delete-platform-invitation-1",
+    "source": "platform-users-cursor-other-sort",
+    "target": "delete-platform-invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--delete-platform-invitation-2",
+    "source": "products-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p2--delete-platform-invitation-2",
+    "source": "products-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--delete-platform-invitation-2",
+    "source": "products-by-name-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p2--delete-platform-invitation-2",
+    "source": "products-by-name-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-bad-cursor--delete-platform-invitation-2",
+    "source": "products-bad-cursor",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-offset--delete-platform-invitation-2",
+    "source": "products-cursor-offset",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-other-sort--delete-platform-invitation-2",
+    "source": "products-cursor-other-sort",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--delete-platform-invitation-2",
+    "source": "product-users-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p2--delete-platform-invitation-2",
+    "source": "product-users-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--delete-platform-invitation-2",
+    "source": "roles-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p2--delete-platform-invitation-2",
+    "source": "roles-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--delete-platform-invitation-2",
+    "source": "product-keys-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p2--delete-platform-invitation-2",
+    "source": "product-keys-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--delete-platform-invitation-2",
+    "source": "resource-permissions-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p2--delete-platform-invitation-2",
+    "source": "resource-permissions-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--delete-platform-invitation-2",
+    "source": "product-permissions-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--delete-platform-invitation-2",
+    "source": "product-permissions-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-last--delete-platform-invitation-2",
+    "source": "product-permissions-last",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--delete-platform-invitation-2",
+    "source": "platform-invitations-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p2--delete-platform-invitation-2",
+    "source": "platform-invitations-p2",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--delete-platform-invitation-2",
+    "source": "platform-users-p1",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-last--delete-platform-invitation-2",
+    "source": "platform-users-last",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-me--delete-platform-invitation-2",
+    "source": "platform-users-me",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-bad-cursor--delete-platform-invitation-2",
+    "source": "platform-users-bad-cursor",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-cursor-other-sort--delete-platform-invitation-2",
+    "source": "platform-users-cursor-other-sort",
+    "target": "delete-platform-invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p1--delete-platform-invitation-3",
+    "source": "products-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-p2--delete-platform-invitation-3",
+    "source": "products-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p1--delete-platform-invitation-3",
+    "source": "products-by-name-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-by-name-p2--delete-platform-invitation-3",
+    "source": "products-by-name-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-bad-cursor--delete-platform-invitation-3",
+    "source": "products-bad-cursor",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-offset--delete-platform-invitation-3",
+    "source": "products-cursor-offset",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-products-cursor-other-sort--delete-platform-invitation-3",
+    "source": "products-cursor-other-sort",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p1--delete-platform-invitation-3",
+    "source": "product-users-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-users-p2--delete-platform-invitation-3",
+    "source": "product-users-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p1--delete-platform-invitation-3",
+    "source": "roles-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-roles-p2--delete-platform-invitation-3",
+    "source": "roles-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p1--delete-platform-invitation-3",
+    "source": "product-keys-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-keys-p2--delete-platform-invitation-3",
+    "source": "product-keys-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p1--delete-platform-invitation-3",
+    "source": "resource-permissions-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permissions-p2--delete-platform-invitation-3",
+    "source": "resource-permissions-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p1--delete-platform-invitation-3",
+    "source": "product-permissions-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-p2--delete-platform-invitation-3",
+    "source": "product-permissions-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-product-permissions-last--delete-platform-invitation-3",
+    "source": "product-permissions-last",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p1--delete-platform-invitation-3",
+    "source": "platform-invitations-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-invitations-p2--delete-platform-invitation-3",
+    "source": "platform-invitations-p2",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-p1--delete-platform-invitation-3",
+    "source": "platform-users-p1",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-last--delete-platform-invitation-3",
+    "source": "platform-users-last",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-me--delete-platform-invitation-3",
+    "source": "platform-users-me",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-bad-cursor--delete-platform-invitation-3",
+    "source": "platform-users-bad-cursor",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-platform-users-cursor-other-sort--delete-platform-invitation-3",
+    "source": "platform-users-cursor-other-sort",
+    "target": "delete-platform-invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-product-2--cleanup-product",
+    "source": "delete-product-2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-product-3--cleanup-product",
+    "source": "delete-product-3",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-platform-invitation-1--cleanup-product",
+    "source": "delete-platform-invitation-1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-platform-invitation-2--cleanup-product",
+    "source": "delete-platform-invitation-2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-platform-invitation-3--cleanup-product",
+    "source": "delete-platform-invitation-3",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-cleanup-product--product-gone",
+    "source": "cleanup-product",
+    "target": "product-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-product-gone--products-gone",
+    "source": "product-gone",
+    "target": "products-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-product-gone--platform-invitations-gone",
+    "source": "product-gone",
+    "target": "platform-invitations-gone",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: cursor searches — products, users, roles, keys",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "assertions": [],
+    "display_name": "Log In To Anchor"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-cur-products-{{$runId}}\",\"description\":\"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create A Throwaway Product (201)"
+   },
+   {
+    "id": "product-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-cur-products-key\",\"mutable\":false,\"permissions\":[\"product_user:create\",\"product_user:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "key",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Mint A Product Key (201)"
+   },
+   {
+    "id": "product-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-cur-products-{{$runId}}-2\",\"description\":\"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product eptest-cur-products-<run>-2 (201)"
+   },
+   {
+    "id": "product-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-cur-products-{{$runId}}-3\",\"description\":\"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product eptest-cur-products-<run>-3 (201)"
+   },
+   {
+    "id": "products-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{create-product.productId}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Products: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "products-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Products: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "products-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":2,\"cursor\":\"{{products-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Products: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "products-by-name-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"sort_by\":\"name\",\"sort_direction\":\"DESC\",\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{create-product.productId}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Products by name: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "products-by-name-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"sort_by\":\"name\",\"sort_direction\":\"DESC\",\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-by-name-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-by-name-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Products by name: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "products-by-name-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"sort_by\":\"name\",\"sort_direction\":\"DESC\",\"pagination\":{\"limit\":2,\"cursor\":\"{{products-by-name-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{products-by-name-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Products by name: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "products-bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":2,\"cursor\":\"not-a-cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Products: malformed cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "products-cursor-offset",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":2,\"offset\":2,\"cursor\":\"{{products-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Products: cursor with offset 2 (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "products-cursor-other-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"sort_by\":\"name\",\"pagination\":{\"limit\":2,\"cursor\":\"{{products-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Products: cursor reused with sort_by name (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "user-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-pu1-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 1 Named ep-cur-user (201)"
+   },
+   {
+    "id": "user-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-pu2-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 2 Named ep-cur-user (201)"
+   },
+   {
+    "id": "user-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-pu3-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 3 Named ep-cur-user (201)"
+   },
+   {
+    "id": "product-users-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{user-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{user-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{user-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product users: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "product-users-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-users-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-users-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product users: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "product-users-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{product-users-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-users-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product users: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "role-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"ep-cur-role-1\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role ep-cur-role-1 (201)"
+   },
+   {
+    "id": "role-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"ep-cur-role-2\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role ep-cur-role-2 (201)"
+   },
+   {
+    "id": "role-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"ep-cur-role-3\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role ep-cur-role-3 (201)"
+   },
+   {
+    "id": "roles-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{role-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{role-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{role-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Roles: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "roles-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{roles-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{roles-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Roles: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "roles-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{roles-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{roles-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Roles: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "product-key-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"ep-cur-pkey-1\",\"mutable\":false,\"permissions\":[\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key ep-cur-pkey-1 (201)"
+   },
+   {
+    "id": "product-key-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"ep-cur-pkey-2\",\"mutable\":false,\"permissions\":[\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key ep-cur-pkey-2 (201)"
+   },
+   {
+    "id": "product-key-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"ep-cur-pkey-3\",\"mutable\":false,\"permissions\":[\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key ep-cur-pkey-3 (201)"
+   },
+   {
+    "id": "product-keys-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "4"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "4"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-key.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-key-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-key-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{product-key-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product API keys (with the suite's key): one page of 4 holds the scope (200)"
+   },
+   {
+    "id": "product-keys-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "4"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-keys-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-keys-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product API keys (with the suite's key): page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "product-keys-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{product-keys-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "4"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-keys-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-keys-ref.items.3.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product API keys (with the suite's key): page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "resource-permission-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"epcur:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission epcur:read (201)"
+   },
+   {
+    "id": "resource-permission-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"epcur:write\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission epcur:write (201)"
+   },
+   {
+    "id": "resource-permission-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"epcur:delete\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission epcur:delete (201)"
+   },
+   {
+    "id": "resource-permissions-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"name\":\"epcur:read\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"name\":\"epcur:write\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"name\":\"epcur:delete\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Resource permissions: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "resource-permissions-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{resource-permissions-ref.items.0.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{resource-permissions-ref.items.1.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Resource permissions: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "resource-permissions-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{resource-permissions-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{resource-permissions-ref.items.2.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Resource permissions: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "product-permissions-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "total",
+      "secret": false,
+      "extractor": {
+       "path": "$.total",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "lastId",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[-1].name",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "greater_than_or_equal",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product permissions (built-in catalog): reference page (200)"
+   },
+   {
+    "id": "product-permissions-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.total}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.items.0.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.items.1.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product permissions (built-in catalog): page 1 of 2 by cursor matches the reference"
+   },
+   {
+    "id": "product-permissions-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{product-permissions-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.total}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.items.2.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.items.3.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product permissions (built-in catalog): page 2 of 2 by cursor matches the reference"
+   },
+   {
+    "id": "product-permissions-last",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"pagination\":{\"limit\":100,\"cursor\":\"{{product-permissions-p2.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.total}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.items.4.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-permissions-ref.lastId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[-1].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product permissions (built-in catalog): the rest by cursor ends on the reference's last row"
+   },
+   {
+    "id": "platform-invitation-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Platform Invitation 1 (201)"
+   },
+   {
+    "id": "platform-invitation-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-pinv2-{{$runId}}@nanostack.dev\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Platform Invitation 2 (201)"
+   },
+   {
+    "id": "platform-invitation-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-pinv3-{{$runId}}@nanostack.dev\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Platform Invitation 3 (201)"
+   },
+   {
+    "id": "platform-invitations-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/search",
+     "body": "{\"filter\":{\"emails\":[\"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv2-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv3-{{$runId}}@nanostack.dev\"]},\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{platform-invitation-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{platform-invitation-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{platform-invitation-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Platform invitations: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "platform-invitations-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/search",
+     "body": "{\"filter\":{\"emails\":[\"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv2-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv3-{{$runId}}@nanostack.dev\"]},\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{platform-invitations-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{platform-invitations-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Platform invitations: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "platform-invitations-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/search",
+     "body": "{\"filter\":{\"emails\":[\"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv2-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv3-{{$runId}}@nanostack.dev\"]},\"pagination\":{\"limit\":2,\"cursor\":\"{{platform-invitations-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{platform-invitations-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Platform invitations: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "platform-users-me",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"filter\":{\"emails\":[\"{{email}}\"]},\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Platform Users: The Suite User Found By Email (200)"
+   },
+   {
+    "id": "platform-users-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "greater_than_or_equal",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Platform users of the tenant: reference page (200)"
+   },
+   {
+    "id": "platform-users-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"pagination\":{\"limit\":1}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{platform-users-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Platform users: page 1 of 1 has next_cursor and the oldest user"
+   },
+   {
+    "id": "platform-users-last",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"pagination\":{\"limit\":100,\"cursor\":\"{{platform-users-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{platform-users-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Platform users: the rest by cursor starts at the second oldest, no next_cursor"
+   },
+   {
+    "id": "platform-users-bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"not-a-cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Platform Users: malformed cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "platform-users-cursor-other-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"sort_by\":\"email\",\"pagination\":{\"limit\":1,\"cursor\":\"{{platform-users-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Platform Users: cursor reused with sort_by email (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "delete-product-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-2.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Product 2 (204)"
+   },
+   {
+    "id": "delete-product-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-3.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Product 3 (204)"
+   },
+   {
+    "id": "delete-platform-invitation-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/{{platform-invitation-1.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Platform Invitation 1 (204)"
+   },
+   {
+    "id": "delete-platform-invitation-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/{{platform-invitation-2.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Platform Invitation 2 (204)"
+   },
+   {
+    "id": "delete-platform-invitation-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/{{platform-invitation-3.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Platform Invitation 3 (204)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Throwaway Product (204)"
+   },
+   {
+    "id": "product-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Throwaway Product Is Gone (404)"
+   },
+   {
+    "id": "products-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-cur-products-{{$runId}}\",\"eptest-cur-products-{{$runId}}-2\",\"eptest-cur-products-{{$runId}}-3\"]},\"pagination\":{\"limit\":5}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "No Product Of This Run Left (200, total 0)"
+   },
+   {
+    "id": "platform-invitations-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/search",
+     "body": "{\"filter\":{\"emails\":[\"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv2-{{$runId}}@nanostack.dev\",\"garbage+eptest-cur-pinv3-{{$runId}}@nanostack.dev\"]},\"pagination\":{\"limit\":5}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "No Platform Invitation Of This Run Left (200, total 0)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

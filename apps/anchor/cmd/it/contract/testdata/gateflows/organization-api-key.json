@@ -1,0 +1,2174 @@
+{
+ "id": "27c9cecf-c54d-42aa-8be1-001cdeb772a7",
+ "name": "anchor: organization-api-key",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: organization-api-key\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Organization API keys: create, read, search, rename, deactivate, expire, validate and introspect (scopes, inactive, expired, deleted, unknown), the 400/401/404/409 cases, no key value echoed on any read, then one final webhook wait proving every create, update and delete emitted its event and nothing else did.",
+ "updated_at": "2026-10-26T04:02:00.324143Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "8db4c96d-5e7e-45f0-adf3-0a8616f70422",
+    "source": "setup",
+    "target": "set-endpoint",
+    "type": "success"
+   },
+   {
+    "id": "f9e06a64-008b-45fb-b539-e38ea3ff54b3",
+    "source": "set-endpoint",
+    "target": "create-permission",
+    "type": "success"
+   },
+   {
+    "id": "0a39a8e1-62dc-4573-9a67-4d7c07c9b160",
+    "source": "create-permission",
+    "target": "create-org-key",
+    "type": "success"
+   },
+   {
+    "id": "e7064828-b975-4735-a1ba-2d9209fc56bf",
+    "source": "create-permission",
+    "target": "create-second-key",
+    "type": "success"
+   },
+   {
+    "id": "02ea79c1-bee4-4dff-a2dd-4905405b4d30",
+    "source": "create-org-key",
+    "target": "get-org-key",
+    "type": "success"
+   },
+   {
+    "id": "a0a704a0-bac1-4a6c-b3f5-4385277f15d3",
+    "source": "create-org-key",
+    "target": "search-org-keys",
+    "type": "success"
+   },
+   {
+    "id": "9bb11edb-ec3b-45e2-8bb9-a2039548eaa5",
+    "source": "create-org-key",
+    "target": "update-org-key",
+    "type": "success"
+   },
+   {
+    "id": "e31f9c3f-05c6-4bab-9721-92b2d79e8046",
+    "source": "create-org-key",
+    "target": "validate-ok",
+    "type": "success"
+   },
+   {
+    "id": "cb43571d-53b6-4dbe-a52d-43c9c4220669",
+    "source": "create-org-key",
+    "target": "validate-missing",
+    "type": "success"
+   },
+   {
+    "id": "c350563e-9d0f-453e-95ec-3a08b6f34c9b",
+    "source": "create-org-key",
+    "target": "introspect-ok",
+    "type": "success"
+   },
+   {
+    "id": "41f12189-afe8-4967-9a78-ea15f9913c10",
+    "source": "create-org-key",
+    "target": "introspect-no-scopes",
+    "type": "success"
+   },
+   {
+    "id": "b7f3ae90-43e1-4a7a-a3f5-6c126294edc6",
+    "source": "create-org-key",
+    "target": "introspect-missing",
+    "type": "success"
+   },
+   {
+    "id": "35f460c6-b93a-43a0-af4d-66adb4cfd497",
+    "source": "get-org-key",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "61f34661-5c7f-4c3b-be78-e3fe85a883de",
+    "source": "search-org-keys",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "d204caa4-ea8e-4114-9b45-020b86dc8fd9",
+    "source": "update-org-key",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "492f8ceb-e136-4cc0-985b-c3020eb49e22",
+    "source": "validate-ok",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "aee9ab10-4800-422e-b14c-3ffb48402923",
+    "source": "validate-missing",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "85ec5646-3ded-4eed-892a-7e2e5c0e8cc3",
+    "source": "introspect-ok",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "353ebc87-b83b-453d-b841-82f5ceb51892",
+    "source": "introspect-no-scopes",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "e96f209d-db6d-4474-8b2e-28d509c30c79",
+    "source": "introspect-missing",
+    "target": "delete-org-key",
+    "type": "success"
+   },
+   {
+    "id": "f472b8d8-9239-4eb0-987d-9d54a1ea1c8f",
+    "source": "delete-org-key",
+    "target": "verify-gone-key",
+    "type": "success"
+   },
+   {
+    "id": "5161c23b-5722-40d7-a4c2-6aed8e978186",
+    "source": "delete-org-key",
+    "target": "validate-deleted",
+    "type": "success"
+   },
+   {
+    "id": "f234c7ec-18c2-463d-ba3c-cac439937262",
+    "source": "delete-org-key",
+    "target": "introspect-deleted",
+    "type": "success"
+   },
+   {
+    "id": "a05d8afe-e4e7-45d0-82c6-4aed2763f089",
+    "source": "create-second-key",
+    "target": "deactivate-second",
+    "type": "success"
+   },
+   {
+    "id": "95c6d628-344f-4aef-8ec1-89a43115d23c",
+    "source": "deactivate-second",
+    "target": "validate-inactive",
+    "type": "success"
+   },
+   {
+    "id": "a211c409-d3b5-4106-89ab-daa746e7241b",
+    "source": "create-second-key",
+    "target": "create-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "40d0036f-eb57-4978-ac9f-93c9b3115e35",
+    "source": "create-permission",
+    "target": "past-exp",
+    "type": "success"
+   },
+   {
+    "id": "94546296-2335-4931-ba54-367b73df13b8",
+    "source": "create-permission",
+    "target": "unknown-permission",
+    "type": "success"
+   },
+   {
+    "id": "7f906ca5-c5ab-443e-937a-5163232fa120",
+    "source": "setup",
+    "target": "introspect-unknown",
+    "type": "success"
+   },
+   {
+    "id": "f5533618-59d3-413e-b094-08c8d5a2c87d",
+    "source": "setup",
+    "target": "validate-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "6a50b906-3861-4bbc-b23b-10559db5166c",
+    "source": "verify-gone-key",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e9d6386a-5913-4474-aa56-ed717df1b2e2",
+    "source": "validate-deleted",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "3056a4b2-86f6-40d7-bd38-4693409d2dbb",
+    "source": "introspect-deleted",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "a5dede32-4927-492b-a2ac-edf88594b621",
+    "source": "validate-inactive",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "66b49dd1-e2d9-4fe2-a99e-aec64b5e7857",
+    "source": "create-duplicate",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ad46785e-1c42-4f46-92e4-fc5d77cde7cc",
+    "source": "past-exp",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "f8c69a30-686b-480f-ac60-064ea2f7afca",
+    "source": "unknown-permission",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ec4d8220-f465-4cfd-9c1e-06f3b8052beb",
+    "source": "introspect-unknown",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "39c3cd34-ad6a-4aab-a8ad-0c63b02502c0",
+    "source": "validate-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "9d2b6f3d-e76a-4e70-96a9-8dbc1c400d1d",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "0b8b31fd-cc46-4cbe-85b3-743702520bc1",
+    "source": "create-permission",
+    "target": "create-expiring-key",
+    "type": "success"
+   },
+   {
+    "id": "6beca29a-5da9-4c3f-8ea0-d16d15962b59",
+    "source": "create-expiring-key",
+    "target": "wait-expiry",
+    "type": "success"
+   },
+   {
+    "id": "fd098bc6-9bab-4895-9ffc-0e8555e52912",
+    "source": "wait-expiry",
+    "target": "validate-expired",
+    "type": "success"
+   },
+   {
+    "id": "cd7932d5-432a-442c-b23d-7f82d05451b7",
+    "source": "wait-expiry",
+    "target": "introspect-expired",
+    "type": "success"
+   },
+   {
+    "id": "5c03108e-10c6-4dc4-9259-987603fd5a84",
+    "source": "wait-expiry",
+    "target": "reactivate-expired",
+    "type": "success"
+   },
+   {
+    "id": "a0880fff-806f-4761-a445-501bd506d11c",
+    "source": "validate-expired",
+    "target": "get-expired",
+    "type": "success"
+   },
+   {
+    "id": "f1da86b8-2573-43bc-a6d6-8b34b1f91b7a",
+    "source": "setup",
+    "target": "no-credential",
+    "type": "success"
+   },
+   {
+    "id": "5a4adf8c-4af0-45d2-9062-ba4a942c7bf4",
+    "source": "setup",
+    "target": "unknown-product-key",
+    "type": "success"
+   },
+   {
+    "id": "6f2c6654-71cd-45f2-855a-9bba84c28bde",
+    "source": "introspect-expired",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "c5ec6733-af00-4eae-92e2-152b8db82587",
+    "source": "reactivate-expired",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "afca41db-d094-4bc8-8546-fd75a72e4bff",
+    "source": "get-expired",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "f27e680d-6331-495b-9349-118b14b3ddeb",
+    "source": "no-credential",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "a78167ff-9126-4d4e-a138-e4ec3994b5d3",
+    "source": "unknown-product-key",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: organization-api-key",
+  "nodes": [
+   {
+    "id": "setup",
+    "data": {
+     "flow_id": "d0f0f2e3-78d3-4558-a10e-2ea6eba957de",
+     "input_bindings": {
+      "setupProductPrefix": "eptest-orgkey"
+     },
+     "output_bindings": {
+      "orgId": "create-org.orgId",
+      "apiKey": "create-key.apiKey",
+      "authToken": "login.authToken",
+      "productId": "create-product.productId"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Setup Org"
+   },
+   {
+    "id": "set-endpoint",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}",
+     "body": "{\"name\":\"eptest-orgkey-{{$runId}}\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{setup.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "whsec_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.config.events.signing_secret"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Point Product Events At The Run Webhook (200)"
+   },
+   {
+    "id": "create-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{setup.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission (201)"
+   },
+   {
+    "id": "create-org-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-orgkey\", \"permissions\": [\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "akId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "akVal",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_org_apikey_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{setup.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-orgkey"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Org Key (201)"
+   },
+   {
+    "id": "create-second-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-orgkey-two\", \"permissions\": [\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "akId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "akVal",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-orgkey-two"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Second Org Key (201)"
+   },
+   {
+    "id": "get-org-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-org-key.akId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "*"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.obfuscated_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"value\":"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{setup.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Get Org Key (200)"
+   },
+   {
+    "id": "search-org-keys",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/search",
+     "body": "{\"filter\":{\"ids\":[\"{{create-org-key.akId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Search Org Keys By Id (200)"
+   },
+   {
+    "id": "update-org-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-org-key.akId}}",
+     "body": "{\"name\": \"eptest-orgkey-renamed\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-orgkey-renamed"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Rename Org Key (200)"
+   },
+   {
+    "id": "validate-ok",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/validate",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Validate Held Scope (200)"
+   },
+   {
+    "id": "validate-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/validate",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\",\"other:scope\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "other:scope"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.missing_privileges[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Validate Missing Scope (403)"
+   },
+   {
+    "id": "introspect-ok",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{setup.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Introspect Resolves The Organization (200)"
+   },
+   {
+    "id": "introspect-no-scopes",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Introspect Without Scopes (200)"
+   },
+   {
+    "id": "introspect-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\",\"required_scopes\":[\"other:scope\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "other:scope"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.missing_privileges[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{setup.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Introspect Missing Scope (403)"
+   },
+   {
+    "id": "delete-org-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-org-key.akId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Org Key (204)"
+   },
+   {
+    "id": "verify-gone-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-org-key.akId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted Org Key (404)"
+   },
+   {
+    "id": "validate-deleted",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/validate",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Validate A Deleted Key (401)"
+   },
+   {
+    "id": "introspect-deleted",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\":\"{{create-org-key.akVal}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Introspect A Deleted Key (404)"
+   },
+   {
+    "id": "deactivate-second",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-second-key.akId}}",
+     "body": "{\"name\": \"eptest-orgkey-two\", \"status\": \"INACTIVE\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-second-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-second-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Deactivate Second Key (200)"
+   },
+   {
+    "id": "validate-inactive",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/validate",
+     "body": "{\"api_key\":\"{{create-second-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-second-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-second-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Validate An Inactive Key (403)"
+   },
+   {
+    "id": "create-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-orgkey-two\", \"permissions\": [\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Duplicate Name (409)"
+   },
+   {
+    "id": "past-exp",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-pastkey\", \"permissions\": [\"eptestdoc:read\"], \"expires_at\": \"2020-01-01T00:00:00Z\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_EXPIRES_AT_IN_PAST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Past Expiration (400)"
+   },
+   {
+    "id": "unknown-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-badperm\", \"permissions\": [\"nonexistent:scope\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSIONS_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create With Unknown Permission (400)"
+   },
+   {
+    "id": "introspect-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\": \"anchor_org_apikey_doesnotexist_00000000\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Introspect An Unknown Key (404)"
+   },
+   {
+    "id": "validate-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/org_000000000000000000000000000/api-keys/validate",
+     "body": "{\"api_key\": \"anchor_org_apikey_doesnotexist_00000000\", \"required_scopes\": [\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Validate In An Unknown Organization (404)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Key one created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Key two created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-second-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Key one renamed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Key two deactivated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-second-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Key one deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Key two not deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-second-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Expiring key created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-expiring-key.akId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.api_key_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 0,
+       "name": "No other key created (refused creates emit nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 2,
+       "min": 0,
+       "name": "No other key updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.api_key.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "_org_apikey_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "_prd_apikey_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Org Key Event"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{setup.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   },
+   {
+    "id": "create-expiring-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys",
+     "body": "{\"name\":\"eptest-orgkey-expiring\",\"permissions\":[\"eptestdoc:read\"],\"expires_at\":\"{{$isoTimestamp:+60s}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "akId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "akVal",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-orgkey-expiring"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Key Expiring 60s After Run Start (201)"
+   },
+   {
+    "id": "wait-expiry",
+    "data": {
+     "duration": 61000
+    },
+    "type": "delay",
+    "run_when": "on_success",
+    "display_name": "Wait Past The Expiry"
+   },
+   {
+    "id": "validate-expired",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/validate",
+     "body": "{\"api_key\":\"{{create-expiring-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Validate An Expired Key (403)"
+   },
+   {
+    "id": "introspect-expired",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/auth/introspect",
+     "body": "{\"api_key\":\"{{create-expiring-key.akVal}}\",\"required_scopes\":[\"eptestdoc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{setup.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.api_key.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Introspect An Expired Key (403)"
+   },
+   {
+    "id": "reactivate-expired",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-expiring-key.akId}}",
+     "body": "{\"name\":\"eptest-orgkey-expiring\",\"status\":\"ACTIVE\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_INACTIVE_OR_EXPIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Reactivate An Expired Key (409)"
+   },
+   {
+    "id": "get-expired",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/{{create-expiring-key.akId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{setup.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-expiring-key.akVal}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Expired Key Reads Inactive (200)"
+   },
+   {
+    "id": "no-credential",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Without A Product Key (401)"
+   },
+   {
+    "id": "unknown-product-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{setup.productId}}/organizations/{{setup.orgId}}/api-keys/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "anchor_prd_apikey_doesnotexist000000000000"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search With An Unknown Product Key (401)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

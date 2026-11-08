@@ -1,0 +1,2651 @@
+{
+ "id": "39730d01-d484-4427-9c07-e91219eed1c4",
+ "name": "anchor: cursor searches — email & licensing & integrations",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Cursor walks (limit 2) inside a throwaway product: the audit log of an SMTP integration (create, disable, reconfigure while disabled, so nothing dials smtp.example.com), three email templates with one name (default order and sort_by name, all tie), three license templates, the licenses of three organizations with one name (organization_name order ties) and the history of one license (instantiated, adjusted twice). Email sends need a reachable mail server: one empty page and a malformed cursor. Each walk must return the reference page's rows in order, once each, with next_cursor until the last page. The audit log asserts the 400 INVALID_CURSOR refusals. Deleting the product (always) removes everything; its 404 is verified.",
+ "updated_at": "2026-11-03T15:14:19.177463Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "e-login--create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--product-key",
+    "source": "create-product",
+    "target": "product-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--integration",
+    "source": "create-product",
+    "target": "integration",
+    "type": "success"
+   },
+   {
+    "id": "e-integration--integration-disable",
+    "source": "integration",
+    "target": "integration-disable",
+    "type": "success"
+   },
+   {
+    "id": "e-integration-disable--integration-rename-sender",
+    "source": "integration-disable",
+    "target": "integration-rename-sender",
+    "type": "success"
+   },
+   {
+    "id": "e-integration-rename-sender--audit-logs-ref",
+    "source": "integration-rename-sender",
+    "target": "audit-logs-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-ref--audit-logs-p1",
+    "source": "audit-logs-ref",
+    "target": "audit-logs-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p1--audit-logs-p2",
+    "source": "audit-logs-p1",
+    "target": "audit-logs-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p1--audit-logs-bad-cursor",
+    "source": "audit-logs-p1",
+    "target": "audit-logs-bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p1--audit-logs-cursor-offset",
+    "source": "audit-logs-p1",
+    "target": "audit-logs-cursor-offset",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p1--audit-logs-cursor-other-sort",
+    "source": "audit-logs-p1",
+    "target": "audit-logs-cursor-other-sort",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--template-1",
+    "source": "create-product",
+    "target": "template-1",
+    "type": "success"
+   },
+   {
+    "id": "e-template-1--template-2",
+    "source": "template-1",
+    "target": "template-2",
+    "type": "success"
+   },
+   {
+    "id": "e-template-2--template-3",
+    "source": "template-2",
+    "target": "template-3",
+    "type": "success"
+   },
+   {
+    "id": "e-template-3--templates-ref",
+    "source": "template-3",
+    "target": "templates-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-ref--templates-p1",
+    "source": "templates-ref",
+    "target": "templates-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-p1--templates-p2",
+    "source": "templates-p1",
+    "target": "templates-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-template-3--templates-by-name-ref",
+    "source": "template-3",
+    "target": "templates-by-name-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-by-name-ref--templates-by-name-p1",
+    "source": "templates-by-name-ref",
+    "target": "templates-by-name-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-by-name-p1--templates-by-name-p2",
+    "source": "templates-by-name-p1",
+    "target": "templates-by-name-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--sends-page",
+    "source": "create-product",
+    "target": "sends-page",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--sends-bad-cursor",
+    "source": "create-product",
+    "target": "sends-bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--license-schema",
+    "source": "create-product",
+    "target": "license-schema",
+    "type": "success"
+   },
+   {
+    "id": "e-license-schema--license-template-1",
+    "source": "license-schema",
+    "target": "license-template-1",
+    "type": "success"
+   },
+   {
+    "id": "e-license-template-1--license-template-2",
+    "source": "license-template-1",
+    "target": "license-template-2",
+    "type": "success"
+   },
+   {
+    "id": "e-license-template-2--license-template-3",
+    "source": "license-template-2",
+    "target": "license-template-3",
+    "type": "success"
+   },
+   {
+    "id": "e-license-template-3--license-templates-ref",
+    "source": "license-template-3",
+    "target": "license-templates-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-license-templates-ref--license-templates-p1",
+    "source": "license-templates-ref",
+    "target": "license-templates-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-license-templates-p1--license-templates-p2",
+    "source": "license-templates-p1",
+    "target": "license-templates-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-license-template-3--org-1",
+    "source": "license-template-3",
+    "target": "org-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--org-1",
+    "source": "product-key",
+    "target": "org-1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-1--license-1",
+    "source": "org-1",
+    "target": "license-1",
+    "type": "success"
+   },
+   {
+    "id": "e-license-1--org-2",
+    "source": "license-1",
+    "target": "org-2",
+    "type": "success"
+   },
+   {
+    "id": "e-org-2--license-2",
+    "source": "org-2",
+    "target": "license-2",
+    "type": "success"
+   },
+   {
+    "id": "e-license-2--org-3",
+    "source": "license-2",
+    "target": "org-3",
+    "type": "success"
+   },
+   {
+    "id": "e-org-3--license-3",
+    "source": "org-3",
+    "target": "license-3",
+    "type": "success"
+   },
+   {
+    "id": "e-license-3--org-licenses-ref",
+    "source": "license-3",
+    "target": "org-licenses-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-ref--org-licenses-p1",
+    "source": "org-licenses-ref",
+    "target": "org-licenses-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-p1--org-licenses-p2",
+    "source": "org-licenses-p1",
+    "target": "org-licenses-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-license-3--license-adjust-1",
+    "source": "license-3",
+    "target": "license-adjust-1",
+    "type": "success"
+   },
+   {
+    "id": "e-license-adjust-1--license-adjust-2",
+    "source": "license-adjust-1",
+    "target": "license-adjust-2",
+    "type": "success"
+   },
+   {
+    "id": "e-license-adjust-2--license-history-ref",
+    "source": "license-adjust-2",
+    "target": "license-history-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-p1--license-history-ref",
+    "source": "org-licenses-p1",
+    "target": "license-history-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-p2--license-history-ref",
+    "source": "org-licenses-p2",
+    "target": "license-history-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-license-history-ref--license-history-p1",
+    "source": "license-history-ref",
+    "target": "license-history-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-license-history-p1--license-history-p2",
+    "source": "license-history-p1",
+    "target": "license-history-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p1--cleanup-product",
+    "source": "audit-logs-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-p2--cleanup-product",
+    "source": "audit-logs-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-bad-cursor--cleanup-product",
+    "source": "audit-logs-bad-cursor",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-cursor-offset--cleanup-product",
+    "source": "audit-logs-cursor-offset",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-cursor-other-sort--cleanup-product",
+    "source": "audit-logs-cursor-other-sort",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-p1--cleanup-product",
+    "source": "templates-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-p2--cleanup-product",
+    "source": "templates-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-by-name-p1--cleanup-product",
+    "source": "templates-by-name-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-templates-by-name-p2--cleanup-product",
+    "source": "templates-by-name-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-sends-page--cleanup-product",
+    "source": "sends-page",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-sends-bad-cursor--cleanup-product",
+    "source": "sends-bad-cursor",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-license-templates-p1--cleanup-product",
+    "source": "license-templates-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-license-templates-p2--cleanup-product",
+    "source": "license-templates-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-p1--cleanup-product",
+    "source": "org-licenses-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-licenses-p2--cleanup-product",
+    "source": "org-licenses-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-license-history-p1--cleanup-product",
+    "source": "license-history-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-license-history-p2--cleanup-product",
+    "source": "license-history-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-cleanup-product--product-gone",
+    "source": "cleanup-product",
+    "target": "product-gone",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: cursor searches — email & licensing & integrations",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "assertions": [],
+    "display_name": "Log In To Anchor"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-cur-email-{{$runId}}\",\"description\":\"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create A Throwaway Product (201)"
+   },
+   {
+    "id": "product-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-cur-email-key\",\"mutable\":false,\"permissions\":[\"organization:create\",\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "key",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Mint A Product Key (201)"
+   },
+   {
+    "id": "integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations",
+     "body": "{\"provider_type\":\"SMTP\",\"config\":{\"host\":\"smtp.example.com\",\"port\":587,\"encryption\":\"STARTTLS\",\"auth_method\":\"LOGIN\",\"username\":\"u\",\"password\":\"ep-smtp-pw-{{$runId}}\",\"from_address\":\"garbage+eptest-cur-from-{{$runId}}@nanostack.dev\",\"from_name\":\"Ep Cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create An SMTP Integration To smtp.example.com (201)"
+   },
+   {
+    "id": "integration-disable",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}",
+     "body": "{\"is_enabled\":false}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Disable The Integration (200, INACTIVE)"
+   },
+   {
+    "id": "integration-rename-sender",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}",
+     "body": "{\"is_enabled\":false,\"config\":{\"host\":\"smtp.example.com\",\"port\":587,\"encryption\":\"STARTTLS\",\"auth_method\":\"LOGIN\",\"username\":\"u\",\"password\":\"ep-smtp-pw-{{$runId}}\",\"from_address\":\"garbage+eptest-cur-from-{{$runId}}@nanostack.dev\",\"from_name\":\"Ep Cursor 2\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Ep Cursor 2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.from_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename The Sender While Disabled (200)"
+   },
+   {
+    "id": "audit-logs-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Integration audit logs: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "audit-logs-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{audit-logs-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{audit-logs-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Integration audit logs: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "audit-logs-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{audit-logs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{audit-logs-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Integration audit logs: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "audit-logs-bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"not-a-cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Integration audit logs: malformed cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "audit-logs-cursor-offset",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"pagination\":{\"limit\":2,\"offset\":2,\"cursor\":\"{{audit-logs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Integration audit logs: cursor with offset 2 (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "audit-logs-cursor-other-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search",
+     "body": "{\"sort_by\":\"action\",\"pagination\":{\"limit\":2,\"cursor\":\"{{audit-logs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Integration audit logs: cursor reused with sort_by action (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "template-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"ep-cur-tpl-1\",\"name\":\"ep-cur-template\",\"subject\":\"Hello\",\"body_html\":\"<p>Hello</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Email Template ep-cur-tpl-1 Named ep-cur-template (201)"
+   },
+   {
+    "id": "template-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"ep-cur-tpl-2\",\"name\":\"ep-cur-template\",\"subject\":\"Hello\",\"body_html\":\"<p>Hello</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Email Template ep-cur-tpl-2 Named ep-cur-template (201)"
+   },
+   {
+    "id": "template-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"ep-cur-tpl-3\",\"name\":\"ep-cur-template\",\"subject\":\"Hello\",\"body_html\":\"<p>Hello</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Email Template ep-cur-tpl-3 Named ep-cur-template (201)"
+   },
+   {
+    "id": "templates-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Email templates: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "templates-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Email templates: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "templates-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{templates-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Email templates: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "templates-by-name-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{template-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Email templates by name (all tie): one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "templates-by-name-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-by-name-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-by-name-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Email templates by name (all tie): page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "templates-by-name-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":2,\"cursor\":\"{{templates-by-name-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{templates-by-name-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Email templates by name (all tie): page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "sends-page",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Email Sends: Empty Page Without next_cursor (200)"
+   },
+   {
+    "id": "sends-bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"not-a-cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Email Sends: malformed cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "license-schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "body": "{\"fields\":[{\"name\":\"flows\",\"type\":\"LIMIT\",\"usage_shape\":\"GAUGE\",\"rules\":{\"min\":0}},{\"name\":\"sso\",\"type\":\"BOOLEAN\"}]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Define The License Schema (201)"
+   },
+   {
+    "id": "license-template-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"ep-cur-tier-a\",\"values\":{\"flows\":10,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create License Template ep-cur-tier-a (201)"
+   },
+   {
+    "id": "license-template-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"ep-cur-tier-b\",\"values\":{\"flows\":20,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create License Template ep-cur-tier-b (201)"
+   },
+   {
+    "id": "license-template-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"ep-cur-tier-c\",\"values\":{\"flows\":30,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create License Template ep-cur-tier-c (201)"
+   },
+   {
+    "id": "license-templates-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{license-template-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{license-template-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{license-template-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "License templates: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "license-templates-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-templates-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-templates-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "License templates: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "license-templates-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{license-templates-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-templates-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "License templates: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "org-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 1 Named ep-cur-org (201)"
+   },
+   {
+    "id": "license-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license",
+     "body": "{\"template_id\":\"{{license-template-1.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Instantiate ep-cur-tier-a For Organization 1 (201)"
+   },
+   {
+    "id": "org-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 2 Named ep-cur-org (201)"
+   },
+   {
+    "id": "license-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-2.id}}/license",
+     "body": "{\"template_id\":\"{{license-template-1.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Instantiate ep-cur-tier-a For Organization 2 (201)"
+   },
+   {
+    "id": "org-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 3 Named ep-cur-org (201)"
+   },
+   {
+    "id": "license-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-3.id}}/license",
+     "body": "{\"template_id\":\"{{license-template-1.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Instantiate ep-cur-tier-a For Organization 3 (201)"
+   },
+   {
+    "id": "org-licenses-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/organization-licenses/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"organization_id\":\"{{org-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"organization_id\":\"{{org-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"organization_id\":\"{{org-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization licenses (names tie): one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "org-licenses-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/organization-licenses/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-licenses-ref.items.0.organization_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-licenses-ref.items.1.organization_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organization licenses (names tie): page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "org-licenses-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/organization-licenses/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{org-licenses-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-licenses-ref.items.2.organization_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization licenses (names tie): page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "license-adjust-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license",
+     "body": "{\"values\":{\"flows\":250}}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Adjust Organization 1 flows To 250 (200)"
+   },
+   {
+    "id": "license-adjust-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license",
+     "body": "{\"values\":{\"flows\":300}}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Adjust Organization 1 flows To 300 (200)"
+   },
+   {
+    "id": "license-history-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license/history/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "License history of organization 1: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "license-history-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license/history/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-history-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-history-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "License history of organization 1: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "license-history-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license/history/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{license-history-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{license-history-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "License history of organization 1: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Throwaway Product (204)"
+   },
+   {
+    "id": "product-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Throwaway Product Is Gone (404)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

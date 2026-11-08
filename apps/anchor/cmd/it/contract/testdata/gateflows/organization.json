@@ -1,0 +1,1997 @@
+{
+ "id": "bb691494-a2cf-469f-9ee9-00209c09d613",
+ "name": "anchor: organization",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: organization\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Organization CRUD, names are not unique (a second organization with the same name is created), founding member (atomic, idempotent per user), one not-found code (ORGANIZATION_NOT_FOUND) on GET/PUT/DELETE, refusals, and every organization / founding-membership event checked in one final webhook wait.",
+ "updated_at": "2026-11-03T15:14:23.362391Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "e-login--create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--create-key",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--create-read-key",
+    "source": "create-product",
+    "target": "create-read-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-founding-user",
+    "source": "create-key",
+    "target": "create-founding-user",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-bystander",
+    "source": "create-key",
+    "target": "create-bystander",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-founding-role",
+    "source": "create-key",
+    "target": "create-founding-role",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-org",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--get-org",
+    "source": "create-org",
+    "target": "get-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--search-orgs",
+    "source": "create-org",
+    "target": "search-orgs",
+    "type": "success"
+   },
+   {
+    "id": "e-get-org--update-org",
+    "source": "get-org",
+    "target": "update-org",
+    "type": "success"
+   },
+   {
+    "id": "e-search-orgs--update-org",
+    "source": "search-orgs",
+    "target": "update-org",
+    "type": "success"
+   },
+   {
+    "id": "e-update-org--get-org-updated",
+    "source": "update-org",
+    "target": "get-org-updated",
+    "type": "success"
+   },
+   {
+    "id": "e-get-org-updated--delete-org",
+    "source": "get-org-updated",
+    "target": "delete-org",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-org--get-org-gone",
+    "source": "delete-org",
+    "target": "get-org-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-org--update-org-gone",
+    "source": "delete-org",
+    "target": "update-org-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-org--delete-org-again",
+    "source": "delete-org",
+    "target": "delete-org-again",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-twin",
+    "source": "create-key",
+    "target": "create-twin",
+    "type": "success"
+   },
+   {
+    "id": "e-create-twin--create-twin-again",
+    "source": "create-twin",
+    "target": "create-twin-again",
+    "type": "success"
+   },
+   {
+    "id": "e-create-twin-again--twins-both-stored",
+    "source": "create-twin-again",
+    "target": "twins-both-stored",
+    "type": "success"
+   },
+   {
+    "id": "e-create-founding-user--create-org-with-member",
+    "source": "create-founding-user",
+    "target": "create-org-with-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-founding-role--create-org-with-member",
+    "source": "create-founding-role",
+    "target": "create-org-with-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org-with-member--verify-founding-member",
+    "source": "create-org-with-member",
+    "target": "verify-founding-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org-with-member--create-with-member-again",
+    "source": "create-org-with-member",
+    "target": "create-with-member-again",
+    "type": "success"
+   },
+   {
+    "id": "e-create-with-member-again--fm-again-made-nothing",
+    "source": "create-with-member-again",
+    "target": "fm-again-made-nothing",
+    "type": "success"
+   },
+   {
+    "id": "e-create-founding-role--fm-unknown-user",
+    "source": "create-founding-role",
+    "target": "fm-unknown-user",
+    "type": "success"
+   },
+   {
+    "id": "e-create-bystander--fm-unknown-role",
+    "source": "create-bystander",
+    "target": "fm-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "e-fm-unknown-user--refused-left-nothing",
+    "source": "fm-unknown-user",
+    "target": "refused-left-nothing",
+    "type": "success"
+   },
+   {
+    "id": "e-fm-unknown-role--refused-left-nothing",
+    "source": "fm-unknown-role",
+    "target": "refused-left-nothing",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-empty-name",
+    "source": "create-key",
+    "target": "create-empty-name",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-short-name",
+    "source": "create-key",
+    "target": "create-short-name",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--get-unknown-org",
+    "source": "create-key",
+    "target": "get-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-read-key--create-read-only",
+    "source": "create-read-key",
+    "target": "create-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-read-key--search-read-only",
+    "source": "create-read-key",
+    "target": "search-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-twin--search-read-only",
+    "source": "create-twin",
+    "target": "search-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--create-bad-key",
+    "source": "create-product",
+    "target": "create-bad-key",
+    "type": "success"
+   },
+   {
+    "id": "e-get-org-gone--events",
+    "source": "get-org-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-update-org-gone--events",
+    "source": "update-org-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-org-again--events",
+    "source": "delete-org-again",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-twins-both-stored--events",
+    "source": "twins-both-stored",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-verify-founding-member--events",
+    "source": "verify-founding-member",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-fm-again-made-nothing--events",
+    "source": "fm-again-made-nothing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-refused-left-nothing--events",
+    "source": "refused-left-nothing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-empty-name--events",
+    "source": "create-empty-name",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-short-name--events",
+    "source": "create-short-name",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-get-unknown-org--events",
+    "source": "get-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-read-only--events",
+    "source": "create-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-search-read-only--events",
+    "source": "search-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-bad-key--events",
+    "source": "create-bad-key",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-events--cleanup",
+    "source": "events",
+    "target": "cleanup",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-product-org-{{$runId}}\",\"description\":\"organization suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-org-key\",\"mutable\":false,\"permissions\":[\"organization:create\",\"organization:read\",\"organization:update\",\"organization:delete\",\"product_user:create\",\"product_user:read\",\"product_role:create\",\"product_role:read\",\"organization_member:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key"
+   },
+   {
+    "id": "create-read-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-org-read\",\"mutable\":false,\"permissions\":[\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Read-Only Organization Key"
+   },
+   {
+    "id": "create-founding-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Founding User"
+   },
+   {
+    "id": "create-bystander",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create User Who Founds Nothing"
+   },
+   {
+    "id": "create-founding-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-fmrole\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Founding Role"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-{{$runId}}\",\"description\":\"d\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "name",
+      "secret": false,
+      "extractor": {
+       "path": "$.name",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-org-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "d"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Organization"
+   },
+   {
+    "id": "get-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "d"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Organization"
+   },
+   {
+    "id": "search-orgs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"filter\":{\"ids\":[\"{{create-org.orgId}}\"],\"names\":[\"{{create-org.name}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "d"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Organizations By Id And Name"
+   },
+   {
+    "id": "update-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "body": "{\"name\":\"eptest-org-renamed-{{$runId}}\",\"description\":\"upd\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "name",
+      "secret": false,
+      "extractor": {
+       "path": "$.name",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-org-renamed-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "upd"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename Organization"
+   },
+   {
+    "id": "get-org-updated",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{update-org.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "upd"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename Is Stored (200)"
+   },
+   {
+    "id": "delete-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Organization"
+   },
+   {
+    "id": "get-org-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted Organization (404)"
+   },
+   {
+    "id": "update-org-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "body": "{\"name\":\"eptest-org-ghost\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Deleted Organization (404)"
+   },
+   {
+    "id": "delete-org-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Organization Again (404)"
+   },
+   {
+    "id": "create-twin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-twin-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "name",
+      "secret": false,
+      "extractor": {
+       "path": "$.name",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-twin-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "create-twin-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"{{create-twin.name}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-twin.name}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-twin.orgId}}"
+      },
+      "operator_type": "not_equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Second Organization With The Same Name Is Allowed (201)"
+   },
+   {
+    "id": "twins-both-stored",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"filter\":{\"names\":[\"{{create-twin.name}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-twin.orgId}}"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.items[*].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-twin-again.orgId}}"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.items[*].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search By The Shared Name Finds Both (200)"
+   },
+   {
+    "id": "create-org-with-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-fm-{{$runId}}\",\"founding_member\":{\"product_user_id\":\"{{create-founding-user.uid}}\",\"role_id\":\"{{create-founding-role.rid}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgFmId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-org-fm-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Organization With Founding Member"
+   },
+   {
+    "id": "verify-founding-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-with-member.orgFmId}}/members/{{create-founding-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-founding-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-founding-role.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-fmrole"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Founding Member Holds The Role"
+   },
+   {
+    "id": "create-with-member-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-fm-again-{{$runId}}\",\"founding_member\":{\"product_user_id\":\"{{create-founding-user.uid}}\",\"role_id\":\"{{create-founding-role.rid}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-with-member.orgFmId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-org-fm-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Founding The Same User Again Returns The Same Org (201)"
+   },
+   {
+    "id": "fm-again-made-nothing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-org-fm-again-{{$runId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Second Founding Created No Organization"
+   },
+   {
+    "id": "fm-unknown-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-fm-baduser-{{$runId}}\",\"founding_member\":{\"product_user_id\":\"pusr_000000000000000000000000000\",\"role_id\":\"{{create-founding-role.rid}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Founding Member Unknown User (400)"
+   },
+   {
+    "id": "fm-unknown-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-fm-badrole-{{$runId}}\",\"founding_member\":{\"product_user_id\":\"{{create-bystander.uid}}\",\"role_id\":\"product_role_000000000000000000000000000\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Founding Member Unknown Role (400)"
+   },
+   {
+    "id": "refused-left-nothing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-org-fm-baduser-{{$runId}}\",\"eptest-org-fm-badrole-{{$runId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Refused Foundings Left No Organization"
+   },
+   {
+    "id": "create-empty-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Empty Name (400)"
+   },
+   {
+    "id": "create-short-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"a\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create One-Character Name (400)"
+   },
+   {
+    "id": "get-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown Organization (404)"
+   },
+   {
+    "id": "create-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-ro-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create With A Read-Only Key (403)"
+   },
+   {
+    "id": "search-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"filter\":{\"ids\":[\"{{create-twin.orgId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-twin.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read-Only Key Can Search"
+   },
+   {
+    "id": "create-bad-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org-badkey\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "anchor_not_a_real_key"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create With An Unknown Key (401)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Org created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Org renamed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Org deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Twin created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-twin.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Same-name twin created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-twin-again.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Founded org created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-with-member.orgFmId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Founding membership created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-with-member.orgFmId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-founding-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No membership for the refused founder",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-bystander.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 4,
+       "min": 0,
+       "name": "No other organization created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other organization updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other organization deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other membership created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Organization Event"
+   },
+   {
+    "id": "cleanup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   }
+  ],
+  "version": ""
+ }
+}

@@ -1,0 +1,154 @@
+{
+ "id": "d0f0f2e3-78d3-4558-a10e-2ea6eba957de",
+ "name": "anchor: setup-org (module)",
+ "tags": [],
+ "updated_at": "2026-11-03T03:37:05.218863Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "019e94ce-1bea-729f-9dc3-7a56e2441aa3",
+    "source": "login",
+    "target": "create-product",
+    "target_handle": "target-left-create-product",
+    "type": "success"
+   },
+   {
+    "id": "019e94ce-1e9b-7db0-bed9-99f396ad87d3",
+    "source": "create-product",
+    "source_handle": "source-right-create-product",
+    "target": "create-key",
+    "target_handle": "target-left-create-key",
+    "type": "success"
+   },
+   {
+    "id": "019e94ce-2134-7549-8b73-ae7f203d9b43",
+    "source": "create-key",
+    "source_handle": "source-right-create-key",
+    "target": "create-org",
+    "target_handle": "target-left-create-org",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"{{setupProductPrefix}}-{{$runId}}\",\"description\":\"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"organization:update\", \"organization:delete\", \"product_user:create\", \"product_user:read\", \"product_user:delete\", \"organization_member:create\", \"organization_member:read\", \"organization_member:update\", \"organization_member:delete\", \"organization_api_key:create\", \"organization_api_key:read\", \"organization_api_key:update\", \"organization_api_key:delete\", \"product_role:create\", \"product_role:read\", \"product_role:update\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-org\",\"description\":\"test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization"
+   }
+  ],
+  "version": ""
+ }
+}

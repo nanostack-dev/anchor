@@ -1,0 +1,2805 @@
+{
+ "id": "b32e3070-3b2b-4fe5-9043-b2407914478e",
+ "name": "anchor: access isolation and privilege changes",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#302 on the deployed build. IDOR: Globex (another Organization of the Product), another Product's key, an Organization API key sent as a Product key and the platform session can't read, delete, list, assign or remove roles on Acme's folder, read or delete Acme's custom role, or evaluate there; Dan's role and access stay as they were. Privileges: emptying, restoring and replacing Dan's role, a custom role on the resource (never above it) and emptying it, removing Dan from Acme and rejoining (the resource role is gone) each apply to the next decision. Generator: echopoint-investigation/gen_access_isolation.py.",
+ "updated_at": "2026-11-03T15:14:23.017935Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "ec0e5fd4-76c7-462a-979c-05618ffdf11b",
+    "source": "login",
+    "target": "product-acme",
+    "type": "success"
+   },
+   {
+    "id": "19ccd431-1440-4a46-ab34-79452352f3aa",
+    "source": "product-acme",
+    "target": "key-acme",
+    "type": "success"
+   },
+   {
+    "id": "b9c8a70c-4cc0-49a4-a2c6-753a885fba46",
+    "source": "key-acme",
+    "target": "type-project",
+    "type": "success"
+   },
+   {
+    "id": "7661837c-b665-4c04-9fb1-87cf106f43ce",
+    "source": "type-project",
+    "target": "type-folder",
+    "type": "success"
+   },
+   {
+    "id": "ad123c22-3d23-4316-afa4-4150a8735ac5",
+    "source": "type-folder",
+    "target": "type-document",
+    "type": "success"
+   },
+   {
+    "id": "06b9c8eb-5f6d-4f6b-8517-97a83c451412",
+    "source": "type-document",
+    "target": "switch-folder",
+    "type": "success"
+   },
+   {
+    "id": "c7c20ed3-6e7a-44ef-8fa1-3c1e1b084143",
+    "source": "switch-folder",
+    "target": "perm-edit",
+    "type": "success"
+   },
+   {
+    "id": "f5809c66-40ce-404c-8762-a9e37c2f78f7",
+    "source": "perm-edit",
+    "target": "role-granter",
+    "type": "success"
+   },
+   {
+    "id": "761fbcdd-9ff9-4637-a489-44be48651c69",
+    "source": "role-granter",
+    "target": "role-guest",
+    "type": "success"
+   },
+   {
+    "id": "22977856-9625-4e62-a82b-775bbf0a8443",
+    "source": "role-guest",
+    "target": "role-member",
+    "type": "success"
+   },
+   {
+    "id": "10f309e3-f220-4d32-859f-0e1399d6c5a6",
+    "source": "role-member",
+    "target": "org-acme",
+    "type": "success"
+   },
+   {
+    "id": "693d758b-c31e-4b5d-b373-4f06ceb5e7bb",
+    "source": "org-acme",
+    "target": "org-globex",
+    "type": "success"
+   },
+   {
+    "id": "30f50bdc-446c-4597-afb3-5e89947cf6d8",
+    "source": "org-globex",
+    "target": "user-dan",
+    "type": "success"
+   },
+   {
+    "id": "401c0c79-c642-4216-b378-85040cf93553",
+    "source": "user-dan",
+    "target": "user-gus",
+    "type": "success"
+   },
+   {
+    "id": "e8b6ef2c-4c39-4197-b267-89fa3f3641e8",
+    "source": "user-gus",
+    "target": "member-dan",
+    "type": "success"
+   },
+   {
+    "id": "86f2902e-583e-41ca-b771-f9a44c454978",
+    "source": "member-dan",
+    "target": "member-gus",
+    "type": "success"
+   },
+   {
+    "id": "af598eaa-5dd9-452e-a06f-a6d933292e0d",
+    "source": "member-gus",
+    "target": "put-website",
+    "type": "success"
+   },
+   {
+    "id": "a1e10c7b-6d8d-4104-a9cb-b0dad1861b4e",
+    "source": "put-website",
+    "target": "put-design",
+    "type": "success"
+   },
+   {
+    "id": "22c7a638-2759-49c6-81cc-dc98447eb390",
+    "source": "put-design",
+    "target": "grant-dan",
+    "type": "success"
+   },
+   {
+    "id": "a6f2452e-76ba-4653-b23e-e1b2fce06f3b",
+    "source": "grant-dan",
+    "target": "custom-acme",
+    "type": "success"
+   },
+   {
+    "id": "8266a809-4c47-46ab-b2b5-c7e767e476d6",
+    "source": "custom-acme",
+    "target": "custom-globex",
+    "type": "success"
+   },
+   {
+    "id": "e81f1611-7051-46fa-b039-959099c735fa",
+    "source": "custom-globex",
+    "target": "org-key",
+    "type": "success"
+   },
+   {
+    "id": "04897bd2-e7f9-4ce6-93a0-55ae5e7dd10d",
+    "source": "org-key",
+    "target": "product-other",
+    "type": "success"
+   },
+   {
+    "id": "5d9c422e-71a3-4450-830c-fecfc2c527b2",
+    "source": "product-other",
+    "target": "key-other",
+    "type": "success"
+   },
+   {
+    "id": "d3c96206-c918-403e-a13e-352dc572a875",
+    "source": "key-other",
+    "target": "other-type",
+    "type": "success"
+   },
+   {
+    "id": "287f79a7-d13f-4e47-b42a-57150e4cd412",
+    "source": "other-type",
+    "target": "other-role",
+    "type": "success"
+   },
+   {
+    "id": "870c7f77-519c-4587-9986-b6d47a3b80a3",
+    "source": "other-role",
+    "target": "other-user",
+    "type": "success"
+   },
+   {
+    "id": "3ce8ffa9-7173-4467-b980-4e49d49fda29",
+    "source": "other-user",
+    "target": "control-dan",
+    "type": "success"
+   },
+   {
+    "id": "f3d87d00-4cc7-46e6-ad9f-cfe77d6bf0ee",
+    "source": "control-dan",
+    "target": "globex-read",
+    "type": "success"
+   },
+   {
+    "id": "e4f4ea32-e5c7-47e6-ade9-5de26d6c9588",
+    "source": "globex-read",
+    "target": "globex-delete",
+    "type": "success"
+   },
+   {
+    "id": "13248205-4c51-403e-a3f0-ea7820a89249",
+    "source": "globex-delete",
+    "target": "globex-search",
+    "type": "success"
+   },
+   {
+    "id": "7934d759-61ab-4d57-830a-77f61049ee8b",
+    "source": "globex-search",
+    "target": "globex-assign",
+    "type": "success"
+   },
+   {
+    "id": "66481f56-b22f-4268-8fd5-4e767155ee96",
+    "source": "globex-assign",
+    "target": "globex-read-dan",
+    "type": "success"
+   },
+   {
+    "id": "e06d0464-39fa-4765-86c8-fc6f2cbf29f5",
+    "source": "globex-read-dan",
+    "target": "globex-remove-dan",
+    "type": "success"
+   },
+   {
+    "id": "3e3e5489-44f1-4c15-8958-370f09cdc467",
+    "source": "globex-remove-dan",
+    "target": "globex-member",
+    "type": "success"
+   },
+   {
+    "id": "825e5f59-11a9-45e1-ba03-81bbd56be8f5",
+    "source": "globex-member",
+    "target": "globex-custom",
+    "type": "success"
+   },
+   {
+    "id": "5d2712f1-4518-4221-b8fe-ce4539665305",
+    "source": "globex-custom",
+    "target": "globex-read-custom",
+    "type": "success"
+   },
+   {
+    "id": "5edae82d-1bea-43df-af07-5ecb5ca7ecc7",
+    "source": "globex-read-custom",
+    "target": "globex-delete-custom",
+    "type": "success"
+   },
+   {
+    "id": "b816c458-0efb-47fa-96fd-7d0ee0a89937",
+    "source": "globex-delete-custom",
+    "target": "globex-gus",
+    "type": "success"
+   },
+   {
+    "id": "6af4eb91-99ab-43e6-8053-a9100c52d108",
+    "source": "globex-gus",
+    "target": "other-read",
+    "type": "success"
+   },
+   {
+    "id": "77c56763-21db-4420-a5ce-6f863a3bb788",
+    "source": "other-read",
+    "target": "other-delete",
+    "type": "success"
+   },
+   {
+    "id": "bb154e03-b13b-4766-9ad9-550c6be0de30",
+    "source": "other-delete",
+    "target": "other-assign",
+    "type": "success"
+   },
+   {
+    "id": "15b8cd27-2486-4d35-9d8d-3fe102c0cfa9",
+    "source": "other-assign",
+    "target": "other-remove",
+    "type": "success"
+   },
+   {
+    "id": "145ce228-a765-4987-94fb-291051ca18b9",
+    "source": "other-remove",
+    "target": "other-custom",
+    "type": "success"
+   },
+   {
+    "id": "a72515b3-21f4-4829-85fd-9f099776c117",
+    "source": "other-custom",
+    "target": "other-evaluate",
+    "type": "success"
+   },
+   {
+    "id": "8985df82-6827-4f99-932d-7c6e2fb4ecda",
+    "source": "other-evaluate",
+    "target": "other-role-on-acme",
+    "type": "success"
+   },
+   {
+    "id": "79d15de6-3ceb-4a4b-b62f-3f144f2c217b",
+    "source": "other-role-on-acme",
+    "target": "other-user-on-acme",
+    "type": "success"
+   },
+   {
+    "id": "7e994b35-aa06-48db-b660-7625d3207937",
+    "source": "other-user-on-acme",
+    "target": "org-key-assign",
+    "type": "success"
+   },
+   {
+    "id": "ceb41aab-dac6-401b-ad72-3a38278c60b6",
+    "source": "org-key-assign",
+    "target": "platform-assign",
+    "type": "success"
+   },
+   {
+    "id": "4b505bf8-11bf-4eee-b135-effcdb155cc5",
+    "source": "platform-assign",
+    "target": "dan-untouched",
+    "type": "success"
+   },
+   {
+    "id": "6f37036e-08e6-4d23-a4f3-386f3eee6295",
+    "source": "dan-untouched",
+    "target": "control-dan-after",
+    "type": "success"
+   },
+   {
+    "id": "c67454d8-14e2-4102-95a4-8ce722493fe8",
+    "source": "control-dan-after",
+    "target": "empty-granter",
+    "type": "success"
+   },
+   {
+    "id": "2bb9975e-dac4-4b7e-9c93-2edfb08fa7a0",
+    "source": "empty-granter",
+    "target": "emptied",
+    "type": "success"
+   },
+   {
+    "id": "e0eb21aa-be69-41b2-9e9a-1d533da51f4e",
+    "source": "emptied",
+    "target": "emptied-below",
+    "type": "success"
+   },
+   {
+    "id": "cbed653a-6a52-4a85-9dc3-6f94d090446c",
+    "source": "emptied-below",
+    "target": "restore-granter",
+    "type": "success"
+   },
+   {
+    "id": "026e47bf-7e69-459c-b06d-211a8874381c",
+    "source": "restore-granter",
+    "target": "restored",
+    "type": "success"
+   },
+   {
+    "id": "7bf0d048-23c1-4578-85f5-86fe401b3172",
+    "source": "restored",
+    "target": "replace-guest",
+    "type": "success"
+   },
+   {
+    "id": "26cbb032-4835-4de6-b6fe-1bb62e2f8cc5",
+    "source": "replace-guest",
+    "target": "replaced",
+    "type": "success"
+   },
+   {
+    "id": "a230b819-91f5-48cd-a013-c9b962e50535",
+    "source": "replaced",
+    "target": "give-custom",
+    "type": "success"
+   },
+   {
+    "id": "6345079a-5633-4d21-a680-ab4adb086261",
+    "source": "give-custom",
+    "target": "custom-allowed",
+    "type": "success"
+   },
+   {
+    "id": "88f2b4af-0590-4deb-90cc-59a5520370d4",
+    "source": "custom-allowed",
+    "target": "custom-not-above",
+    "type": "success"
+   },
+   {
+    "id": "f2af2d66-0e62-4a43-9638-1ed5b3a28146",
+    "source": "custom-not-above",
+    "target": "empty-custom",
+    "type": "success"
+   },
+   {
+    "id": "0d563b2e-8255-4fe5-8b2f-95183bbc8778",
+    "source": "empty-custom",
+    "target": "custom-emptied",
+    "type": "success"
+   },
+   {
+    "id": "32b00f3c-d2be-4235-ae25-a1a51c0a62f1",
+    "source": "custom-emptied",
+    "target": "back-to-granter",
+    "type": "success"
+   },
+   {
+    "id": "3497cb9a-9ada-4ab5-955e-e9779eb5e5e9",
+    "source": "back-to-granter",
+    "target": "remove-dan",
+    "type": "success"
+   },
+   {
+    "id": "738337e2-645b-44bb-990e-8160696fe623",
+    "source": "remove-dan",
+    "target": "removed",
+    "type": "success"
+   },
+   {
+    "id": "2822a82b-2fb3-458c-8653-84968262d598",
+    "source": "removed",
+    "target": "rejoin-dan",
+    "type": "success"
+   },
+   {
+    "id": "ba191c78-f806-4790-b8af-cab485ddb2b2",
+    "source": "rejoin-dan",
+    "target": "rejoined",
+    "type": "success"
+   },
+   {
+    "id": "3cd43b1d-5e34-433b-9316-e2449bb2676c",
+    "source": "rejoined",
+    "target": "role-gone",
+    "type": "success"
+   },
+   {
+    "id": "a1352ccd-5af5-4565-a0ba-af3f96499fde",
+    "source": "role-gone",
+    "target": "cleanup-acme",
+    "type": "success"
+   },
+   {
+    "id": "31b29f62-d0ad-48ab-b0d3-36c078bcf0cd",
+    "source": "role-gone",
+    "target": "cleanup-other",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: access isolation and privilege changes",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Setup · Log in to the platform"
+   },
+   {
+    "id": "product-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-iso-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create the Product → 201"
+   },
+   {
+    "id": "key-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-iso-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"organization_member:create\", \"organization_member:delete\", \"organization_api_key:create\", \"organization_api_key:read\", \"product_user:create\", \"product_user:read\", \"resource:read\", \"resource:write\", \"resource:delete\", \"resource_member:write\", \"organization_role:create\", \"organization_role:read\", \"organization_role:update\", \"organization_role:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create the Product's API key → 201"
+   },
+   {
+    "id": "type-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/resource-types",
+     "body": "{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type Project under Organization → 201"
+   },
+   {
+    "id": "type-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/resource-types",
+     "body": "{\"slug\": \"folder\", \"name\": \"Folder\", \"parent_types\": [\"project\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type Folder under Project → 201"
+   },
+   {
+    "id": "type-document",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/resource-types",
+     "body": "{\"slug\": \"document\", \"name\": \"Document\", \"parent_types\": [\"folder\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Declare type Document under Folder → 201"
+   },
+   {
+    "id": "switch-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/resource-types/{{type-folder.id}}",
+     "body": "{\"allows_custom_roles\": true}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Turn on custom roles for Folder → 200"
+   },
+   {
+    "id": "perm-edit",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/resource-permissions",
+     "body": "{\"name\": \"folder:edit\", \"resource_type\": \"folder\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create permission folder:edit on Folder → 201"
+   },
+   {
+    "id": "role-granter",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/roles",
+     "body": "{\"name\": \"eptest-folder-granter\", \"resource_type\": \"folder\", \"permissions\": [\"folder:edit\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role folder-granter (folder:edit) → 201"
+   },
+   {
+    "id": "role-guest",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/roles",
+     "body": "{\"name\": \"eptest-folder-guest\", \"resource_type\": \"folder\", \"permissions\": []}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role folder-guest → 201"
+   },
+   {
+    "id": "role-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/roles",
+     "body": "{\"name\": \"eptest-member\", \"resource_type\": \"organization\", \"permissions\": []}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create managed role member → 201"
+   },
+   {
+    "id": "org-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations",
+     "body": "{\"name\": \"eptest-iso-acme-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create Organization Acme → 201"
+   },
+   {
+    "id": "org-globex",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations",
+     "body": "{\"name\": \"eptest-iso-globex-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create Organization Globex → 201"
+   },
+   {
+    "id": "user-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-iso-dan-{{$runId}}@nanostack.dev\", \"name\": \"eptest dan\", \"external_id\": \"ext-iso-dan-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create product user Dan → 201"
+   },
+   {
+    "id": "user-gus",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-iso-gus-{{$runId}}@nanostack.dev\", \"name\": \"eptest gus\", \"external_id\": \"ext-iso-gus-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create product user Gus → 201"
+   },
+   {
+    "id": "member-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-dan.id}}\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Add Dan to Acme as member → 201"
+   },
+   {
+    "id": "member-gus",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-gus.id}}\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Add Gus to Globex as member → 201"
+   },
+   {
+    "id": "put-website",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/project/website",
+     "body": "{\"name\": \"Website\", \"parent\": {\"type\": \"organization\", \"id\": \"{{org-acme.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Register project Website in Acme → 200"
+   },
+   {
+    "id": "put-design",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design",
+     "body": "{\"name\": \"Design\", \"parent\": {\"type\": \"project\", \"id\": \"website\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Register folder Design under Website → 200"
+   },
+   {
+    "id": "grant-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-granter.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Give Dan folder-granter on Design → 200"
+   },
+   {
+    "id": "custom-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/roles",
+     "body": "{\"name\": \"eptest-reviewer\", \"resource_type\": \"folder\", \"permissions\": [\"folder:edit\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Acme creates custom role reviewer on Folder (folder:edit) → 201"
+   },
+   {
+    "id": "custom-globex",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles",
+     "body": "{\"name\": \"eptest-reviewer\", \"resource_type\": \"folder\", \"permissions\": [\"folder:edit\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Globex creates custom role reviewer on Folder (folder:edit) → 201"
+   },
+   {
+    "id": "org-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/api-keys",
+     "body": "{\"name\": \"eptest-iso-org-key\", \"permissions\": [\"folder:edit\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "value",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create an Acme Organization API key (folder:edit) → 201"
+   },
+   {
+    "id": "product-other",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-iso-other-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create another Product of the same tenant → 201"
+   },
+   {
+    "id": "key-other",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-other.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-iso-other-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"organization_member:create\", \"organization_member:delete\", \"organization_api_key:create\", \"organization_api_key:read\", \"product_user:create\", \"product_user:read\", \"resource:read\", \"resource:write\", \"resource:delete\", \"resource_member:write\", \"organization_role:create\", \"organization_role:read\", \"organization_role:update\", \"organization_role:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Create the other Product's API key → 201"
+   },
+   {
+    "id": "other-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-other.productId}}/resource-types",
+     "body": "{\"slug\": \"folder\", \"name\": \"Folder\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Other Product declares type Folder → 201"
+   },
+   {
+    "id": "other-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-other.productId}}/roles",
+     "body": "{\"name\": \"eptest-foreign-editor\", \"resource_type\": \"folder\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Other Product creates managed role foreign-editor on Folder → 201"
+   },
+   {
+    "id": "other-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-other.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-iso-olga-{{$runId}}@nanostack.dev\", \"name\": \"eptest olga\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Setup · Other Product creates product user Olga → 201"
+   },
+   {
+    "id": "control-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Control · Dan folder:edit on Design → allowed"
+   },
+   {
+    "id": "globex-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/folder/design",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Read Acme's Design through Globex → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "globex-delete",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/folder/design?cascade=true",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Delete Acme's Design through Globex → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "globex-search",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Search Globex → none of Acme's resources"
+   },
+   {
+    "id": "globex-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/folder/design/members/{{user-gus.id}}",
+     "body": "{\"role_ids\": [\"{{role-granter.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Give Gus a role on Design through Globex → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "globex-read-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Read Dan's role on Design through Globex → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "globex-remove-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Remove Dan's role through Globex → 404 RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "globex-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-gus.id}}",
+     "body": "{\"role_ids\": [\"{{role-granter.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Give Gus, a Globex member, a role on Acme's Design → 404 ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+   },
+   {
+    "id": "globex-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{custom-globex.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Give Dan Globex's custom role on Design → 400 ROLE_NOT_FOUND_IN_REQUEST"
+   },
+   {
+    "id": "globex-read-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Read Acme's custom role through Globex → 404 ROLE_NOT_FOUND"
+   },
+   {
+    "id": "globex-delete-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Delete Acme's custom role through Globex → 404 ROLE_NOT_FOUND"
+   },
+   {
+    "id": "globex-gus",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-gus-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR Globex · Gus folder:edit on Acme's Design → NOT_A_MEMBER"
+   },
+   {
+    "id": "other-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Read Acme's Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-delete",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design?cascade=true",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Delete Acme's Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-guest.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Give Dan a role on Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-remove",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Remove Dan's role on Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/roles/{{custom-acme.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Read Acme's custom role with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-evaluate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-other.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Evaluate Dan on Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "other-role-on-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{other-role.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Give Dan the other Product's role → 400 ROLE_NOT_FOUND_IN_REQUEST"
+   },
+   {
+    "id": "other-user-on-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{other-user.id}}",
+     "body": "{\"role_ids\": [\"{{role-granter.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR other Product · Give the other Product's user a role on Design → 404 ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+   },
+   {
+    "id": "org-key-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-guest.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{org-key.value}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR credentials · An Organization API key sent as the Product key can't assign → 401 INVALID_PRODUCT_API_KEY"
+   },
+   {
+    "id": "platform-assign",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-guest.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR credentials · The platform session can't assign a role on a resource → 401"
+   },
+   {
+    "id": "dan-untouched",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-granter.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.roles[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "IDOR · Dan still holds folder-granter on Design"
+   },
+   {
+    "id": "control-dan-after",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Control · Dan folder:edit on Design after every refusal → allowed"
+   },
+   {
+    "id": "empty-granter",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/roles/{{role-granter.id}}",
+     "body": "{\"name\": \"eptest-folder-granter\", \"permissions\": []}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · The Product empties folder-granter → 200"
+   },
+   {
+    "id": "emptied",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design → MISSING_PERMISSION"
+   },
+   {
+    "id": "emptied-below",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"document\", \"id\": \"brief\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\", \"parent\": {\"type\": \"folder\", \"id\": \"design\"}}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on a doc under Design → denied"
+   },
+   {
+    "id": "restore-granter",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/roles/{{role-granter.id}}",
+     "body": "{\"name\": \"eptest-folder-granter\", \"permissions\": [\"folder:edit\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · The Product gives folder:edit back to folder-granter → 200"
+   },
+   {
+    "id": "restored",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design → allowed again"
+   },
+   {
+    "id": "replace-guest",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-guest.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Replace Dan's role with folder-guest, no permission → 200"
+   },
+   {
+    "id": "replaced",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design → MISSING_PERMISSION"
+   },
+   {
+    "id": "give-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{custom-acme.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Give Dan Acme's custom role reviewer on Design → 200"
+   },
+   {
+    "id": "custom-allowed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design through reviewer → allowed"
+   },
+   {
+    "id": "custom-not-above",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"project\", \"id\": \"website\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Website above → denied"
+   },
+   {
+    "id": "empty-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/roles/{{custom-acme.id}}",
+     "body": "{\"name\": \"eptest-reviewer\", \"permissions\": []}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Acme empties reviewer → 200"
+   },
+   {
+    "id": "custom-emptied",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design → MISSING_PERMISSION"
+   },
+   {
+    "id": "back-to-granter",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "body": "{\"role_ids\": [\"{{role-granter.id}}\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Give Dan folder-granter on Design again → 200"
+   },
+   {
+    "id": "remove-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/members/{{user-dan.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Remove Dan from Acme → 204"
+   },
+   {
+    "id": "removed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design → NOT_A_MEMBER"
+   },
+   {
+    "id": "rejoin-dan",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-dan.id}}\", \"role_id\": \"{{role-member.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Privileges · Add Dan back to Acme as member → 201"
+   },
+   {
+    "id": "rejoined",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-iso-dan-{{$runId}}\"}, \"resource\": {\"type\": \"folder\", \"id\": \"design\", \"properties\": {\"organization_id\": \"{{org-acme.orgId}}\"}}, \"action\": {\"name\": \"folder:edit\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan folder:edit on Design after rejoining → MISSING_PERMISSION"
+   },
+   {
+    "id": "role-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{key-acme.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_MEMBER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Privileges · Dan's role on Design went with his membership → 404 RESOURCE_MEMBER_NOT_FOUND"
+   },
+   {
+    "id": "cleanup-acme",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-acme.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup · Delete the Product → 204"
+   },
+   {
+    "id": "cleanup-other",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{product-other.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup · Delete the other Product → 204"
+   }
+  ],
+  "version": "1.0"
+ }
+}

@@ -1,0 +1,1133 @@
+{
+ "id": "be03f5ff-b07e-4ae7-ae23-d4d8f24080e3",
+ "name": "anchor: integration",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Integration instances: create, read, list, disable, audit log, duplicate and invalid provider, delete. No response or audit entry may echo the SMTP password (key or value). Not covered: signed Clerk webhook ingest (product_user upsert, clerk.user.* events). The runner cannot sign a Svix payload. SMTP host or port change without the password is refused; same host keeps it (anchor#328).",
+ "updated_at": "2026-11-06T18:13:56.022491Z",
+ "flow_definition": {
+  "description": "Integration instances: create, read, list, disable, audit log, duplicate and invalid provider, delete. No response or audit entry may echo the SMTP password (key or value). Not covered: signed Clerk webhook ingest (product_user upsert, clerk.user.* events). The runner cannot sign a Svix payload.",
+  "edges": [
+   {
+    "id": "login-create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "create-product-create-integration",
+    "source": "create-product",
+    "target": "create-integration",
+    "type": "success"
+   },
+   {
+    "id": "create-product-bad-provider",
+    "source": "create-product",
+    "target": "bad-provider",
+    "type": "success"
+   },
+   {
+    "id": "create-product-ingest-clerk-webhook-missing",
+    "source": "create-product",
+    "target": "ingest-clerk-webhook-missing",
+    "type": "success"
+   },
+   {
+    "id": "create-integration-get-integration",
+    "source": "create-integration",
+    "target": "get-integration",
+    "type": "success"
+   },
+   {
+    "id": "create-integration-list-integrations",
+    "source": "create-integration",
+    "target": "list-integrations",
+    "type": "success"
+   },
+   {
+    "id": "create-integration-update-integration",
+    "source": "create-integration",
+    "target": "update-integration",
+    "type": "success"
+   },
+   {
+    "id": "create-integration-dup-create",
+    "source": "create-integration",
+    "target": "dup-create",
+    "type": "success"
+   },
+   {
+    "id": "get-integration-delete-integration",
+    "source": "get-integration",
+    "target": "delete-integration",
+    "type": "success"
+   },
+   {
+    "id": "list-integrations-delete-integration",
+    "source": "list-integrations",
+    "target": "delete-integration",
+    "type": "success"
+   },
+   {
+    "id": "update-integration-audit-logs",
+    "source": "update-integration",
+    "target": "audit-logs",
+    "type": "success"
+   },
+   {
+    "id": "dup-create-delete-integration",
+    "source": "dup-create",
+    "target": "delete-integration",
+    "type": "success"
+   },
+   {
+    "id": "bad-provider-cleanup-product",
+    "source": "bad-provider",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "ingest-clerk-webhook-missing-cleanup-product",
+    "source": "ingest-clerk-webhook-missing",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "delete-integration-verify-gone",
+    "source": "delete-integration",
+    "target": "verify-gone",
+    "type": "success"
+   },
+   {
+    "id": "verify-gone-cleanup-product",
+    "source": "verify-gone",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-audit-logs-update-same-host",
+    "source": "audit-logs",
+    "target": "update-same-host",
+    "type": "success"
+   },
+   {
+    "id": "e-update-same-host-update-host-nopw",
+    "source": "update-same-host",
+    "target": "update-host-nopw",
+    "type": "success"
+   },
+   {
+    "id": "e-update-host-nopw-update-port-nopw",
+    "source": "update-host-nopw",
+    "target": "update-port-nopw",
+    "type": "success"
+   },
+   {
+    "id": "e-update-port-nopw-get-after-nopw",
+    "source": "update-port-nopw",
+    "target": "get-after-nopw",
+    "type": "success"
+   },
+   {
+    "id": "e-get-after-nopw-delete-integration",
+    "source": "get-after-nopw",
+    "target": "delete-integration",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: integration",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-intg-{{$slug:3}}\",\"description\":\"integration test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product"
+   },
+   {
+    "id": "create-integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations",
+     "body": "{\"provider_type\":\"SMTP\",\"config\":{\"host\":\"smtp.example.com\",\"port\":587,\"encryption\":\"STARTTLS\",\"auth_method\":\"LOGIN\",\"username\":\"u\",\"password\":\"ep-smtp-pw-{{$runId}}\",\"from_address\":\"garbage+{{$uuid}}@nanostack.dev\",\"from_name\":\"Ep Test\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "iid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "fromAddress",
+      "secret": false,
+      "extractor": {
+       "path": "$.public_config.from_address",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "CONFIGURING"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "SMTP"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.provider_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.is_enabled"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config_version"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "smtp.example.com"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.host"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "u"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.username"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"username\":\"u\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Create SMTP Integration"
+   },
+   {
+    "id": "get-integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.iid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "SMTP"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.provider_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "587"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.port"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.fromAddress}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.from_address"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Get Integration"
+   },
+   {
+    "id": "list-integrations",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.iid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "SMTP"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].provider_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "List Integrations"
+   },
+   {
+    "id": "update-integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "body": "{\"is_enabled\":false}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.iid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.is_enabled"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config_version"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Update Integration (disable)"
+   },
+   {
+    "id": "audit-logs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}/audit-logs",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "CONFIG_UPDATED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].action"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.iid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].integration_instance_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].metadata.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_CREATED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].action"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-integration.iid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].integration_instance_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "CONFIGURING"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].metadata.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "SMTP"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].metadata.provider_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].metadata.product_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Audit Log Records Create And Update"
+   },
+   {
+    "id": "dup-create",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations",
+     "body": "{\"provider_type\":\"SMTP\",\"config\":{\"host\":\"smtp.example.com\",\"port\":587,\"encryption\":\"STARTTLS\",\"auth_method\":\"LOGIN\",\"username\":\"u\",\"password\":\"ep-smtp-pw-{{$runId}}\",\"from_address\":\"garbage+{{$uuid}}@nanostack.dev\",\"from_name\":\"Ep Test\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_INSTANCE_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Duplicate Provider (409)"
+   },
+   {
+    "id": "bad-provider",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations",
+     "body": "{\"provider_type\":\"NOPE\",\"config\":{}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_PROVIDER_INVALID"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Unknown Provider (400)"
+   },
+   {
+    "id": "ingest-clerk-webhook-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/webhooks/CLERK",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_INSTANCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Ingest Clerk Webhook Missing Integration (404)"
+   },
+   {
+    "id": "delete-integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Integration"
+   },
+   {
+    "id": "verify-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_INSTANCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Verify Integration Gone (404)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   },
+   {
+    "id": "update-same-host",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "body": "{\"config\": {\"host\": \"smtp.example.com\", \"port\": 587, \"encryption\": \"STARTTLS\", \"auth_method\": \"LOGIN\", \"username\": \"u\", \"from_address\": \"{{create-integration.fromAddress}}\", \"from_name\": \"Ep Test Same Host\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "smtp.example.com"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.host"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Ep Test Same Host"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.from_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Update SMTP same host, no password (200, kept)"
+   },
+   {
+    "id": "update-host-nopw",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "body": "{\"config\": {\"host\": \"smtp2.example.com\", \"port\": 587, \"encryption\": \"STARTTLS\", \"auth_method\": \"LOGIN\", \"username\": \"u\", \"from_address\": \"{{create-integration.fromAddress}}\", \"from_name\": \"Ep Test Moved\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_INVALID_CONFIG"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.errors[0].message"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Update SMTP new host, no password (400 INTEGRATION_INVALID_CONFIG)"
+   },
+   {
+    "id": "update-port-nopw",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "body": "{\"config\": {\"host\": \"smtp.example.com\", \"port\": 465, \"encryption\": \"STARTTLS\", \"auth_method\": \"LOGIN\", \"username\": \"u\", \"from_address\": \"{{create-integration.fromAddress}}\", \"from_name\": \"Ep Test Moved\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INTEGRATION_INVALID_CONFIG"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.errors[0].message"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Update SMTP new port, no password (400 INTEGRATION_INVALID_CONFIG)"
+   },
+   {
+    "id": "get-after-nopw",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "smtp.example.com"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.host"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "587"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.port"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Ep Test Same Host"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.public_config.from_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "ep-smtp-pw-{{$runId}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Get SMTP after refused moves (host/port unchanged)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

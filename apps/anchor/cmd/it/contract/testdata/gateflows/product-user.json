@@ -1,0 +1,1505 @@
+{
+ "id": "db444c4b-f7c2-4607-93bc-6de72d7deea1",
+ "name": "anchor: product-user",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: product-user\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Product user create / read / search / delete, duplicate email and validation refusals, one not-found code (PRODUCT_USER_NOT_FOUND) on the user and its organization routes, membership read-back, delete idempotent (204) and emits product_user.deleted exactly once, and every event checked in one final webhook wait.",
+ "updated_at": "2026-11-04T00:14:51.561226Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "a9a9bfa1-adff-489f-9d75-54072814c7e4",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "0f1ed3d3-7fb8-4297-bcf2-d07048c3106f",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "0f1acdf5-7881-48be-b04a-8cb732e98cf9",
+    "source": "create-key",
+    "target": "create-user",
+    "type": "success"
+   },
+   {
+    "id": "37a66afd-334e-4bf5-bdbc-cccfd2b7b97e",
+    "source": "create-user",
+    "target": "get-user",
+    "type": "success"
+   },
+   {
+    "id": "42ad8a32-09a0-4a99-b576-063f477009a2",
+    "source": "create-user",
+    "target": "list-user-orgs",
+    "type": "success"
+   },
+   {
+    "id": "39da34a9-9e81-4e0a-a691-774d7021d83c",
+    "source": "create-user",
+    "target": "get-user-org-404",
+    "type": "success"
+   },
+   {
+    "id": "2387bed9-2910-4040-aee2-12709550741e",
+    "source": "create-org",
+    "target": "get-user-org-404",
+    "type": "success"
+   },
+   {
+    "id": "a861f31b-2d93-480d-b3ed-d03247760407",
+    "source": "get-user",
+    "target": "delete-user",
+    "type": "success"
+   },
+   {
+    "id": "5612e417-dbae-443f-b3e1-f0f942a07e4f",
+    "source": "list-user-orgs",
+    "target": "delete-user",
+    "type": "success"
+   },
+   {
+    "id": "f3890de3-ba5c-4489-87b7-7f74ae1e48da",
+    "source": "get-user-org-404",
+    "target": "delete-user",
+    "type": "success"
+   },
+   {
+    "id": "f602e6d9-ba4b-4482-9a5b-7f8c05d877e8",
+    "source": "delete-user",
+    "target": "verify-gone",
+    "type": "success"
+   },
+   {
+    "id": "bbe5d3f7-8065-460a-8fa2-335f3c6951db",
+    "source": "delete-user",
+    "target": "list-orgs-gone",
+    "type": "success"
+   },
+   {
+    "id": "1a46f18c-eb28-4b12-95c8-78f3417e9d89",
+    "source": "create-key",
+    "target": "create-invited",
+    "type": "success"
+   },
+   {
+    "id": "1ca41a22-9ab5-4981-8510-48deb14ff20c",
+    "source": "create-invited",
+    "target": "duplicate-email",
+    "type": "success"
+   },
+   {
+    "id": "a88eed1e-d98a-4661-91c9-56b64b5d5d5e",
+    "source": "create-invited",
+    "target": "search-users",
+    "type": "success"
+   },
+   {
+    "id": "a1f4cadc-d8f9-40c3-ad3b-895b99569154",
+    "source": "create-key",
+    "target": "invalid-email",
+    "type": "success"
+   },
+   {
+    "id": "0641667d-5dc5-4281-b4b9-dbb225b10d4e",
+    "source": "create-key",
+    "target": "missing-name",
+    "type": "success"
+   },
+   {
+    "id": "47328c16-0c4f-4246-858a-978348511452",
+    "source": "create-key",
+    "target": "get-unknown",
+    "type": "success"
+   },
+   {
+    "id": "31a2ab69-ab60-4711-abf4-9aaaeac49461",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "537017bf-5824-41ce-8ece-666b915e3d00",
+    "source": "create-key",
+    "target": "create-role",
+    "type": "success"
+   },
+   {
+    "id": "a83a5f6d-9ced-4360-9710-d5adb5c24c8e",
+    "source": "create-key",
+    "target": "create-member-user",
+    "type": "success"
+   },
+   {
+    "id": "78d6a44a-b803-49fc-8a18-32d3a67f1a5b",
+    "source": "create-org",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "47a10766-4fcc-414d-a5e3-7164e7f92fa4",
+    "source": "create-role",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "925ec3ea-2e6b-4eba-b4b1-13e576f45d52",
+    "source": "create-member-user",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "1dd75cdd-fac8-4835-b339-23eb508753ee",
+    "source": "add-member",
+    "target": "get-user-org",
+    "type": "success"
+   },
+   {
+    "id": "79576ad2-fd84-4e63-9836-695df2412cf1",
+    "source": "add-member",
+    "target": "list-member-orgs",
+    "type": "success"
+   },
+   {
+    "id": "ada7ca55-d1d0-4e15-a6c5-4a24a28de745",
+    "source": "delete-again",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "c3aba026-9ccc-4834-b589-09ad9eb23f56",
+    "source": "duplicate-email",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "47e06beb-9881-4a8d-bce1-a271e5b473ae",
+    "source": "search-users",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "5d5ad3a0-3c66-4eb3-b51e-287e4c295135",
+    "source": "invalid-email",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "bdc38f9e-0b9d-47cc-96d0-25521abd9bb5",
+    "source": "missing-name",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "fb764ff4-fdd2-47f6-8930-c66e71b0e357",
+    "source": "get-unknown",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ccfbeb3e-8d55-418f-996d-ce406140604a",
+    "source": "get-user-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "64979399-ff32-4765-a430-2df756c6a5d9",
+    "source": "list-member-orgs",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "dcf427ce-af03-4328-b8bc-3ec4fe88d269",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-user--delete-again",
+    "source": "delete-user",
+    "target": "delete-again",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-user--get-user-org-gone",
+    "source": "delete-user",
+    "target": "get-user-org-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--delete-unknown",
+    "source": "create-key",
+    "target": "delete-unknown",
+    "type": "success"
+   },
+   {
+    "id": "e-verify-gone--events",
+    "source": "verify-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-list-orgs-gone--events",
+    "source": "list-orgs-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-get-user-org-gone--events",
+    "source": "get-user-org-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-unknown--events",
+    "source": "delete-unknown",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: product-user",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-product-puser-{{$runId}}\",\"description\":\"echopoint test\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-key\",\"mutable\":false,\"permissions\":[\"product_user:create\",\"product_user:read\",\"product_user:delete\",\"organization:create\",\"organization_member:create\",\"product_role:create\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key (201)"
+   },
+   {
+    "id": "create-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-u1-{{$runId}}@nanostack.dev\",\"name\":\"U1\",\"status\":\"active\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "active"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+eptest-u1-{{$runId}}@nanostack.dev"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "U1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create User (active) (201)"
+   },
+   {
+    "id": "get-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+eptest-u1-{{$runId}}@nanostack.dev"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "U1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "active"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get User (200)"
+   },
+   {
+    "id": "list-user-orgs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}/organizations",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.items"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Organizations Of A Non-Member Is Empty (200)"
+   },
+   {
+    "id": "create-invited",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-u2-{{$runId}}@nanostack.dev\",\"name\":\"U2\",\"status\":\"invited\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "invited"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+eptest-u2-{{$runId}}@nanostack.dev"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create User (invited) (201)"
+   },
+   {
+    "id": "duplicate-email",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-u2-{{$runId}}@nanostack.dev\",\"name\":\"Dup\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_EMAIL_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Duplicate Email (409)"
+   },
+   {
+    "id": "search-users",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/search",
+     "body": "{\"filter\":{\"emails\":[\"garbage+eptest-u2-{{$runId}}@nanostack.dev\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invited.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "invited"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search By Email Finds The Invited User (200)"
+   },
+   {
+    "id": "invalid-email",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"not-an-email\",\"name\":\"X\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invalid Email (400)"
+   },
+   {
+    "id": "missing-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-u0-{{$runId}}@nanostack.dev\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+eptest-u0-{{$runId}}@nanostack.dev"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Email-only user created (201: name is optional, anchor#321)"
+   },
+   {
+    "id": "get-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/pusr_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown User (404)"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-pu-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "create-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-pu-role\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role (201)"
+   },
+   {
+    "id": "create-member-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Member User (201)"
+   },
+   {
+    "id": "add-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-member-user.uid}}\",\"role_id\":\"{{create-role.rid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Add Member User To Organization (201)"
+   },
+   {
+    "id": "get-user-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-member-user.uid}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-pu-org"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-pu-role"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.joined_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get The Member's Organization (200)"
+   },
+   {
+    "id": "list-member-orgs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-member-user.uid}}/organizations",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List The Member's Organizations (200)"
+   },
+   {
+    "id": "get-user-org-404",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Organization The User Is Not In (404)"
+   },
+   {
+    "id": "delete-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete User (204)"
+   },
+   {
+    "id": "verify-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted User (404)"
+   },
+   {
+    "id": "list-orgs-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}/organizations",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Organizations Of Deleted User (404)"
+   },
+   {
+    "id": "delete-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Deleted User Is Idempotent (204)"
+   },
+   {
+    "id": "get-user-org-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{create-user.uid}}/organizations/{{create-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get An Organization Of A Deleted User (404)"
+   },
+   {
+    "id": "delete-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/pusr_000000000000000000000000000",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Unknown User Is A No-Op (204)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "U1 created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "U2 (invited) created once (duplicate emits nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-invited.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Member user created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-member-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "U1 deleted once (the idempotent second delete emits nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "U2 never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-invited.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Member user never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-member-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No product_user.updated from API writes (Clerk ingest only)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other product_user.deleted (repeat and unknown deletes emit nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_prd_apikey_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "@"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Product User Event"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

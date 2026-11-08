@@ -1,0 +1,3618 @@
+{
+ "id": "09e33e89-a9ce-4795-90f3-461516db972c",
+ "name": "anchor: cursor searches — organizations & members",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: cursor searches — organizations & members\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Cursor walks (limit 2) inside a throwaway product: five organizations with one name (default created_at order and sort_by name, all tie), and in organization 1 three workspaces, three members, three invitations (organization and product searches), three API keys, plus the three organizations of one product user. Each walk must return the reference page's rows in order, once each, with next_cursor until the last page. Organizations assert the 400 INVALID_CURSOR refusals (malformed, with offset, other sort_by). Deleting the product (always) removes everything; its 404 is verified.",
+ "updated_at": "2026-11-03T15:14:17.756656Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "e-login--create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--product-key",
+    "source": "create-product",
+    "target": "product-key",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--org-1",
+    "source": "declare-workspace-type",
+    "target": "org-1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-1--org-2",
+    "source": "org-1",
+    "target": "org-2",
+    "type": "success"
+   },
+   {
+    "id": "e-org-2--org-3",
+    "source": "org-2",
+    "target": "org-3",
+    "type": "success"
+   },
+   {
+    "id": "e-org-3--org-4",
+    "source": "org-3",
+    "target": "org-4",
+    "type": "success"
+   },
+   {
+    "id": "e-org-4--org-5",
+    "source": "org-4",
+    "target": "org-5",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--orgs-ref",
+    "source": "org-5",
+    "target": "orgs-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-ref--orgs-p1",
+    "source": "orgs-ref",
+    "target": "orgs-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p1--orgs-p2",
+    "source": "orgs-p1",
+    "target": "orgs-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p2--orgs-p3",
+    "source": "orgs-p2",
+    "target": "orgs-p3",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--orgs-by-name-ref",
+    "source": "org-5",
+    "target": "orgs-by-name-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-ref--orgs-by-name-p1",
+    "source": "orgs-by-name-ref",
+    "target": "orgs-by-name-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-p1--orgs-by-name-p2",
+    "source": "orgs-by-name-p1",
+    "target": "orgs-by-name-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-p2--orgs-by-name-p3",
+    "source": "orgs-by-name-p2",
+    "target": "orgs-by-name-p3",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p1--orgs-bad-cursor",
+    "source": "orgs-p1",
+    "target": "orgs-bad-cursor",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p1--orgs-cursor-offset",
+    "source": "orgs-p1",
+    "target": "orgs-cursor-offset",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p1--orgs-cursor-other-sort",
+    "source": "orgs-p1",
+    "target": "orgs-cursor-other-sort",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--workspace-1",
+    "source": "org-5",
+    "target": "workspace-1",
+    "type": "success"
+   },
+   {
+    "id": "e-workspace-1--workspace-2",
+    "source": "workspace-1",
+    "target": "workspace-2",
+    "type": "success"
+   },
+   {
+    "id": "e-workspace-2--workspace-3",
+    "source": "workspace-2",
+    "target": "workspace-3",
+    "type": "success"
+   },
+   {
+    "id": "e-workspace-3--workspaces-ref",
+    "source": "workspace-3",
+    "target": "workspaces-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-workspaces-ref--workspaces-p1",
+    "source": "workspaces-ref",
+    "target": "workspaces-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-workspaces-p1--workspaces-p2",
+    "source": "workspaces-p1",
+    "target": "workspaces-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--role",
+    "source": "declare-workspace-type",
+    "target": "role",
+    "type": "success"
+   },
+   {
+    "id": "e-role--user-1",
+    "source": "role",
+    "target": "user-1",
+    "type": "success"
+   },
+   {
+    "id": "e-user-1--user-2",
+    "source": "user-1",
+    "target": "user-2",
+    "type": "success"
+   },
+   {
+    "id": "e-user-2--user-3",
+    "source": "user-2",
+    "target": "user-3",
+    "type": "success"
+   },
+   {
+    "id": "e-user-3--member-1",
+    "source": "user-3",
+    "target": "member-1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--member-1",
+    "source": "org-5",
+    "target": "member-1",
+    "type": "success"
+   },
+   {
+    "id": "e-member-1--member-2",
+    "source": "member-1",
+    "target": "member-2",
+    "type": "success"
+   },
+   {
+    "id": "e-member-2--member-3",
+    "source": "member-2",
+    "target": "member-3",
+    "type": "success"
+   },
+   {
+    "id": "e-member-3--members-ref",
+    "source": "member-3",
+    "target": "members-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-members-ref--members-p1",
+    "source": "members-ref",
+    "target": "members-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-members-p1--members-p2",
+    "source": "members-p1",
+    "target": "members-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-member-3--user-1-joins-org-2",
+    "source": "member-3",
+    "target": "user-1-joins-org-2",
+    "type": "success"
+   },
+   {
+    "id": "e-user-1-joins-org-2--user-1-joins-org-3",
+    "source": "user-1-joins-org-2",
+    "target": "user-1-joins-org-3",
+    "type": "success"
+   },
+   {
+    "id": "e-user-1-joins-org-3--user-orgs-ref",
+    "source": "user-1-joins-org-3",
+    "target": "user-orgs-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-user-orgs-ref--user-orgs-p1",
+    "source": "user-orgs-ref",
+    "target": "user-orgs-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-user-orgs-p1--user-orgs-p2",
+    "source": "user-orgs-p1",
+    "target": "user-orgs-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--invitation-1",
+    "source": "org-5",
+    "target": "invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-role--invitation-1",
+    "source": "role",
+    "target": "invitation-1",
+    "type": "success"
+   },
+   {
+    "id": "e-invitation-1--invitation-2",
+    "source": "invitation-1",
+    "target": "invitation-2",
+    "type": "success"
+   },
+   {
+    "id": "e-invitation-2--invitation-3",
+    "source": "invitation-2",
+    "target": "invitation-3",
+    "type": "success"
+   },
+   {
+    "id": "e-invitation-3--org-invitations-ref",
+    "source": "invitation-3",
+    "target": "org-invitations-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-org-invitations-ref--org-invitations-p1",
+    "source": "org-invitations-ref",
+    "target": "org-invitations-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-invitations-p1--org-invitations-p2",
+    "source": "org-invitations-p1",
+    "target": "org-invitations-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-invitation-3--product-invitations-ref",
+    "source": "invitation-3",
+    "target": "product-invitations-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-product-invitations-ref--product-invitations-p1",
+    "source": "product-invitations-ref",
+    "target": "product-invitations-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-invitations-p1--product-invitations-p2",
+    "source": "product-invitations-p1",
+    "target": "product-invitations-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--resource-permission",
+    "source": "create-product",
+    "target": "resource-permission",
+    "type": "success"
+   },
+   {
+    "id": "e-resource-permission--org-key-1",
+    "source": "resource-permission",
+    "target": "org-key-1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-5--org-key-1",
+    "source": "org-5",
+    "target": "org-key-1",
+    "type": "success"
+   },
+   {
+    "id": "e-product-key--org-key-1",
+    "source": "declare-workspace-type",
+    "target": "org-key-1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-key-1--org-key-2",
+    "source": "org-key-1",
+    "target": "org-key-2",
+    "type": "success"
+   },
+   {
+    "id": "e-org-key-2--org-key-3",
+    "source": "org-key-2",
+    "target": "org-key-3",
+    "type": "success"
+   },
+   {
+    "id": "e-org-key-3--org-keys-ref",
+    "source": "org-key-3",
+    "target": "org-keys-ref",
+    "type": "success"
+   },
+   {
+    "id": "e-org-keys-ref--org-keys-p1",
+    "source": "org-keys-ref",
+    "target": "org-keys-p1",
+    "type": "success"
+   },
+   {
+    "id": "e-org-keys-p1--org-keys-p2",
+    "source": "org-keys-p1",
+    "target": "org-keys-p2",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p1--cleanup-product",
+    "source": "orgs-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p2--cleanup-product",
+    "source": "orgs-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-p3--cleanup-product",
+    "source": "orgs-p3",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-p1--cleanup-product",
+    "source": "orgs-by-name-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-p2--cleanup-product",
+    "source": "orgs-by-name-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-by-name-p3--cleanup-product",
+    "source": "orgs-by-name-p3",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-bad-cursor--cleanup-product",
+    "source": "orgs-bad-cursor",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-cursor-offset--cleanup-product",
+    "source": "orgs-cursor-offset",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-orgs-cursor-other-sort--cleanup-product",
+    "source": "orgs-cursor-other-sort",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-workspaces-p1--cleanup-product",
+    "source": "workspaces-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-workspaces-p2--cleanup-product",
+    "source": "workspaces-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-members-p1--cleanup-product",
+    "source": "members-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-members-p2--cleanup-product",
+    "source": "members-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-user-orgs-p1--cleanup-product",
+    "source": "user-orgs-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-user-orgs-p2--cleanup-product",
+    "source": "user-orgs-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-invitations-p1--cleanup-product",
+    "source": "org-invitations-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-invitations-p2--cleanup-product",
+    "source": "org-invitations-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-product-invitations-p1--cleanup-product",
+    "source": "product-invitations-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-product-invitations-p2--cleanup-product",
+    "source": "product-invitations-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-keys-p1--cleanup-product",
+    "source": "org-keys-p1",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-org-keys-p2--cleanup-product",
+    "source": "org-keys-p2",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-cleanup-product--product-gone",
+    "source": "cleanup-product",
+    "target": "product-gone",
+    "type": "success"
+   },
+   {
+    "id": "9aa6de5c-dbf4-491a-9ab0-e3194cf8bf34",
+    "source": "product-key",
+    "target": "declare-workspace-type",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: cursor searches — organizations & members",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "assertions": [],
+    "display_name": "Log In To Anchor"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-cur-orgs-{{$runId}}\",\"description\":\"cursor search suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create A Throwaway Product (201)"
+   },
+   {
+    "id": "product-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-cur-orgs-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"product_user:create\", \"product_user:read\", \"product_role:create\", \"product_role:read\", \"organization_member:create\", \"organization_member:read\", \"organization_invitation:create\", \"organization_invitation:read\", \"organization_api_key:create\", \"organization_api_key:read\", \"resource_type:create\", \"resource:read\", \"resource:write\", \"resource:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "key",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Mint A Product Key (201)"
+   },
+   {
+    "id": "org-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 1 Named ep-cur-org (201)"
+   },
+   {
+    "id": "org-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 2 Named ep-cur-org (201)"
+   },
+   {
+    "id": "org-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 3 Named ep-cur-org (201)"
+   },
+   {
+    "id": "org-4",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 4 Named ep-cur-org (201)"
+   },
+   {
+    "id": "org-5",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"ep-cur-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization 5 Named ep-cur-org (201)"
+   },
+   {
+    "id": "orgs-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-4.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-5.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations: one page of 5 holds the scope (200)"
+   },
+   {
+    "id": "orgs-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "orgs-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{orgs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-ref.items.3.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations: page 2 of 2 has next_cursor"
+   },
+   {
+    "id": "orgs-p3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{orgs-p2.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-ref.items.4.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations: page 3 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "orgs-by-name-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-4.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-5.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations by name (all tie): one page of 5 holds the scope (200)"
+   },
+   {
+    "id": "orgs-by-name-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-by-name-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-by-name-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations by name (all tie): page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "orgs-by-name-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":2,\"cursor\":\"{{orgs-by-name-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-by-name-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-by-name-ref.items.3.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations by name (all tie): page 2 of 2 has next_cursor"
+   },
+   {
+    "id": "orgs-by-name-p3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"sort_by\":\"name\",\"sort_direction\":\"ASC\",\"pagination\":{\"limit\":2,\"cursor\":\"{{orgs-by-name-p2.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{orgs-by-name-ref.items.4.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations by name (all tie): page 3 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "orgs-bad-cursor",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"not-a-cursor\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations: malformed cursor (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "orgs-cursor-offset",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"offset\":2,\"cursor\":\"{{orgs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations: cursor with offset 2 (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "orgs-cursor-other-sort",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{\"sort_by\":\"name\",\"pagination\":{\"limit\":2,\"cursor\":\"{{orgs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_CURSOR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations: cursor reused with sort_by name (400 INVALID_CURSOR)"
+   },
+   {
+    "id": "workspace-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/workspace-1-{{$runId}}",
+     "body": "{\"name\": \"ep-cur-ws-1\", \"parent\": {\"type\": \"organization\", \"id\": \"{{org-1.id}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ep-cur-ws-1 (200)"
+   },
+   {
+    "id": "workspace-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/workspace-2-{{$runId}}",
+     "body": "{\"name\": \"ep-cur-ws-2\", \"parent\": {\"type\": \"organization\", \"id\": \"{{org-1.id}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ep-cur-ws-2 (200)"
+   },
+   {
+    "id": "workspace-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/workspace-3-{{$runId}}",
+     "body": "{\"name\": \"ep-cur-ws-3\", \"parent\": {\"type\": \"organization\", \"id\": \"{{org-1.id}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register Workspace ep-cur-ws-3 (200)"
+   },
+   {
+    "id": "workspaces-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 100}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{workspace-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{workspace-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{workspace-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Workspace resources: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "workspaces-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{workspaces-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{workspaces-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Workspace resources: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "workspaces-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/search",
+     "body": "{\"pagination\": {\"limit\": 2, \"cursor\": \"{{workspaces-p1.cursor}}\"}, \"filter\": {\"resource_types\": [\"workspace\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{workspaces-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Workspace resources: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"ep-cur-member\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role ep-cur-member (201)"
+   },
+   {
+    "id": "user-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-u1-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 1 (201)"
+   },
+   {
+    "id": "user-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-u2-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 2 (201)"
+   },
+   {
+    "id": "user-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+eptest-cur-u3-{{$runId}}@nanostack.dev\",\"name\":\"ep-cur-user\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User 3 (201)"
+   },
+   {
+    "id": "member-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members",
+     "body": "{\"product_user_id\":\"{{user-1.id}}\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "User 1 Joins Organization 1 (201)"
+   },
+   {
+    "id": "member-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members",
+     "body": "{\"product_user_id\":\"{{user-2.id}}\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "User 2 Joins Organization 1 (201)"
+   },
+   {
+    "id": "member-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members",
+     "body": "{\"product_user_id\":\"{{user-3.id}}\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "User 3 Joins Organization 1 (201)"
+   },
+   {
+    "id": "members-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"product_user_id\":\"{{user-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"product_user_id\":\"{{user-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"product_user_id\":\"{{user-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Members: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "members-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{members-ref.items.0.product_user_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{members-ref.items.1.product_user_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Members: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "members-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/members/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{members-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{members-ref.items.2.product_user_id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Members: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "user-1-joins-org-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-2.id}}/members",
+     "body": "{\"product_user_id\":\"{{user-1.id}}\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "User 1 Joins Organization 2 (201)"
+   },
+   {
+    "id": "user-1-joins-org-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-3.id}}/members",
+     "body": "{\"product_user_id\":\"{{user-1.id}}\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "User 1 Joins Organization 3 (201)"
+   },
+   {
+    "id": "user-orgs-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{user-1.id}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations of user 1: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "user-orgs-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{user-1.id}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{user-orgs-ref.items.0.organization.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{user-orgs-ref.items.1.organization.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organizations of user 1: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "user-orgs-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users/{{user-1.id}}/organizations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{user-orgs-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{user-orgs-ref.items.2.organization.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organizations of user 1: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "invitation-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-inv1-{{$runId}}@nanostack.dev\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Invite eptest-cur-inv1 To Organization 1 (201)"
+   },
+   {
+    "id": "invitation-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-inv2-{{$runId}}@nanostack.dev\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Invite eptest-cur-inv2 To Organization 1 (201)"
+   },
+   {
+    "id": "invitation-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations",
+     "body": "{\"email\":\"garbage+eptest-cur-inv3-{{$runId}}@nanostack.dev\",\"role_id\":\"{{role.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Invite eptest-cur-inv3 To Organization 1 (201)"
+   },
+   {
+    "id": "org-invitations-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization invitations: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "org-invitations-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-invitations-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-invitations-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organization invitations: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "org-invitations-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{org-invitations-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-invitations-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization invitations: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "product-invitations-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{invitation-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product invitations: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "product-invitations-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-invitations-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-invitations-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product invitations: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "product-invitations-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/invitations/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{product-invitations-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{product-invitations-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Product invitations: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "resource-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"epcur:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission epcur:read (201)"
+   },
+   {
+    "id": "org-key-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys",
+     "body": "{\"name\":\"ep-cur-key-1\",\"permissions\":[\"epcur:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Org API Key ep-cur-key-1 (201)"
+   },
+   {
+    "id": "org-key-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys",
+     "body": "{\"name\":\"ep-cur-key-2\",\"permissions\":[\"epcur:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Org API Key ep-cur-key-2 (201)"
+   },
+   {
+    "id": "org-key-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys",
+     "body": "{\"name\":\"ep-cur-key-3\",\"permissions\":[\"epcur:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Org API Key ep-cur-key-3 (201)"
+   },
+   {
+    "id": "org-keys-ref",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":100}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "items",
+      "secret": false,
+      "extractor": {
+       "path": "$.items",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-key-1.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-key-2.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "\"id\":\"{{org-key-3.id}}\""
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization API keys: one page of 3 holds the scope (200)"
+   },
+   {
+    "id": "org-keys-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":2}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "cursor",
+      "secret": false,
+      "extractor": {
+       "path": "$.next_cursor",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-keys-ref.items.0.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-keys-ref.items.1.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.next_cursor"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Organization API keys: page 1 of 2 has next_cursor"
+   },
+   {
+    "id": "org-keys-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/api-keys/search",
+     "body": "{\"pagination\":{\"limit\":2,\"cursor\":\"{{org-keys-p1.cursor}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-keys-ref.items.2.id}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\\],\"total\":[0-9]+\\}\\s*$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Organization API keys: page 2 by cursor is the last (no next_cursor)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Throwaway Product (204)"
+   },
+   {
+    "id": "product-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Throwaway Product Is Gone (404)"
+   },
+   {
+    "id": "declare-workspace-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"workspace\", \"name\": \"Workspace\", \"parent_types\": [\"organization\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{product-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Declare The Workspace Type (201)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

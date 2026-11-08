@@ -1,0 +1,3604 @@
+{
+ "id": "8afb7740-79bf-4d11-abab-9d727b083f92",
+ "name": "anchor: licensing",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Licensing end to end: schema, templates (create, conflict, archive, delete once unused), instantiate, adjust, diff, history, migrate keeping the adjustment, template update syncing its licenses, usage within and past a limit, search of licensed and unlicensed organizations, unknown-organization codes; one final webhook wait checks every organization.license.updated event.",
+ "updated_at": "2026-10-17T03:23:43.394316Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "fd764c18-7e9e-493b-a591-61623e2c81f4",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "ddc86ae2-342b-4a61-971c-2650c03a8628",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "4974f3c5-a79d-4901-9ec6-ec629a41ae5b",
+    "source": "create-product",
+    "target": "create-schema",
+    "type": "success"
+   },
+   {
+    "id": "81ee1969-dd6c-4d2d-9ec2-52c77dbe869e",
+    "source": "create-schema",
+    "target": "schema-conflict",
+    "type": "success"
+   },
+   {
+    "id": "4647094e-00f7-473c-8cc8-9e48753ef226",
+    "source": "create-schema",
+    "target": "get-schema",
+    "type": "success"
+   },
+   {
+    "id": "34d02fdc-78e5-46c7-a19e-e3fde8ff6b81",
+    "source": "schema-conflict",
+    "target": "update-schema",
+    "type": "success"
+   },
+   {
+    "id": "ed1441bc-4b50-4d41-93b2-08285cb413e9",
+    "source": "update-schema",
+    "target": "create-template",
+    "type": "success"
+   },
+   {
+    "id": "713f1851-d841-4869-abcb-8c54bec8499b",
+    "source": "template-name-conflict",
+    "target": "create-template-b",
+    "type": "success"
+   },
+   {
+    "id": "881a9fb3-89ec-4df1-9e14-f517a1734afe",
+    "source": "create-template-b",
+    "target": "create-template-s",
+    "type": "success"
+   },
+   {
+    "id": "4144d7ef-e692-42b0-8565-a2f60a36bc2a",
+    "source": "create-template-s",
+    "target": "create-template-x",
+    "type": "success"
+   },
+   {
+    "id": "cc1451b6-d315-44d5-a083-2a028f1c690d",
+    "source": "create-template",
+    "target": "template-name-conflict",
+    "type": "success"
+   },
+   {
+    "id": "4d9be6a1-259a-426e-9ac2-776500b8af4d",
+    "source": "create-template",
+    "target": "get-template",
+    "type": "success"
+   },
+   {
+    "id": "daa5b9f9-7710-4381-8c61-e6eaa9c83db2",
+    "source": "archive-template-x",
+    "target": "list-templates",
+    "type": "success"
+   },
+   {
+    "id": "d4fe0a97-9709-49e0-ab72-381ad73a0a6f",
+    "source": "create-key",
+    "target": "create-org-a",
+    "type": "success"
+   },
+   {
+    "id": "cc762de3-9c4d-45d5-8ddb-580de03443ab",
+    "source": "create-key",
+    "target": "create-org-s",
+    "type": "success"
+   },
+   {
+    "id": "5e9c7ab8-2a4e-4387-b984-875c5317972c",
+    "source": "create-key",
+    "target": "create-org-u",
+    "type": "success"
+   },
+   {
+    "id": "fbf1bd14-4928-4bd5-b7e3-91dcf7236cae",
+    "source": "create-key",
+    "target": "create-org-x",
+    "type": "success"
+   },
+   {
+    "id": "b787d195-eb20-4065-88e6-241f4afa5767",
+    "source": "archive-template-x",
+    "target": "instantiate",
+    "type": "success"
+   },
+   {
+    "id": "3a3607a6-66c8-43bd-a035-ed66de5ca0ad",
+    "source": "create-org-a",
+    "target": "instantiate",
+    "type": "success"
+   },
+   {
+    "id": "eb57003e-9e96-46d1-b06e-71b10772b5bd",
+    "source": "instantiate",
+    "target": "get-license",
+    "type": "success"
+   },
+   {
+    "id": "e2d35a89-0c02-438d-a8b9-5109d31e5bb7",
+    "source": "instantiate",
+    "target": "instantiate-twice",
+    "type": "success"
+   },
+   {
+    "id": "a7c0406d-12b7-467d-86ee-d65e9285282b",
+    "source": "instantiate-twice",
+    "target": "delete-template-in-use",
+    "type": "success"
+   },
+   {
+    "id": "a9db4a6a-76e4-4c99-8a81-f573574ce99a",
+    "source": "instantiate-u",
+    "target": "adjust",
+    "type": "success"
+   },
+   {
+    "id": "d4632037-aad8-464c-bd3d-5e05bce4f69b",
+    "source": "get-license",
+    "target": "adjust",
+    "type": "success"
+   },
+   {
+    "id": "ced023e8-d10a-4e6a-94b7-b5e848047daa",
+    "source": "adjust",
+    "target": "license-diff",
+    "type": "success"
+   },
+   {
+    "id": "34bb3fa6-3597-4bd7-b0cd-ea6afd65fbf9",
+    "source": "adjust",
+    "target": "license-history",
+    "type": "success"
+   },
+   {
+    "id": "9bb12113-49ca-4fb4-a469-c95792d5de56",
+    "source": "adjust",
+    "target": "migrate",
+    "type": "success"
+   },
+   {
+    "id": "d6db2d8e-4c04-4d43-98be-f7f02792aa56",
+    "source": "license-diff",
+    "target": "migrate",
+    "type": "success"
+   },
+   {
+    "id": "e681bb59-bc88-417a-bd7b-cd7babadf47d",
+    "source": "license-history",
+    "target": "migrate",
+    "type": "success"
+   },
+   {
+    "id": "2765e04e-fb58-4e47-b8e0-14384b07132e",
+    "source": "migrate",
+    "target": "get-license-migrated",
+    "type": "success"
+   },
+   {
+    "id": "df8d2000-ba01-4d10-bdf4-583c3b8a96b7",
+    "source": "migrate",
+    "target": "archive-template",
+    "type": "success"
+   },
+   {
+    "id": "9351ee4e-c613-4916-a20e-f97ad1e4d391",
+    "source": "get-template",
+    "target": "archive-template",
+    "type": "success"
+   },
+   {
+    "id": "ccf61fd2-1c9c-4cb5-b837-a224d2f28e30",
+    "source": "archive-template",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "63492cb1-bd37-486c-b98a-6da5269ce296",
+    "source": "list-templates",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "94e1fc2d-b7ec-4175-ab56-0e8944cd7c29",
+    "source": "delete-template",
+    "target": "verify-template-gone",
+    "type": "success"
+   },
+   {
+    "id": "f6658c69-2f15-4ef0-b351-3932c5484fad",
+    "source": "delete-template",
+    "target": "update-template-s",
+    "type": "success"
+   },
+   {
+    "id": "0db68691-f4d2-457c-873a-ec4b85ec37d4",
+    "source": "instantiate-s",
+    "target": "instantiate-u",
+    "type": "success"
+   },
+   {
+    "id": "9ad69dc3-5b0c-49b0-bda6-54bded5df789",
+    "source": "create-org-u",
+    "target": "instantiate-u",
+    "type": "success"
+   },
+   {
+    "id": "2b0914b0-6325-4827-ac6e-3bbd1072beca",
+    "source": "instantiate-u",
+    "target": "report-usage",
+    "type": "success"
+   },
+   {
+    "id": "57a9d90c-fe3b-4b7f-b218-91a8b070dccd",
+    "source": "report-usage",
+    "target": "usage-within",
+    "type": "success"
+   },
+   {
+    "id": "18753156-a894-4d03-88fb-59846c2a09d9",
+    "source": "usage-within",
+    "target": "report-over",
+    "type": "success"
+   },
+   {
+    "id": "4cc33c70-869e-43e2-9507-956d15b9c530",
+    "source": "report-over",
+    "target": "usage-exceeded",
+    "type": "success"
+   },
+   {
+    "id": "9e0e5c4e-2b2c-41e6-907b-eb95d780896f",
+    "source": "instantiate-u",
+    "target": "usage-not-a-limit",
+    "type": "success"
+   },
+   {
+    "id": "97c0683f-6c45-46ba-86f9-4e6c4afd7548",
+    "source": "report-usage",
+    "target": "usage-series",
+    "type": "success"
+   },
+   {
+    "id": "00dcf013-76ca-4361-b68f-912e09c9bd78",
+    "source": "delete-template-in-use",
+    "target": "instantiate-archived",
+    "type": "success"
+   },
+   {
+    "id": "afd6b479-c039-4d2c-897f-f71b43076df7",
+    "source": "create-org-x",
+    "target": "instantiate-archived",
+    "type": "success"
+   },
+   {
+    "id": "7a9d59dc-5a54-4ac8-b91f-c159e7d6ee99",
+    "source": "instantiate-u",
+    "target": "search-licenses",
+    "type": "success"
+   },
+   {
+    "id": "fd7829f0-18c2-445a-9cab-4bb9d0f47ebe",
+    "source": "events",
+    "target": "delete-schema",
+    "type": "success"
+   },
+   {
+    "id": "d22260f4-6c8f-43e0-9ad1-80dab3475eb4",
+    "source": "delete-schema",
+    "target": "verify-schema-gone",
+    "type": "success"
+   },
+   {
+    "id": "e87bbf20-f06d-4111-ad8a-0e130c99cf20",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "9b6d5411-85ab-4f40-8441-fd60c18ba89c",
+    "source": "verify-schema-gone",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "1bda58b4-66d8-48f8-b0c1-71cbe1c446b1",
+    "source": "list-templates",
+    "target": "archive-template",
+    "type": "success"
+   },
+   {
+    "id": "4789a25f-6c61-4434-9b15-92d7d1e9f7ab",
+    "source": "instantiate-archived",
+    "target": "get-license-x",
+    "type": "success"
+   },
+   {
+    "id": "0dc0e422-ed6e-473d-88b0-5420215fb50f",
+    "source": "instantiate-archived",
+    "target": "instantiate-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "045f4447-6a92-41dc-b55b-ec8efc2f66cd",
+    "source": "instantiate-unknown-org",
+    "target": "instantiate-s",
+    "type": "success"
+   },
+   {
+    "id": "e79beca0-d689-48bd-8b14-7141ded2f156",
+    "source": "create-org-s",
+    "target": "instantiate-s",
+    "type": "success"
+   },
+   {
+    "id": "4e85b169-3195-426c-9222-aca6dc7c517c",
+    "source": "create-product",
+    "target": "history-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "2c89cd23-f238-4c7b-ace6-bd1bb6d85eed",
+    "source": "update-schema",
+    "target": "usage-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "e16cdf25-5eb6-49dd-8304-d78a2de8da56",
+    "source": "get-schema",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "d26e271c-d8b7-441d-a813-bef0a17f1bbd",
+    "source": "schema-conflict",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "6e89309b-619b-4251-b1a4-37853b36aadd",
+    "source": "template-name-conflict",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ff707c3a-6f70-4a6b-8181-335dc41db5bd",
+    "source": "get-license-migrated",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "164fa19c-6983-43bd-8a71-9d117568a707",
+    "source": "verify-template-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "6a8004f5-9393-41d3-bb40-cc2f0bb02714",
+    "source": "get-license-x",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "4f7d9bf7-7bf7-437c-8c19-db7798122eaa",
+    "source": "usage-exceeded",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "8485f222-65ce-4e1d-8188-1835804cb0f1",
+    "source": "usage-not-a-limit",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "317cc7f3-8c36-41b5-a1a6-c4d6a5c3ba0c",
+    "source": "usage-series",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "3f5eec4f-65d5-413f-9d5d-7de95aa15923",
+    "source": "search-licenses",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "a92f08aa-b23b-4652-a5ff-e0b4cffe73db",
+    "source": "instantiate-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "5258f29a-1ae6-44e1-9adf-6a702255a9d2",
+    "source": "history-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "822670a0-f01f-47b8-afe9-70bbcb71216e",
+    "source": "usage-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-x-create-template-c",
+    "source": "create-template-x",
+    "target": "create-template-c",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-c-archive-template-x",
+    "source": "create-template-c",
+    "target": "archive-template-x",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-c-concurrent-org-1",
+    "source": "create-template-c",
+    "target": "concurrent-org-1",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key-concurrent-org-1",
+    "source": "create-key",
+    "target": "concurrent-org-1",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-1-events",
+    "source": "concurrent-org-1",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-c-concurrent-org-2",
+    "source": "create-template-c",
+    "target": "concurrent-org-2",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key-concurrent-org-2",
+    "source": "create-key",
+    "target": "concurrent-org-2",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-2-events",
+    "source": "concurrent-org-2",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-c-concurrent-org-3",
+    "source": "create-template-c",
+    "target": "concurrent-org-3",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key-concurrent-org-3",
+    "source": "create-key",
+    "target": "concurrent-org-3",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-3-events",
+    "source": "concurrent-org-3",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-c-concurrent-org-4",
+    "source": "create-template-c",
+    "target": "concurrent-org-4",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key-concurrent-org-4",
+    "source": "create-key",
+    "target": "concurrent-org-4",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-4-events",
+    "source": "concurrent-org-4",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-1-search-licenses",
+    "source": "concurrent-org-1",
+    "target": "search-licenses",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-2-search-licenses",
+    "source": "concurrent-org-2",
+    "target": "search-licenses",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-3-search-licenses",
+    "source": "concurrent-org-3",
+    "target": "search-licenses",
+    "type": "success"
+   },
+   {
+    "id": "e-concurrent-org-4-search-licenses",
+    "source": "concurrent-org-4",
+    "target": "search-licenses",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-license-{{$runId}}\",\"description\":\"license suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-license-key\",\"mutable\":false,\"permissions\":[\"organization:create\",\"organization:read\",\"organization:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key"
+   },
+   {
+    "id": "create-schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "body": "{\"fields\":[{\"name\":\"flows\",\"type\":\"LIMIT\",\"usage_shape\":\"GAUGE\",\"rules\":{\"min\":0}},{\"name\":\"sso\",\"type\":\"BOOLEAN\"}]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "schemaId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "LIMIT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "GAUGE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].usage_shape"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "sso"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[1].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "BOOLEAN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[1].type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Schema"
+   },
+   {
+    "id": "schema-conflict",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "body": "{\"fields\":[{\"name\":\"flows\",\"type\":\"LIMIT\",\"usage_shape\":\"GAUGE\",\"rules\":{\"min\":0}},{\"name\":\"sso\",\"type\":\"BOOLEAN\"}]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_SCHEMA_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Schema Again (409)"
+   },
+   {
+    "id": "get-schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-schema.schemaId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].rules.min"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "BOOLEAN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[1].type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Schema"
+   },
+   {
+    "id": "update-schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "body": "{\"description\":\"updated\",\"fields\":[{\"name\":\"flows\",\"type\":\"LIMIT\",\"usage_shape\":\"GAUGE\",\"rules\":{\"min\":0}},{\"name\":\"sso\",\"type\":\"BOOLEAN\"}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-schema.schemaId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "updated"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.fields[0].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Schema"
+   },
+   {
+    "id": "create-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"eptest-tier-a-{{$runId}}\",\"values\":{\"flows\":100,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.sso"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-tier-a-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Template A"
+   },
+   {
+    "id": "create-template-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"eptest-tier-b-{{$runId}}\",\"values\":{\"flows\":500,\"sso\":true}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateBId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "500"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.sso"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Template B"
+   },
+   {
+    "id": "create-template-s",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"eptest-tier-s-{{$runId}}\",\"values\":{\"flows\":10,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateSId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "10"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Template S (to sync)"
+   },
+   {
+    "id": "create-template-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"eptest-tier-x-{{$runId}}\",\"values\":{\"flows\":1,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateXId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Template X (to archive)"
+   },
+   {
+    "id": "template-name-conflict",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\":\"eptest-tier-a-{{$runId}}\",\"values\":{\"flows\":1,\"sso\":false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_TEMPLATE_NAME_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Duplicate Template Name (409)"
+   },
+   {
+    "id": "get-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template.templateId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-tier-a-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Template A"
+   },
+   {
+    "id": "archive-template-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template-x.templateXId}}/archive",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ARCHIVED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-x.templateXId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Archive Template X"
+   },
+   {
+    "id": "list-templates",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-x.templateXId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.status=='ARCHIVED'].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Templates"
+   },
+   {
+    "id": "create-org-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-license-org-a-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization A"
+   },
+   {
+    "id": "create-org-s",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-license-org-s-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization S"
+   },
+   {
+    "id": "create-org-u",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-license-org-u-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization U"
+   },
+   {
+    "id": "create-org-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-license-org-x-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization X"
+   },
+   {
+    "id": "instantiate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license",
+     "body": "{\"template_id\":\"{{create-template.templateId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "licenseId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-a.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.sso"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.adjusted_fields"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate License A"
+   },
+   {
+    "id": "get-license",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{instantiate.licenseId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.limit"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "stale"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get License A"
+   },
+   {
+    "id": "instantiate-twice",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license",
+     "body": "{\"template_id\":\"{{create-template-b.templateBId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_LICENSE_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate Twice (409)"
+   },
+   {
+    "id": "delete-template-in-use",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template.templateId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_TEMPLATE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Template A In Use (409)"
+   },
+   {
+    "id": "adjust",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license",
+     "body": "{\"values\":{\"flows\":250}}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{instantiate.licenseId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "250"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.sso"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.adjusted_fields[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Adjust License A"
+   },
+   {
+    "id": "license-diff",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license/diff",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-a.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.differences[0].field"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "changed"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.differences[0].kind"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "250"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.differences[0].license_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.differences[0].template_value"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "License Diff"
+   },
+   {
+    "id": "license-history",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license/history",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ADJUSTED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{instantiate.licenseId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].license_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-a.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].field"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].old_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "250"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].new_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "INSTANTIATED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{instantiate.licenseId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].license_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "100"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[1].new_value.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "License History"
+   },
+   {
+    "id": "migrate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/organization-licenses/migrate",
+     "body": "{\"template_id\":\"{{create-template-b.templateBId}}\",\"organization_ids\":[\"{{create-org-a.orgId}}\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-b.templateBId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.changed"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.failed"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-a.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "CHANGED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].outcome"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].previous_template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "sso"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].changes[0].field"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].changes[0].license_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.results[0].changes[0].template_value"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Migrate License A To Template B"
+   },
+   {
+    "id": "get-license-migrated",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{instantiate.licenseId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-b.templateBId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "250"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.sso"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.adjusted_fields[0]"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Migrated License Keeps Its Adjustment"
+   },
+   {
+    "id": "archive-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template.templateId}}/archive",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ARCHIVED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.templateId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Archive Template A"
+   },
+   {
+    "id": "delete-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template.templateId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Template A Once Unused"
+   },
+   {
+    "id": "verify-template-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template.templateId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_TEMPLATE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Template A Gone (404)"
+   },
+   {
+    "id": "get-license-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-x.orgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_LICENSE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Refused X Has No License (404)"
+   },
+   {
+    "id": "instantiate-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/license",
+     "body": "{\"template_id\":\"{{create-template.templateId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate For An Unknown Organization (404)"
+   },
+   {
+    "id": "instantiate-s",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-s.orgId}}/license",
+     "body": "{\"template_id\":\"{{create-template-s.templateSId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-s.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-s.templateSId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "10"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate License S"
+   },
+   {
+    "id": "update-template-s",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates/{{create-template-s.templateSId}}",
+     "body": "{\"values\":{\"flows\":20,\"sso\":false}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-s.templateSId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "20"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Template S (syncs license S)"
+   },
+   {
+    "id": "instantiate-u",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license",
+     "body": "{\"template_id\":\"{{create-template-b.templateBId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-u.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-b.templateBId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "500"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate License U"
+   },
+   {
+    "id": "report-usage",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage",
+     "body": "{\"key\":\"flows\",\"value\":3}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "flows"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.key"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-u.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Report Usage Within The Limit"
+   },
+   {
+    "id": "usage-within",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.usage"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "500"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.limit"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "within_limit"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Usage Reads Within Limit"
+   },
+   {
+    "id": "report-over",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage",
+     "body": "{\"key\":\"flows\",\"value\":5000}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5000"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.value"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Report Usage Past The Limit (stored)"
+   },
+   {
+    "id": "usage-exceeded",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5000"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.usage"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "exceeded"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.usage.flows.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Usage Reads Exceeded"
+   },
+   {
+    "id": "usage-not-a-limit",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage",
+     "body": "{\"key\":\"sso\",\"value\":1}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_FIELD_NOT_A_LIMIT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "sso"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].field"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Usage On Non-Limit (400)"
+   },
+   {
+    "id": "usage-series",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage/series?key=flows&granularity=HOUR&from={{$isoTimestamp:-1h}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "^\\d+$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Usage Series"
+   },
+   {
+    "id": "instantiate-archived",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-x.orgId}}/license",
+     "body": "{\"template_id\":\"{{create-template-x.templateXId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_TEMPLATE_ARCHIVED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Instantiate From Archived Template (409)"
+   },
+   {
+    "id": "search-licenses",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/organization-licenses/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "8"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "8"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-x.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?!@.license].organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Lists Every Organization, Licensed Or Not"
+   },
+   {
+    "id": "history-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/license/history",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "History Of An Unknown Organization (404)"
+   },
+   {
+    "id": "usage-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/license/usage",
+     "body": "{\"key\":\"flows\",\"value\":1}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Report Usage For An Unknown Organization (404)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 3,
+       "min": 1,
+       "name": "A instantiated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-a.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 1,
+       "name": "A adjusted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-a.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 1,
+       "name": "A migrated to B",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-a.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 2,
+       "min": 1,
+       "name": "S instantiated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-s.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 2,
+       "min": 1,
+       "name": "S synced from the template update",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-s.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "U instantiated (usage reports emit nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-u.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Concurrent sign-up 1 licensed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{concurrent-org-1.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Concurrent sign-up 2 licensed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{concurrent-org-2.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Concurrent sign-up 3 licensed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{concurrent-org-3.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Concurrent sign-up 4 licensed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{concurrent-org-4.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No license event for X (archived template refused)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.license.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-x.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_prd_apikey"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every License Event"
+   },
+   {
+    "id": "delete-schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Schema"
+   },
+   {
+    "id": "verify-schema-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "LICENSE_SCHEMA_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Verify Schema Gone (404)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   },
+   {
+    "id": "create-template-c",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "body": "{\"name\": \"eptest-tier-c-{{$runId}}\", \"values\": {\"flows\": 300, \"sso\": false}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateCId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Template C For Concurrent Sign-ups (201)"
+   },
+   {
+    "id": "concurrent-org-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-license-conc-1-{{$runId}}\", \"license\": {\"template_id\": \"{{create-template-c.templateCId}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-c.templateCId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "300"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Concurrent Sign-up 1 With Template C (201)"
+   },
+   {
+    "id": "concurrent-org-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-license-conc-2-{{$runId}}\", \"license\": {\"template_id\": \"{{create-template-c.templateCId}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-c.templateCId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "300"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Concurrent Sign-up 2 With Template C (201)"
+   },
+   {
+    "id": "concurrent-org-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-license-conc-3-{{$runId}}\", \"license\": {\"template_id\": \"{{create-template-c.templateCId}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-c.templateCId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "300"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Concurrent Sign-up 3 With Template C (201)"
+   },
+   {
+    "id": "concurrent-org-4",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-license-conc-4-{{$runId}}\", \"license\": {\"template_id\": \"{{create-template-c.templateCId}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template-c.templateCId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "300"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.license.values.flows"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Concurrent Sign-up 4 With Template C (201)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

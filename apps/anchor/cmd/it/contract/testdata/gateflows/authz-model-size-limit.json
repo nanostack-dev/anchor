@@ -1,0 +1,1191 @@
+{
+ "id": "da3199cd-7556-445a-8cd0-c0805ef5cce5",
+ "name": "anchor: authz model size limit",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#309: a catalog write that would grow a product's OpenFGA model past 1048576 bytes answers 409 AUTHZ_MODEL_TOO_LARGE (model_bytes, max_model_bytes) and writes nothing. Own product: 160 long permissions on organization, then a 50-type tree is refused, the type list stays [organization], a 2-type tree passes, a permission delete passes. ~170 HTTP calls. Generator: echopoint-investigation/gen_model_size.py.",
+ "updated_at": "2026-10-30T23:12:08.762008Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "bc813bcd-2cf8-495a-9d31-1291a384e725",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "bf5bbad2-f6c4-4561-a7ba-4d21121e0db2",
+    "source": "create-product",
+    "target": "seed",
+    "type": "success"
+   },
+   {
+    "id": "81d469d8-9f80-4224-a9b9-79fc5b11cb5e",
+    "source": "seed",
+    "target": "fill",
+    "type": "success"
+   },
+   {
+    "id": "cf7e974c-cccf-47d8-870d-bb97baa339c2",
+    "source": "fill",
+    "target": "perms-filled",
+    "type": "success"
+   },
+   {
+    "id": "d40912ea-4da1-4700-bdeb-2c03099a65af",
+    "source": "perms-filled",
+    "target": "tree-too-large",
+    "type": "success"
+   },
+   {
+    "id": "555333f5-714d-4416-8f76-1254aaa35296",
+    "source": "tree-too-large",
+    "target": "types-unchanged",
+    "type": "success"
+   },
+   {
+    "id": "fa86ca17-50b0-419e-9533-4facdd17eba0",
+    "source": "types-unchanged",
+    "target": "tree-small",
+    "type": "success"
+   },
+   {
+    "id": "dc649fec-0182-453a-956f-5adec218c3ae",
+    "source": "tree-small",
+    "target": "delete-perm",
+    "type": "success"
+   },
+   {
+    "id": "bf907c02-e1fb-47a4-89d9-b2a1dfdb85a5",
+    "source": "delete-perm",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: authz model size limit",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-modelsize-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "seed",
+    "data": {
+     "variables": {
+      "perms": [
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_000"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_001"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_002"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_003"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_004"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_005"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_006"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_007"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_008"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_009"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_010"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_011"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_012"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_013"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_014"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_015"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_016"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_017"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_018"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_019"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_020"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_021"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_022"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_023"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_024"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_025"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_026"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_027"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_028"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_029"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_030"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_031"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_032"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_033"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_034"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_035"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_036"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_037"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_038"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_039"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_040"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_041"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_042"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_043"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_044"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_045"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_046"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_047"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_048"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_049"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_050"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_051"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_052"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_053"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_054"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_055"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_056"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_057"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_058"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_059"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_060"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_061"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_062"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_063"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_064"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_065"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_066"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_067"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_068"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_069"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_070"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_071"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_072"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_073"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_074"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_075"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_076"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_077"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_078"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_079"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_080"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_081"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_082"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_083"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_084"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_085"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_086"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_087"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_088"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_089"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_090"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_091"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_092"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_093"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_094"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_095"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_096"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_097"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_098"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_099"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_100"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_101"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_102"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_103"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_104"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_105"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_106"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_107"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_108"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_109"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_110"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_111"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_112"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_113"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_114"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_115"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_116"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_117"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_118"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_119"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_120"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_121"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_122"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_123"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_124"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_125"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_126"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_127"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_128"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_129"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_130"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_131"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_132"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_133"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_134"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_135"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_136"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_137"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_138"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_139"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_140"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_141"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_142"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_143"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_144"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_145"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_146"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_147"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_148"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_149"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_150"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_151"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_152"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_153"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_154"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_155"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_156"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_157"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_158"
+       },
+       {
+        "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+        "auth": "Bearer {{login.authToken}}",
+        "name": "document:permission_with_a_long_readable_name_159"
+       }
+      ]
+     }
+    },
+    "type": "set_variable",
+    "run_when": "on_success",
+    "display_name": "Permission Items"
+   },
+   {
+    "id": "fill",
+    "data": {
+     "body": {
+      "edges": [],
+      "nodes": [
+       {
+        "id": "fill-perm",
+        "data": {
+         "url": "{{perm.url}}",
+         "body": "{\"name\":\"{{perm.name}}\",\"resource_type\":\"organization\"}",
+         "method": "POST",
+         "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "{{perm.auth}}"
+         }
+        },
+        "type": "request",
+        "run_when": "on_success",
+        "assertions": [
+         {
+          "operator_data": {
+           "value": "201"
+          },
+          "operator_type": "equals",
+          "extractor_data": {},
+          "extractor_type": "status_code"
+         }
+        ],
+        "display_name": "Create Permission (201)"
+       }
+      ]
+     },
+     "items": "{{seed.perms}}",
+     "item_var": "perm",
+     "index_var": "index",
+     "max_iterations": 160,
+     "continue_on_error": false
+    },
+    "type": "loop",
+    "run_when": "on_success",
+    "display_name": "Create 160 Long Permissions On organization"
+   },
+   {
+    "id": "perms-filled",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/search",
+     "body": "{\"pagination\": {\"limit\": 1}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "160"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Permissions: 160 Exist"
+   },
+   {
+    "id": "tree-too-large",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"resource_types\": [{\"slug\": \"type_00\", \"name\": \"type_00\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_01\", \"name\": \"type_01\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_02\", \"name\": \"type_02\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_03\", \"name\": \"type_03\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_04\", \"name\": \"type_04\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_05\", \"name\": \"type_05\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_06\", \"name\": \"type_06\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_07\", \"name\": \"type_07\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_08\", \"name\": \"type_08\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_09\", \"name\": \"type_09\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_10\", \"name\": \"type_10\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_11\", \"name\": \"type_11\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_12\", \"name\": \"type_12\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_13\", \"name\": \"type_13\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_14\", \"name\": \"type_14\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_15\", \"name\": \"type_15\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_16\", \"name\": \"type_16\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_17\", \"name\": \"type_17\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_18\", \"name\": \"type_18\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_19\", \"name\": \"type_19\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_20\", \"name\": \"type_20\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_21\", \"name\": \"type_21\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_22\", \"name\": \"type_22\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_23\", \"name\": \"type_23\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_24\", \"name\": \"type_24\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_25\", \"name\": \"type_25\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_26\", \"name\": \"type_26\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_27\", \"name\": \"type_27\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_28\", \"name\": \"type_28\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_29\", \"name\": \"type_29\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_30\", \"name\": \"type_30\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_31\", \"name\": \"type_31\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_32\", \"name\": \"type_32\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_33\", \"name\": \"type_33\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_34\", \"name\": \"type_34\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_35\", \"name\": \"type_35\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_36\", \"name\": \"type_36\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_37\", \"name\": \"type_37\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_38\", \"name\": \"type_38\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_39\", \"name\": \"type_39\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_40\", \"name\": \"type_40\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_41\", \"name\": \"type_41\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_42\", \"name\": \"type_42\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_43\", \"name\": \"type_43\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_44\", \"name\": \"type_44\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_45\", \"name\": \"type_45\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_46\", \"name\": \"type_46\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_47\", \"name\": \"type_47\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_48\", \"name\": \"type_48\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_49\", \"name\": \"type_49\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "AUTHZ_MODEL_TOO_LARGE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1048576"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.max_model_bytes"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^[0-9]{7,}$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.model_bytes"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Replace Tree With 50 Types (409 AUTHZ_MODEL_TOO_LARGE)"
+   },
+   {
+    "id": "types-unchanged",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Types: Only organization (Refused Tree Wrote Nothing)"
+   },
+   {
+    "id": "tree-small",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"resource_types\": [{\"slug\": \"type_00\", \"name\": \"type_00\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"type_01\", \"name\": \"type_01\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "type_01"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_types[2].slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Replace Tree With 2 Types Under The Limit (200)"
+   },
+   {
+    "id": "delete-perm",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/document:permission_with_a_long_readable_name_000",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete A Permission (204, Deletes Never Refused)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

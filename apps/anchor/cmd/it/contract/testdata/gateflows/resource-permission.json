@@ -1,0 +1,1306 @@
+{
+ "id": "e5739815-8433-4380-9500-f6a7234c778e",
+ "name": "anchor: resource-permission",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: resource-permission\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Resource permission CRUD, duplicate refusal, one not-found code (RESOURCE_PERMISSION_NOT_FOUND) on GET/PUT/DELETE, delete of a permission a role holds cascades (204, the role loses it and gets product.role.updated), and every event checked in one final webhook wait.",
+ "updated_at": "2026-10-26T04:02:02.861781Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "38b2ea6b-47f1-4193-8f34-017f83857412",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "f393fcd9-a3db-49aa-822a-ad0a1bf02279",
+    "source": "create-product",
+    "target": "create-permission",
+    "type": "success"
+   },
+   {
+    "id": "194b7908-0907-4ffd-bdd8-5a9f01700b42",
+    "source": "create-permission",
+    "target": "get-permission",
+    "type": "success"
+   },
+   {
+    "id": "4e1f3270-734f-4439-b659-4d1996048569",
+    "source": "get-permission",
+    "target": "update-permission",
+    "type": "success"
+   },
+   {
+    "id": "dda5a3a8-3142-4bac-bdb5-66e809c08708",
+    "source": "create-permission",
+    "target": "search-permissions",
+    "type": "success"
+   },
+   {
+    "id": "98517e94-91bd-43ee-b78e-5682b77bb601",
+    "source": "create-permission",
+    "target": "create-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "a451030c-cbf6-4c64-900a-d7d6af3cfb5b",
+    "source": "create-product",
+    "target": "create-empty-name",
+    "type": "success"
+   },
+   {
+    "id": "1b64eed7-a1d7-4edd-a702-0261f545ff3a",
+    "source": "create-product",
+    "target": "get-missing",
+    "type": "success"
+   },
+   {
+    "id": "5c31e92d-871b-42d1-b271-8e0fb75f93b1",
+    "source": "create-product",
+    "target": "update-missing",
+    "type": "success"
+   },
+   {
+    "id": "35ea54a1-2ca6-4bf0-9dcb-8c461434574a",
+    "source": "create-product",
+    "target": "delete-missing",
+    "type": "success"
+   },
+   {
+    "id": "484637ba-9161-4240-9ede-936593e2742f",
+    "source": "create-product",
+    "target": "create-second",
+    "type": "success"
+   },
+   {
+    "id": "b95561d9-94ce-41da-932d-281db36a57fa",
+    "source": "create-second",
+    "target": "delete-second-permission",
+    "type": "success"
+   },
+   {
+    "id": "b8d51065-d4f0-4732-bb92-2feb60756c7d",
+    "source": "delete-second-permission",
+    "target": "get-second-gone",
+    "type": "success"
+   },
+   {
+    "id": "52b9eaee-55f1-4074-a524-09feda953be0",
+    "source": "create-product",
+    "target": "create-assigned",
+    "type": "success"
+   },
+   {
+    "id": "6d9fc97c-624e-4554-a8f8-b0e41a6769a9",
+    "source": "create-holder-role",
+    "target": "delete-assigned",
+    "type": "success"
+   },
+   {
+    "id": "b1711804-321f-4c50-aaa7-0266a519a0c5",
+    "source": "delete-assigned",
+    "target": "role-lost-assigned",
+    "type": "success"
+   },
+   {
+    "id": "4fe1506c-2511-4a2c-ba31-c13ab726f9c9",
+    "source": "delete-assigned",
+    "target": "get-assigned-gone",
+    "type": "success"
+   },
+   {
+    "id": "271ff735-c43a-4ab1-a754-d64d5f63093d",
+    "source": "search-permissions",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "79f4acf2-2a69-43bb-bec8-2921b6c37b77",
+    "source": "create-duplicate",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "dd09a477-abc5-4e39-96c3-a9a48e9ccb13",
+    "source": "create-empty-name",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "616ad8ed-18be-4360-90ee-f52337a96a43",
+    "source": "get-missing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ba7af2c9-98aa-47f0-9660-7a5e6ede36af",
+    "source": "update-missing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ebadc29f-62f7-4809-b837-567d035c77d8",
+    "source": "delete-missing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "5eeb547f-a7e9-4300-ab42-3660b8396814",
+    "source": "get-second-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "502db1ec-a1cc-4d64-a0ac-68501b96ff2b",
+    "source": "role-lost-assigned",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "74847eff-5118-48a0-b5be-813f844cd0b4",
+    "source": "get-assigned-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "415a04e0-5f82-4207-9849-679e4ae64412",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-update-permission--get-permission-updated",
+    "source": "update-permission",
+    "target": "get-permission-updated",
+    "type": "success"
+   },
+   {
+    "id": "e-create-assigned--create-holder-role",
+    "source": "create-assigned",
+    "target": "create-holder-role",
+    "type": "success"
+   },
+   {
+    "id": "e-create-permission--create-holder-role",
+    "source": "create-permission",
+    "target": "create-holder-role",
+    "type": "success"
+   },
+   {
+    "id": "e-get-permission-updated--events",
+    "source": "get-permission-updated",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: resource-permission",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-product-resperm-{{$runId}}\",\"description\":\"echopoint test\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:read\", \"description\": \"d\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "d"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create eptestdoc:read (201)"
+   },
+   {
+    "id": "get-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:read",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "d"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get eptestdoc:read (200)"
+   },
+   {
+    "id": "update-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:read",
+     "body": "{\"description\":\"upd\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "upd"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update eptestdoc:read Description (200)"
+   },
+   {
+    "id": "search-permissions",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/search",
+     "body": "{\"filter\":{\"names\":[\"eptestdoc:read\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search By Name Finds eptestdoc:read (200)"
+   },
+   {
+    "id": "create-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Duplicate eptestdoc:read (409)"
+   },
+   {
+    "id": "create-empty-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Empty Name (400)"
+   },
+   {
+    "id": "get-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/nope:nope",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown Permission (404)"
+   },
+   {
+    "id": "update-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/nope:nope",
+     "body": "{\"description\":\"x\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Unknown Permission (404)"
+   },
+   {
+    "id": "delete-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/nope:nope",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Unknown Permission (404)"
+   },
+   {
+    "id": "create-second",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:write\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create eptestdoc:write (201)"
+   },
+   {
+    "id": "delete-second-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:write",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete eptestdoc:write (204)"
+   },
+   {
+    "id": "get-second-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:write",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted eptestdoc:write (404)"
+   },
+   {
+    "id": "create-assigned",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:share\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create eptestdoc:share (201)"
+   },
+   {
+    "id": "create-holder-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-share-holder\", \"permissions\": [\"eptestdoc:share\", \"eptestdoc:read\"], \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:share"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Role Holding eptestdoc:share And eptestdoc:read (201)"
+   },
+   {
+    "id": "delete-assigned",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:share",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Assigned eptestdoc:share Cascades (204)"
+   },
+   {
+    "id": "role-lost-assigned",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-holder-role.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-holder-role.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-share-holder"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:share"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role Lost eptestdoc:share And Kept eptestdoc:read (200)"
+   },
+   {
+    "id": "get-assigned-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:share",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted eptestdoc:share (404)"
+   },
+   {
+    "id": "get-permission-updated",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:read",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "upd"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Description Change Is Stored (200)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:read created once (duplicate emits nothing)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:read"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:write created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:write"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:share created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:share"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:read updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:read"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:write deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:write"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "eptestdoc:share deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:share"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Holder role told it lost eptestdoc:share (cascade)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-holder-role.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "eptestdoc:read never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:read"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "eptestdoc:write never updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_permission.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "eptestdoc:write"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.permission_name"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other role updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Holder role never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-holder-role.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Resource Permission Event"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}
