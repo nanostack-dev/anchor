@@ -119,7 +119,13 @@ func TestCreateProductUser(t *testing.T) {
 				strings.NewReader(`{"filter":{"emails":["`+email+`"],"statuses":["SUSPENDED"]}}`),
 			)
 			require.NoError(t, err, "search product users should not error")
-			require.Equal(t, http.StatusOK, search.StatusCode(), "an upper-case status filter is accepted: %s", search.Body)
+			require.Equal(
+				t,
+				http.StatusOK,
+				search.StatusCode(),
+				"an upper-case status filter is accepted: %s",
+				search.Body,
+			)
 			assert.Equal(t, int64(1), search.JSON200.Total, "a statuses: [SUSPENDED] search finds the user")
 		},
 	)
@@ -136,14 +142,28 @@ func TestCreateProductUser(t *testing.T) {
 					strings.NewReader(`{"email":"`+itshared.Faker.Internet().Email()+`","status":"`+status+`"}`),
 				)
 				require.NoError(t, err, "create product user should not error")
-				assert.Equal(t, http.StatusBadRequest, resp.StatusCode(), "create with status %s: %s", status, resp.Body)
+				assert.Equal(
+					t,
+					http.StatusBadRequest,
+					resp.StatusCode(),
+					"create with status %s: %s",
+					status,
+					resp.Body,
+				)
 
 				search, err := apiKeyClient.SearchProductUsersWithBodyWithResponse(
 					ctx, productContext.ProductID, "application/json",
 					strings.NewReader(`{"filter":{"statuses":["`+status+`"]}}`),
 				)
 				require.NoError(t, err, "search product users should not error")
-				assert.Equal(t, http.StatusBadRequest, search.StatusCode(), "search with status %s: %s", status, search.Body)
+				assert.Equal(
+					t,
+					http.StatusBadRequest,
+					search.StatusCode(),
+					"search with status %s: %s",
+					status,
+					search.Body,
+				)
 			}
 		},
 	)
