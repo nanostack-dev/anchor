@@ -723,6 +723,11 @@ func newDynamicVars() *dynamicVars {
 	const runIDBytes = 6
 	buf := make([]byte, runIDBytes)
 	_, _ = rand.Read(buf)
+	// The first nibble is a letter (a-f): an all-digit run id would be taken
+	// for a number, which the normalizer refuses to register, and the raw id
+	// would then leak into the goldens (about one flow run in 280).
+	const letterNibbles = 6
+	buf[0] = (0xa+buf[0]>>4%letterNibbles)<<4 | buf[0]&0x0f
 	return &dynamicVars{runID: hex.EncodeToString(buf), started: time.Now().UTC()}
 }
 
