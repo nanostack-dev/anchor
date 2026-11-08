@@ -25,7 +25,7 @@ import (
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 )
 
 const (
@@ -56,7 +56,7 @@ type productService struct {
 	productPermissionRepo repository.ProductPermissionRepository
 	eventEndpoints        events.EndpointService
 	resourceTypes         rtservice.Service
-	products              cache.Cache[product.Product]
+	products              nanocache.Cache[product.Product]
 	logger                *slog.Logger
 	transactor            transactor.Transactor
 }
@@ -66,7 +66,7 @@ func NewProductService(
 	productPermissionRepo repository.ProductPermissionRepository,
 	eventEndpoints events.EndpointService,
 	resourceTypes rtservice.Service,
-	products cache.Cache[product.Product], transactor transactor.Transactor, logger *slog.Logger,
+	products nanocache.Cache[product.Product], transactor transactor.Transactor, logger *slog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,

@@ -3,26 +3,28 @@ package events
 import (
 	"log/slog"
 
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
-
-	"go.uber.org/fx"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"events",
-		fx.Provide(
-			NewCatalog,
-			NewEndpointRepository,
-			provideEmitter,
-			provideEndpointService,
-		),
-		fx.Invoke(RegisterWorker),
-	)
-}
+// Module wires the product events: the catalog of every module's
+// Registration, the emitter with every module's TxObserver, the endpoints and
+// the delivery worker. The modules add members to the two collections.
+var Module = nano.Module("events", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		NewCatalog,
+		NewEndpointRepository,
+		ProvideEmitter,
+		ProvideEndpointService,
+		NewWorker,
+	),
+	nano.Collect[Registration](),
+	nano.Collect[TxObserver](),
+)
 
-func provideEndpointService(
+func ProvideEndpointService(
 	repo EndpointRepository,
 	catalog Catalog,
 	enc *encryption.Service,

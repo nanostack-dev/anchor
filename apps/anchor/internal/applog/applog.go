@@ -8,7 +8,7 @@
 //     path, and the caller that auth adds with log.SetAttrs) and the trace ids.
 //     The HTTP boundary writes through it: the request summary, the error
 //     hooks and the few call sites that used pkg/log's log.Ctx.
-//   - The component logger, the plain *slog.Logger in the fx graph, writes
+//   - The component logger, the plain *slog.Logger of the wiring, writes
 //     without the context's attributes, as the injected zerolog logger did.
 //     The golden suite pins every line that carries a request_id, so giving
 //     these lines the request scope adds lines to the request goldens: that is
@@ -16,10 +16,8 @@
 package applog
 
 import (
-	"cmp"
 	"context"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
@@ -27,7 +25,8 @@ import (
 )
 
 // Scoped is the logger that reads the request scope from the context. It is
-// a distinct type so fx can provide it next to the component *slog.Logger.
+// a distinct type so the wiring can provide it next to the component
+// *slog.Logger.
 type Scoped struct {
 	*slog.Logger
 }
@@ -48,21 +47,6 @@ type Loggers struct {
 // next to the caller, as pkg/log's log.Bind did: the lines of a public route,
 // and of a request that auth refuses, have none.
 type Identity []slog.Attr
-
-// ConfigFromEnv reads the log configuration from the environment as
-// core/log.ConfigFromEnv does, except that the wire defaults to legacy: the
-// zerolog shape is anchor's contract until the collector and the alerts read
-// the slog shape. LOG_WIRE=slog opts out.
-func ConfigFromEnv(getenv func(string) string) (log.Config, error) {
-	return log.Settings{
-		Level:       getenv("LOG_LEVEL"),
-		Format:      getenv("LOG_FORMAT"),
-		Wire:        cmp.Or(getenv("LOG_WIRE"), log.WireLegacy.String()),
-		Environment: getenv("ENVIRONMENT"),
-		Service:     getenv("SERVICE_NAME"),
-		Version:     getenv("SERVICE_VERSION"),
-	}.Config()
-}
 
 // New builds the loggers of cfg. The identity in cfg is not written by the
 // output handler; see Loggers.Identity.
@@ -87,11 +71,13 @@ func New(cfg log.Config) Loggers {
 	}
 }
 
-// NewFromEnv builds the loggers from the environment and installs the scoped
-// one as the slog default, so the standard library log package and code
-// without an injected logger write through it.
-func NewFromEnv() (Loggers, error) {
-	cfg, err := ConfigFromEnv(os.Getenv)
+// NewLoggers builds the loggers of the bound log settings and installs the
+// scoped one as the slog default, so the standard library log package and
+// code without an injected logger write through it. Anchor binds the legacy
+// wire by default (cmd/app's defaults layer): the zerolog shape is its
+// contract until the collector and the alerts read the slog shape.
+func NewLoggers(settings log.Settings) (Loggers, error) {
+	cfg, err := settings.Config()
 	if err != nil {
 		return Loggers{}, err
 	}

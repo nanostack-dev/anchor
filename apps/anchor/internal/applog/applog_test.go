@@ -97,21 +97,6 @@ func TestRequestLinesGetTheIdentityOnlyFromTheScope(t *testing.T) {
 	assert.Equal(t, "anchor", got[1]["service"])
 }
 
-func TestConfigFromEnvDefaultsToTheLegacyWire(t *testing.T) {
-	cfg, err := applog.ConfigFromEnv(func(string) string { return "" })
-	require.NoError(t, err)
-	assert.Equal(t, log.WireLegacy, cfg.Wire)
-
-	cfg, err = applog.ConfigFromEnv(func(key string) string {
-		if key == "LOG_WIRE" {
-			return "slog"
-		}
-		return ""
-	})
-	require.NoError(t, err)
-	assert.Equal(t, log.WireSlog, cfg.Wire)
-}
-
 func TestBurstSamplerLetsBurstLinesThroughPerPeriod(t *testing.T) {
 	sampler := &applog.BurstSampler{Burst: 2, Period: time.Hour}
 

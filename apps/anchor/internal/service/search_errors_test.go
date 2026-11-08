@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -161,7 +161,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 		"searchProductAPIKeys": func(err error) error {
 			svc := service.NewProductAPIKeyService(
 				nil, failingProductAPIKeys{failingSearches: failingSearches{err}}, nil,
-				cache.Cache[apikey.ProductAPIKey]{}, logger,
+				nanocache.Cache[apikey.ProductAPIKey]{}, logger,
 			)
 			_, got := svc.Search(ctx, apikey.SearchProductAPIKeysInput{
 				ProductID: "product",

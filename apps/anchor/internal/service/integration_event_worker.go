@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 
-	"go.uber.org/fx"
+	"anchor/internal/queueworker"
 )
 
 // Hardcoded integration event worker settings.
@@ -43,31 +44,39 @@ const (
 	lockKeyInstanceReconcilePrefix = "integration.reconcile.instance:"
 )
 
-// IntegrationEventWorkerParams groups the dependencies for the async event worker.
-type IntegrationEventWorkerParams struct {
-	fx.In
-	Lifecycle          fx.Lifecycle
-	IntegrationService IntegrationService
-	Queue              *queue.Client
-	Lock               *pglock.Client
-	InstanceRepo       repository.IntegrationInstanceRepository
-	Registry           *provider.Registry
-	Logger             *slog.Logger
-	CoreConfig         *serviceconfig.CoreConfig
+// IntegrationEventWorker runs the integration queue worker. Its Start seeds
+// the first reconcile scheduler job, before the App serves.
+type IntegrationEventWorker struct {
+	queueworker.Worker
+
+	lock             *pglock.Client
+	queue            *queue.Client
+	instanceRepo     repository.IntegrationInstanceRepository
+	registry         *provider.Registry
+	scheduleInterval time.Duration
+	logger           *slog.Logger
 }
 
-// RegisterIntegrationEventWorker starts the pgkit queue worker runtime.
-func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
-	logger := p.Logger.With(slog.String("component", "integration_event_worker"))
+// NewIntegrationEventWorker builds the pgkit queue worker runtime.
+func NewIntegrationEventWorker(
+	integrationService IntegrationService,
+	queueClient *queue.Client,
+	lock *pglock.Client,
+	instanceRepo repository.IntegrationInstanceRepository,
+	registry *provider.Registry,
+	logger *slog.Logger,
+	coreConfig *serviceconfig.CoreConfig,
+) (*IntegrationEventWorker, error) {
+	logger = logger.With(slog.String("component", "integration_event_worker"))
 
-	scheduleInterval := parseScheduleInterval(logger, p.CoreConfig)
+	scheduleInterval := parseScheduleInterval(logger, coreConfig)
 
-	registry := queue.NewHandlerRegistry()
-	if err := registerQueueHandlers(registry, p.IntegrationService, logger); err != nil {
-		return
+	handlers := queue.NewHandlerRegistry()
+	if err := registerQueueHandlers(handlers, integrationService, logger); err != nil {
+		return nil, err
 	}
 
-	worker, err := queue.NewWorker(p.Queue, registry, queue.WorkerConfig{
+	worker, err := queue.NewWorker(queueClient, handlers, queue.WorkerConfig{
 		WorkerID:          integrationWorkerID,
 		PollInterval:      integrationPollInterval,
 		ReapInterval:      integrationReapInterval,
@@ -91,45 +100,38 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 		},
 	})
 	if err != nil {
-		logger.Error("failed to initialize integration event worker", log.Err(err))
-		return
+		return nil, fmt.Errorf("initialize integration event worker: %w", err)
 	}
 
-	var cancel context.CancelFunc
-
-	p.Lifecycle.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			var ctx context.Context
-
-			ctx, cancel = context.WithCancel(context.Background()) // #nosec G118 -- canceled in lifecycle OnStop
-
-			go func() {
-				if runErr := worker.Run(ctx); runErr != nil {
-					logger.ErrorContext(ctx, "integration queue worker stopped with error", log.Err(runErr))
-				}
-			}()
-
-			// Seed the initial reconcile scheduler job using a distributed advisory lock so
-			// that only one replica inserts the first job even in multi-instance deployments.
-			seedReconcileScheduler(ctx, p.Lock, p.Queue, p.InstanceRepo, p.Registry, scheduleInterval, logger)
-
-			logger.InfoContext(ctx, "integration queue worker started",
+	return &IntegrationEventWorker{
+		Worker: queueworker.New(worker, logger, queueworker.Spec{
+			Started: "integration queue worker started",
+			StartedAttrs: []slog.Attr{
 				slog.String("queue_name", integrationQueueName),
 				slog.Duration("poll_interval", integrationPollInterval),
 				slog.Duration("reconcile_schedule_interval", scheduleInterval),
 				slog.Int("batch_size", integrationBatchSize),
 				slog.Int("max_attempts", integrationMaxAttempts),
-			)
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			logger.InfoContext(ctx, "stopping integration queue worker")
-			if cancel != nil {
-				cancel()
-			}
-			return nil
-		},
-	})
+			},
+			Failed:   "integration queue worker stopped with error",
+			Stopping: "stopping integration queue worker",
+		}),
+		lock:             lock,
+		queue:            queueClient,
+		instanceRepo:     instanceRepo,
+		registry:         registry,
+		scheduleInterval: scheduleInterval,
+		logger:           logger,
+	}, nil
+}
+
+// Start seeds the initial reconcile scheduler job, using a distributed
+// advisory lock so that only one replica inserts the first job even in
+// multi-instance deployments. A failure is logged and does not fail the
+// start.
+func (w *IntegrationEventWorker) Start(ctx context.Context) error {
+	seedReconcileScheduler(ctx, w.lock, w.queue, w.instanceRepo, w.registry, w.scheduleInterval, w.logger)
+	return nil
 }
 
 // registerQueueHandlers wires all queue handler functions into the registry.
@@ -156,22 +158,17 @@ func registerQueueHandlers(
 	return nil
 }
 
-// parseScheduleInterval parses the configured reconcile scheduler interval or falls back to the default.
+// parseScheduleInterval returns the configured reconcile scheduler interval,
+// or the default when it is not positive.
 func parseScheduleInterval(logger *slog.Logger, cfg *serviceconfig.CoreConfig) time.Duration {
 	if cfg == nil {
 		return defaultIntegrationReconcileScheduleEvery
 	}
 
-	raw := cfg.Integration.ReconcileScheduleInterval
-	if raw == "" {
-		return defaultIntegrationReconcileScheduleEvery
-	}
-
-	d, err := time.ParseDuration(raw)
-	if err != nil || d <= 0 {
+	d := cfg.Integration.ReconcileScheduleInterval
+	if d <= 0 {
 		logger.Warn("invalid integration reconcile scheduler interval, using default",
-			log.Err(err),
-			slog.String("interval", raw),
+			slog.Duration("interval", d),
 			slog.Duration("fallback_interval", defaultIntegrationReconcileScheduleEvery),
 		)
 		return defaultIntegrationReconcileScheduleEvery

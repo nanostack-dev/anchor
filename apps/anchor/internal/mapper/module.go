@@ -1,36 +1,35 @@
 package mapper
 
-import "go.uber.org/fx"
+import (
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+)
 
-// NewModule wires mapper dependencies.
-func NewModule() fx.Option {
-	return fx.Module(
-		"mapper",
-		fx.Provide(
-			NewProductMapper,
-			NewOrganizationMapper,
-			NewOrganizationAPIKeyMapper,
-			NewTenantMapper,
-			NewUserMapper,
-			NewPlatformUserMapper,
-			NewInvitationMapper,
-			NewProductUserMapper,
-			NewProductRoleMapper,
-			NewProductPermissionMapper,
-			NewProductResourcePermissionMapper,
-			NewProductAPIKeyMapper,
-			NewIntegrationInstanceMapper,
-			NewIntegrationEventMapper,
-			NewIntegrationAuditLogMapper,
-			NewEmailTemplateMapper,
-			NewEmailTemplateVersionMapper,
-			NewEmailSendRecordMapper,
-			NewLicenseSchemaMapper,
-			NewLicenseSchemaFieldMapper,
-			NewLicenseTemplateMapper,
-			NewOrganizationLicenseMapper,
-			NewOrganizationLicenseChangeMapper,
-			NewUsageObservationMapper,
-		),
-	)
-}
+// Module wires mapper dependencies.
+var Module = nano.Module("mapper", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		NewProductMapper,
+		NewOrganizationMapper,
+		NewOrganizationAPIKeyMapper,
+		NewTenantMapper,
+		NewUserMapper,
+		NewPlatformUserMapper,
+		NewInvitationMapper,
+		NewProductUserMapper,
+		NewProductRoleMapper,
+		NewProductPermissionMapper,
+		NewProductResourcePermissionMapper,
+		NewProductAPIKeyMapper,
+		NewIntegrationInstanceMapper,
+		NewIntegrationEventMapper,
+		NewIntegrationAuditLogMapper,
+		NewEmailTemplateMapper,
+		NewEmailTemplateVersionMapper,
+		NewEmailSendRecordMapper,
+		NewLicenseSchemaMapper,
+		NewLicenseSchemaFieldMapper,
+		NewLicenseTemplateMapper,
+		NewOrganizationLicenseMapper,
+		NewOrganizationLicenseChangeMapper,
+		NewUsageObservationMapper,
+	),
+)

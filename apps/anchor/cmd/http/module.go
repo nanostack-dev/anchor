@@ -3,31 +3,25 @@ package httpserver
 import (
 	_ "embed"
 
-	apisecmodule "github.com/nanostack-dev/nanostack-framework/modules/apisec"
-	"github.com/nanostack-dev/nanostack-framework/modules/config"
-
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+	"github.com/nanostack-dev/nanostack-framework/http/nanoapisec"
+	"github.com/nanostack-dev/nanostack-framework/http/nanoserver"
+	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
 )
 
 //go:embed openapi.yaml
 var OpenAPI []byte
 
-func NewHTTPServerModule() fx.Option {
-	return fx.Module(
-		"httpserver",
-		fx.Provide(
-			func(loader config.Loader) (*ServerConfig, error) {
-				var config ServerConfig
-				loader.MustLoadConfig("server", &config)
-				return &config, nil
-			},
-		),
-		// The auth middleware resolves each operation's security requirements
-		// from this document; the framework module owns building that resolver.
-		fx.Supply(apisecmodule.Document(OpenAPI)),
-		apisecmodule.NewModule(),
-		fx.Invoke(
-			RegisterServer,
-		),
-	)
+// Module serves anchor's router with nanoserver and runs the pgkit admin UI.
+var Module = nano.Module("httpserver", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nanoserver.Module,
+	nano.Providers(ListenerConfig, NewResolver, NewHandler, NewQueueDashboard),
+)
+
+// NewResolver builds the security-requirement resolver of the auth
+// middleware from the embedded contract. It matches paths as chi routes them,
+// as modules/apisec did; nanoapisec.Module would match them as
+// http.ServeMux does.
+func NewResolver() (*apisec.Resolver, error) {
+	return nanoapisec.NewResolverWith(nanoapisec.Document(OpenAPI), apisec.MatchChi())
 }

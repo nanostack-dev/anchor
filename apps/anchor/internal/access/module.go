@@ -3,14 +3,13 @@ package access
 import (
 	"anchor/internal/access/service"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-// NewModule wires access evaluation: the per-request decision a product asks
+// Module wires access evaluation: the per-request decision a product asks
 // Anchor for instead of rebuilding memberships, roles and resources itself.
-func NewModule() fx.Option {
-	return fx.Module(
-		"access",
-		fx.Provide(service.NewEvaluator),
-	)
-}
+var Module = nano.Module("access", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		service.NewEvaluator,
+	),
+)

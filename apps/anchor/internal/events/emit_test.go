@@ -15,10 +15,8 @@ import (
 func TestEmitterAcceptsRegisteredType(t *testing.T) {
 	t.Parallel()
 
-	catalog := events.NewCatalog(events.CatalogParams{
-		Registrations: []events.Registration{
-			events.RegisterInternal("Test", events.Definition{Type: "custom.created"}),
-		},
+	catalog := events.NewCatalog([]events.Registration{
+		events.RegisterInternal("Test", events.Definition{Type: "custom.created"}),
 	})
 	emitter := events.NewEmitter(nil, catalog)
 	event := events.Event{
@@ -47,9 +45,9 @@ func TestEmitterKeepsUndeliveredEventsInside(t *testing.T) {
 
 	t.Run("An undelivered event reaches the observers and is never queued", func(t *testing.T) {
 		t.Parallel()
-		catalog := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{
+		catalog := events.NewCatalog([]events.Registration{
 			events.RegisterInternal("Test", events.Definition{Type: "test.kept", Undelivered: true}),
-		}})
+		})
 		observer := &recordingObserver{}
 		// No queue: a delivery would dereference it.
 		emitter := events.NewEmitter(nil, catalog, observer)
@@ -101,9 +99,9 @@ func TestEmitterRunsObserversInOneOrderWhateverTheGroupOrder(t *testing.T) {
 
 	t.Run("Observers given in either order run in the same order", func(t *testing.T) {
 		t.Parallel()
-		catalog := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{
+		catalog := events.NewCatalog([]events.Registration{
 			events.RegisterInternal("Test", events.Definition{Type: "test.kept", Undelivered: true}),
-		}})
+		})
 		ctx := transactor.WithTx(context.Background(), &sql.Tx{})
 		event := events.Event{Type: "test.kept", ProductID: "prd_test", Data: events.Data{"id": "1"}}
 

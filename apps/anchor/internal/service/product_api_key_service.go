@@ -12,12 +12,12 @@ import (
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product/apikey"
@@ -54,7 +54,7 @@ type productAPIKeyService struct {
 	transactor     transactor.Transactor
 	apiKeyRepo     repository.ProductAPIKeyRepository
 	permissionRepo repository.ProductPermissionRepository
-	apiKeys        cache.Cache[apikey.ProductAPIKey]
+	apiKeys        nanocache.Cache[apikey.ProductAPIKey]
 	logger         *slog.Logger
 }
 
@@ -62,7 +62,7 @@ func NewProductAPIKeyService(
 	transactor transactor.Transactor,
 	apiKeyRepo repository.ProductAPIKeyRepository,
 	permissionRepo repository.ProductPermissionRepository,
-	apiKeys cache.Cache[apikey.ProductAPIKey], logger *slog.Logger,
+	apiKeys nanocache.Cache[apikey.ProductAPIKey], logger *slog.Logger,
 ) ProductAPIKeyService {
 	return &productAPIKeyService{
 		transactor:     transactor,

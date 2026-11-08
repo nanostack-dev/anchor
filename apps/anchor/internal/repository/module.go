@@ -1,29 +1,26 @@
 package repository
 
 import (
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"repository",
-		fx.Provide(
-			NewPlatformInvitationRepository,
-			NewOrganizationRepository,
-			NewOrganizationAPIKeyRepository,
-			NewProductRepository,
-			NewProductPermissionRepository,
-			NewProductResourcePermissionRepository,
-			NewProductUserRepository,
-			NewTenantRepository,
-			NewUserRepository,
-			NewPlatformTenantUserRepository,
-			NewProductRoleRepository,
-			NewProductAPIKeyRepository,
-			NewIntegrationInstanceRepository,
-			NewIntegrationEventRepository,
-			NewIntegrationAuditLogRepository,
-			NewOrganizationMembershipRepository,
-		),
-	)
-}
+var Module = nano.Module("repository", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		NewPlatformInvitationRepository,
+		NewOrganizationRepository,
+		NewOrganizationAPIKeyRepository,
+		NewProductRepository,
+		NewProductPermissionRepository,
+		NewProductResourcePermissionRepository,
+		NewProductUserRepository,
+		NewTenantRepository,
+		NewUserRepository,
+		NewPlatformTenantUserRepository,
+		NewProductRoleRepository,
+		NewProductAPIKeyRepository,
+		NewIntegrationInstanceRepository,
+		NewIntegrationEventRepository,
+		NewIntegrationAuditLogRepository,
+		NewOrganizationMembershipRepository,
+	),
+)

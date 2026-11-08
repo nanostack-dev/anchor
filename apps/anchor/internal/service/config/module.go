@@ -3,18 +3,18 @@ package config
 import (
 	"errors"
 
-	fxconfig "github.com/nanostack-dev/nanostack-framework/modules/config"
-
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-// ProvideCoreConfig loads the core configuration using the FX config loader.
-func ProvideCoreConfig(loader fxconfig.Loader) (*CoreConfig, error) {
-	var config CoreConfig
-	if err := loader.LoadConfig("core", &config); err != nil {
-		return nil, err
-	}
-	return &config, nil
+// Module provides the core configuration to the code that shares one value
+// of it, and the auth settings.
+var Module = nano.Module("core-config", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(NewCoreConfig, ProvideAuthConfig),
+)
+
+// NewCoreConfig shares the core section of the bound configuration.
+func NewCoreConfig(cfg CoreConfig) *CoreConfig {
+	return new(cfg)
 }
 
 // ProvideAuthConfig extracts AuthConfig from CoreConfig. A missing lifetime
@@ -27,15 +27,4 @@ func ProvideAuthConfig(coreCfg *CoreConfig) (AuthConfig, error) {
 		)
 	}
 	return auth, nil
-}
-
-// NewModule returns an fx.Option that provides core configuration and specific sub-configurations.
-func NewModule() fx.Option {
-	return fx.Module(
-		"core-config",
-		fx.Provide(
-			ProvideCoreConfig,
-			ProvideAuthConfig,
-		),
-	)
 }

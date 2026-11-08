@@ -1,54 +1,51 @@
 package service
 
 import (
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+
 	"anchor/internal/events"
 	"anchor/internal/service/config"
-
-	"go.uber.org/fx"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"service",
-		config.NewModule(),
-		fx.Provide(
-			NewOrganizationAPIKeyEventService,
-			NewJWTHelper,
-			NewAuthService,
-			NewInvitationService,
-			NewOrganizationService,
-			NewOrganizationAPIKeyService,
-			NewOrganizationMembershipService,
-			NewPermissionService,
-			NewPlatformUserService,
-
-			// Business services
-			NewProductCache,
-			NewProductService,
-			NewProductAPIKeyCache,
-			NewProductAPIKeyService,
-			NewProductRoleService,
-			NewOrganizationRoleService,
-			NewResourcePermissionService,
-			NewProductUserService,
-			NewTenantService,
-
-			// Integration services
-			NewIntegrationQueue,
-			NewIntegrationLock,
-			NewIntegrationService,
-
-			// Event registrations
-			events.AsRegistration(OrganizationEventRegistration),
-			events.AsRegistration(OrganizationAPIKeyEventRegistration),
-			events.AsRegistration(ProductUserEventRegistration),
-			events.AsRegistration(ProductRBACEventRegistration),
-		),
-
-		// Background workers
-		fx.Invoke(RegisterProductPermissionStartupSync),
-		fx.Invoke(RegisterAPIKeyEventWorker),
-		fx.Invoke(RegisterIntegrationEventWorker),
-		fx.Invoke(RegisterQueueRetention),
-	)
-}
+// Module wires the business services, the integration queue and its locks,
+// and the background work: the startup permission sync, the API key event
+// and integration workers and the queue retention.
+var Module = nano.Module("service", //nolint:gochecknoglobals // A nano module is a package-level value.
+	config.Module,
+	nano.Providers(
+		NewOrganizationAPIKeyEventService,
+		NewJWTHelper,
+		NewAuthService,
+		NewInvitationService,
+		NewOrganizationService,
+		NewOrganizationAPIKeyService,
+		NewOrganizationMembershipService,
+		NewPermissionService,
+		NewPlatformUserService,
+		// Business services
+		NewProductCache,
+		NewProductService,
+		NewProductAPIKeyCache,
+		NewProductAPIKeyService,
+		NewProductRoleService,
+		NewOrganizationRoleService,
+		NewResourcePermissionService,
+		NewProductUserService,
+		NewTenantService,
+		// Integration services
+		NewIntegrationQueue,
+		NewIntegrationLock,
+		NewIntegrationService,
+		// Background work
+		NewProductPermissionStartupSync,
+		NewAPIKeyEventWorker,
+		NewIntegrationEventWorker,
+		NewQueueRetention,
+	),
+	nano.Collect[events.Registration](
+		OrganizationEventRegistration,
+		OrganizationAPIKeyEventRegistration,
+		ProductUserEventRegistration,
+		ProductRBACEventRegistration,
+	),
+)

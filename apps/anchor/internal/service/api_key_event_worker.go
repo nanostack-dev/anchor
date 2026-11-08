@@ -8,10 +8,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"anchor/internal/queueworker"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 const (
@@ -34,29 +33,23 @@ type organizationAPIKeyEventPayload struct {
 	APIKeyID       string `json:"api_key_id"`
 }
 
-type APIKeyEventWorkerParams struct {
-	fx.In
-	Lifecycle                      fx.Lifecycle
-	OrganizationAPIKeyEventService OrganizationAPIKeyEventService
-	Queue                          *queue.Client
-	Logger                         *slog.Logger
+// APIKeyEventWorker delivers the organization API key events.
+type APIKeyEventWorker struct {
+	queueworker.Worker
 }
 
-func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
-	logger := p.Logger.With(slog.String("component", "organization_api_key_event_worker"))
+func NewAPIKeyEventWorker(
+	eventService OrganizationAPIKeyEventService, queueClient *queue.Client, logger *slog.Logger,
+) (*APIKeyEventWorker, error) {
+	logger = logger.With(slog.String("component", "organization_api_key_event_worker"))
 
 	registry := queue.NewHandlerRegistry()
-	if err := registry.Register(
-		organizationAPIKeyEventQueueName, func(ctx context.Context, job queue.Job) error {
-			return p.OrganizationAPIKeyEventService.ProcessQueueJob(ctx, job)
-		},
-	); err != nil {
-		logger.Error("failed to register organization api key event queue handler", log.Err(err))
-		return
+	if err := registry.Register(organizationAPIKeyEventQueueName, eventService.ProcessQueueJob); err != nil {
+		return nil, fmt.Errorf("register organization api key event queue handler: %w", err)
 	}
 
 	worker, err := queue.NewWorker(
-		p.Queue, registry, queue.WorkerConfig{
+		queueClient, registry, queue.WorkerConfig{
 			WorkerID:          organizationAPIKeyEventWorkerID,
 			PollInterval:      organizationAPIKeyEventPollInterval,
 			ReapInterval:      organizationAPIKeyEventReapInterval,
@@ -82,45 +75,20 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 		},
 	)
 	if err != nil {
-		logger.Error("failed to initialize organization api key event worker", log.Err(err))
-		return
+		return nil, fmt.Errorf("initialize organization api key event worker: %w", err)
 	}
 
-	var cancel context.CancelFunc
-
-	p.Lifecycle.Append(
-		fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				workerCtx, workerCancel := newOrganizationAPIKeyWorkerContext()
-				cancel = workerCancel
-
-				go func() {
-					if runErr := worker.Run(workerCtx); runErr != nil {
-						logger.ErrorContext(
-							workerCtx,
-							"organization api key event worker stopped with error",
-							log.Err(runErr),
-						)
-					}
-				}()
-
-				logger.InfoContext(ctx, "organization api key event worker started",
-					slog.String("queue_name", organizationAPIKeyEventQueueName),
-					slog.Duration("poll_interval", organizationAPIKeyEventPollInterval),
-					slog.Int("batch_size", organizationAPIKeyEventBatchSize),
-					slog.Int("max_attempts", organizationAPIKeyEventMaxAttempts),
-				)
-				return nil
-			},
-			OnStop: func(ctx context.Context) error {
-				logger.InfoContext(ctx, "stopping organization api key event worker")
-				if cancel != nil {
-					cancel()
-				}
-				return nil
-			},
+	return &APIKeyEventWorker{queueworker.New(worker, logger, queueworker.Spec{
+		Started: "organization api key event worker started",
+		StartedAttrs: []slog.Attr{
+			slog.String("queue_name", organizationAPIKeyEventQueueName),
+			slog.Duration("poll_interval", organizationAPIKeyEventPollInterval),
+			slog.Int("batch_size", organizationAPIKeyEventBatchSize),
+			slog.Int("max_attempts", organizationAPIKeyEventMaxAttempts),
 		},
-	)
+		Failed:   "organization api key event worker stopped with error",
+		Stopping: "stopping organization api key event worker",
+	})}, nil
 }
 
 func (s *organizationAPIKeyEventService) ProcessQueueJob(
@@ -158,8 +126,4 @@ func (s *organizationAPIKeyEventService) ProcessQueueJob(
 
 func nowUTC() time.Time {
 	return time.Now().UTC()
-}
-
-func newOrganizationAPIKeyWorkerContext() (context.Context, context.CancelFunc) {
-	return context.WithCancel(context.Background())
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"anchor/cmd/app"
 	itshared "anchor/cmd/it/shared"
 	accessservice "anchor/internal/access/service"
 	authzengine "anchor/internal/authz/engine"
@@ -76,31 +77,31 @@ func TestMain(m *testing.M) {
 			ProductRepository:            &ProductRepository,
 			TenantRepository:             &TenantRepository,
 			UserRepository:               &UserRepository,
-			ExtraPopulateTargets: []any{
-				&Queue,
-				&APIKeyEventSvc,
-				&ResourcePermissionRepo,
-				&ProductRoleRepo,
-				&ResourceTypeRepo,
-				&ResourceTypeService,
-				&ResourceService,
-				&ResourceRepo,
-				&RoleAssignmentRepo,
-				&RoleAssignmentService,
-				&Transactor,
-				&AuthzStores,
-				&AuthzEngines,
-				&AuthzMarks,
-				&AuthzSyncer,
-				&Evaluator,
-				&ProductUserRepo,
-				&MembershipRepo,
-				&TestDB,
-				&MembershipService,
-				&InvitationService,
-				&OrganizationService,
-				&ProductRoleService,
-				&ResourcePermissionSvc,
+			Populate: func(c *app.Components) {
+				Queue = c.QueueClient
+				APIKeyEventSvc = c.OrganizationAPIKeyEventService
+				ResourcePermissionRepo = c.ProductResourcePermissionRepository
+				ProductRoleRepo = c.ProductRoleRepository
+				ResourceTypeRepo = c.RepositoryRepository3
+				ResourceTypeService = c.ServiceService2
+				ResourceService = c.ServiceService
+				ResourceRepo = c.RepositoryRepository2
+				RoleAssignmentRepo = c.RepositoryRepository4
+				RoleAssignmentService = c.ServiceService3
+				Transactor = c.Transactor
+				AuthzStores = c.StoreStores
+				AuthzEngines = c.EngineProvider
+				AuthzMarks = c.FgasyncRepository
+				AuthzSyncer = c.Syncer
+				Evaluator = c.Evaluator
+				ProductUserRepo = c.ProductUserRepository
+				MembershipRepo = c.OrganizationMembershipRepository
+				TestDB = c.SQLDB
+				MembershipService = c.OrganizationMembershipService
+				InvitationService = c.OrganizationInvitationService
+				OrganizationService = c.OrganizationService
+				ProductRoleService = c.ProductRoleService
+				ResourcePermissionSvc = c.ResourcePermissionService
 			},
 		},
 	)

@@ -1,19 +1,9 @@
-// Package authz keeps each Product's OpenFGA store, running inside Anchor on
-// Anchor's Postgres, in step with Anchor's tables (ADR-0021; ADR-0022 E3 and
-// E5). The tables stay the source of truth; the store holds the tuples they
-// imply, and every access decision reads it (ADR-0022 G4, PR 7).
-//
-// The pieces: engine runs OpenFGA; store gives each Product its store; fga is
-// the generic OpenFGA surface; fgasync is the sync engine; source holds
-// Anchor's sources, one per slice of the tables; model compiles a
-// Product's catalog into its authorization model; decision answers access
-// decisions from the store.
 package authz
 
 import (
 	"log/slog"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 
 	accessservice "anchor/internal/access/service"
 	"anchor/internal/applog"
@@ -25,45 +15,49 @@ import (
 	"anchor/internal/events"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"authz",
-		fx.Provide(
-			engine.New,
-			store.New,
-			func(p engine.Provider) fgasync.Engines { return p },
-			func(s store.Stores) fgasync.Stores { return s },
-			fgasync.NewPostgresRepository,
-			fgasync.NewPostgresLocker,
-			source.NewTables,
-			fx.Annotate(source.NewCatalog, fx.As(new(fgasync.ModelSource))),
-			fgasync.AsSource(source.NewAssignments),
-			fgasync.AsSource(source.NewRoleGrants),
-			fgasync.AsSource(source.NewAPIKeyGrants),
-			fgasync.AsSource(source.NewResourceParents),
-			fgasync.AsSource(source.NewResourceAssignments),
-			newSyncer,
-			events.AsTxObserver(newMarker),
-			events.AsTxObserver(source.NewModelSizeGuard),
-			newChecker,
-		),
-		fx.Invoke(func(m *fgasync.Syncer, lc fx.Lifecycle) { m.Run(lc) }),
-	)
-}
+// Module wires the authorization store: the in-process OpenFGA engine, the
+// per-Product stores, the sources that feed them, the syncer that keeps them
+// current, and the checker that answers decisions.
+var Module = nano.Module("authz", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		engine.New,
+		store.New,
+		fgasync.NewPostgresRepository,
+		fgasync.NewPostgresLocker,
+		source.NewTables,
+		source.NewCatalog,
+		NewSyncer,
+		NewChecker,
+	),
+	nano.Bind[fgasync.Engines, engine.Provider](),
+	nano.Bind[fgasync.Stores, store.Stores](),
+	nano.Bind[fgasync.ModelSource, source.Catalog](),
+	nano.Collect[fgasync.Source](
+		source.NewAssignments,
+		source.NewRoleGrants,
+		source.NewAPIKeyGrants,
+		source.NewResourceParents,
+		source.NewResourceAssignments,
+	),
+	nano.Collect[events.TxObserver](NewMarker, source.NewModelSizeGuard),
+)
 
-// newMarker depends on the sources only: it runs inside every write that
+// NewMarker depends on the sources only: it runs inside every write that
 // emits an event, so nothing it needs may emit events itself.
-func newMarker(repo fgasync.Repository, sources fgasync.MarkerParams) (*fgasync.Marker, error) {
-	return fgasync.NewMarker(repo, sources.Sources, source.ChangesModel)
+func NewMarker(repo fgasync.Repository, sources []fgasync.Source) (*fgasync.Marker, error) {
+	return fgasync.NewMarker(repo, sources, source.ChangesModel)
 }
 
-func newSyncer(params fgasync.Params, logger *slog.Logger) (*fgasync.Syncer, error) {
+func NewSyncer(
+	engines fgasync.Engines, stores fgasync.Stores, repo fgasync.Repository, locker fgasync.Locker,
+	models fgasync.ModelSource, sources []fgasync.Source, logger *slog.Logger,
+) (*fgasync.Syncer, error) {
 	return fgasync.New(fgasync.Deps{
-		Engines: params.Engines, Stores: params.Stores, Repository: params.Repository, Locker: params.Locker,
-		Models: params.Models, Sources: params.Sources, Logger: logger,
+		Engines: engines, Stores: stores, Repository: repo, Locker: locker,
+		Models: models, Sources: sources, Logger: logger,
 	})
 }
 
-func newChecker(stores store.Stores, syncer *fgasync.Syncer, logger applog.Scoped) accessservice.PermissionChecker {
+func NewChecker(stores store.Stores, syncer *fgasync.Syncer, logger applog.Scoped) accessservice.PermissionChecker {
 	return decision.NewChecker(stores, syncer, logger)
 }

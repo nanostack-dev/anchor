@@ -4,12 +4,12 @@ import (
 	"anchor/internal/session/repository"
 	"anchor/internal/session/service"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"session",
-		fx.Provide(repository.NewRepository, service.NewService),
-	)
-}
+var Module = nano.Module("session", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		repository.NewRepository,
+		service.NewService,
+	),
+)

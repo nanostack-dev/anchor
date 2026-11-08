@@ -7,10 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"anchor/internal/authz/fgasync"
@@ -32,109 +29,117 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors" // Import the cors middleware
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
-	"go.uber.org/fx"
 )
 
 const (
-	corsMaxAge        = 300 // 5 minutes
-	readHeaderTimeout = 30  // seconds
-	readTimeout       = 60  // seconds
-	writeTimeout      = 60  // seconds
-	idleTimeout       = 120 // seconds
-	shutdownTimeout   = 5   // seconds
+	corsMaxAge = 300 // 5 minutes
+	// dashboardShutdownTimeout bounds the drain of the pgkit admin UI.
+	dashboardShutdownTimeout = 5 * time.Second
 )
 
-type ServerParams struct {
-	fx.In
-
-	Lifecycle      fx.Lifecycle
-	Logger         *slog.Logger
-	ScopedLogger   applog.Scoped
-	API            *api.AnchorAPI
-	Queue          *queue.Client
-	AuthMiddleware *middleware.AuthMiddleware
-	ServerConfig   *ServerConfig
-	AuthzReplayer  *fgasync.Syncer
+// handlerDeps is what the router and the strict handler take.
+type handlerDeps struct {
+	logger        *slog.Logger
+	scopedLogger  applog.Scoped
+	api           *api.AnchorAPI
+	auth          *middleware.AuthMiddleware
+	allowedOrigin string
+	replayer      *fgasync.Syncer
 }
 
-func RegisterServer(params ServerParams) {
-	var dashboard *adminui.UI
-
-	params.Lifecycle.Append(
-		fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				if err := startHTTPServer(ctx, params); err != nil {
-					return err
-				}
-
-				var dashErr error
-				dashboard, dashErr = startQueueDashboard(ctx, params)
-				return dashErr
-			},
-			OnStop: func(ctx context.Context) error {
-				params.Logger.InfoContext(ctx, "Stopping HTTP server")
-				if dashboard != nil {
-					shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout*time.Second)
-					defer cancel()
-					if err := dashboard.Shutdown(shutdownCtx); err != nil {
-						params.Logger.ErrorContext(ctx, "pgkit admin UI shutdown failed", log.Err(err))
-					}
-				}
-				return nil
-			},
-		},
+// NewHandler builds anchor's HTTP handler: the chi router with CORS, the
+// request scope, the OpenAPI validator, the docs and /health routes, then the
+// strict handler with the request summary and auth, all inside the server
+// span. nanoserver serves it.
+func NewHandler(
+	ctx context.Context,
+	cfg Config,
+	logger *slog.Logger,
+	scopedLogger applog.Scoped,
+	anchorAPI *api.AnchorAPI,
+	auth *middleware.AuthMiddleware,
+	replayer *fgasync.Syncer,
+) (http.Handler, error) {
+	deps := handlerDeps{
+		logger: logger, scopedLogger: scopedLogger, api: anchorAPI, auth: auth,
+		allowedOrigin: cfg.AllowedOrigin, replayer: replayer,
+	}
+	logger.InfoContext(ctx, "Starting HTTP server",
+		slog.Int("port", cfg.Port),
+		slog.String("allowed_origin", cfg.AllowedOrigin),
 	)
+
+	router, err := setupRouter(deps)
+	if err != nil {
+		return nil, err
+	}
+	logRoutes(ctx, router, logger)
+
+	errorMiddleware := middleware.NewErrorMiddleware(scopedLogger)
+	// The server span wraps everything, continuing an incoming W3C
+	// traceparent, so the request logger and DB queries join it.
+	return tracing.Middleware()(createHandler(
+		router, anchorAPI, errorMiddleware, replayer, []api.MiddlewareFunc{
+			middleware.NewRequestLoggingMiddleware(scopedLogger),
+			auth.Create,
+		},
+	)), nil
 }
 
-// startQueueDashboard boots pgkit's embedded admin UI. Anchor registers no
-// pgkit workflows, so the workflow module is nil and the UI serves queue views
-// only.
-func startQueueDashboard(ctx context.Context, params ServerParams) (*adminui.UI, error) {
-	logger := params.Logger.With(slog.String(log.KeyComponent, "pgkit_adminui"))
-	addr := os.Getenv("PGKIT_DASHBOARD_ADDR")
-	if addr == "" {
-		return nil, nil
+// QueueDashboard serves pgkit's embedded admin UI on PGKIT_DASHBOARD_ADDR
+// while the App runs. Anchor registers no pgkit workflows, so the UI serves
+// queue views only. Without the address it serves nothing.
+type QueueDashboard struct {
+	ui     *adminui.UI
+	addr   string
+	logger *slog.Logger
+}
+
+// NewQueueDashboard builds the admin UI when PGKIT_DASHBOARD_ADDR is set.
+// pgkit reads its own settings (PGKIT_DASHBOARD_*) from the environment.
+func NewQueueDashboard(queueClient *queue.Client, logger *slog.Logger) (*QueueDashboard, error) {
+	dashboard := &QueueDashboard{
+		addr:   os.Getenv("PGKIT_DASHBOARD_ADDR"),
+		logger: logger.With(slog.String(log.KeyComponent, "pgkit_adminui")),
+	}
+	if dashboard.addr == "" {
+		return dashboard, nil
 	}
 	if strings.TrimSpace(os.Getenv("PGKIT_DASHBOARD_TOKEN")) == "" {
 		return nil, errors.New("PGKIT_DASHBOARD_TOKEN is required when PGKIT_DASHBOARD_ADDR is set")
 	}
-
-	dashboard, err := adminui.NewFromEnv(params.Queue, nil)
+	ui, err := adminui.NewFromEnv(queueClient, nil)
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to initialize pgkit admin UI", log.Err(err))
-		return nil, err
+		return nil, fmt.Errorf("initialize pgkit admin UI: %w", err)
 	}
-
-	go func() {
-		if serveErr := dashboard.ListenAndServe(addr); serveErr != nil {
-			logger.ErrorContext(ctx, "pgkit admin UI server failed", log.Err(serveErr))
-		}
-	}()
-
-	logger.InfoContext(ctx, "pgkit admin UI started", slog.String("addr", addr))
-
+	dashboard.ui = ui
 	return dashboard, nil
 }
 
-func startHTTPServer(ctx context.Context, params ServerParams) error {
-	params.Logger.InfoContext(ctx, "Starting HTTP server",
-		slog.Int("port", params.ServerConfig.Port),
-		slog.String("allowed_origin", params.ServerConfig.AllowedOrigin),
-	)
-
-	router, err := setupRouter(params)
-	if err != nil {
-		return err
+// Run serves the admin UI until the App stops. A listen failure is logged
+// and leaves the API serving: the UI is an operator tool, not a dependency.
+func (d *QueueDashboard) Run(ctx context.Context) error {
+	if d.ui == nil {
+		<-ctx.Done()
+		return nil
 	}
-	server := createHTTPServer(params, router)
+	go func() {
+		if serveErr := d.ui.ListenAndServe(d.addr); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			d.logger.ErrorContext(ctx, "pgkit admin UI server failed", log.Err(serveErr))
+		}
+	}()
+	d.logger.InfoContext(ctx, "pgkit admin UI started", slog.String("addr", d.addr))
 
-	logRoutes(ctx, router, params.Logger)
-	startServerGoroutines(ctx, params, server)
-
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), dashboardShutdownTimeout)
+	defer cancel()
+	if err := d.ui.Shutdown(shutdownCtx); err != nil {
+		d.logger.ErrorContext(ctx, "pgkit admin UI shutdown failed", log.Err(err))
+	}
 	return nil
 }
 
-func setupRouter(params ServerParams) (*chi.Mux, error) {
+func setupRouter(params handlerDeps) (*chi.Mux, error) {
 	router := chi.NewRouter()
 	// Names the server span after the matched chi route; it must be the first
 	// router middleware so it reads the final pattern after serving.
@@ -147,7 +152,7 @@ func setupRouter(params ServerParams) (*chi.Mux, error) {
 			// go-chi/cors matches wildcards and reflects the matched origin so
 			// AllowCredentials works. Prod lists exact origins; dev/preview add a
 			// wildcard. No domain literals in source.
-			AllowedOrigins: parseAllowedOrigins(params.ServerConfig.AllowedOrigin),
+			AllowedOrigins: parseAllowedOrigins(params.allowedOrigin),
 			AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 			AllowedHeaders: []string{
 				"Accept",
@@ -175,7 +180,7 @@ func setupRouter(params ServerParams) (*chi.Mux, error) {
 	// (middleware.NewRequestLoggingMiddleware), so this one writes none; it
 	// still logs a handler panic.
 	router.Use(log.HTTPMiddleware(log.HTTPOptions{
-		Logger:      params.ScopedLogger.Logger,
+		Logger:      params.scopedLogger.Logger,
 		SkipSummary: func(*http.Request) bool { return true },
 	}))
 
@@ -219,9 +224,9 @@ func setupRouter(params ServerParams) (*chi.Mux, error) {
 	)
 
 	// Register documentation routes after all middlewares
-	params.API.RegisterDocsRoutes(router, OpenAPI)
+	params.api.RegisterDocsRoutes(router, OpenAPI)
 	router.Get(sharedhealth.DefaultPath, func(w http.ResponseWriter, r *http.Request) {
-		isTenantInit, isTenantInitErr := params.API.TenantService.IsTenantInit(r.Context())
+		isTenantInit, isTenantInitErr := params.api.TenantService.IsTenantInit(r.Context())
 		if isTenantInitErr != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
@@ -254,27 +259,6 @@ func parseAllowedOrigins(value string) []string {
 	)
 }
 
-func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
-	authMiddleware := params.AuthMiddleware
-	errorMiddleware := middleware.NewErrorMiddleware(params.ScopedLogger)
-
-	return &http.Server{
-		Addr: ":" + strconv.Itoa(params.ServerConfig.Port),
-		// The server span wraps everything, continuing an incoming W3C
-		// traceparent, so the request logger and DB queries join it.
-		Handler: tracing.Middleware()(createHandler(
-			router, params.API, errorMiddleware, params.AuthzReplayer, []api.MiddlewareFunc{
-				middleware.NewRequestLoggingMiddleware(params.ScopedLogger),
-				authMiddleware.Create,
-			},
-		)),
-		ReadHeaderTimeout: readHeaderTimeout * time.Second,
-		ReadTimeout:       readTimeout * time.Second,
-		WriteTimeout:      writeTimeout * time.Second,
-		IdleTimeout:       idleTimeout * time.Second,
-	}
-}
-
 func logRoutes(ctx context.Context, router *chi.Mux, logger *slog.Logger) {
 	walkFunc := func(
 		method, route string, _ http.Handler,
@@ -286,40 +270,6 @@ func logRoutes(ctx context.Context, router *chi.Mux, logger *slog.Logger) {
 	if err := chi.Walk(router, walkFunc); err != nil {
 		logger.ErrorContext(ctx, "Failed to walk routes", log.Err(err))
 	}
-}
-
-func startServerGoroutines(ctx context.Context, params ServerParams, server *http.Server) {
-	port := params.ServerConfig.Port
-	// The goroutines outlive the OnStart hook whose context ctx is.
-	ctx = context.WithoutCancel(ctx)
-
-	go func() {
-		params.Logger.InfoContext(ctx, "Server running", slog.Int("port", port))
-		if err := server.ListenAndServe(); err != nil && !errors.Is(
-			err, http.ErrServerClosed,
-		) {
-			// slog has no fatal level: log at Error and exit, as zerolog's
-			// Fatal did.
-			params.Logger.ErrorContext(ctx, "HTTP server encountered an error", log.Err(err))
-			os.Exit(1)
-		}
-	}()
-
-	go func() {
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-		<-quit
-
-		params.Logger.InfoContext(ctx, "Shutting down server...")
-		ctxShutdown, cancel := context.WithTimeout(ctx, shutdownTimeout*time.Second)
-		defer cancel()
-
-		if err := server.Shutdown(ctxShutdown); err != nil {
-			params.Logger.ErrorContext(ctx, "Forced shutdown", log.Err(err))
-		}
-
-		params.Logger.InfoContext(ctx, "Server exited cleanly")
-	}()
 }
 
 func createHandler(

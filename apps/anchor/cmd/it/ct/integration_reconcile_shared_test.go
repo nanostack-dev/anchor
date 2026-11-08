@@ -13,7 +13,7 @@ import (
 	itdsl "anchor/cmd/it/shared/dsl"
 )
 
-// reconcileQueue is populated by fx.Populate via ExtraPopulateTargets so that tests can
+// reconcileQueue is set from the built components (TestConfig.Populate) so that tests can
 // inspect queue state directly without going through the HTTP API.
 var reconcileQueue *queue.Client
 

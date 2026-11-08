@@ -25,7 +25,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	svix "github.com/svix/svix-webhooks/go"
-	"go.uber.org/fx"
 )
 
 var _ provider.Provider = (*Provider)(nil)
@@ -66,42 +65,38 @@ type Provider struct {
 	logger          *slog.Logger
 }
 
-type NewProviderParams struct {
-	fx.In
-
-	ProductUserRepo   repository.ProductUserRepository
-	AuditLogRepo      repository.IntegrationAuditLogRepository
-	RoleAssignments   assignments.Service
-	EncryptionService *encryption.Service
-	Events            events.Emitter
-	Transactor        transactor.Transactor
-	Logger            *slog.Logger
-}
-
 // NewProvider creates a new Clerk provider.
-func NewProvider(p NewProviderParams) *Provider {
+func NewProvider(
+	productUserRepo repository.ProductUserRepository,
+	auditLogRepo repository.IntegrationAuditLogRepository,
+	roleAssignments assignments.Service,
+	encryptionService *encryption.Service,
+	emitter events.Emitter,
+	tx transactor.Transactor,
+	logger *slog.Logger,
+) *Provider {
 	var (
 		cipher *secrets.VersionedCipher
 		err    error
 	)
-	if p.EncryptionService == nil {
+	if encryptionService == nil {
 		err = errMissingEncryptionKey
 	} else {
-		cipher, err = p.EncryptionService.NewCipher(clerkConfigCipherContext)
+		cipher, err = encryptionService.NewCipher(clerkConfigCipherContext)
 	}
-	componentLogger := p.Logger.With(slog.String("component", "clerk_provider"))
+	componentLogger := logger.With(slog.String("component", "clerk_provider"))
 	if err != nil {
 		componentLogger.Error("failed to initialize clerk config cipher", log.Err(err))
 	}
 
 	return &Provider{
-		productUserRepo: p.ProductUserRepo,
-		auditLogRepo:    p.AuditLogRepo,
-		roleAssignments: p.RoleAssignments,
+		productUserRepo: productUserRepo,
+		auditLogRepo:    auditLogRepo,
+		roleAssignments: roleAssignments,
 		configCipher:    cipher,
 		configCipherErr: err,
-		events:          p.Events,
-		transactor:      p.Transactor,
+		events:          emitter,
+		transactor:      tx,
 		httpClient: &http.Client{Transport: telemetry.ExternalTransport(&http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{

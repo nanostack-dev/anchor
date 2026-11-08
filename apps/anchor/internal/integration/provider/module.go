@@ -1,13 +1,13 @@
 package provider
 
-import "go.uber.org/fx"
+import (
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+)
 
-// NewModule provides the provider registry.
-func NewModule() fx.Option {
-	return fx.Module(
-		"integration_providers",
-		fx.Provide(
-			NewRegistry,
-		),
-	)
-}
+// Module provides the provider registry.
+var Module = nano.Module("integration_providers", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		NewRegistry,
+	),
+	nano.Collect[Provider](),
+)

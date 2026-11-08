@@ -1,49 +1,20 @@
-# ./application.yaml
+# Anchor's committed file layer (cmd/app.LoadConfig), read when CONFIG_PATH
+# is unset. Keys are the config: names; cmd/app/CONFIG.md lists every setting
+# with its env variable and default. The environment overrides each value
+# here. Secrets never go in this file: set POSTGRES_PASSWORD, REDIS_PASSWORD,
+# ADMIN_JWT_SECRET and APP_ENCRYPTION_KEY, or their *_FILE variables.
+# core.environment stays unset here, so it follows ENVIRONMENT.
 postgres:
-  host: ${POSTGRES_HOST} # Default to localhost if env var not set
-  port: ${POSTGRES_PORT:5432}    # Default to 5432 if env var not set
-  user: ${POSTGRES_USER}          # Required env var
-  password: ${file:POSTGRES_PASSWORD_FILE}    # Required env var
-  dbname: ${POSTGRES_DB}          # Required env var
-  sslmode: ${POSTGRES_SSLMODE:disable} # Default to disable
+  sslmode: disable
 
-# Migrations configuration
 migrations:
-  enabled: true
-  basePath: "./migrations"
-  validate: true
-  # Enable this to automatically fix dirty migration states
-  autoFixDirty: true
-  # Set this to a specific version to force that version number
-  # forceVersion: 0
+  base_path: ./migrations
+  # Forces a dirty version clean before migrating; the schema check at start
+  # refuses a release whose role migrations were forced past.
+  auto_fix_dirty: true
 
-# PgLock configuration
-pglock:
-  tableName: "pglock_locks"
-  autoCreateTable: true
-  leaseDuration: "10s"
-  heartbeatFrequency: "1s"
-  testOnStartup: true
-core:
-  environment: "${ENVIRONMENT:production}"
-  auth:
-    refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:604800}
-    session_max_lifetime: ${SESSION_MAX_LIFETIME:2592000}
-    access_token_lifetime: ${ACCESS_TOKEN_LIFETIME:3600}
-    admin_jwt_secret: "${file:ADMIN_JWT_SECRET_FILE}"
-  encryption:
-    global_key: "${file:APP_ENCRYPTION_KEY_FILE}"
-    global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
-  integration:
-    reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
+redis:
+  address: localhost:6379
 
-
-# Redis cache configuration
-cache:
-  address: ${REDIS_ADDRESS:localhost:6379}
-  password: ${file:REDIS_PASSWORD_FILE:anchor}
-  db: ${REDIS_DB:0}
-# Example of another config section
 server:
-  port: ${SERVER_PORT:8080}
-  allowed_origin: "${ALLOWED_ORIGIN:http://localhost:3000}"
+  allowed_origin: http://localhost:3000

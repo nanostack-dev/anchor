@@ -24,8 +24,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
-	frameworkconfig "github.com/nanostack-dev/nanostack-framework/modules/config"
-	frameworkpostgres "github.com/nanostack-dev/nanostack-framework/modules/postgres"
+	"github.com/nanostack-dev/nanostack-framework/pg/nanopg"
 	"github.com/nanostack-dev/pgkit/pglock"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	openfgalogger "github.com/openfga/openfga/pkg/logger"
@@ -33,7 +32,6 @@ import (
 	"github.com/openfga/openfga/pkg/storage/migrate"
 	"github.com/openfga/openfga/pkg/storage/postgres"
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
-	"go.uber.org/fx"
 
 	"anchor/internal/authz/model"
 )
@@ -66,14 +64,6 @@ type Provider interface {
 	Get() (Engine, error)
 }
 
-type Params struct {
-	fx.In
-	Lifecycle fx.Lifecycle
-	Loader    frameworkconfig.Loader
-	DB        *sql.DB
-	Logger    *slog.Logger
-}
-
 type provider struct {
 	db     *sql.DB
 	uri    string
@@ -94,42 +84,25 @@ func (p *provider) Get() (Engine, error) {
 	return current.server, nil
 }
 
-// New starts OpenFGA in the background once the application starts, retrying
-// until it is up, and stops it with the application. It runs after Anchor's
-// own migrations, which create the openfga schema.
-func New(params Params) (Provider, error) {
-	var pg frameworkpostgres.Config
-	if err := params.Loader.LoadConfig("postgres", &pg); err != nil {
-		return nil, fmt.Errorf("load postgres config for openfga: %w", err)
+// New builds the engine provider on Anchor's Postgres. Its Run starts
+// OpenFGA once the App runs, after Anchor's own migrations, which create the
+// openfga schema, and retries until it is up; OpenFGA stops with the App.
+func New(pg nanopg.Config, db *sql.DB, logger *slog.Logger) Provider {
+	return &provider{
+		db: db, uri: datastoreURI(pg),
+		logger: logger.With(slog.String("component", "openfga")),
 	}
-	p := &provider{
-		db: params.DB, uri: datastoreURI(pg),
-		logger: params.Logger.With(slog.String("component", "openfga")),
+}
+
+// Run starts OpenFGA, retrying until it is up, and keeps it until ctx ends.
+func (p *provider) Run(ctx context.Context) error {
+	p.startWithRetry(ctx)
+	<-ctx.Done()
+	if current := p.ready.Load(); current != nil {
+		current.server.Close()
+		current.datastore.Close()
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	params.Lifecycle.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go func() {
-				defer close(done)
-				p.startWithRetry(ctx)
-			}()
-			return nil
-		},
-		OnStop: func(stopCtx context.Context) error {
-			cancel()
-			select {
-			case <-done:
-			case <-stopCtx.Done():
-			}
-			if current := p.ready.Load(); current != nil {
-				current.server.Close()
-				current.datastore.Close()
-			}
-			return nil
-		},
-	})
-	return p, nil
+	return nil
 }
 
 func (p *provider) startWithRetry(ctx context.Context) {
@@ -282,7 +255,7 @@ func quoteIdentifier(name string) string {
 
 // datastoreURI points OpenFGA at Anchor's database with the openfga schema as
 // its only search path, so its unqualified table names land there.
-func datastoreURI(pg frameworkpostgres.Config) string {
+func datastoreURI(pg nanopg.Config) string {
 	query := url.Values{}
 	query.Set("search_path", schema)
 	if pg.SSLMode != "" {
@@ -290,9 +263,9 @@ func datastoreURI(pg frameworkpostgres.Config) string {
 	}
 	uri := url.URL{
 		Scheme:   "postgres",
-		User:     url.UserPassword(pg.User, pg.Password),
+		User:     url.UserPassword(pg.User, pg.Password.Reveal()),
 		Host:     net.JoinHostPort(pg.Host, strconv.Itoa(pg.Port)),
-		Path:     "/" + pg.DBName,
+		Path:     "/" + pg.DB,
 		RawQuery: query.Encode(),
 	}
 	return uri.String()

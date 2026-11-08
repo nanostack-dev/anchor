@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"go.uber.org/fx"
 )
 
 // Registry holds all registered integration providers and allows lookup by type.
@@ -12,16 +11,11 @@ type Registry struct {
 	providers map[string]Provider
 }
 
-// RegistryParams is used by Uber FX to inject all providers via group tagging.
-type RegistryParams struct {
-	fx.In
-	Providers []Provider `group:"integration_providers"`
-}
-
-// NewRegistry creates a provider registry from all FX-injected providers.
-func NewRegistry(p RegistryParams) *Registry {
+// NewRegistry creates a provider registry from every Provider that a module
+// adds to the nano.Collect[Provider] collection.
+func NewRegistry(providers []Provider) *Registry {
 	return &Registry{
-		providers: functional.Slice(p.Providers).ToMap(func(prov Provider) string {
+		providers: functional.Slice(providers).ToMap(func(prov Provider) string {
 			return prov.Type()
 		}),
 	}
@@ -43,13 +37,4 @@ func (r *Registry) ProviderTypes() []string {
 		types = append(types, t)
 	}
 	return types
-}
-
-// AsProviderResult wraps a constructor to tag its result for FX group injection.
-func AsProviderResult(f any) any {
-	return fx.Annotate(
-		f,
-		fx.As(new(Provider)),
-		fx.ResultTags(`group:"integration_providers"`),
-	)
 }

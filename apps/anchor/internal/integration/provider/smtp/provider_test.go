@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/core/secret"
+
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
 
@@ -114,16 +116,13 @@ func newTestProvider(t *testing.T) *Provider {
 
 	encryptionService, err := encryption.NewService(&serviceconfig.CoreConfig{
 		Encryption: serviceconfig.EncryptionConfig{
-			GlobalKey:        base64.StdEncoding.EncodeToString(rawKey),
+			GlobalKey:        secret.New(base64.StdEncoding.EncodeToString(rawKey)),
 			GlobalKeyVersion: "v1",
 		},
 	})
 	require.NoError(t, err)
 
-	return NewProvider(NewProviderParams{
-		EncryptionService: encryptionService,
-		Logger:            slog.New(slog.DiscardHandler),
-	})
+	return NewProvider(encryptionService, slog.New(slog.DiscardHandler))
 }
 
 func mustMarshalConfig(t *testing.T, cfg Config) []byte {

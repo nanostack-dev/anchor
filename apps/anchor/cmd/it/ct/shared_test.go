@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"anchor/cmd/app"
+
 	itshared "anchor/cmd/it/shared"
 	"anchor/cmd/it/shared/mailpit"
 	"anchor/internal/repository"
@@ -45,14 +47,14 @@ func TestMain(m *testing.M) {
 			PlatformUserRepository:  &PlatformUserRepo,
 			JWTHelper:               &TokenHelper,
 			SessionService:          &SessionSvc,
-			ExtraPopulateTargets: []any{
-				&authCfg,
-				&EventQueue,
-				&IntegrationRepo,
-				&reconcileQueue,
-				&testDB,
-				&templateSync,
-				&authzStores,
+			Populate: func(c *app.Components) {
+				authCfg = c.AuthConfig
+				EventQueue = c.QueueClient
+				IntegrationRepo = c.IntegrationInstanceRepository
+				reconcileQueue = c.QueueClient
+				testDB = c.SQLDB
+				templateSync = c.LicenseTemplateSyncService
+				authzStores = c.StoreStores
 			},
 			AfterRun: mailpit.StopShared,
 			// OpenFGA must hold what Anchor's tables imply once the suite ran

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,6 +59,8 @@ const defaultTestEncryptionKey = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA="
 
 const defaultTestPostgresValue = "anchor"
 
+const defaultTestJWTSecret = "secret"
+
 type TestConfig struct {
 	EnableRedis                  bool
 	PopulateRepositories         bool
@@ -77,11 +78,11 @@ type TestConfig struct {
 	PlatformUserRepository       *repository.PlatformTenantUserRepository
 	JWTHelper                    *service.JWTHelper
 	SessionService               *sessionservice.Service
-	// ExtraPopulateTargets holds additional fx.Populate targets (e.g. *queue.Client)
-	// for test packages that need direct access to FX-provided values beyond the standard
-	// repository/service set. Each entry must be a pointer to the destination variable.
-	ExtraPopulateTargets []any
-	AfterInit            func()
+	// Populate copies values the App built, beyond the standard
+	// repository/service set, into the package's own variables. It runs once
+	// the App is built, before its components start.
+	Populate  func(c *app.Components)
+	AfterInit func()
 	// AfterRun runs once the package's tests have finished, before the shared
 	// containers are torn down. Packages use it to release their own process-wide
 	// resources (e.g. mailpit.StopShared); a defer in TestMain would never run
@@ -114,9 +115,16 @@ func SetupTest(config TestConfig) func() {
 	if err := os.Setenv("LOG_REQUEST_BODY", "true"); err != nil {
 		panic(fmt.Sprintf("Failed to set LOG_REQUEST_BODY: %v", err))
 	}
-	if strings.TrimSpace(os.Getenv("APP_ENCRYPTION_KEY")) == "" {
-		if err := os.Setenv("APP_ENCRYPTION_KEY", defaultTestEncryptionKey); err != nil {
-			panic(fmt.Sprintf("Failed to set APP_ENCRYPTION_KEY: %v", err))
+	// Secrets come from the environment only: a config file holds none.
+	for name, value := range map[string]string{
+		"APP_ENCRYPTION_KEY": defaultTestEncryptionKey,
+		"ADMIN_JWT_SECRET":   defaultTestJWTSecret,
+		"POSTGRES_PASSWORD":  defaultTestPostgresValue,
+	} {
+		if strings.TrimSpace(os.Getenv(name)) == "" {
+			if err := os.Setenv(name, value); err != nil {
+				panic(fmt.Sprintf("Failed to set %s: %v", name, err))
+			}
 		}
 	}
 	testLogger.Info("Set NANOSTACK_CONFIG_PATH for application", slog.String("path", configPath))
@@ -148,7 +156,8 @@ func SetupTest(config TestConfig) func() {
 		)
 	}
 
-	setupAppServer(testLogger, config)
+	stopApp := setupAppServer(testLogger, config)
+	teardownFuncs = append(teardownFuncs, stopApp)
 
 	teardown := func() {
 		testLogger.InfoContext(ctx, "Tearing down shared resources...")
@@ -270,65 +279,74 @@ func setupRedis(ctx context.Context, testLogger *slog.Logger) testcontainers.Con
 	return container
 }
 
-// buildPopulateTargets returns the fx.Populate target slice for the given config.
-// It is extracted here to keep setupAppServer under the gocognit limit.
-func buildPopulateTargets(config TestConfig) []any {
-	var targets []any
+// populate copies the built values into the TestConfig targets, as
+// fx.Populate did. Components are named by nano gen wire (cmd/app/wire.gen.go).
+func populate(config TestConfig, c *app.Components) {
 	if config.PopulateRepositories {
-		maybeTargets := []any{
-			config.APIKeyService,
-			config.OrganizationAPIKeyService,
-			config.APIKeyRepository,
-			config.OrganizationAPIKeyRepository,
-			config.OrganizationRepository,
-			config.PermissionRepository,
-			config.ProductRepository,
-			config.ProductUserRepository,
-			config.OrgMembershipRepository,
-			config.TenantRepository,
-			config.UserRepository,
-			config.PlatformUserRepository,
-			config.JWTHelper,
-			config.SessionService,
-		}
-		for _, target := range maybeTargets {
-			if target != nil && isValidPopulateTarget(target) {
-				targets = append(targets, target)
-			}
-		}
+		set(config.APIKeyService, c.ProductAPIKeyService)
+		set(config.OrganizationAPIKeyService, c.OrganizationAPIKeyService)
+		set(config.APIKeyRepository, c.ProductAPIKeyRepository)
+		set(config.OrganizationAPIKeyRepository, c.OrganizationAPIKeyRepository)
+		set(config.OrganizationRepository, c.OrganizationRepository)
+		set(config.PermissionRepository, c.ProductPermissionRepository)
+		set(config.ProductRepository, c.ProductRepository)
+		set(config.ProductUserRepository, c.ProductUserRepository)
+		set(config.OrgMembershipRepository, c.OrganizationMembershipRepository)
+		set(config.TenantRepository, c.TenantRepository)
+		set(config.UserRepository, c.UserRepository)
+		set(config.PlatformUserRepository, c.PlatformTenantUserRepository)
+		set(config.JWTHelper, c.JWTHelper)
+		set(config.SessionService, c.ServiceService4)
 	}
-	targets = append(targets, config.ExtraPopulateTargets...)
-	return targets
-}
-
-func isValidPopulateTarget(target any) bool {
-	value := reflect.ValueOf(target)
-	return value.Kind() == reflect.Pointer && !value.IsNil()
-}
-
-// startApp launches the Anchor FX application with the appropriate populate
-// targets derived from config.
-func startApp(config TestConfig) {
-	targets := buildPopulateTargets(config)
-	if len(targets) > 0 {
-		app.StartAnchorWithPopulate(targets...)
-	} else {
-		app.StartAnchor()
+	if config.Populate != nil {
+		config.Populate(c)
 	}
 }
 
-func setupAppServer(testLogger *slog.Logger, config TestConfig) {
+func set[T any](target *T, value T) {
+	if target != nil {
+		*target = value
+	}
+}
+
+// startApp binds the configuration of the suite's application.yaml, builds
+// the App as cmd/main.go does and runs it until stop is called.
+func startApp(testLogger *slog.Logger, config TestConfig) func() {
+	ctx := context.Background()
+	cfg, err := app.LoadConfig(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load the application config: %v", err))
+	}
+	anchor, components, err := app.BuildComponents(ctx, cfg, app.Overrides{})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to build the application: %v", err))
+	}
+	populate(config, components)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		testLogger.Info("Starting Anchor application...")
+		if runErr := anchor.Run(runCtx); runErr != nil {
+			testLogger.Error("Anchor application stopped with an error", log.Err(runErr))
+		}
+		testLogger.Info("Anchor application finished")
+	}()
+	return func() {
+		cancel()
+		<-done
+	}
+}
+
+func setupAppServer(testLogger *slog.Logger, config TestConfig) func() {
 	randomAppPort := strconv.Itoa(mustAllocateFreePort())
 	if err := os.Setenv("SERVER_PORT", randomAppPort); err != nil {
 		panic(fmt.Sprintf("Failed to set SERVER_PORT: %v", err))
 	}
 	testLogger.Info("Assigned app server port", slog.String("port", randomAppPort))
 
-	go func() {
-		testLogger.Info("Starting Anchor application...")
-		startApp(config)
-		testLogger.Info("Anchor application goroutine finished")
-	}()
+	stop := startApp(testLogger, config)
 
 	ServerURL = "http://localhost:" + os.Getenv("SERVER_PORT")
 	testLogger.Info("Waiting for server health check...", slog.String("url", ServerURL))
@@ -366,6 +384,7 @@ func setupAppServer(testLogger *slog.Logger, config TestConfig) {
 	}
 
 	testLogger.Info("Server health check successful")
+	return stop
 }
 
 func mustAllocateFreePort() int {

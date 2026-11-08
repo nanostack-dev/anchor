@@ -14,12 +14,12 @@ import (
 	"anchor/internal/service/config"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 var _ StrictServerInterface = (*AnchorAPI)(nil)
 
-type AnchorAPI struct {
+// AnchorAPI holds the services the operation handlers call.
+type AnchorAPI struct { //nolint:dupl // NewAPI takes each field as a parameter, as the generated wiring calls it
 	TenantService                 service.TenantService
 	AuthService                   service.AuthService
 	PlatformInvitationService     service.InvitationService
@@ -53,73 +53,74 @@ type AnchorAPI struct {
 	logger                        *slog.Logger
 }
 
-type Params struct {
-	fx.In
-	TenantService                 service.TenantService
-	AuthService                   service.AuthService
-	PlatformInvitationService     service.InvitationService
-	PlatformUserService           service.PlatformUserService
-	PermissionService             service.PermissionService
-	ProductService                service.ProductService
-	ProductAPIKeyService          service.ProductAPIKeyService
-	OrganizationAPIKeyService     service.OrganizationAPIKeyService
-	ProductRoleService            service.ProductRoleService
-	OrganizationRoleService       service.OrganizationRoleService
-	ProductUserService            service.ProductUserService
-	ResourcePermissionService     service.ResourcePermissionService
-	ResourceTypeService           rtservice.Service
-	ResourceService               resourceservice.Service
-	RoleAssignmentService         assignmentservice.Service
-	OrganizationService           service.OrganizationService
-	OrganizationMembershipService service.OrganizationMembershipService
-	OrganizationInvitationService invitationsvc.OrganizationInvitationService
-	IntegrationService            service.IntegrationService
-	EmailService                  emailsvc.EmailService
-	LicenseSchemaService          licensesvc.LicenseSchemaService
-	LicenseTemplateService        licensesvc.LicenseTemplateService
-	OrganizationLicenseService    licensesvc.OrganizationLicenseService
-	LicenseHistoryService         licensesvc.LicenseHistoryService
-	LicenseMigrationService       licensesvc.LicenseMigrationService
-	UsageService                  licensesvc.UsageService
-	UsageSeriesService            licensesvc.UsageSeriesService
-	AccessEvaluator               accesssvc.Evaluator
-	Queue                         *queue.Client
-	CoreConfig                    *config.CoreConfig
-	Logger                        *slog.Logger
-}
-
-func NewAPI(params Params) *AnchorAPI {
+// NewAPI builds the handlers of every operation. nano gen wire passes each
+// dependency as a parameter, so the list mirrors the AnchorAPI fields.
+//
+//nolint:dupl // see AnchorAPI
+func NewAPI(
+	tenantService service.TenantService,
+	authService service.AuthService,
+	platformInvitationService service.InvitationService,
+	platformUserService service.PlatformUserService,
+	permissionService service.PermissionService,
+	productService service.ProductService,
+	productAPIKeyService service.ProductAPIKeyService,
+	organizationAPIKeyService service.OrganizationAPIKeyService,
+	productRoleService service.ProductRoleService,
+	organizationRoleService service.OrganizationRoleService,
+	productUserService service.ProductUserService,
+	resourcePermissionService service.ResourcePermissionService,
+	resourceTypeService rtservice.Service,
+	resourceService resourceservice.Service,
+	roleAssignmentService assignmentservice.Service,
+	organizationService service.OrganizationService,
+	organizationMembershipService service.OrganizationMembershipService,
+	organizationInvitationService invitationsvc.OrganizationInvitationService,
+	integrationService service.IntegrationService,
+	emailService emailsvc.EmailService,
+	licenseSchemaService licensesvc.LicenseSchemaService,
+	licenseTemplateService licensesvc.LicenseTemplateService,
+	organizationLicenseService licensesvc.OrganizationLicenseService,
+	licenseHistoryService licensesvc.LicenseHistoryService,
+	licenseMigrationService licensesvc.LicenseMigrationService,
+	usageService licensesvc.UsageService,
+	usageSeriesService licensesvc.UsageSeriesService,
+	accessEvaluator accesssvc.Evaluator,
+	queueClient *queue.Client,
+	coreConfig *config.CoreConfig,
+	logger *slog.Logger,
+) *AnchorAPI {
 	return &AnchorAPI{
-		TenantService:                 params.TenantService,
-		AuthService:                   params.AuthService,
-		PlatformInvitationService:     params.PlatformInvitationService,
-		PlatformUserService:           params.PlatformUserService,
-		PermissionService:             params.PermissionService,
-		ProductService:                params.ProductService,
-		ProductAPIKeyService:          params.ProductAPIKeyService,
-		OrganizationAPIKeyService:     params.OrganizationAPIKeyService,
-		ProductRoleService:            params.ProductRoleService,
-		OrganizationRoleService:       params.OrganizationRoleService,
-		ProductUserService:            params.ProductUserService,
-		ResourcePermissionService:     params.ResourcePermissionService,
-		ResourceTypeService:           params.ResourceTypeService,
-		ResourceService:               params.ResourceService,
-		RoleAssignmentService:         params.RoleAssignmentService,
-		OrganizationService:           params.OrganizationService,
-		OrganizationMembershipService: params.OrganizationMembershipService,
-		OrganizationInvitationService: params.OrganizationInvitationService,
-		IntegrationService:            params.IntegrationService,
-		EmailService:                  params.EmailService,
-		LicenseSchemaService:          params.LicenseSchemaService,
-		LicenseTemplateService:        params.LicenseTemplateService,
-		OrganizationLicenseService:    params.OrganizationLicenseService,
-		LicenseHistoryService:         params.LicenseHistoryService,
-		LicenseMigrationService:       params.LicenseMigrationService,
-		UsageService:                  params.UsageService,
-		UsageSeriesService:            params.UsageSeriesService,
-		AccessEvaluator:               params.AccessEvaluator,
-		Queue:                         params.Queue,
-		CoreConfig:                    params.CoreConfig,
-		logger:                        params.Logger.With(slog.String("component", "api_handler")),
+		TenantService:                 tenantService,
+		AuthService:                   authService,
+		PlatformInvitationService:     platformInvitationService,
+		PlatformUserService:           platformUserService,
+		PermissionService:             permissionService,
+		ProductService:                productService,
+		ProductAPIKeyService:          productAPIKeyService,
+		OrganizationAPIKeyService:     organizationAPIKeyService,
+		ProductRoleService:            productRoleService,
+		OrganizationRoleService:       organizationRoleService,
+		ProductUserService:            productUserService,
+		ResourcePermissionService:     resourcePermissionService,
+		ResourceTypeService:           resourceTypeService,
+		ResourceService:               resourceService,
+		RoleAssignmentService:         roleAssignmentService,
+		OrganizationService:           organizationService,
+		OrganizationMembershipService: organizationMembershipService,
+		OrganizationInvitationService: organizationInvitationService,
+		IntegrationService:            integrationService,
+		EmailService:                  emailService,
+		LicenseSchemaService:          licenseSchemaService,
+		LicenseTemplateService:        licenseTemplateService,
+		OrganizationLicenseService:    organizationLicenseService,
+		LicenseHistoryService:         licenseHistoryService,
+		LicenseMigrationService:       licenseMigrationService,
+		UsageService:                  usageService,
+		UsageSeriesService:            usageSeriesService,
+		AccessEvaluator:               accessEvaluator,
+		Queue:                         queueClient,
+		CoreConfig:                    coreConfig,
+		logger:                        logger.With(slog.String("component", "api_handler")),
 	}
 }
