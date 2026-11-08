@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -204,8 +203,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: ptr.Ptr(ct.ASC),
+					SortBy:        new(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: new(ct.ASC),
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(10)),
 						Offset: new(int32(0)),
@@ -244,8 +243,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: ptr.Ptr(ct.ASC),
+					SortBy:        new(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: new(ct.ASC),
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(2)),
 						Offset: new(int32(0)),
@@ -261,8 +260,8 @@ func TestProductOrganizationSearch(t *testing.T) {
 				testProduct.ProductID,
 				nil,
 				ct.SearchProductOrganizationsJSONRequestBody{
-					SortBy:        ptr.Ptr(ct.ProductOrganizationSearchRequestSortByName),
-					SortDirection: ptr.Ptr(ct.ASC),
+					SortBy:        new(ct.ProductOrganizationSearchRequestSortByName),
+					SortDirection: new(ct.ASC),
 					Pagination: &ct.PaginationRequest{
 						Limit:  new(int32(2)),
 						Offset: new(int32(2)),

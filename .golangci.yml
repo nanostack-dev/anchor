@@ -456,6 +456,14 @@ linters:
       - path: 'cmd/it/'
         text: "SA1019: .* is deprecated: Workspaces are resources of the product's workspace resource type"
         linters: [ staticcheck ]
+      # nanostack-framework v0.23.0-beta.1 deprecates its fx modules (modules/...
+      # except modules/nanofx, app, pkg/fxlog, pkg/httputil/requestlog and
+      # modules/httpserver.StrictErrorHandler). They keep working in the beta;
+      # this rule matches only their shared deprecation text, so any other
+      # deprecation still fails lint. Narrow or delete it as each module moves
+      # to its nano replacement (RELEASING.md, "Upgrade from v0.22.0", step 5).
+      - text: 'SA1019: .* is deprecated: removed with fx \(ADR 0013\)'
+        linters: [ staticcheck ]
       # A component test runs in parallel with the others, but its subtests are
       # ordered steps over one shared fixture, so they stay sequential.
       - path: 'cmd/it/'
