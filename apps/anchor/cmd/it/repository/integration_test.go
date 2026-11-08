@@ -1,7 +1,7 @@
 // Package repository_test is the repository-layer integration suite: real
-// Postgres via testcontainers, only the repository + mapper layers wired
-// (no HTTP server, no email/clerk/cache modules) — mirrors echopoint's
-// cmd/it/repository harness, the canonical shape for this test type.
+// Postgres via testcontainers, the production pool (pg/nanopg) and migrator
+// (pg/nanomigrate), and only the repositories under test with their mappers
+// (no HTTP server, no email/clerk/cache modules).
 package repository_test
 
 import (
@@ -9,35 +9,31 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
-	"anchor/internal/applog"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 
-	"github.com/golang-migrate/migrate/v4"
-	mgpostgres "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
-	"github.com/nanostack-dev/nanostack-framework/modules/config"
-	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
-	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
-	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
+	"github.com/nanostack-dev/nanostack-framework/core/secret"
+	"github.com/nanostack-dev/nanostack-framework/pg/nanomigrate"
+	"github.com/nanostack-dev/nanostack-framework/pg/nanopg"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"go.uber.org/fx"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
 	repoTestDatabaseName = "anchor_repo_test"
 	repoTestStartTimeout = time.Minute
-	repoAppStartTimeout  = 30 * time.Second
-	repoAppStopTimeout   = 10 * time.Second
+	repoDBStopTimeout    = 10 * time.Second
 )
 
 // repositoryTestContext exposes every repository under migration to
@@ -57,7 +53,7 @@ type repositoryTestContext struct {
 	InvitationRepository                repository.InvitationRepository
 	PlatformTenantUserRepository        repository.PlatformTenantUserRepository
 
-	app               *fx.App
+	pool              *nanopg.DB
 	postgresContainer *tcpostgres.PostgresContainer
 }
 
@@ -71,6 +67,7 @@ func TestMain(m *testing.M) {
 	cancel()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "repository integration setup failed: %v\n", err)
+		teardownRepositoryIntegration(repoCtx)
 		os.Exit(1)
 	}
 
@@ -80,17 +77,6 @@ func TestMain(m *testing.M) {
 }
 
 func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, error) {
-	projectRoot, err := repositoryProjectRootPath()
-	if err != nil {
-		return nil, err
-	}
-	if chdirErr := os.Chdir(projectRoot); chdirErr != nil {
-		return nil, fmt.Errorf("change working directory to project root: %w", chdirErr)
-	}
-	// Use this suite's own test config instead of the root application.yaml, whose
-	// ${file:*_FILE} secret indirections would demand secret files in test runs.
-	_ = os.Setenv("CONFIG_PATH", filepath.Join(projectRoot, "cmd", "it", "repository", "application.yaml"))
-
 	container, err := tcpostgres.Run(
 		ctx,
 		"timescale/timescaledb:2.23.0-pg18",
@@ -111,63 +97,47 @@ func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, er
 	if err != nil {
 		return nil, fmt.Errorf("start postgres container: %w", err)
 	}
+	testCtx := &repositoryTestContext{postgresContainer: container}
 
-	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
+	cfg, err := repositoryPostgresConfig(ctx, container)
 	if err != nil {
-		return nil, fmt.Errorf("postgres connection string: %w", err)
+		return testCtx, err
 	}
-
-	if envErr := setRepositoryTestEnv(ctx, container); envErr != nil {
-		return nil, envErr
+	logger := slog.New(slog.DiscardHandler)
+	pool, err := nanopg.NewDB(ctx, cfg, logger, noop.NewTracerProvider())
+	if err != nil {
+		return testCtx, fmt.Errorf("open postgres: %w", err)
 	}
-	if waitErr := waitForRepositoryDatabase(connStr); waitErr != nil {
-		return nil, waitErr
-	}
+	testCtx.pool = pool
+	db := nanopg.SQL(pool)
 
 	migrationsPath, err := repositoryProjectRootPath("migrations")
 	if err != nil {
-		return nil, err
+		return testCtx, err
 	}
-	if migrateErr := runRepositoryMigrations(connStr, migrationsPath); migrateErr != nil {
-		return nil, migrateErr
-	}
-
-	testCtx := &repositoryTestContext{}
-
-	app := fx.New(
-		applog.Module(),
-		applog.LegacyZerolog(),
-		config.Module,
-		postgres.Module,
-		transactor.Module,
-		migrations.Module,
-		mapper.NewModule(),
-		repository.NewModule(),
-		fx.Populate(
-			&testCtx.DB,
-			&testCtx.TenantRepository,
-			&testCtx.ProductRepository,
-			&testCtx.OrganizationRepository,
-			&testCtx.OrganizationMembershipRepository,
-			&testCtx.ProductRoleRepository,
-			&testCtx.ProductPermissionRepository,
-			&testCtx.ProductResourcePermissionRepository,
-			&testCtx.ProductUserRepository,
-			&testCtx.OrganizationAPIKeyRepository,
-			&testCtx.ProductAPIKeyRepository,
-			&testCtx.InvitationRepository,
-			&testCtx.PlatformTenantUserRepository,
-		),
-	)
-
-	startCtx, startCancel := context.WithTimeout(context.Background(), repoAppStartTimeout)
-	defer startCancel()
-	if startErr := app.Start(startCtx); startErr != nil {
-		return nil, fmt.Errorf("start fx app: %w", startErr)
+	migrations := nanomigrate.DefaultConfig()
+	migrations.BasePath = migrationsPath
+	if migrateErr := nanomigrate.Run(ctx, nanomigrate.NewMigrator(migrations, db, logger)); migrateErr != nil {
+		return testCtx, fmt.Errorf("run migrations: %w", migrateErr)
 	}
 
-	testCtx.app = app
-	testCtx.postgresContainer = container
+	testCtx.DB = db
+	testCtx.TenantRepository = repository.NewTenantRepository(db, mapper.NewTenantMapper(), logger)
+	testCtx.ProductRepository = repository.NewProductRepository(db, mapper.NewProductMapper(), logger)
+	testCtx.OrganizationRepository = repository.NewOrganizationRepository(db, mapper.NewOrganizationMapper(), logger)
+	testCtx.OrganizationMembershipRepository = repository.NewOrganizationMembershipRepository(db, logger)
+	testCtx.ProductRoleRepository = repository.NewProductRoleRepository(db, mapper.NewProductRoleMapper(), logger)
+	testCtx.ProductPermissionRepository = repository.NewProductPermissionRepository(
+		db, mapper.NewProductPermissionMapper(), logger)
+	testCtx.ProductResourcePermissionRepository = repository.NewProductResourcePermissionRepository(
+		db, mapper.NewProductResourcePermissionMapper(), logger)
+	testCtx.ProductUserRepository = repository.NewProductUserRepository(db, mapper.NewProductUserMapper(), logger)
+	testCtx.OrganizationAPIKeyRepository = repository.NewOrganizationAPIKeyRepository(
+		db, mapper.NewOrganizationAPIKeyMapper(), logger)
+	testCtx.ProductAPIKeyRepository = repository.NewProductAPIKeyRepository(db, mapper.NewProductAPIKeyMapper(), logger)
+	testCtx.InvitationRepository = repository.NewPlatformInvitationRepository(db, mapper.NewInvitationMapper(), logger)
+	testCtx.PlatformTenantUserRepository = repository.NewPlatformTenantUserRepository(
+		db, mapper.NewPlatformUserMapper(), logger)
 
 	return testCtx, nil
 }
@@ -177,35 +147,38 @@ func teardownRepositoryIntegration(ctx *repositoryTestContext) {
 		return
 	}
 
-	stopCtx, cancel := context.WithTimeout(context.Background(), repoAppStopTimeout)
+	stopCtx, cancel := context.WithTimeout(context.Background(), repoDBStopTimeout)
 	defer cancel()
-	if ctx.app != nil {
-		_ = ctx.app.Stop(stopCtx)
+	if ctx.pool != nil {
+		_ = ctx.pool.Stop(stopCtx)
 	}
 	if ctx.postgresContainer != nil {
 		_ = testcontainers.TerminateContainer(ctx.postgresContainer)
 	}
 }
 
-func setRepositoryTestEnv(ctx context.Context, container *tcpostgres.PostgresContainer) error {
+func repositoryPostgresConfig(ctx context.Context, container *tcpostgres.PostgresContainer) (nanopg.Config, error) {
 	host, err := container.Host(ctx)
 	if err != nil {
-		return fmt.Errorf("postgres host: %w", err)
+		return nanopg.Config{}, fmt.Errorf("postgres host: %w", err)
 	}
 	port, err := container.MappedPort(ctx, "5432")
 	if err != nil {
-		return fmt.Errorf("postgres port: %w", err)
+		return nanopg.Config{}, fmt.Errorf("postgres port: %w", err)
+	}
+	portNumber, err := strconv.Atoi(port.Port())
+	if err != nil {
+		return nanopg.Config{}, fmt.Errorf("postgres port: %w", err)
 	}
 
-	_ = os.Setenv("POSTGRES_HOST", host)
-	_ = os.Setenv("POSTGRES_PORT", port.Port())
-	_ = os.Setenv("POSTGRES_USER", repoTestDatabaseName)
-	_ = os.Setenv("POSTGRES_PASSWORD", repoTestDatabaseName)
-	_ = os.Setenv("POSTGRES_DB", repoTestDatabaseName)
-	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
-	_ = os.Setenv("ENVIRONMENT", "test")
-
-	return nil
+	cfg := nanopg.DefaultConfig()
+	cfg.Host = host
+	cfg.Port = portNumber
+	cfg.User = repoTestDatabaseName
+	cfg.Password = secret.New(repoTestDatabaseName)
+	cfg.DB = repoTestDatabaseName
+	cfg.SSLMode = "disable"
+	return cfg, nil
 }
 
 func repositoryProjectRootPath(parts ...string) (string, error) {
@@ -217,58 +190,4 @@ func repositoryProjectRootPath(parts ...string) (string, error) {
 	root := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", ".."))
 	segments := append([]string{root}, parts...)
 	return filepath.Join(segments...), nil
-}
-
-func runRepositoryMigrations(databaseURL, migrationsPath string) error {
-	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return fmt.Errorf("open db for migrations: %w", err)
-	}
-	defer db.Close()
-
-	driver, err := mgpostgres.WithInstance(db, &mgpostgres.Config{MigrationsTable: "schema_migrations"})
-	if err != nil {
-		return fmt.Errorf("migration postgres driver: %w", err)
-	}
-
-	migrator, err := migrate.NewWithDatabaseInstance(
-		fmt.Sprintf("file://%s", migrationsPath),
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		return fmt.Errorf("create migrator: %w", err)
-	}
-	defer func() {
-		_, _ = migrator.Close()
-	}()
-
-	if upErr := migrator.Up(); upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
-		return fmt.Errorf("run migrations: %w", upErr)
-	}
-
-	return nil
-}
-
-func waitForRepositoryDatabase(databaseURL string) error {
-	var lastErr error
-	for range 20 {
-		db, err := sql.Open("postgres", databaseURL)
-		if err != nil {
-			lastErr = err
-			time.Sleep(250 * time.Millisecond)
-			continue
-		}
-
-		pingErr := db.Ping()
-		_ = db.Close()
-		if pingErr == nil {
-			return nil
-		}
-
-		lastErr = pingErr
-		time.Sleep(250 * time.Millisecond)
-	}
-
-	return fmt.Errorf("wait for postgres readiness: %w", lastErr)
 }

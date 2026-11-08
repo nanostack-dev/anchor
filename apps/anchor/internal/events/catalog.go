@@ -2,7 +2,6 @@ package events
 
 import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"go.uber.org/fx"
 )
 
 type GroupType string
@@ -47,10 +46,6 @@ func RegisterIntegration(providerType string, definitions ...Definition) Registr
 	return Registration{GroupType: GroupTypeIntegration, GroupName: providerType, Definitions: definitions}
 }
 
-func AsRegistration(fn any) any {
-	return fx.Annotate(fn, fx.ResultTags(`group:"product_events"`))
-}
-
 type Catalog interface {
 	// All lists the events a product endpoint may receive.
 	All() []Definition
@@ -61,19 +56,16 @@ type Catalog interface {
 	AllEventTypesStrings() []string
 }
 
-type CatalogParams struct {
-	fx.In
-	Registrations []Registration `group:"product_events"`
-}
-
 type catalog struct {
 	definitions []Definition
 	byType      map[Type]Definition
 }
 
-func NewCatalog(p CatalogParams) Catalog {
+// NewCatalog builds the catalog of every Registration that a module adds to
+// the nano.Collect[Registration] collection.
+func NewCatalog(registrations []Registration) Catalog {
 	var defs []Definition
-	for _, reg := range p.Registrations {
+	for _, reg := range registrations {
 		for _, definition := range reg.Definitions {
 			definition.GroupType = reg.GroupType
 			definition.GroupName = reg.GroupName

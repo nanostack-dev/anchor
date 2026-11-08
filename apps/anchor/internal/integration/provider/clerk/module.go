@@ -4,16 +4,11 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/integration/provider"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-// NewModule registers the Clerk provider into the integration provider registry.
-func NewModule() fx.Option {
-	return fx.Module(
-		"clerk_provider",
-		fx.Provide(
-			provider.AsProviderResult(NewProvider),
-			events.AsRegistration(WebhookEventRegistration),
-		),
-	)
-}
+// Module registers the Clerk provider into the integration provider registry.
+var Module = nano.Module("clerk_provider", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Collect[provider.Provider](NewProvider),
+	nano.Collect[events.Registration](WebhookEventRegistration),
+)

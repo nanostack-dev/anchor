@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/core/secret"
+
 	"github.com/moby/moby/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -149,14 +151,11 @@ func newTestProvider(t *testing.T) *Provider {
 
 	encService, err := encryption.NewService(&serviceconfig.CoreConfig{
 		Encryption: serviceconfig.EncryptionConfig{
-			GlobalKey:        base64.StdEncoding.EncodeToString(key),
+			GlobalKey:        secret.New(base64.StdEncoding.EncodeToString(key)),
 			GlobalKeyVersion: "v1",
 		},
 	})
 	require.NoError(t, err)
 
-	return NewProvider(NewProviderParams{
-		EncryptionService: encService,
-		Logger:            slog.New(slog.DiscardHandler),
-	})
+	return NewProvider(nil, nil, nil, encService, nil, nil, slog.New(slog.DiscardHandler))
 }

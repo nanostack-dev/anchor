@@ -17,7 +17,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"go.uber.org/fx"
 )
 
 var (
@@ -48,24 +47,17 @@ type Provider struct {
 	logger          *slog.Logger
 }
 
-type NewProviderParams struct {
-	fx.In
-
-	EncryptionService *encryption.Service
-	Logger            *slog.Logger
-}
-
-func NewProvider(p NewProviderParams) *Provider {
+func NewProvider(encryptionService *encryption.Service, logger *slog.Logger) *Provider {
 	var (
 		cipher *secrets.VersionedCipher
 		err    error
 	)
-	if p.EncryptionService == nil {
+	if encryptionService == nil {
 		err = errMissingEncryptionKey
 	} else {
-		cipher, err = p.EncryptionService.NewCipher(smtpConfigCipherContext)
+		cipher, err = encryptionService.NewCipher(smtpConfigCipherContext)
 	}
-	componentLogger := p.Logger.With(slog.String("component", "smtp_provider"))
+	componentLogger := logger.With(slog.String("component", "smtp_provider"))
 	if err != nil {
 		componentLogger.Error("failed to initialize smtp config cipher", log.Err(err))
 	}

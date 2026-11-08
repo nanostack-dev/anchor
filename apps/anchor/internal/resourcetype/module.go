@@ -2,21 +2,18 @@
 package resourcetype
 
 import (
-	"go.uber.org/fx"
-
 	"anchor/internal/events"
 	"anchor/internal/resourcetype/repository"
 	"anchor/internal/resourcetype/service"
+
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"resource_type",
-		fx.Provide(
-			repository.NewRepository,
-			service.NewService,
-			events.AsRegistration(EventRegistration),
-		),
-		fx.Invoke(RegisterSchemaCheck),
-	)
-}
+var Module = nano.Module("resource_type", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		repository.NewRepository,
+		service.NewService,
+		NewSchemaCheck,
+	),
+	nano.Collect[events.Registration](EventRegistration),
+)

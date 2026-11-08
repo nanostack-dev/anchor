@@ -5,19 +5,16 @@ import (
 	"anchor/internal/email/repository"
 	"anchor/internal/email/service"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-// NewModule wires the email subsystem (templates, send dispatch).
-func NewModule() fx.Option {
-	return fx.Module(
-		"email",
-		fx.Provide(
-			renderer.New,
-			repository.NewTemplateRepository,
-			repository.NewTemplateVersionRepository,
-			repository.NewSendRecordRepository,
-			service.NewEmailService,
-		),
-	)
-}
+// Module wires the email subsystem (templates, send dispatch).
+var Module = nano.Module("email", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		renderer.New,
+		repository.NewTemplateRepository,
+		repository.NewTemplateVersionRepository,
+		repository.NewSendRecordRepository,
+		service.NewEmailService,
+	),
+)

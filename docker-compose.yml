@@ -87,7 +87,7 @@ services:
 
       # Redis cache connection
       REDIS_ADDRESS: redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-anchor}
       REDIS_DB: ${REDIS_DB:-0}
     ports:
       - "${SERVER_PORT:-8080}:8080"

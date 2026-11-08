@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/core/secret"
+
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/stretchr/testify/require"
@@ -22,7 +24,7 @@ func TestNewServiceExplainsLegacyRawKeyFailure(t *testing.T) {
 
 	_, err := NewService(&serviceconfig.CoreConfig{
 		Encryption: serviceconfig.EncryptionConfig{
-			GlobalKey:        "0123456789abcdef0123456789abcdef",
+			GlobalKey:        secret.New("0123456789abcdef0123456789abcdef"),
 			GlobalKeyVersion: "v1",
 		},
 	})
@@ -42,7 +44,7 @@ func TestServiceBuildsUsableCipher(t *testing.T) {
 
 	service, err := NewService(&serviceconfig.CoreConfig{
 		Encryption: serviceconfig.EncryptionConfig{
-			GlobalKey:        base64.StdEncoding.EncodeToString(rawKey),
+			GlobalKey:        secret.New(base64.StdEncoding.EncodeToString(rawKey)),
 			GlobalKeyVersion: "v7",
 		},
 	})

@@ -1,10 +1,10 @@
 //go:build contract
 
 // Package contract_test is the golden contract suite: it boots the real Anchor
-// server in-process (the same fx graph, router, middleware, error handler and
-// logger as cmd/main.go), replays the production gate flows and the framework
-// seam cases against it, and compares each response and its log lines with a
-// golden file under testdata/golden. See README.md.
+// server in-process (the same generated wiring, router, middleware, error
+// handler and logger as cmd/main.go), replays the production gate flows and
+// the framework seam cases against it, and compares each response and its log
+// lines with a golden file under testdata/golden. See README.md.
 package contract_test
 
 import (
@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 	// developer's zone offset, and the goldens would depend on the machine.
 	time.Local = time.UTC //nolint:reassign // pin the server's zone to production's
 
-	// The framework logger writes to os.Stdout, captured when fx builds it.
+	// The framework logger writes to os.Stdout, captured when the App is built.
 	// Point os.Stdout at a pipe until the app is up so every log line the
 	// server writes reaches the sink; the testing package gets the real
 	// stdout back before m.Run.

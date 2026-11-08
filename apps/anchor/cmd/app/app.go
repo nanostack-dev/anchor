@@ -1,84 +1,46 @@
+// Package app wires anchor: its configuration (Config, bound by the
+// generated Bind) and its components (the manifest in manifest.go, built by
+// the generated Build). Regenerate both after a module changes a provider or
+// a config field:
+//
+//	go generate ./cmd/app
 package app
 
+//go:generate go run github.com/nanostack-dev/nanostack-framework/cmd/nano gen config -dir . -env ../../.env.example
+//go:generate go run github.com/nanostack-dev/nanostack-framework/cmd/nano gen wire -dir . -out .
+
 import (
-	"fmt"
+	_ "embed"
 
-	"anchor/internal/access"
-	"anchor/internal/applog"
-
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
-	"github.com/nanostack-dev/nanostack-framework/modules/config"
-	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
-	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
-	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
-	"github.com/nanostack-dev/nanostack-framework/modules/tracing"
-	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+	"github.com/nanostack-dev/nanostack-framework/otel/nanotrace"
+	"github.com/nanostack-dev/nanostack-framework/pg/nanomigrate"
+	"github.com/nanostack-dev/nanostack-framework/pg/nanopg"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 
 	httpserver "anchor/cmd/http"
-	"anchor/internal/api"
-	"anchor/internal/authz"
-	"anchor/internal/email"
-	"anchor/internal/events"
-	"anchor/internal/integration"
-	"anchor/internal/invitation"
-	"anchor/internal/license"
-	"anchor/internal/mapper"
-	"anchor/internal/middleware"
-	"anchor/internal/repository"
-	"anchor/internal/resource"
-	"anchor/internal/resourcetype"
-	"anchor/internal/roleassignment"
-	"anchor/internal/runtimeenv"
-	"anchor/internal/service"
-	"anchor/internal/session"
-
-	"go.uber.org/fx"
+	serviceconfig "anchor/internal/service/config"
 )
 
-func StartAnchor() {
-	startAnchor()
+// Config is anchor's configuration. Each section names the env variables
+// that the deployed stacks set: POSTGRES_*, REDIS_*, SERVER_PORT, LOG_*,
+// OTEL_* and the core settings' own names (see CONFIG.md).
+type Config struct {
+	App        nano.AppConfig           `config:"app"`
+	Log        log.Settings             `config:"log"`
+	Tracing    nanotrace.Config         `config:"tracing"`
+	Postgres   nanopg.Config            `config:"postgres"`
+	Migrations nanomigrate.Config       `config:"migrations"`
+	Redis      nanocache.Config         `config:"redis"`
+	Server     httpserver.Config        `config:"server"`
+	Core       serviceconfig.CoreConfig `config:"core"`
 }
 
-func StartAnchorWithPopulate(target ...any) {
-	startAnchor(target...)
-}
-
-func startAnchor(target ...any) {
-	if err := runtimeenv.HydrateFileBackedEnv(); err != nil {
-		panic(fmt.Sprintf("failed to hydrate file-backed runtime env: %v", err))
-	}
-
-	app := fx.New(
-		applog.Module(),
-		applog.LegacyZerolog(),
-		tracing.Module,
-		config.Module,
-		postgres.Module,
-		transactor.Module,
-		cache.Module,
-		migrations.Module,
-		pglock.Module,
-		mapper.NewModule(),
-		repository.NewModule(),
-		resourcetype.NewModule(),
-		resource.NewModule(),
-		roleassignment.NewModule(),
-		authz.NewModule(),
-		service.NewModule(),
-		integration.NewModule(),
-		email.NewModule(),
-		events.NewModule(),
-		license.NewModule(),
-		invitation.NewModule(),
-		access.NewModule(),
-		session.NewModule(),
-		api.NewModule(),
-		middleware.NewModule(),
-		httpserver.NewHTTPServerModule(),
-		fx.Populate(target...),
-	)
-	app.Run()
-	if err := app.Err(); err != nil {
-		return
-	}
-}
+// defaults is the lowest configuration layer, compiled in: anchor's defaults
+// that differ from the framework's. The legacy log wire is anchor's log
+// contract until the collector and the alerts read the slog shape;
+// LOG_WIRE=slog opts out.
+//
+//go:embed defaults.yaml
+var defaults []byte

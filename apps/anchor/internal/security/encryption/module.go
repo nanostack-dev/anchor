@@ -8,7 +8,6 @@ import (
 	"anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"go.uber.org/fx"
 )
 
 const defaultKeyVersion = "v1"
@@ -27,7 +26,7 @@ func NewService(coreCfg *config.CoreConfig) (*Service, error) {
 	if _, err := secrets.NewVersionedCipherWithSingleKey(
 		version,
 		"validation",
-		coreCfg.Encryption.GlobalKey,
+		coreCfg.Encryption.GlobalKey.Reveal(),
 	); err != nil {
 		return nil, fmt.Errorf(
 			"invalid APP_ENCRYPTION_KEY for version %q: %w. APP_ENCRYPTION_KEY must be a base64-encoded 32-byte key. A legacy raw 32-character secret will now fail validation because it is decoded as base64 first instead of being hashed to 32 bytes",
@@ -37,7 +36,7 @@ func NewService(coreCfg *config.CoreConfig) (*Service, error) {
 	}
 
 	return &Service{
-		globalKey:        coreCfg.Encryption.GlobalKey,
+		globalKey:        coreCfg.Encryption.GlobalKey.Reveal(),
 		globalKeyVersion: version,
 	}, nil
 }
@@ -63,14 +62,5 @@ func (s *Service) NewCipher(context string) (*secrets.VersionedCipher, error) {
 		s.globalKeyVersion,
 		context,
 		s.globalKey,
-	)
-}
-
-func NewModule() fx.Option {
-	return fx.Module(
-		"encryption",
-		fx.Provide(
-			NewService,
-		),
 	)
 }

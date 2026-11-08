@@ -244,7 +244,7 @@ func startOnce(b *testing.B, configPath string, fix benchFixture) (float64, floa
 	port := freePort(b)
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
 	cmd := exec.CommandContext(context.Background(), anchorBinary.path)
-	cmd.Dir = "." // migrations basePath is relative to the suite directory
+	cmd.Dir = "." // migrations.base_path is relative to the suite directory
 	cmd.Env = append(os.Environ(), "CONFIG_PATH="+configPath, "SERVER_PORT="+strconv.Itoa(port),
 		"LOG_REQUEST_BODY=false")
 	if err := cmd.Start(); err != nil {

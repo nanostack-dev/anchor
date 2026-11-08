@@ -1,22 +1,19 @@
 package integration
 
 import (
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
+
 	"anchor/internal/integration/provider"
 	"anchor/internal/integration/provider/clerk"
 	"anchor/internal/integration/provider/smtp"
 	"anchor/internal/security/encryption"
-
-	"go.uber.org/fx"
 )
 
-// NewModule wires the integration subsystem: encryption, provider registry,
+// Module wires the integration subsystem: encryption, provider registry,
 // and all registered integration providers.
-func NewModule() fx.Option {
-	return fx.Module(
-		"integration",
-		encryption.NewModule(),
-		provider.NewModule(),
-		clerk.NewModule(),
-		smtp.NewModule(),
-	)
-}
+var Module = nano.Module("integration", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(encryption.NewService),
+	provider.Module,
+	clerk.Module,
+	smtp.Module,
+)

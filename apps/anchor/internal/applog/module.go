@@ -3,29 +3,25 @@ package applog
 import (
 	"log/slog"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/logging"
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
 // Module provides the loggers: Loggers, the component *slog.Logger, Scoped
 // and Identity. Building it installs the scoped logger as the slog default.
-func Module() fx.Option {
-	return fx.Module(
-		"applog",
-		fx.Provide(
-			NewFromEnv,
-			func(l Loggers) *slog.Logger { return l.Component },
-			func(l Loggers) Scoped { return l.Scoped },
-			func(l Loggers) Identity { return l.Identity },
-		),
-	)
-}
+//
+// It stands where core/logging.Module would: core/logging builds one logger,
+// with fractional seconds and the request scope on every line, and anchor's
+// line shape needs the two loggers of New (see the package comment).
+var Module = nano.Module("applog", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(NewLoggers, ComponentLogger, ScopedLogger, IdentityAttrs),
+)
 
-// LegacyZerolog provides the zerolog.Logger that the deprecated framework fx
-// modules (tracing, config, postgres, cache, migrations, pglock) and
-// modules/cache's cache.New still take, as modules/logging built it, without
-// the pkg/log Binder: anchor's own code logs through Module's loggers. Delete
-// it when the last of those modules moves to its nano replacement.
-func LegacyZerolog() fx.Option {
-	return fx.Provide(logging.NewLoggingConfig, logging.NewZerologLogger)
-}
+// ComponentLogger is the logger injected into services, repositories and
+// handlers.
+func ComponentLogger(l Loggers) *slog.Logger { return l.Component }
+
+// ScopedLogger is the logger of the HTTP boundary.
+func ScopedLogger(l Loggers) Scoped { return l.Scoped }
+
+// IdentityAttrs is the service identity that auth adds to the request scope.
+func IdentityAttrs(l Loggers) Identity { return l.Identity }

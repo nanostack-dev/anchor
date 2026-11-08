@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/core/secret"
+
 	"anchor/internal/domain/session"
 	"anchor/internal/service"
 	"anchor/internal/service/config"
@@ -23,7 +25,7 @@ func testRefreshToken() session.RefreshToken {
 
 func createTestAuthConfig() config.AuthConfig {
 	return config.AuthConfig{
-		AdminJWTSecret:       "test-secret-key-for-testing-purposes-only",
+		AdminJWTSecret:       secret.New("test-secret-key-for-testing-purposes-only"),
 		AccessTokenLifetime:  3600,  // 1 hour
 		RefreshTokenLifetime: 86400, // 24 hours
 	}
@@ -181,7 +183,7 @@ func TestJWTHelper_ValidateAccessTokenIgnoringExpiry(t *testing.T) {
 
 	t.Run("TokenSignedWithAnotherSecretIsRefused", func(t *testing.T) {
 		otherCfg := createTestAuthConfig()
-		otherCfg.AdminJWTSecret = "another-secret-key-for-testing-purposes"
+		otherCfg.AdminJWTSecret = secret.New("another-secret-key-for-testing-purposes")
 		forgedAccessToken, _, forgeErr := service.NewJWTHelper(otherCfg).
 			GenerateTokens("user_test1", "tenant_test1", time.Now(), testRefreshToken())
 		require.NoError(t, forgeErr)

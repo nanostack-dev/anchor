@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,7 +42,7 @@ func (inlineTransactor) InTx(ctx context.Context, fn func(context.Context) error
 func TestDeleteProtectedProductDoesNotLogAtError(t *testing.T) {
 	var buf bytes.Buffer
 	svc := service.NewProductService(
-		protectedProducts{}, nil, nil, nil, cache.Cache[product.Product]{}, inlineTransactor{},
+		protectedProducts{}, nil, nil, nil, nanocache.Cache[product.Product]{}, inlineTransactor{},
 		applog.New(log.Config{Wire: log.WireLegacy, Output: &buf, Level: slog.LevelDebug}).Component,
 	)
 

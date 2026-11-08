@@ -83,7 +83,7 @@ Callers use five methods of `*fgasync.Syncer` and one of `*fgasync.Marker`:
 5. **Use `fgasync.EveryKey` for a cascade.** When a change reaches many keys without naming them, such as a deleted product user whose memberships cascade away, return `[]string{fgasync.EveryKey}`.
 6. **`Desired` reads the tables as they are now, scoped to the Product.** A key that no longer exists implies no tuple. Filter every query by the Product, so a key of another tenant implies nothing.
 7. **`Keys` lists every key that exists.** The syncer adds the keys that only a mark still names, such as a deleted Organization, so `Keys` never needs to remember deleted ones.
-8. **Nothing a source needs may emit events.** The `Marker` runs inside every write that emits an event, and fx builds it from the sources. A source that depends on a service that emits events creates a dependency cycle. Read tables through `source.Tables`, not through services.
+8. **Nothing a source needs may emit events.** The `Marker` runs inside every write that emits an event, and the wiring builds it from the sources. A source that depends on a service that emits events creates a dependency cycle. Read tables through `source.Tables`, not through services.
 
 The syncer does the rest:
 

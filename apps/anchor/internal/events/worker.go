@@ -15,8 +15,9 @@ import (
 	serviceconfig "anchor/internal/service/config"
 	"anchor/internal/telemetry"
 
+	"anchor/internal/queueworker"
+
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 const (
@@ -35,21 +36,22 @@ const (
 	goneStatus            = 410
 )
 
-type WorkerParams struct {
-	fx.In
-	Lifecycle       fx.Lifecycle
-	Queue           *queue.Client
-	EndpointService EndpointService
-	Endpoints       EndpointRepository
-	Logger          *slog.Logger
-	Core            *serviceconfig.CoreConfig
+// Worker delivers the product events to the products' endpoints.
+type Worker struct {
+	queueworker.Worker
 }
 
-func RegisterWorker(p WorkerParams) {
-	logger := p.Logger.With(slog.String("component", "product_events_worker"))
+func NewWorker(
+	queueClient *queue.Client,
+	endpointService EndpointService,
+	endpoints EndpointRepository,
+	logger *slog.Logger,
+	core *serviceconfig.CoreConfig,
+) (*Worker, error) {
+	logger = logger.With(slog.String("component", "product_events_worker"))
 	deliverer := &deliverer{
-		endpoints: p.EndpointService,
-		repo:      p.Endpoints,
+		endpoints: endpointService,
+		repo:      endpoints,
 		http: &http.Client{
 			Transport: telemetry.ExternalTransport(nil),
 			Timeout:   deliveryTimeout,
@@ -63,16 +65,15 @@ func RegisterWorker(p WorkerParams) {
 
 	registry := queue.NewHandlerRegistry()
 	if err := registry.Register(queueName, deliverer.handleJob); err != nil {
-		logger.Error("failed to register product events queue handler", log.Err(err))
-		return
+		return nil, fmt.Errorf("register product events queue handler: %w", err)
 	}
 
 	pollInterval := workerPollInterval
-	if p.Core != nil && !p.Core.IsProduction() {
+	if core != nil && !core.IsProduction() {
 		pollInterval = workerPollIntervalDev
 	}
 
-	worker, err := queue.NewWorker(p.Queue, registry, queue.WorkerConfig{
+	worker, err := queue.NewWorker(queueClient, registry, queue.WorkerConfig{
 		WorkerID:          workerID,
 		PollInterval:      pollInterval,
 		ReapInterval:      workerReapInterval,
@@ -89,30 +90,14 @@ func RegisterWorker(p WorkerParams) {
 		},
 	})
 	if err != nil {
-		logger.Error("failed to initialize product events worker", log.Err(err))
-		return
+		return nil, fmt.Errorf("initialize product events worker: %w", err)
 	}
 
-	var cancel context.CancelFunc
-	p.Lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			workerCtx, workerCancel := context.WithCancel(context.Background()) //nolint:gosec // canceled in OnStop
-			cancel = workerCancel
-			go func() {
-				if runErr := worker.Run(workerCtx); runErr != nil {
-					logger.ErrorContext(workerCtx, "product events worker stopped", log.Err(runErr))
-				}
-			}()
-			logger.InfoContext(ctx, "product events worker started", slog.String("queue_name", queueName))
-			return nil
-		},
-		OnStop: func(_ context.Context) error {
-			if cancel != nil {
-				cancel()
-			}
-			return nil
-		},
-	})
+	return &Worker{queueworker.New(worker, logger, queueworker.Spec{
+		Started:      "product events worker started",
+		StartedAttrs: []slog.Attr{slog.String("queue_name", queueName)},
+		Failed:       "product events worker stopped",
+	})}, nil
 }
 
 type deliverer struct {

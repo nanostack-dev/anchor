@@ -1,0 +1,84 @@
+goos: darwin
+goarch: arm64
+pkg: anchor/cmd/it/contract
+cpu: Apple M2 Max
+BenchmarkHealth-12                	    1287	   1238832 ns/op	   16188 B/op	     211 allocs/op
+BenchmarkHealth-12                	    2779	    845263 ns/op	   16752 B/op	     218 allocs/op
+BenchmarkHealth-12                	    1988	    777137 ns/op	   16059 B/op	     210 allocs/op
+BenchmarkHealth-12                	    1874	   1106720 ns/op	   16108 B/op	     210 allocs/op
+BenchmarkHealth-12                	    1447	    833471 ns/op	   16083 B/op	     210 allocs/op
+BenchmarkHealth-12                	    2727	    732750 ns/op	   16072 B/op	     210 allocs/op
+BenchmarkHealth-12                	    1778	    622453 ns/op	   16083 B/op	     210 allocs/op
+BenchmarkHealth-12                	    3457	    409755 ns/op	   16042 B/op	     210 allocs/op
+BenchmarkHealth-12                	    3934	    364356 ns/op	   16056 B/op	     210 allocs/op
+BenchmarkHealth-12                	    3993	    392972 ns/op	   16053 B/op	     210 allocs/op
+BenchmarkReadOrganization-12      	     550	   2036028 ns/op	  197134 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     612	   2465263 ns/op	  196458 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     492	   2304611 ns/op	  197561 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     358	   2917578 ns/op	  198283 B/op	    1921 allocs/op
+BenchmarkReadOrganization-12      	     466	   2483077 ns/op	  197443 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     607	   2600635 ns/op	  196719 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     586	   2763984 ns/op	  197182 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     363	   2912180 ns/op	  196817 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     540	   2432219 ns/op	  197127 B/op	    1921 allocs/op
+BenchmarkReadOrganization-12      	     520	   2335349 ns/op	  196334 B/op	    1918 allocs/op
+BenchmarkSearchProductUsers-12    	     409	   3388030 ns/op	  256246 B/op	    2863 allocs/op
+BenchmarkSearchProductUsers-12    	     442	   3038086 ns/op	  254424 B/op	    2859 allocs/op
+BenchmarkSearchProductUsers-12    	     495	   2953485 ns/op	  255100 B/op	    2859 allocs/op
+BenchmarkSearchProductUsers-12    	     520	   2934215 ns/op	  253685 B/op	    2859 allocs/op
+BenchmarkSearchProductUsers-12    	     412	   3107788 ns/op	  253318 B/op	    2858 allocs/op
+BenchmarkSearchProductUsers-12    	     307	   3441475 ns/op	  255277 B/op	    2861 allocs/op
+BenchmarkSearchProductUsers-12    	     358	   3114218 ns/op	  255452 B/op	    2861 allocs/op
+BenchmarkSearchProductUsers-12    	     487	   2944417 ns/op	  253698 B/op	    2858 allocs/op
+BenchmarkSearchProductUsers-12    	     314	   3438775 ns/op	  253869 B/op	    2860 allocs/op
+BenchmarkSearchProductUsers-12    	     402	   2896102 ns/op	  252700 B/op	    2858 allocs/op
+BenchmarkCreateProductUser-12     	     247	   4622088 ns/op	  578417 B/op	    7314 allocs/op
+BenchmarkCreateProductUser-12     	     211	   6205137 ns/op	 1094125 B/op	   13984 allocs/op
+BenchmarkCreateProductUser-12     	     195	   5885861 ns/op	 1517787 B/op	   19875 allocs/op
+BenchmarkCreateProductUser-12     	     188	   6520838 ns/op	 1939855 B/op	   25455 allocs/op
+BenchmarkCreateProductUser-12     	     159	   8730110 ns/op	 2327546 B/op	   30503 allocs/op
+BenchmarkCreateProductUser-12     	     150	   7385891 ns/op	 2757082 B/op	   34981 allocs/op
+BenchmarkCreateProductUser-12     	     157	   9127589 ns/op	 3013711 B/op	   39424 allocs/op
+BenchmarkCreateProductUser-12     	     154	   9712565 ns/op	 3343990 B/op	   43928 allocs/op
+BenchmarkCreateProductUser-12     	     129	   9556791 ns/op	 3791278 B/op	   48063 allocs/op
+BenchmarkCreateProductUser-12     	     129	   9612121 ns/op	 4017221 B/op	   51794 allocs/op
+BenchmarkValidationError-12       	     820	   1605756 ns/op	  125186 B/op	    1290 allocs/op
+BenchmarkValidationError-12       	     816	   1443519 ns/op	  124589 B/op	    1285 allocs/op
+BenchmarkValidationError-12       	     865	   1437549 ns/op	  125008 B/op	    1287 allocs/op
+BenchmarkValidationError-12       	     870	   1994620 ns/op	  125211 B/op	    1287 allocs/op
+BenchmarkValidationError-12       	     847	   1451645 ns/op	  124433 B/op	    1285 allocs/op
+BenchmarkValidationError-12       	     810	   1568056 ns/op	  125170 B/op	    1286 allocs/op
+BenchmarkValidationError-12       	     813	   1483588 ns/op	  124893 B/op	    1287 allocs/op
+BenchmarkValidationError-12       	     795	   1483489 ns/op	  124647 B/op	    1286 allocs/op
+BenchmarkValidationError-12       	     822	   1355635 ns/op	  125317 B/op	    1286 allocs/op
+BenchmarkValidationError-12       	     943	   1525552 ns/op	  124789 B/op	    1285 allocs/op
+BenchmarkNotFound-12              	     550	   3023178 ns/op	  194509 B/op	    1872 allocs/op
+BenchmarkNotFound-12              	     334	   3194341 ns/op	  194118 B/op	    1871 allocs/op
+BenchmarkNotFound-12              	     592	   2148521 ns/op	  194003 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     531	   2268084 ns/op	  194109 B/op	    1871 allocs/op
+BenchmarkNotFound-12              	     499	   2218298 ns/op	  193343 B/op	    1869 allocs/op
+BenchmarkNotFound-12              	     549	   2115529 ns/op	  193329 B/op	    1869 allocs/op
+BenchmarkNotFound-12              	     330	   5814992 ns/op	  194849 B/op	    1875 allocs/op
+BenchmarkNotFound-12              	     398	   2794099 ns/op	  193899 B/op	    1872 allocs/op
+BenchmarkNotFound-12              	     472	   2172095 ns/op	  195224 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     636	   1752237 ns/op	  193445 B/op	    1869 allocs/op
+BenchmarkHeapAfterWarmup-12       	577616402	         2.042 ns/op	        26.00 goroutines	        13.14 heap-alloc-MiB	        22.27 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	588646959	         2.047 ns/op	        26.00 goroutines	        13.14 heap-alloc-MiB	        22.27 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	592930538	         2.038 ns/op	        26.00 goroutines	        13.14 heap-alloc-MiB	        22.23 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	591365449	         2.039 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.28 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	590857466	         2.035 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.27 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	585809617	         2.039 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.30 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	590706220	         2.031 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.38 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	592630758	         2.008 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.33 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	592003269	         2.034 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.35 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkHeapAfterWarmup-12       	580483188	         2.106 ns/op	        26.00 goroutines	        13.15 heap-alloc-MiB	        22.39 heap-inuse-MiB	       0 B/op	       0 allocs/op
+BenchmarkStartupToReady-12        	       1	1218909250 ns/op	        63.92 rss-ready-MiB	        68.45 rss-warm-MiB	 1469208 B/op	   16777 allocs/op
+BenchmarkStartupToReady-12        	       6	 186082604 ns/op	        64.03 rss-ready-MiB	        69.16 rss-warm-MiB	  248038 B/op	    2625 allocs/op
+BenchmarkStartupToReady-12        	       6	 171156972 ns/op	        64.76 rss-ready-MiB	        68.80 rss-warm-MiB	  234917 B/op	    2467 allocs/op
+BenchmarkStartupToReady-12        	       6	 178417632 ns/op	        63.75 rss-ready-MiB	        68.72 rss-warm-MiB	  248820 B/op	    2634 allocs/op
+BenchmarkStartupToReady-12        	       6	 176302215 ns/op	        64.67 rss-ready-MiB	        68.97 rss-warm-MiB	  241702 B/op	    2542 allocs/op
+BenchmarkStartupToReady-12        	       6	 177033896 ns/op	        65.19 rss-ready-MiB	        69.22 rss-warm-MiB	  242941 B/op	    2557 allocs/op
+BenchmarkStartupToReady-12        	       6	 174597035 ns/op	        63.81 rss-ready-MiB	        68.74 rss-warm-MiB	  250961 B/op	    2677 allocs/op
+BenchmarkStartupToReady-12        	       6	 180115334 ns/op	        64.83 rss-ready-MiB	        69.09 rss-warm-MiB	  243074 B/op	    2568 allocs/op
+BenchmarkStartupToReady-12        	       6	 177392979 ns/op	        64.28 rss-ready-MiB	        68.69 rss-warm-MiB	  233677 B/op	    2446 allocs/op
+BenchmarkStartupToReady-12        	       6	 175929250 ns/op	        64.96 rss-ready-MiB	        69.15 rss-warm-MiB	  240218 B/op	    2524 allocs/op

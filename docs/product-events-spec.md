@@ -53,7 +53,7 @@ The first consumer is EchoPoint. The first event types are organization and memb
 
 ## Implementation Decisions
 
-- New subsystem `events` as its own package tree with an fx module, matching email and license (ADR-0007). HTTP handlers stay on the generated API struct if a later ticket adds endpoint CRUD. The tracer has no public endpoint-management API.
+- New subsystem `events` as its own package tree with a nano module, matching email and license (ADR-0007). HTTP handlers stay on the generated API struct if a later ticket adds endpoint CRUD. The tracer has no public endpoint-management API.
 - Glossary: **event**, **event type**, **endpoint**, **delivery**, **thin payload**. Do not name this feature "webhooks". Inbound Clerk remains **integration webhook**.
 - Wire format: Standard Webhooks (ADR-0017). Headers `webhook-id`, `webhook-timestamp`, `webhook-signature`. Body `{ "type", "timestamp", "data" }`. `type` is `resource.action`. `timestamp` is ISO-8601 UTC. `data` is identifiers only. No CloudEvents envelope. No Bearer token. `webhook-id` is a KSUID and is stable across retries of the same event.
 - Tracer event types: `organization.created`, `organization.updated`, `organization.membership.created`, `organization.membership.updated`, `organization.membership.deleted`, `organization.license.updated`. License instantiate, adjust, and migrate all use `organization.license.updated`.

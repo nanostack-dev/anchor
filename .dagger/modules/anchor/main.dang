@@ -138,6 +138,13 @@ type Anchor {
   unitTests(ws: Workspace!): Void @check { goTests(ws, "internal") }
 
   """
+  Wiring tests (apps/anchor/cmd/app): the generated wiring and config binder
+  match the manifest and Config (nano gen wire/config -check), and the
+  committed YAML layers bind.
+  """
+  wiringTests(ws: Workspace!): Void @check { goTests(ws, "cmd/app") }
+
+  """
   The lint wrapper's command boundary (scripts/lint.sh) behaves as tested.
   """
   lintTooling(ws: Workspace!): Void @check {

@@ -3,20 +3,17 @@
 package resource
 
 import (
-	"go.uber.org/fx"
-
 	"anchor/internal/events"
 	"anchor/internal/resource/repository"
 	"anchor/internal/resource/service"
+
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-func NewModule() fx.Option {
-	return fx.Module(
-		"resource",
-		fx.Provide(
-			repository.NewRepository,
-			service.NewService,
-			events.AsRegistration(EventRegistration),
-		),
-	)
-}
+var Module = nano.Module("resource", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		repository.NewRepository,
+		service.NewService,
+	),
+	nano.Collect[events.Registration](EventRegistration),
+)

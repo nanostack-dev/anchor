@@ -454,7 +454,7 @@ export async function startRuntime({
 			);
 			Object.assign(env, {
 				CONFIG_PATH: join(runtimeDirectory, "application.yaml"),
-				ANCHOR_E2E_MIGRATIONS_PATH: join(appDirectory, "migrations"),
+				MIGRATIONS_BASE_PATH: join(appDirectory, "migrations"),
 				POSTGRES_PORT: String(metadata.postgresPort),
 				POSTGRES_PASSWORD_FILE: join(metadata.directory, "postgres-password"),
 				ADMIN_JWT_SECRET_FILE: join(metadata.directory, "jwt-secret"),

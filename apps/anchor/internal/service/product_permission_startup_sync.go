@@ -10,7 +10,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
-	"go.uber.org/fx"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/domain/product"
@@ -19,55 +18,64 @@ import (
 
 const productPermissionStartupSyncLockKey = "product_permissions:startup-sync"
 
-type productPermissionStartupSyncParams struct {
-	fx.In
-	Lifecycle             fx.Lifecycle
-	Lock                  *pglock.Client
-	ProductRepo           repository.ProductRepository
-	ProductPermissionRepo repository.ProductPermissionRepository
-	Logger                *slog.Logger
+// ProductPermissionStartupSync brings every product's generated permissions
+// up to date when the App starts, on one replica at a time.
+type ProductPermissionStartupSync struct {
+	lock                  *pglock.Client
+	productRepo           repository.ProductRepository
+	productPermissionRepo repository.ProductPermissionRepository
+	logger                *slog.Logger
 }
 
-func RegisterProductPermissionStartupSync(p productPermissionStartupSyncParams) {
-	logger := p.Logger.With(slog.String("component", "product_permission_startup_sync"))
+func NewProductPermissionStartupSync(
+	lock *pglock.Client,
+	productRepo repository.ProductRepository,
+	productPermissionRepo repository.ProductPermissionRepository,
+	logger *slog.Logger,
+) *ProductPermissionStartupSync {
+	return &ProductPermissionStartupSync{
+		lock:                  lock,
+		productRepo:           productRepo,
+		productPermissionRepo: productPermissionRepo,
+		logger:                logger.With(slog.String("component", "product_permission_startup_sync")),
+	}
+}
 
-	p.Lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			acquired, err := p.Lock.TryWithLock(
-				ctx,
-				productPermissionStartupSyncLockKey,
-				func(lockCtx context.Context, _ *sql.Tx) error {
-					products, listErr := p.ProductRepo.FindAllInternal(lockCtx)
-					if listErr != nil {
-						return listErr
-					}
-
-					for _, prod := range products {
-						syncErr := syncProductPermissions(
-							lockCtx,
-							prod,
-							p.ProductPermissionRepo,
-							logger,
-						)
-						if syncErr != nil {
-							return syncErr
-						}
-					}
-
-					return nil
-				},
-			)
-			if err != nil {
-				logger.ErrorContext(ctx, "startup product permission sync failed", log.Err(err))
-				return nil
+// Start runs the sync. A failure is logged and does not fail the start.
+func (s *ProductPermissionStartupSync) Start(ctx context.Context) error {
+	acquired, err := s.lock.TryWithLock(
+		ctx,
+		productPermissionStartupSyncLockKey,
+		func(lockCtx context.Context, _ *sql.Tx) error {
+			products, listErr := s.productRepo.FindAllInternal(lockCtx)
+			if listErr != nil {
+				return listErr
 			}
-			if !acquired {
-				logger.DebugContext(ctx, "startup product permission sync skipped: lock not acquired")
+
+			for _, prod := range products {
+				syncErr := syncProductPermissions(
+					lockCtx,
+					prod,
+					s.productPermissionRepo,
+					s.logger,
+				)
+				if syncErr != nil {
+					return syncErr
+				}
 			}
 
 			return nil
 		},
-	})
+	)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "startup product permission sync failed", log.Err(err))
+		return nil
+	}
+	if !acquired {
+		s.logger.DebugContext(ctx, "startup product permission sync skipped: lock not acquired")
+	}
+
+	return nil
 }
 
 func syncProductPermissions(

@@ -41,6 +41,11 @@ LABEL org.opencontainers.image.description="Multi-tenant service platform"
 LABEL org.opencontainers.image.source="https://github.com/nanostack-dev/anchor"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# The infra deploy reads this label to pick the application.yaml format it
+# renders for this image (scripts/image-config-format.sh). An image without
+# it gets the old fx format, which this binary refuses at boot.
+LABEL dev.nanostack.config-format="nano"
+
 # Set working directory
 WORKDIR /app
 

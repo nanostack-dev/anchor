@@ -27,7 +27,7 @@ func TestCatalogRegistrationAndGrouping(t *testing.T) {
 		},
 	)
 
-	cat := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{domainReg, integrationReg}})
+	cat := events.NewCatalog([]events.Registration{domainReg, integrationReg})
 
 	if !cat.IsKnown("test.resource.created") {
 		t.Fatal("test.resource.created should be known in registered catalog")
@@ -60,12 +60,12 @@ func TestCatalogRegistrationAndGrouping(t *testing.T) {
 func TestCatalogUndeliveredEvents(t *testing.T) {
 	t.Parallel()
 
-	catalog := events.NewCatalog(events.CatalogParams{Registrations: []events.Registration{
+	catalog := events.NewCatalog([]events.Registration{
 		events.RegisterInternal("Test",
 			events.Definition{Type: "test.delivered"},
 			events.Definition{Type: "test.kept", Undelivered: true},
 		),
-	}})
+	})
 
 	t.Run("An undelivered event can be emitted but never delivered", func(t *testing.T) {
 		t.Parallel()

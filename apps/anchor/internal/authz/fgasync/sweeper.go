@@ -9,7 +9,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
-	"go.uber.org/fx"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -78,36 +77,18 @@ func (s *Syncer) Sweep(ctx context.Context) {
 	}
 }
 
-// Run sweeps on one replica at a time until the application stops.
-func (s *Syncer) Run(lc fx.Lifecycle) {
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go func() {
-				defer close(done)
-				ticker := time.NewTicker(sweepInterval)
-				defer ticker.Stop()
-				for {
-					s.sweepAlone(ctx)
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-					}
-				}
-			}()
+// Run sweeps on one replica at a time until the App stops.
+func (s *Syncer) Run(ctx context.Context) error {
+	ticker := time.NewTicker(sweepInterval)
+	defer ticker.Stop()
+	for {
+		s.sweepAlone(ctx)
+		select {
+		case <-ctx.Done():
 			return nil
-		},
-		OnStop: func(stopCtx context.Context) error {
-			cancel()
-			select {
-			case <-done:
-			case <-stopCtx.Done():
-			}
-			return nil
-		},
-	})
+		case <-ticker.C:
+		}
+	}
 }
 
 func (s *Syncer) sweepAlone(ctx context.Context) {

@@ -1,49 +1,18 @@
-# ./application.yaml
+# The suite's file layer (cmd/app.LoadConfig, through CONFIG_PATH). The
+# harness (cmd/it/shared) sets the container addresses, the server port and
+# the secrets in the environment: a config file holds no secret.
 postgres:
-  host: ${POSTGRES_HOST:localhost} # Default to localhost if env var not set
-  port: ${POSTGRES_PORT:5432}    # Default to 5432 if env var not set
-  user: ${POSTGRES_USER:anchor}          # Required env var
-  password: ${POSTGRES_PASSWORD:anchor}    # Required env var
-  dbname: ${POSTGRES_DB:anchor}          # Required env var
-  sslmode: ${POSTGRES_SSLMODE:disable} # Default to disable
+  host: localhost
+  user: anchor
+  db: anchor
+  sslmode: disable
 
-# Migrations configuration
 migrations:
-  enabled: true
-  basePath: "../../../migrations"
-  validate: true
-  # Enable this to automatically fix dirty migration states
-  autoFixDirty: false
-  # Set this to a specific version to force that version number
-  # forceVersion: 0
+  base_path: ../../../migrations
+  auto_fix_dirty: false
 
-# PgLock configuration
-pglock:
-  tableName: "pglock_locks"
-  autoCreateTable: true
-  leaseDuration: "10s"
-  heartbeatFrequency: "1s"
-  testOnStartup: true
 core:
-  auth:
-    refresh_token_lifetime: ${REFRESH_TOKEN_LIFETIME:604800}
-    session_max_lifetime: ${SESSION_MAX_LIFETIME:2592000}
-    access_token_lifetime: ${ACCESS_TOKEN_LIFETIME:3600}
-    admin_jwt_secret: "${ADMIN_JWT_SECRET:secret}"
-  encryption:
-    global_key: "${APP_ENCRYPTION_KEY}"
-    global_key_version: "${APP_ENCRYPTION_KEY_VERSION:v1}"
-  integration:
-    reconcile_schedule_interval: "${INTEGRATION_RECONCILE_SCHEDULE_INTERVAL:15m}"
-  environment: "${ENVIRONMENT:test}"
+  environment: test
 
-
-# Redis cache configuration
-cache:
-  address: ${REDIS_ADDRESS:localhost:6379}
-  password: ${REDIS_PASSWORD:}
-  db: ${REDIS_DB:0}
-# Example of another config section
 server:
-  port: ${SERVER_PORT:8080}
   allowed_origin: "*"

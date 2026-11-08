@@ -13,7 +13,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 const (
@@ -40,11 +39,6 @@ type TxObserver interface {
 	ObserveTx(ctx context.Context, event Event) error
 }
 
-// AsTxObserver annotates a constructor so the emitter receives its observer.
-func AsTxObserver(constructor any) any {
-	return fx.Annotate(constructor, fx.As(new(TxObserver)), fx.ResultTags(`group:"event_tx_observers"`))
-}
-
 type emitter struct {
 	queue     *queue.Client
 	catalog   Catalog
@@ -52,7 +46,7 @@ type emitter struct {
 	now       func() time.Time
 }
 
-// NewEmitter runs the observers in the order of their type names. fx hands a
+// NewEmitter runs the observers in the order of their type names. fx handed a
 // value group over in a random order per process, and observers take locks:
 // two replicas running them in opposite orders deadlock their writes
 // ([postmortem](../../../../docs/postmortems/2026-10-31-tx-observer-order-deadlock.md)).
@@ -69,15 +63,10 @@ func NewEmitter(queueClient *queue.Client, catalog Catalog, observers ...TxObser
 	}
 }
 
-type emitterParams struct {
-	fx.In
-	Queue     *queue.Client
-	Catalog   Catalog
-	Observers []TxObserver `group:"event_tx_observers"`
-}
-
-func provideEmitter(params emitterParams) Emitter {
-	return NewEmitter(params.Queue, params.Catalog, params.Observers...)
+// ProvideEmitter hands the emitter every TxObserver that a module adds to the
+// nano.Collect[TxObserver] collection.
+func ProvideEmitter(queueClient *queue.Client, catalog Catalog, observers []TxObserver) Emitter {
+	return NewEmitter(queueClient, catalog, observers...)
 }
 
 func (e *emitter) Emit(ctx context.Context, event Event) error {

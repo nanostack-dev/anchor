@@ -1,42 +1,15 @@
+# The e2e backend's file layer (cmd/app.LoadConfig). Keys are the config:
+# names (apps/anchor/cmd/app/CONFIG.md). e2e-runtime.mjs sets the rest in
+# the environment: POSTGRES_PORT, MIGRATIONS_BASE_PATH, REDIS_ADDRESS,
+# SERVER_PORT, ALLOWED_ORIGIN, and the secrets through *_FILE variables.
 postgres:
   host: "127.0.0.1"
-  port: ${POSTGRES_PORT}
   user: "anchor_e2e"
-  password: ${file:POSTGRES_PASSWORD_FILE}
-  dbname: "anchor_e2e"
+  db: "anchor_e2e"
   sslmode: "disable"
 
 migrations:
-  enabled: true
-  basePath: ${ANCHOR_E2E_MIGRATIONS_PATH}
-  validate: true
-  autoFixDirty: false
-
-pglock:
-  tableName: "pglock_locks"
-  autoCreateTable: true
-  leaseDuration: "10s"
-  heartbeatFrequency: "1s"
-  testOnStartup: true
+  auto_fix_dirty: false
 
 core:
   environment: "development"
-  auth:
-    refresh_token_lifetime: 604800
-    session_max_lifetime: 2592000
-    access_token_lifetime: 3600
-    admin_jwt_secret: ${file:ADMIN_JWT_SECRET_FILE}
-  encryption:
-    global_key: ${file:APP_ENCRYPTION_KEY_FILE}
-    global_key_version: "v1"
-  integration:
-    reconcile_schedule_interval: "15m"
-
-cache:
-  address: ${REDIS_ADDRESS}
-  password: ""
-  db: 0
-
-server:
-  port: ${SERVER_PORT}
-  allowed_origin: ${ALLOWED_ORIGIN}

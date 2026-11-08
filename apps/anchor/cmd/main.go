@@ -21,5 +21,5 @@ func main() {
 		return
 	}
 
-	app.StartAnchor()
+	app.Main()
 }

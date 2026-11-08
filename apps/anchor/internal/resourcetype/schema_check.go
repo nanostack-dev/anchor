@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
-	"go.uber.org/fx"
 )
 
 // Querier runs the schema check's queries; *sql.DB and *sql.Conn are both one.
@@ -13,11 +11,20 @@ type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// RegisterSchemaCheck refuses to start a release whose migrations were
-// forced past instead of applied: autoFixDirty marks a failed migration as
-// done, and the code would then run on a schema it doesn't expect.
-func RegisterSchemaCheck(lc fx.Lifecycle, db *sql.DB) {
-	lc.Append(fx.Hook{OnStart: func(ctx context.Context) error { return CheckSchema(ctx, db) }})
+// SchemaCheck refuses to start a release whose migrations were forced past
+// instead of applied: auto_fix_dirty marks a failed migration as done, and
+// the code would then run on a schema it doesn't expect. It runs when the App
+// starts, after the migrations.
+type SchemaCheck struct {
+	db *sql.DB
+}
+
+func NewSchemaCheck(db *sql.DB) *SchemaCheck {
+	return &SchemaCheck{db: db}
+}
+
+func (c *SchemaCheck) Start(ctx context.Context) error {
+	return CheckSchema(ctx, c.db)
 }
 
 // The role migrations, by version.

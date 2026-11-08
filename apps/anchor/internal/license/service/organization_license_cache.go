@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/rs/zerolog"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 
 	"anchor/internal/domain/license"
 )
@@ -31,22 +30,22 @@ const (
 // license to one eviction discipline. Both the per-Organization writes and a
 // bulk migration go through it, so neither can acquire its own key layout.
 type organizationLicenseCache struct {
-	entries cache.Cache[license.OrganizationLicense]
+	entries nanocache.Cache[license.OrganizationLicense]
 	logger  *slog.Logger
 }
 
 // NewOrganizationLicenseEntries builds the cache of Organization licenses
-// that the licence services share. modules/cache still takes a
-// zerolog.Logger, the one the deprecated framework fx modules share; it goes
-// with the move of the cache to redis/nanocache.
-func NewOrganizationLicenseEntries(store cache.Store, logger zerolog.Logger) cache.Cache[license.OrganizationLicense] {
-	return cache.New[license.OrganizationLicense](
+// that the licence services share.
+func NewOrganizationLicenseEntries(
+	store nanocache.Store, logger *slog.Logger,
+) (nanocache.Cache[license.OrganizationLicense], error) {
+	return nanocache.New[license.OrganizationLicense](
 		store, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
 	)
 }
 
 func newOrganizationLicenseCache(
-	entries cache.Cache[license.OrganizationLicense], logger *slog.Logger,
+	entries nanocache.Cache[license.OrganizationLicense], logger *slog.Logger,
 ) *organizationLicenseCache {
 	return &organizationLicenseCache{entries: entries, logger: logger}
 }
@@ -56,7 +55,7 @@ func newOrganizationLicenseCache(
 // tenant does not need to be part of the key.
 func (c *organizationLicenseCache) key(
 	productID, organizationID string,
-) cache.Entry[license.OrganizationLicense] {
+) nanocache.Entry[license.OrganizationLicense] {
 	return c.entries.Key(productID, organizationID)
 }
 

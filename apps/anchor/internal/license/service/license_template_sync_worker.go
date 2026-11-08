@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"anchor/internal/queueworker"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 const (
@@ -21,25 +21,24 @@ const (
 	licenseTemplateSyncBackoffMax   = 5 * time.Minute
 )
 
-type LicenseTemplateSyncWorkerParams struct {
-	fx.In
-	Lifecycle fx.Lifecycle
-	Sync      LicenseTemplateSyncService
-	Queue     *queue.Client
-	Logger    *slog.Logger
+// LicenseTemplateSyncWorker propagates template value updates onto the
+// licenses that follow the template.
+type LicenseTemplateSyncWorker struct {
+	queueworker.Worker
 }
 
-func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
-	logger := p.Logger.With(slog.String("component", "license_template_sync_worker"))
+func NewLicenseTemplateSyncWorker(
+	sync LicenseTemplateSyncService, queueClient *queue.Client, logger *slog.Logger,
+) (*LicenseTemplateSyncWorker, error) {
+	logger = logger.With(slog.String("component", "license_template_sync_worker"))
 
 	registry := queue.NewHandlerRegistry()
-	if err := registry.Register(licenseTemplateSyncQueueName, p.Sync.ProcessQueueJob); err != nil {
-		logger.Error("failed to register license template sync queue handler", log.Err(err))
-		return
+	if err := registry.Register(licenseTemplateSyncQueueName, sync.ProcessQueueJob); err != nil {
+		return nil, fmt.Errorf("register license template sync queue handler: %w", err)
 	}
 
 	worker, err := queue.NewWorker(
-		p.Queue, registry, queue.WorkerConfig{
+		queueClient, registry, queue.WorkerConfig{
 			WorkerID:          licenseTemplateSyncWorkerID,
 			PollInterval:      licenseTemplateSyncPollInterval,
 			ReapInterval:      licenseTemplateSyncReapInterval,
@@ -64,42 +63,16 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 		},
 	)
 	if err != nil {
-		logger.Error("failed to initialize license template sync worker", log.Err(err))
-		return
+		return nil, fmt.Errorf("initialize license template sync worker: %w", err)
 	}
 
-	var cancel context.CancelFunc
-
-	p.Lifecycle.Append(
-		fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				workerCtx, workerCancel := context.WithCancel(context.Background())
-				cancel = workerCancel
-
-				go func() {
-					defer workerCancel()
-					if runErr := worker.Run(workerCtx); runErr != nil {
-						logger.ErrorContext(
-							workerCtx,
-							"license template sync worker stopped with error",
-							log.Err(runErr),
-						)
-					}
-				}()
-
-				logger.InfoContext(ctx, "license template sync worker started",
-					slog.String("queue_name", licenseTemplateSyncQueueName),
-					slog.Duration("poll_interval", licenseTemplateSyncPollInterval),
-				)
-				return nil
-			},
-			OnStop: func(ctx context.Context) error {
-				logger.InfoContext(ctx, "stopping license template sync worker")
-				if cancel != nil {
-					cancel()
-				}
-				return nil
-			},
+	return &LicenseTemplateSyncWorker{queueworker.New(worker, logger, queueworker.Spec{
+		Started: "license template sync worker started",
+		StartedAttrs: []slog.Attr{
+			slog.String("queue_name", licenseTemplateSyncQueueName),
+			slog.Duration("poll_interval", licenseTemplateSyncPollInterval),
 		},
-	)
+		Failed:   "license template sync worker stopped with error",
+		Stopping: "stopping license template sync worker",
+	})}, nil
 }

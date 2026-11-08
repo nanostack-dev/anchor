@@ -14,7 +14,6 @@ import (
 
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
-	"go.uber.org/fx"
 )
 
 const (
@@ -46,34 +45,29 @@ func NewIntegrationQueue(
 	return queueClient, nil
 }
 
-// RegisterQueueRetention deletes finished pgqueue jobs of every Anchor queue
-// once they are older than queueKeepDoneJobs or queueKeepFailedJobs.
-func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger *slog.Logger) {
-	retentionCtx, stopRetention := context.WithCancel(context.Background())
-	stopped := make(chan struct{})
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			go func() {
-				defer close(stopped)
-				if err := queueClient.RunRetention(retentionCtx, queue.RetentionPolicy{
-					KeepDone:   queueKeepDoneJobs,
-					KeepFailed: queueKeepFailedJobs,
-				}); err != nil {
-					logger.Error("pgqueue retention stopped with error", log.Err(err))
-				}
-			}()
-			return nil
-		},
-		OnStop: func(stopCtx context.Context) error {
-			stopRetention()
-			select {
-			case <-stopped:
-				return nil
-			case <-stopCtx.Done():
-				return stopCtx.Err()
-			}
-		},
-	})
+// QueueRetention deletes finished pgqueue jobs of every Anchor queue once
+// they are older than queueKeepDoneJobs or queueKeepFailedJobs, while the
+// App runs.
+type QueueRetention struct {
+	queue  *queue.Client
+	logger *slog.Logger
+}
+
+func NewQueueRetention(queueClient *queue.Client, logger *slog.Logger) *QueueRetention {
+	return &QueueRetention{queue: queueClient, logger: logger}
+}
+
+// Run applies the retention policy until the App stops. A failure is logged
+// and does not stop the App.
+func (r *QueueRetention) Run(ctx context.Context) error {
+	if err := r.queue.RunRetention(ctx, queue.RetentionPolicy{
+		KeepDone:   queueKeepDoneJobs,
+		KeepFailed: queueKeepFailedJobs,
+	}); err != nil {
+		r.logger.ErrorContext(ctx, "pgqueue retention stopped with error", log.Err(err))
+	}
+	<-ctx.Done()
+	return nil
 }
 
 // slogQueueAdapter writes pgkit's queue lines through the component logger.

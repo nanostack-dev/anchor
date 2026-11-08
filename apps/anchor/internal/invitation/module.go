@@ -5,19 +5,16 @@ import (
 	"anchor/internal/invitation/repository"
 	"anchor/internal/invitation/service"
 
-	"go.uber.org/fx"
+	"github.com/nanostack-dev/nanostack-framework/core/nano"
 )
 
-// NewModule wires the organization invitation subsystem: the invitation
+// Module wires the organization invitation subsystem: the invitation
 // itself, its token and its lifecycle, and the accept that turns it into a
 // membership.
-func NewModule() fx.Option {
-	return fx.Module(
-		"organization_invitation",
-		fx.Provide(
-			repository.NewRepository,
-			service.NewOrganizationInvitationService,
-			events.AsRegistration(EventRegistration),
-		),
-	)
-}
+var Module = nano.Module("organization_invitation", //nolint:gochecknoglobals // A nano module is a package-level value.
+	nano.Providers(
+		repository.NewRepository,
+		service.NewOrganizationInvitationService,
+	),
+	nano.Collect[events.Registration](EventRegistration),
+)
