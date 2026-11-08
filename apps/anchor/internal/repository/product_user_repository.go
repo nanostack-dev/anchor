@@ -297,9 +297,17 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 			whereStmt = whereStmt.AND(table.ProductUsers.Email.IN(expressions...))
 		}
 
+		// Names keeps users whose name contains any of the terms, each matched
+		// as a case-insensitive, literal substring. A user without a name never
+		// matches. Validation refuses a blank term, which would match every
+		// named user.
 		if len(request.Filter.Names) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.Names)
-			whereStmt = whereStmt.AND(table.ProductUsers.Name.IN(expressions...))
+			terms := functional.Slice(request.Filter.Names).Map(
+				func(term string) postgres.BoolExpression {
+					return searchx.Contains(term, table.ProductUsers.Name)
+				},
+			)
+			whereStmt = whereStmt.AND(postgres.OR(terms...))
 		}
 
 		if len(request.Filter.Statuses) > 0 {

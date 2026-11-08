@@ -1308,7 +1308,7 @@ export type ProductUserFilter = {
      */
     emails?: Array<string>;
     /**
-     * Filter by names containing these substrings.
+     * Keep users whose name contains any of these terms, each matched as a case-insensitive, literal substring: % and _ match themselves.
      */
     names?: Array<string>;
     /**

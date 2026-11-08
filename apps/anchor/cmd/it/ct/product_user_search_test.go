@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	itdsl "anchor/cmd/it/shared/dsl"
 )
 
 func TestSearchProductUsers(t *testing.T) {
@@ -203,4 +205,57 @@ func TestSearchProductUsers(t *testing.T) {
 			}
 		},
 	)
+}
+
+// The names filter keeps users whose name contains any of the terms, each a
+// case-insensitive, literal substring. A blank term would match every named
+// user, so validation refuses it.
+func TestSearchProductUsersByNames(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	productContext := createTestProductContext(t)
+	built := itdsl.Given(t).
+		ExistingProduct(itdsl.ExistingProductOpts{Alias: "product.ctx", Context: productContext}).
+		ProductUser(itdsl.ProductUserOpts{Alias: "joanne", ProductAlias: "product.ctx", Name: "Joanne Atlas"}).
+		ProductUser(itdsl.ProductUserOpts{Alias: "ann", ProductAlias: "product.ctx", Name: "Ann Borealis"}).
+		ProductUser(itdsl.ProductUserOpts{Alias: "percent", ProductAlias: "product.ctx", Name: "100% Renewable"}).
+		ProductUser(itdsl.ProductUserOpts{Alias: "plain", ProductAlias: "product.ctx", Name: "1000 Renewable"}).
+		Build()
+	joanne, ann, percent := built.ProductUser("joanne").ID, built.ProductUser("ann").ID, built.ProductUser("percent").ID
+	client := productContext.OwnerAuthenticatedClient()
+
+	search := func(t *testing.T, names ...string) *ct.SearchProductUsersResponse {
+		t.Helper()
+		resp, err := client.SearchProductUsersWithResponse(ctx, productContext.ProductID,
+			ct.SearchProductUsersJSONRequestBody{Filter: &ct.ProductUserFilter{Names: &names}})
+		require.NoError(t, err)
+		return resp
+	}
+	ids := func(t *testing.T, resp *ct.SearchProductUsersResponse) []string {
+		t.Helper()
+		require.Equal(t, http.StatusOK, resp.StatusCode(), string(resp.Body))
+		require.NotNil(t, resp.JSON200)
+		found := make([]string, 0, len(resp.JSON200.Items))
+		for _, item := range resp.JSON200.Items {
+			found = append(found, item.Id)
+		}
+		return found
+	}
+
+	t.Run("a part of a name in another case finds the user", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{joanne}, ids(t, search(t, "ATLA")))
+	})
+	t.Run("a term matches inside a longer name", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{joanne, ann}, ids(t, search(t, "ann")))
+	})
+	t.Run("several terms match any of them", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{joanne, ann}, ids(t, search(t, "atlas", "borealis")))
+	})
+	t.Run("percent matches itself", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{percent}, ids(t, search(t, "100%")))
+	})
+	t.Run("a blank term is refused", func(t *testing.T) {
+		assert.Equal(t, http.StatusBadRequest, search(t, " ").StatusCode())
+	})
 }
