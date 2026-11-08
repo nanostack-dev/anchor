@@ -516,11 +516,8 @@ func (r *organizationAPIKeyRepository) applyFullTextSearch(
 		return whereStmt
 	}
 
-	searchTerm := "%" + *fullTextSearch + "%"
 	return whereStmt.AND(
-		table.OrganizationAPIKeys.Name.LIKE(postgres.String(searchTerm)).OR(
-			table.OrganizationAPIKeys.Description.LIKE(postgres.String(searchTerm)),
-		),
+		searchx.Contains(*fullTextSearch, table.OrganizationAPIKeys.Name, table.OrganizationAPIKeys.Description),
 	)
 }
 

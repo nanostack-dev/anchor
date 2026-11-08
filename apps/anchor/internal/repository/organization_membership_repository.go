@@ -15,6 +15,7 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -601,14 +602,9 @@ func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
 	}
 
 	if req.FullTextSearch != nil && *req.FullTextSearch != "" {
-		searchColumns := []postgres.ColumnString{
-			table.ProductUsers.Email,
-			table.ProductUsers.Name,
-		}
-		fullTextFilter := jetx.BuildSubstringFilter(searchColumns, *req.FullTextSearch)
-		if fullTextFilter != nil {
-			whereStmt = whereStmt.AND(fullTextFilter)
-		}
+		whereStmt = whereStmt.AND(
+			searchx.Contains(*req.FullTextSearch, table.ProductUsers.Email, table.ProductUsers.Name),
+		)
 	}
 
 	order, err := transactor.StrictKeys(

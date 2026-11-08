@@ -19,6 +19,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 )
 
 // Remove global variable, use a function instead.
@@ -90,7 +91,7 @@ func (r *invitationRepositoryImpl) SearchByTenantID(
 	}
 	if input.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			table.PlatformInvitations.Email.LIKE(postgres.String("%" + *input.FullTextSearch + "%")),
+			searchx.Contains(*input.FullTextSearch, table.PlatformInvitations.Email),
 		)
 	}
 	order, err := transactor.StrictKeys(

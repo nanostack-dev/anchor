@@ -17,6 +17,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/product"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
@@ -298,8 +299,7 @@ func (r *productRepositoryImpl) SearchByTenantID(
 
 	if input.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			table.Products.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%")).
-				OR(table.Products.Description.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
+			searchx.Contains(*input.FullTextSearch, table.Products.Name, table.Products.Description),
 		)
 	}
 

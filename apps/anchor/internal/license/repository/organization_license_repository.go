@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -17,6 +16,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 )
 
 var _ OrganizationLicenseRepository = (*organizationLicenseRepositoryImpl)(nil)
@@ -225,14 +225,6 @@ func organizationLicenseJoin(tenantID string) postgres.ReadableTable {
 	)
 }
 
-// escapeLikeTerm makes an operator's search term literal. Without it a
-// customer named "100% Renewable" is unfindable by typing its name, because
-// the percent sign matches anything.
-func escapeLikeTerm(term string) string {
-	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return replacer.Replace(term)
-}
-
 // licenseHeldFilter narrows to Organizations that hold a license, or to those
 // that hold none. The left join is what makes both expressible from one query.
 func licenseHeldFilter(licensed *bool) postgres.BoolExpression {
@@ -267,15 +259,8 @@ func (r *organizationLicenseRepositoryImpl) Search(
 		}
 	}
 
-	// ILIKE rather than jetx.BuildSubstringFilter, which builds a
-	// case-sensitive LIKE. An operator typing a customer's name into a search
-	// box does not capitalise it the way the record does, and "northwind"
-	// finding nothing reads as a broken box rather than as a precise one. The
-	// shared builder is what every other search in Anchor uses; fixing it there
-	// would change all of them at once and belongs in the framework.
 	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		lowered := postgres.String("%" + escapeLikeTerm(strings.ToLower(*term)) + "%")
-		where = where.AND(postgres.LOWER(table.Organizations.Name).LIKE(lowered))
+		where = where.AND(searchx.Contains(*term, table.Organizations.Name))
 	}
 
 	order, err := organizationLicenseOrder(in.Request.Sort)

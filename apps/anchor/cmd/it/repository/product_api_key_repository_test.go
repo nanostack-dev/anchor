@@ -491,9 +491,8 @@ func TestProductAPIKeyRepositorySearchByProductIDFullTextSearch(t *testing.T) {
 		a.Name = uniqueName(t, "Billing Console Key")
 	})
 
-	// applyFullTextSearch is a plain SQL LIKE (not tsvector) — it is
-	// case-sensitive, so the term must match the stored case exactly.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.ProductAPIKeyRepository.SearchByProductID(
 		context.Background(),
 		apikey.SearchProductAPIKeysInput{

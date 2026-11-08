@@ -479,10 +479,8 @@ func (r *productAPIKeyRepository) applyFullTextSearch(
 		return whereStmt
 	}
 
-	searchTerm := "%" + *fullTextSearch + "%"
 	return whereStmt.AND(
-		table.ProductAPIKeys.Name.LIKE(postgres.String(searchTerm)).
-			OR(table.ProductAPIKeys.Description.LIKE(postgres.String(searchTerm))),
+		searchx.Contains(*fullTextSearch, table.ProductAPIKeys.Name, table.ProductAPIKeys.Description),
 	)
 }
 

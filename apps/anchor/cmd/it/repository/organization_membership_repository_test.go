@@ -392,9 +392,8 @@ func TestOrganizationMembershipRepositorySearchByOrgIDFullTextSearch(t *testing.
 		Name:  "Billing Console User",
 	})
 
-	// The filter is a plain SQL LIKE (see jetx.BuildFullTextSearchFilter), not
-	// tsvector — it is case-sensitive, so the term must match the stored case.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.OrganizationMembershipRepository.SearchByOrgID(
 		context.Background(), productID, organizationID,
 		search.Request[organization.SearchMembersFilter, organization.SortFieldMember]{

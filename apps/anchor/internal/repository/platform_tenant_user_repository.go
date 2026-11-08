@@ -19,6 +19,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/platform"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
@@ -182,8 +183,7 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 	}
 	if input.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			table.PlatformUsers.Email.LIKE(postgres.String("%" + *input.FullTextSearch + "%")).
-				OR(table.PlatformUsers.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
+			searchx.Contains(*input.FullTextSearch, table.PlatformUsers.Email, table.PlatformUsers.Name),
 		)
 	}
 	order, err := transactor.StrictKeys(

@@ -16,6 +16,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
@@ -152,15 +153,7 @@ func (r *organizationRepositoryImpl) SearchByProductID(
 	}
 
 	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		searchColumns := []postgres.ColumnString{
-			table.Organizations.Name,
-		}
-		fullTextFilter := jetx.BuildSubstringFilter(
-			searchColumns, *input.FullTextSearch,
-		)
-		if fullTextFilter != nil {
-			whereStmt = whereStmt.AND(fullTextFilter)
-		}
+		whereStmt = whereStmt.AND(searchx.Contains(*input.FullTextSearch, table.Organizations.Name))
 	}
 
 	order, err := transactor.StrictKeys(
