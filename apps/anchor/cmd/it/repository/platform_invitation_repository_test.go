@@ -313,9 +313,8 @@ func TestPlatformInvitationRepositorySearchByTenantIDFullTextSearch(t *testing.T
 	_, err = repoCtx.InvitationRepository.Create(context.Background(), other)
 	require.NoError(t, err)
 
-	// The filter is a plain SQL LIKE, not tsvector — it is case-sensitive, so
-	// the term must match the stored case.
-	term := "AtlasMigration"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlasmigration"
 	result, err := repoCtx.InvitationRepository.SearchByTenantID(
 		context.Background(), tenantID,
 		search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]{

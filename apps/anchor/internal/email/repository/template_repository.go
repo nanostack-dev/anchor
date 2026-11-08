@@ -19,6 +19,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/email"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 )
 
 var _ TemplateRepository = (*templateRepositoryImpl)(nil)
@@ -107,11 +108,7 @@ func (r *templateRepositoryImpl) Search(
 		}
 	}
 	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		if fullText := jetx.BuildSubstringFilter(
-			[]postgres.ColumnString{table.EmailTemplates.Name, table.EmailTemplates.Slug}, *term,
-		); fullText != nil {
-			where = where.AND(fullText)
-		}
+		where = where.AND(searchx.Contains(*term, table.EmailTemplates.Name, table.EmailTemplates.Slug))
 	}
 
 	order, err := transactor.StrictKeys(

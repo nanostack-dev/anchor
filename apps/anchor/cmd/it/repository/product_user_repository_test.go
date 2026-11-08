@@ -427,10 +427,8 @@ func TestProductUserRepositorySearchByProductIDFullTextSearch(t *testing.T) {
 		Status:    user.ProductUserStatusActive,
 	})
 
-	// The filter is a plain SQL LIKE (see jetx.BuildFullTextSearchFilter / the
-	// inline LIKE below it), not tsvector — it is case-sensitive, so the term
-	// must match the stored case.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.ProductUserRepository.SearchByProductID(
 		context.Background(), productID,
 		search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]{

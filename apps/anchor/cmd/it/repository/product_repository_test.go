@@ -291,9 +291,8 @@ func TestProductRepositorySearchByTenantIDFullTextSearch(t *testing.T) {
 	_, err = repoCtx.ProductRepository.Create(context.Background(), other)
 	require.NoError(t, err)
 
-	// The filter is a plain SQL LIKE, not tsvector — it is case-sensitive, so
-	// the term must match the stored case.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.ProductRepository.SearchByTenantID(
 		context.Background(), tenantID,
 		search.Request[product.SearchProductFilter, product.SortFieldProduct]{
@@ -304,6 +303,58 @@ func TestProductRepositorySearchByTenantIDFullTextSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Items, 1)
 	assert.Equal(t, matching.ID, result.Items[0].ID)
+}
+
+// The full-text term is literal: % and _ match themselves and the escape
+// character is escaped too, so the term never acts as a LIKE pattern. Both
+// columns are searched, and case is ignored on either side.
+func TestProductRepositorySearchByTenantIDFullTextSearchIsLiteral(t *testing.T) {
+	tenantID := createTenant(t)
+	create := func(name, description string) string {
+		t.Helper()
+		entity := product.Product{
+			PlatformTenantID: tenantID,
+			Name:             name,
+			Description:      description,
+			Config:           product.DefaultConfig(),
+		}
+		entity.GenerateID()
+		created, err := repoCtx.ProductRepository.Create(context.Background(), entity)
+		require.NoError(t, err)
+		return created.ID
+	}
+	percent := create("Discount 100% Off", "")
+	underscore := create("Seat_Cap", "")
+	backslash := create(`Path C:\Temp`, "")
+	decoy := create("SeatXcap", "Discount 1000 Off")
+	described := create("Plain", "Mixed CASE description")
+
+	for term, want := range map[string][]string{
+		"%":                 {percent},
+		"100%":              {percent},
+		"_":                 {underscore},
+		"seat_cap":          {underscore},
+		"SEATXCAP":          {decoy},
+		`c:\temp`:           {backslash},
+		`\`:                 {backslash},
+		"mixed case":        {described},
+		"discount 100% off": {percent},
+		"":                  {percent, underscore, backslash, decoy, described},
+	} {
+		result, err := repoCtx.ProductRepository.SearchByTenantID(
+			context.Background(), tenantID,
+			search.Request[product.SearchProductFilter, product.SortFieldProduct]{
+				FullTextSearch: &term,
+				Pagination:     search.Pagination{Limit: 10, Offset: 0},
+			},
+		)
+		require.NoError(t, err)
+		got := make([]string, 0, len(result.Items))
+		for _, item := range result.Items {
+			got = append(got, item.ID)
+		}
+		assert.ElementsMatch(t, want, got, "term %q", term)
+	}
 }
 
 func TestProductRepositorySearchByTenantIDScopesToTenant(t *testing.T) {

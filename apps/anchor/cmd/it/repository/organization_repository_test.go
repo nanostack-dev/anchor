@@ -274,9 +274,8 @@ func TestOrganizationRepositorySearchByProductIDFullTextSearch(t *testing.T) {
 	_, err = repoCtx.OrganizationRepository.Create(context.Background(), other)
 	require.NoError(t, err)
 
-	// The filter is a plain SQL LIKE (see jetx.BuildFullTextSearchFilter), not
-	// tsvector — it is case-sensitive, so the term must match the stored case.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.OrganizationRepository.SearchByProductID(
 		context.Background(), productID,
 		search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization]{

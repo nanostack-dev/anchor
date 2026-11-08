@@ -18,6 +18,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/permission"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
@@ -179,8 +180,11 @@ func (r *productPermissionRepositoryImpl) SearchByProduct(
 
 	if input.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			table.ProductPermissions.Name.LIKE(postgres.String("%" + *input.FullTextSearch + "%")).
-				OR(table.ProductPermissions.Description.LIKE(postgres.String("%" + *input.FullTextSearch + "%"))),
+			searchx.Contains(
+				*input.FullTextSearch,
+				table.ProductPermissions.Name,
+				table.ProductPermissions.Description,
+			),
 		)
 	}
 

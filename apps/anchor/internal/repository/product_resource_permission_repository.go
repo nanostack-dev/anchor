@@ -18,6 +18,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
@@ -170,11 +171,10 @@ func (r *productResourcePermissionRepository) SearchByProduct(
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	whereStmt := table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))
 	if input.FullTextSearch != nil {
-		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
-		whereStmt = whereStmt.AND(
-			postgres.LOWER(table.ProductResourcePermissions.Name).LIKE(pattern).
-				OR(postgres.LOWER(table.ProductResourcePermissions.Description).LIKE(pattern)),
-		)
+		whereStmt = whereStmt.AND(searchx.Contains(
+			*input.FullTextSearch,
+			table.ProductResourcePermissions.Name, table.ProductResourcePermissions.Description,
+		))
 	}
 
 	if input.Filter != nil {

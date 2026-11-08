@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -17,6 +16,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
+	"anchor/internal/searchx"
 )
 
 var _ TemplateRepository = (*templateRepositoryImpl)(nil)
@@ -108,9 +108,7 @@ func (r *templateRepositoryImpl) Search(
 		where = where.AND(table.LicenseTemplates.Status.IN(jetx.ToStringExpressions(statuses)...))
 	}
 	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		where = where.AND(literalSubstringFilter(
-			[]postgres.ColumnString{table.LicenseTemplates.Name, table.LicenseTemplates.Description}, *term,
-		))
+		where = where.AND(searchx.Contains(*term, table.LicenseTemplates.Name, table.LicenseTemplates.Description))
 	}
 
 	order, err := transactor.StrictKeys(
@@ -204,19 +202,4 @@ func (r *templateRepositoryImpl) Delete(
 			AND(table.LicenseTemplates.ID.EQ(postgres.String(templateID))),
 	)
 	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-// literalSubstringFilter matches term as a case-insensitive, literal
-// substring of any column: the matching the license template table offered
-// when it filtered on the client. A NULL column simply does not match.
-func literalSubstringFilter(columns []postgres.ColumnString, term string) postgres.BoolExpression {
-	// Escape the LIKE metacharacters, with backslash as Postgres's default
-	// escape character, so the term matches literally.
-	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term))
-	pattern := postgres.String("%" + escaped + "%")
-	conditions := make([]postgres.BoolExpression, 0, len(columns))
-	for _, column := range columns {
-		conditions = append(conditions, postgres.LOWER(column).LIKE(pattern))
-	}
-	return jetx.CombineFiltersWithOr(conditions...)
 }

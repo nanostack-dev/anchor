@@ -516,10 +516,8 @@ func (r *productRoleRepositoryImpl) search(
 ) (search.Result[role.ProductRole], error) {
 	whereStmt := inProduct(productID).AND(visible)
 	if input.FullTextSearch != nil {
-		pattern := postgres.String("%" + strings.ToLower(*input.FullTextSearch) + "%")
 		whereStmt = whereStmt.AND(
-			postgres.LOWER(table.ProductRoles.Name).LIKE(pattern).
-				OR(postgres.LOWER(table.ProductRoles.Description).LIKE(pattern)),
+			searchx.Contains(*input.FullTextSearch, table.ProductRoles.Name, table.ProductRoles.Description),
 		)
 	}
 
@@ -639,19 +637,13 @@ func roleSearchFilterCondition(
 	if len(filter.NameSubstrings) > 0 {
 		substrings := functional.Slice(filter.NameSubstrings).Map(
 			func(name string) postgres.BoolExpression {
-				return postgres.LOWER(table.ProductRoles.Name).LIKE(
-					postgres.String(roleNameLikePattern(name)),
-				)
+				return searchx.Contains(name, table.ProductRoles.Name)
 			},
 		)
 		condition = condition.AND(postgres.OR(substrings...))
 	}
 	if filter.NameContains != nil {
-		condition = condition.AND(
-			postgres.LOWER(table.ProductRoles.Name).LIKE(
-				postgres.String(roleNameLikePattern(*filter.NameContains)),
-			),
-		)
+		condition = condition.AND(searchx.Contains(*filter.NameContains, table.ProductRoles.Name))
 	}
 	if filter.Scopes.Active() {
 		condition = condition.AND(scopeCondition(table.ProductRoles.ResourceTypeID, filter.Scopes))
@@ -668,14 +660,6 @@ func roleSearchFilterCondition(
 		))
 	}
 	return condition
-}
-
-// roleNameLikePattern builds the case-insensitive substring pattern the name
-// filters match. % and _ match themselves under PostgreSQL's default LIKE
-// escape character.
-func roleNameLikePattern(term string) string {
-	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term))
-	return "%" + escaped + "%"
 }
 
 // findOne runs the shared row-and-permissions query. Each caller passes its

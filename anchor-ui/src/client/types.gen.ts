@@ -55,7 +55,7 @@ export type PagedListResponse = {
 export type SearchRequest = {
     pagination?: PaginationRequest;
     /**
-     * Full-text search term to match against searchable fields.
+     * Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
      */
     full_text_search?: string;
     sort_direction?: SortDirection;

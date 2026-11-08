@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -17,6 +16,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/resourcetype"
+	"anchor/internal/searchx"
 )
 
 var (
@@ -208,11 +208,9 @@ func (r *repositoryImpl) Search(
 ) (search.Result[resourcetype.ResourceType], error) {
 	where := table.ProductResourceTypes.ProductID.EQ(postgres.String(productID))
 	if request.FullTextSearch != nil {
-		pattern := postgres.String("%" + strings.ToLower(*request.FullTextSearch) + "%")
-		where = where.AND(
-			postgres.LOWER(table.ProductResourceTypes.Name).LIKE(pattern).
-				OR(table.ProductResourceTypes.Slug.LIKE(pattern)),
-		)
+		where = where.AND(searchx.Contains(
+			*request.FullTextSearch, table.ProductResourceTypes.Name, table.ProductResourceTypes.Slug,
+		))
 	}
 	if request.Filter != nil {
 		if len(request.Filter.IDs) > 0 {

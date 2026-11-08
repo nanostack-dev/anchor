@@ -10,6 +10,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/product/user"
+	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
@@ -329,8 +330,7 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 
 	if request.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			table.ProductUsers.Name.LIKE(postgres.String("%" + *request.FullTextSearch + "%")).
-				OR(table.ProductUsers.Email.LIKE(postgres.String("%" + *request.FullTextSearch + "%"))),
+			searchx.Contains(*request.FullTextSearch, table.ProductUsers.Name, table.ProductUsers.Email),
 		)
 	}
 

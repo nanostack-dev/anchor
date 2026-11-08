@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -20,6 +19,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
+	"anchor/internal/searchx"
 )
 
 // Node is one resource of a chain or a subtree, with its distance from the
@@ -373,8 +373,7 @@ func filterCondition(productID, organizationID string, filter resource.Filter) p
 		condition = condition.AND(table.Resources.ExternalID.IN(jetx.ToStringExpressions(filter.IDs)...))
 	}
 	if filter.NameContains != nil {
-		pattern := "%" + escapeLike(strings.ToLower(*filter.NameContains)) + "%"
-		condition = condition.AND(postgres.LOWER(table.Resources.Name).LIKE(postgres.String(pattern)))
+		condition = condition.AND(searchx.Contains(*filter.NameContains, table.Resources.Name))
 	}
 	return condition
 }
@@ -399,10 +398,4 @@ func parentCondition(productID, organizationID string, parent resource.Ref) post
 				)),
 		),
 	)
-}
-
-// escapeLike makes % and _ match themselves under PostgreSQL's default LIKE
-// escape character.
-func escapeLike(text string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(text)
 }

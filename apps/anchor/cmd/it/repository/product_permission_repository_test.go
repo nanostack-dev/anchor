@@ -282,9 +282,8 @@ func TestProductPermissionRepositorySearchByProductFullTextSearch(t *testing.T) 
 	otherDescription := "Grants write access to billing resources"
 	_ = createProductPermission(t, productID, uniqueName(t, "Billing:write"), &otherDescription)
 
-	// The filter is a plain SQL LIKE, not tsvector — it is case-sensitive, so
-	// the term must match the stored case exactly.
-	term := "Atlas"
+	// Search ignores case, so a lower-case term finds the capitalised record.
+	term := "atlas"
 	result, err := repoCtx.ProductPermissionRepository.SearchByProduct(
 		context.Background(), productID,
 		search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]{
