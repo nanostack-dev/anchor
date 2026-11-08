@@ -1,3 +1,5 @@
+// Package resource wires the registry of a product's own resources
+// (ADR-0022 B1-B4).
 package resource
 
 import (

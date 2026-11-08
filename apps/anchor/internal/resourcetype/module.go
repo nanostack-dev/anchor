@@ -1,3 +1,4 @@
+// Package resourcetype wires a product's tree of resource types (ADR-0022).
 package resourcetype
 
 import (

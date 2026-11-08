@@ -1,3 +1,5 @@
+// Package roleassignment wires the roles members hold on registered resources
+// (ADR-0022 D3, D4).
 package roleassignment
 
 import (
