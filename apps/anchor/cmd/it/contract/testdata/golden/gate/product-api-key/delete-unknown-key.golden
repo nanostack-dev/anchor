@@ -1,0 +1,16 @@
+# anchor: product-api-key / Delete Unknown Key (404)
+request: DELETE /v1/products/{{create-product.productId}}/api-keys/pak_<id>
+request-headers: Authorization, Content-Type
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-api-key/delete-unknown-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_NOT_FOUND","message":"This product has no API key with that identifier"}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"This product has no API key with that identifier","level":"info","message":"Request error","method":"DELETE","path":"/v1/products/{{create-product.productId}}/api-keys/pak_<id>","principal_type":"user","request_id":"ct/product-api-key/delete-unknown-key","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/api-keys/pak_<id> -> 404 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/api-keys/pak_<id>","principal_type":"user","request_id":"ct/product-api-key/delete-unknown-key","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

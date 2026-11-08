@@ -1,0 +1,16 @@
+# anchor: organization roles / Delete Managed Role Through Acme (409 ROLE_NOT_EDITABLE)
+request: DELETE /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}}
+request-headers: Authorization, Content-Type
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-roles/delete-managed
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_NOT_EDITABLE","message":"The product manages this role. Only the product can change or delete it."}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"The product manages this role. Only the product can change or delete it.","level":"info","message":"Request error","method":"DELETE","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}}","principal_type":"user","request_id":"ct/organization-roles/delete-managed","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}} -> 409 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}}","principal_type":"user","request_id":"ct/organization-roles/delete-managed","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

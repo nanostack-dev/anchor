@@ -1,0 +1,15 @@
+# anchor: product-api-key / Replaced Set Drops The Old Scope (403)
+request: POST /v1/products/{{create-product.productId}}/organizations/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-api-key/mutable-lost-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"{{create-mutable-key.mkid}}","current_scopes":["product_user:read"],"required_scopes":["organization:read"]}}]}
+
+logs: 0 line(s)

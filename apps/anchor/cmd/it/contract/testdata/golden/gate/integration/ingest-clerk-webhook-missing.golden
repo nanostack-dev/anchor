@@ -1,0 +1,17 @@
+# anchor: integration / Ingest Clerk Webhook Missing Integration (404)
+request: POST /v1/products/{{create-product.productId}}/integrations/webhooks/CLERK
+request-headers: Authorization, Content-Type
+request-body: {}
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/integration/ingest-clerk-webhook-missing
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INTEGRATION_INSTANCE_NOT_FOUND","message":"Integration instance not found"}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","error":"Integration instance not found","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/integrations/webhooks/CLERK","request_id":"ct/integration/ingest-clerk-webhook-missing","status":404,"time":"<time>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/products/{{create-product.productId}}/integrations/webhooks/CLERK -> 404 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/integrations/webhooks/CLERK","request_body":"<present>","request_id":"ct/integration/ingest-clerk-webhook-missing","status":404,"time":"<time>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,17 @@
+# anchor: organization-api-key / Introspect An Unknown Key (404)
+request: POST /v1/products/{{create-product.productId}}/auth/introspect
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"api_key": "anchor_org_apikey_doesnotexist_00000000"}
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/introspect-unknown
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_API_KEY_NOT_FOUND","message":"This product has no organization API key matching that credential"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","caller":"<file>.go:<line>","env":"development","error":"This product has no organization API key matching that credential","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/auth/introspect","principal_type":"api_key","request_id":"ct/organization-api-key/introspect-unknown","status":404,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/auth/introspect -> 404 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/auth/introspect","principal_type":"api_key","request_id":"ct/organization-api-key/introspect-unknown","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

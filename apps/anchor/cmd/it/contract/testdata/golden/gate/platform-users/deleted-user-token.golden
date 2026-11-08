@@ -1,0 +1,14 @@
+# anchor: platform-users / Deleted User's Token Is Refused (401)
+request: GET /v1/me
+request-headers: Authorization, Content-Type
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/platform-users/deleted-user-token
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

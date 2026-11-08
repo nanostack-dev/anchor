@@ -1,0 +1,15 @@
+# anchor: access isolation and privilege changes / IDOR other Product · Evaluate Dan on Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY
+request: POST /v1/products/{{product-acme.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "ext-iso-dan-{{$runId}}"}, "resource": {"type": "folder", "id": "design", "properties": {"organization_id": "{{org-acme.orgId}}"}}, "action": {"name": "folder:edit"}}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/other-evaluate
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_PRODUCT_API_KEY","message":"The product API key is invalid."}]}
+
+logs: 0 line(s)

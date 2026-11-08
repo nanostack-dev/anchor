@@ -1,0 +1,14 @@
+# anchor: invitations / Withdraw With A Read-Only Key (403)
+request: DELETE /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/delete-read-only
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"product_apikey_<id>","current_scopes":["organization_invitation:read"],"required_scopes":["organization_invitation:delete"]}}]}
+
+logs: 0 line(s)

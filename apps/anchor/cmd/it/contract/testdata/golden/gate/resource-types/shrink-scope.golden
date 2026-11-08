@@ -1,0 +1,17 @@
+# anchor: resource types / Move folder Out Of project (409 RESOURCE_TYPE_IN_USE, role_ids)
+request: PATCH /v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}}
+request-headers: Authorization, Content-Type
+request-body: {"parent_types": ["organization"]}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resource-types/shrink-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"RESOURCE_TYPE_IN_USE","message":"Managed roles would hold permissions outside their scope if folder changed this way. Remove those permissions from the roles first.","metadata":{"blocked_by":{"roles":1},"role_ids":["{{role-project.rid}}"],"slug":"folder"}}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"Managed roles would hold permissions outside their scope if folder changed this way. Remove those permissions from the roles first.","level":"info","message":"Request error","method":"PATCH","path":"/v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}}","principal_type":"user","request_id":"ct/resource-types/shrink-scope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PATCH /v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}} -> 409 (<duration>)","method":"PATCH","path":"/v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}}","principal_type":"user","request_body":"<present>","request_id":"ct/resource-types/shrink-scope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

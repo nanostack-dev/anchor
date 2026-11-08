@@ -1,0 +1,17 @@
+# anchor: organization roles / Custom Role While Switch Off (400 CUSTOM_ROLES_DISABLED)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-billing", "resource_type": "organization", "permissions": ["bill:read"]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-roles/custom-off
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"CUSTOM_ROLES_DISABLED","message":"This product doesn't allow custom roles on that resource type."}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"This product doesn't allow custom roles on that resource type.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles","principal_type":"user","request_id":"ct/organization-roles/custom-off","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles","principal_type":"user","request_body":"<present>","request_id":"ct/organization-roles/custom-off","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

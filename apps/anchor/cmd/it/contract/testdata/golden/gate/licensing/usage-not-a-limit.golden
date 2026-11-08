@@ -1,0 +1,17 @@
+# anchor: licensing / Usage On Non-Limit (400)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage
+request-headers: Authorization, Content-Type
+request-body: {"key":"sso","value":1}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/usage-not-a-limit
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"LICENSE_FIELD_NOT_A_LIMIT","message":"Usage can only be reported against a limit, and the license field sso is not one","field":"sso","metadata":{"type":"BOOLEAN"}}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"Usage can only be reported against a limit, and the license field sso is not one","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage","principal_type":"user","request_id":"ct/licensing/usage-not-a-limit","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/usage-not-a-limit","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

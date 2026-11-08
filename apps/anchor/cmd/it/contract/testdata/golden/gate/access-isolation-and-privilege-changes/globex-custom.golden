@@ -1,0 +1,17 @@
+# anchor: access isolation and privilege changes / IDOR Globex · Give Dan Globex's custom role on Design → 400 ROLE_NOT_FOUND_IN_REQUEST
+request: PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{custom-globex.id}}"]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/globex-custom
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_NOT_FOUND_IN_REQUEST","message":"This product has no role with that identifier.","metadata":{"role_id":"{{custom-globex.id}}"}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","caller":"<file>.go:<line>","env":"development","error":"This product has no role with that identifier.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}","principal_type":"api_key","request_id":"ct/access-isolation-and-privilege-changes/globex-custom","status":400,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}} -> 400 (<duration>)","method":"PUT","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/globex-custom","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,17 @@
+# anchor: resource types / Move folder:read To project (409 PERMISSION_SCOPE_IMMUTABLE)
+request: PUT /v1/products/{{create-product.productId}}/resource-permissions/folder:read
+request-headers: Authorization, Content-Type
+request-body: {"description": "x", "resource_type": "project"}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resource-types/perm-rescope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PERMISSION_SCOPE_IMMUTABLE","message":"A permission's resource type can't change. Create a permission with the new scope, add it to the roles, then delete this one."}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"A permission's resource type can't change. Create a permission with the new scope, add it to the roles, then delete this one.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/resource-permissions/folder:read","principal_type":"user","request_id":"ct/resource-types/perm-rescope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/resource-permissions/folder:read -> 409 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/resource-permissions/folder:read","principal_type":"user","request_body":"<present>","request_id":"ct/resource-types/perm-rescope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

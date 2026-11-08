@@ -1,0 +1,16 @@
+# anchor: roles / Unassign Unknown Permission (404)
+request: DELETE /v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/nope:nope
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/roles/unassign-unknown-perm
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"RESOURCE_PERMISSION_NOT_FOUND","message":"Resource permission does not exist","metadata":{"permission_name":"nope:nope","product_id":"{{create-product.productId}}"}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","caller":"<file>.go:<line>","env":"development","error":"Resource permission does not exist","level":"info","message":"Request error","method":"DELETE","path":"/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/nope:nope","principal_type":"api_key","request_id":"ct/roles/unassign-unknown-perm","status":404,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/nope:nope -> 404 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/nope:nope","principal_type":"api_key","request_id":"ct/roles/unassign-unknown-perm","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

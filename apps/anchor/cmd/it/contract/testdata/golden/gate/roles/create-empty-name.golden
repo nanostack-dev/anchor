@@ -1,0 +1,17 @@
+# anchor: roles / Create Empty Name (400)
+request: POST /v1/products/{{create-product.productId}}/roles
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "", "resource_type": "organization"}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/roles/create-empty-name
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"VALIDATION_ERROR","message":"Name is a required field","metadata":{"field":"Name","param":"","rule":"required","value":""}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","caller":"<file>.go:<line>","env":"development","error":"Name is a required field","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/roles","principal_type":"api_key","request_id":"ct/roles/create-empty-name","status":400,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/roles -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/roles","principal_type":"api_key","request_body":"<present>","request_id":"ct/roles/create-empty-name","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

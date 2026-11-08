@@ -1,0 +1,17 @@
+# anchor: product-api-key / Immutable Key Refuses New Permissions (400)
+request: PUT /v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-immkey", "permissions": ["product_user:read"]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-api-key/update-immutable-perms
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_PERMISSIONS_IMMUTABLE","message":"You cannot change product API key permissions after creation.","metadata":{"api_key_id":"{{create-immutable-key.kid}}"}}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"You cannot change product API key permissions after creation.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}","principal_type":"user","request_id":"ct/product-api-key/update-immutable-perms","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}} -> 400 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}","principal_type":"user","request_body":"<present>","request_id":"ct/product-api-key/update-immutable-perms","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

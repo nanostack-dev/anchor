@@ -1,0 +1,15 @@
+# anchor: organization-api-key / Search With An Unknown Product Key (401)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/unknown-product-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_PRODUCT_API_KEY","message":"The product API key is invalid."}]}
+
+logs: 0 line(s)

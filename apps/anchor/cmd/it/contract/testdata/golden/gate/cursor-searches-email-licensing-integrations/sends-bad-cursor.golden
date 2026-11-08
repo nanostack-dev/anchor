@@ -1,0 +1,17 @@
+# anchor: cursor searches — email & licensing & integrations / Email Sends: malformed cursor (400 INVALID_CURSOR)
+request: POST /v1/products/{{create-product.productId}}/email/sends/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":2,"cursor":"not-a-cursor"}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/sends-bad-cursor
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_CURSOR","message":"The cursor is invalid for this search. Restart without a cursor, or send back the next_cursor of the previous page with the same sort.","field":"pagination.cursor"}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"search: invalid cursor: not a cursor payload","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/email/sends/search","principal_type":"user","request_id":"ct/cursor-searches-email-licensing-integrations/sends-bad-cursor","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/sends/search -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/sends/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/sends-bad-cursor","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

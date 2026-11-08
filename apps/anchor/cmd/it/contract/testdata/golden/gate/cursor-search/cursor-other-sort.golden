@@ -1,0 +1,17 @@
+# anchor: cursor search / Cursor Of Another Sort (400 INVALID_CURSOR)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"sort_by": "name", "sort_direction": "DESC", "pagination": {"limit": 2, "cursor": "{{p1.cursor}}"}, "filter": {"resource_types": ["workspace"]}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-search/cursor-other-sort
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_CURSOR","message":"The cursor is invalid for this search. Restart without a cursor, or send back the next_cursor of the previous page with the same sort.","field":"pagination.cursor"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-cursor-key","caller":"<file>.go:<line>","env":"development","error":"search: invalid cursor: issued for a different sort","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search","principal_type":"api_key","request_id":"ct/cursor-search/cursor-other-sort","status":400,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-cursor-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/cursor-search/cursor-other-sort","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

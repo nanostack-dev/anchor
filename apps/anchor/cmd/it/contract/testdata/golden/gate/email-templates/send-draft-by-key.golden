@@ -1,0 +1,17 @@
+# anchor: email-templates / Product Key Sends use_draft (403 EMAIL_DRAFT_SEND_FORBIDDEN)
+request: POST /v1/products/{{create-product.productId}}/email/sends
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"template_slug": "eptest-nope-{{$runId}}", "to_address": "garbage+draft-{{$runId}}@nanostack.dev", "use_draft": true}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/email-templates/send-draft-by-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"EMAIL_DRAFT_SEND_FORBIDDEN","message":"A product API key sends the published version; use_draft needs a platform user."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-email-send-key","caller":"<file>.go:<line>","env":"development","error":"A product API key sends the published version; use_draft needs a platform user.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/email/sends","principal_type":"api_key","request_id":"ct/email-templates/send-draft-by-key","status":403,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-email-send-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/sends -> 403 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/sends","principal_type":"api_key","request_body":"<present>","request_id":"ct/email-templates/send-draft-by-key","status":403,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

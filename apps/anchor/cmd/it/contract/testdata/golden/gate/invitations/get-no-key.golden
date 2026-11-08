@@ -1,0 +1,14 @@
+# anchor: invitations / Get Without A Key (401)
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}
+request-headers: Content-Type
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/get-no-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

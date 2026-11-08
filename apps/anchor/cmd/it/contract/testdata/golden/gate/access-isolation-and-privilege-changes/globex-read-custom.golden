@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / IDOR Globex · Read Acme's custom role through Globex → 404 ROLE_NOT_FOUND
+request: GET /v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/globex-read-custom
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_NOT_FOUND","message":"This product has no role with that identifier"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","caller":"<file>.go:<line>","env":"development","error":"This product has no role with that identifier","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}}","principal_type":"api_key","request_id":"ct/access-isolation-and-privilege-changes/globex-read-custom","status":404,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}} -> 404 (<duration>)","method":"GET","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles/{{custom-acme.id}}","principal_type":"api_key","request_id":"ct/access-isolation-and-privilege-changes/globex-read-custom","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

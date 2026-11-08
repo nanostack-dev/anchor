@@ -1,0 +1,17 @@
+# anchor: resources — registry, roles on resources, access / Roles on resources · Refuse a project role on a folder → 400 ROLE_SCOPE_MISMATCH
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/design/members/{{user-ana.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{role-project-admin.id}}"]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/assign-mismatch
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_SCOPE_MISMATCH","message":"Role {{role-project-admin.id}} is scoped to project, so it can't be held on a folder.","metadata":{"resource_type":"folder","role_id":"{{role-project-admin.id}}","role_resource_type":"project"}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-res-key","caller":"<file>.go:<line>","env":"development","error":"Role {{role-project-admin.id}} is scoped to project, so it can't be held on a folder.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/design/members/{{user-ana.id}}","principal_type":"api_key","request_id":"ct/resources-registry-roles-on-resources-access/assign-mismatch","status":400,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-res-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/design/members/{{user-ana.id}} -> 400 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/design/members/{{user-ana.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/resources-registry-roles-on-resources-access/assign-mismatch","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,15 @@
+# anchor: resources — registry, roles on resources, access / Registry · Refuse a write with the read-only key → 403
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/project/readonly
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "Read only", "parent": {"type": "organization", "id": "{{create-org.orgId}}"}}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/read-key-put
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"product_apikey_<id>","current_scopes":["resource:read"],"required_scopes":["resource:write"]}}]}
+
+logs: 0 line(s)

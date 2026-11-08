@@ -1,0 +1,15 @@
+# anchor: organization-member / Add With A Read-Only Key (403)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"product_user_id":"{{create-outsider.uid}}","role_id":"{{create-role-one.r1}}"}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-member/add-read-only
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"product_apikey_<id>","current_scopes":["organization_member:read"],"required_scopes":["organization_member:create"]}}]}
+
+logs: 0 line(s)

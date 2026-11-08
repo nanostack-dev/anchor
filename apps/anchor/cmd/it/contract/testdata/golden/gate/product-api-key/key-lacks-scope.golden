@@ -1,0 +1,15 @@
+# anchor: product-api-key / Key Calls A Route Outside Its Scopes (403)
+request: POST /v1/products/{{create-product.productId}}/organizations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-forbidden-org"}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-api-key/key-lacks-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"{{create-immutable-key.kid}}","current_scopes":["organization:read"],"required_scopes":["organization:create"]}}]}
+
+logs: 0 line(s)

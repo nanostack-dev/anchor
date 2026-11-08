@@ -1,0 +1,17 @@
+# anchor: resource types / Move Role To folder (409 ROLE_SCOPE_IMMUTABLE)
+request: PUT /v1/products/{{create-product.productId}}/roles/{{role-project.rid}}
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-project-viewer", "resource_type": "folder"}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resource-types/role-rescope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_SCOPE_IMMUTABLE","message":"A role's resource type can't change. Create a role with the new scope instead."}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"A role's resource type can't change. Create a role with the new scope instead.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/roles/{{role-project.rid}}","principal_type":"user","request_id":"ct/resource-types/role-rescope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/roles/{{role-project.rid}} -> 409 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/roles/{{role-project.rid}}","principal_type":"user","request_body":"<present>","request_id":"ct/resource-types/role-rescope","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

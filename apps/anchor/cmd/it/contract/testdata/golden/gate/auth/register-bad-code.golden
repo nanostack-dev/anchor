@@ -1,0 +1,17 @@
+# anchor: auth / Register With An Unknown Code (400)
+request: POST /v1/auth/register
+request-headers: Content-Type
+request-body: {"email": "garbage+<uuid>@nanostack.dev", "password": "Ep!{{$runId}}Aa1", "invitation_code": "00000000000000000000000000000000"}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/auth/register-bad-code
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVITATION_CODE_IS_INVALID","message":"The invitation code is invalid."}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","error":"failed to handle invitation: The invitation code is invalid.","level":"info","message":"Request error","method":"POST","path":"/v1/auth/register","request_id":"ct/auth/register-bad-code","status":400,"time":"<time>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/register -> 400 (<duration>)","method":"POST","path":"/v1/auth/register","request_body":"<present>","request_id":"ct/auth/register-bad-code","status":400,"time":"<time>","user_agent":"anchor-contract/1"}

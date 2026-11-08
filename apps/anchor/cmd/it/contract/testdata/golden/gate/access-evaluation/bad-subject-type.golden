@@ -1,0 +1,17 @@
+# anchor: access evaluation / Unknown Subject Type (400)
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "service_account", "id": "x"}, "resource": {"type": "organization", "id": "{{org-a.orgId}}"}, "action": {"name": "acc:read"}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/bad-subject-type
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"VALIDATION_ERROR","message":"Type must be one of [user organization_api_key]","metadata":{"field":"Type","param":"user organization_api_key","rule":"oneof","value":"service_account"}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","caller":"<file>.go:<line>","env":"development","error":"Type must be one of [user organization_api_key]","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation/bad-subject-type","status":400,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluation -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation/bad-subject-type","status":400,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

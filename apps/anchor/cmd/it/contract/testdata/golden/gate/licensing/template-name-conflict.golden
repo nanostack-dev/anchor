@@ -1,0 +1,17 @@
+# anchor: licensing / Duplicate Template Name (409)
+request: POST /v1/products/{{create-product.productId}}/licensing/templates
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-tier-a-{{$runId}}","values":{"flows":1,"sso":false}}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/template-name-conflict
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"LICENSE_TEMPLATE_NAME_EXISTS","message":"This product already has a license template named eptest-tier-a-{{$runId}}","field":"name"}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"This product already has a license template named eptest-tier-a-{{$runId}}","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/licensing/templates","principal_type":"user","request_id":"ct/licensing/template-name-conflict","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/licensing/templates -> 409 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/licensing/templates","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/template-name-conflict","status":409,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

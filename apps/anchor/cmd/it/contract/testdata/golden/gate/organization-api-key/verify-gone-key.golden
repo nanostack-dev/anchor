@@ -1,0 +1,16 @@
+# anchor: organization-api-key / Deleted Org Key (404)
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/verify-gone-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_API_KEY_NOT_FOUND","message":"This organization has no API key with that identifier"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","caller":"<file>.go:<line>","env":"development","error":"This organization has no API key with that identifier","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}}","principal_type":"api_key","request_id":"ct/organization-api-key/verify-gone-key","status":404,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}} -> 404 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}}","principal_type":"api_key","request_id":"ct/organization-api-key/verify-gone-key","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

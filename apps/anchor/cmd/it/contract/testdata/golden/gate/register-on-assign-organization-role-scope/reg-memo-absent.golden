@@ -1,0 +1,16 @@
+# anchor: register on assign & organization role scope / Register on assign · memo stays unregistered → 404 RESOURCE_NOT_FOUND
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/reg-memo-absent
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"RESOURCE_NOT_FOUND","message":"This organization has no registered resource of that type and identifier."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-key","caller":"<file>.go:<line>","env":"development","error":"This organization has no registered resource of that type and identifier.","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo","principal_type":"api_key","request_id":"ct/register-on-assign-organization-role-scope/reg-memo-absent","status":404,"tenant_id":"tenant_<id>","time":"<time>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo -> 404 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo","principal_type":"api_key","request_id":"ct/register-on-assign-organization-role-scope/reg-memo-absent","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

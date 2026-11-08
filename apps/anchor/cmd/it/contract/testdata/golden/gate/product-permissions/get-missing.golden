@@ -1,0 +1,16 @@
+# anchor: product-permissions / Get Unknown Permission (404)
+request: GET /v1/products/{{create-product.productId}}/permissions/nonexistent:scope
+request-headers: Authorization, Content-Type
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-permissions/get-missing
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PERMISSION_NOT_FOUND","message":"Permission does not exist"}]}
+
+logs: 2 line(s)
+{"caller":"<file>.go:<line>","env":"development","error":"Permission does not exist","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{create-product.productId}}/permissions/nonexistent:scope","principal_type":"user","request_id":"ct/product-permissions/get-missing","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_id":"user_<id>"}
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/permissions/nonexistent:scope -> 404 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/permissions/nonexistent:scope","principal_type":"user","request_id":"ct/product-permissions/get-missing","status":404,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

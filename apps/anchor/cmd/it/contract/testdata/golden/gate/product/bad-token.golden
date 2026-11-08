@@ -1,0 +1,14 @@
+# anchor: product / Get Product With A Malformed Token (401)
+request: GET /v1/products/{{create-product.productId}}
+request-headers: Authorization, Content-Type
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product/bad-token
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)
