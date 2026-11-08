@@ -83,6 +83,8 @@ Every persisted resource that the API returns as a collection has a search opera
 
 **Shape.** `POST /<collection>/search`, with `filter`, `sort`, optional full-text and `pagination` in the body. Nest the route under the parent when the parent scopes the collection (`/organizations/{organization_id}/members/search`). The response carries `items`, `total`, `count` and `next_cursor`.
 
+**Free-text matching.** Every free-text filter (`full_text_search`, `name_contains` and the like) matches a case-insensitive, literal substring: `%` and `_` match themselves. Build it with `searchx.Contains`. A ruleguard rule reports a raw `LIKE` or `jetx.BuildSubstringFilter` anywhere else.
+
 **Cursor contract.**
 
 - `pagination.cursor` is optional. Absent starts at the first row. Send back the previous response's `next_cursor` to continue, with the same filter and sort.

@@ -683,7 +683,7 @@ type EmailSendSearchRequest struct {
 	// Filter Narrows a search over a product's email send records.
 	Filter *EmailSendFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -789,7 +789,7 @@ type EmailTemplateSearchRequest struct {
 	// Filter Narrows a search over a product's email templates.
 	Filter *EmailTemplateFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -943,7 +943,7 @@ type IntegrationAuditLogSearchRequest struct {
 	// Filter Narrows the audit log entries of one integration instance.
 	Filter *IntegrationAuditLogFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1228,7 +1228,7 @@ type LicenseTemplateSearchRequest struct {
 	// Filter Narrows a search over a product's license templates.
 	Filter *LicenseTemplateFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1407,7 +1407,7 @@ type OrganizationAPIKeySearchRequest struct {
 	// Filter Filter criteria for organization API keys
 	Filter *OrganizationAPIKeyFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1561,7 +1561,7 @@ type OrganizationInvitationSearchRequest struct {
 	// Filter Filter criteria for organization invitations.
 	Filter *OrganizationInvitationFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1692,7 +1692,7 @@ type OrganizationLicenseHistorySearchRequest struct {
 	// Filter Narrows the history of one organization's license.
 	Filter *OrganizationLicenseHistoryFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1804,7 +1804,7 @@ type OrganizationLicenseSearchRequest struct {
 	// Filter Narrows a search over a product's organizations and the licenses they hold.
 	Filter *OrganizationLicenseFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1947,7 +1947,7 @@ type OrganizationMemberSearchRequest struct {
 	// Filter Filter criteria for organization members.
 	Filter *OrganizationMemberFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -1980,7 +1980,7 @@ type OrganizationRoleFilter struct {
 type OrganizationRoleSearchRequest struct {
 	Filter *OrganizationRoleFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2070,7 +2070,7 @@ type PlatformInvitationSearchRequest struct {
 	// Filter Filter criteria for platform invitations
 	Filter *PlatformInvitationFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2148,7 +2148,7 @@ type PlatformUserSearchRequest struct {
 	// Filter Filter criteria for platform invitations
 	Filter *PlatformUserFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2280,7 +2280,7 @@ type ProductAPIKeySearchRequest struct {
 	// Filter Filter criteria for product API keys
 	Filter *ProductAPIKeyFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2527,7 +2527,7 @@ type ProductOrganizationSearchRequest struct {
 	// Filter Filter criteria for organizations
 	Filter *OrganizationFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2583,7 +2583,7 @@ type ProductPermissionSearchRequest struct {
 	// Filter Filter criteria for app permissions
 	Filter *ProductPermissionFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2669,7 +2669,7 @@ type ProductResourcePermissionResponse struct {
 type ProductResourcePermissionSearchRequest struct {
 	Filter *ProductResourcePermissionFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2755,7 +2755,7 @@ type ProductResourceTypeResponse struct {
 type ProductResourceTypeSearchRequest struct {
 	Filter *ProductResourceTypeFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2952,7 +2952,7 @@ type ProductRoleSearchRequest struct {
 	// Filter Filter criteria for app roles
 	Filter *ProductRoleFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -2990,7 +2990,7 @@ type ProductSearchRequest struct {
 	// Filter Filter criteria for platform invitations
 	Filter *ProductFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -3076,7 +3076,7 @@ type ProductUserSearchRequest struct {
 	// Filter Filter criteria for product users
 	Filter *ProductUserFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -3288,7 +3288,7 @@ type ResourceTypeSlug = string
 
 // SearchRequest Generic search request template
 type SearchRequest struct {
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 
@@ -3554,7 +3554,7 @@ type UserOrganizationSearchRequest struct {
 	// Filter Narrows the organizations a product user belongs to.
 	Filter *UserOrganizationFilter `json:"filter,omitempty"`
 
-	// FullTextSearch Full-text search term to match against searchable fields.
+	// FullTextSearch Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves.
 	FullTextSearch *string            `json:"full_text_search,omitempty"`
 	Pagination     *PaginationRequest `json:"pagination,omitempty"`
 

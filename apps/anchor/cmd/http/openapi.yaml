@@ -353,7 +353,7 @@ components:
           $ref: "#/components/schemas/PaginationRequest"
         full_text_search:
           type: string
-          description: Full-text search term to match against searchable fields.
+          description: "Search term, matched as a case-insensitive, literal substring of the searchable fields: % and _ match themselves."
         sort_direction:
           $ref: "#/components/schemas/SortDirection"
       description: Generic search request template
