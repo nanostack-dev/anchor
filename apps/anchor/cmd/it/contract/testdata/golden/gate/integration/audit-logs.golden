@@ -1,0 +1,15 @@
+# anchor: integration / Audit Log Records Create And Update
+request: GET /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}/audit-logs
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/integration/audit-logs
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":2,"items":[{"action":"CONFIG_UPDATED","created_at":"<timestamp.frac>","id":"ial_<id>","integration_instance_id":"{{create-integration.iid}}","message":"Integration configuration updated","metadata":{"config_version":1,"status":"INACTIVE"},"severity":"INFO"},{"action":"INTEGRATION_CREATED","created_at":"<timestamp.frac>","id":"ial_<id>","integration_instance_id":"{{create-integration.iid}}","message":"Integration instance created","metadata":{"product_id":"{{create-product.productId}}","provider_type":"SMTP","status":"CONFIGURING"},"severity":"SUCCESS"}]}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}/audit-logs -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}/audit-logs","principal_type":"user","request_id":"ct/integration/audit-logs","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

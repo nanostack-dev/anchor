@@ -40,6 +40,11 @@ var suite struct {
 }
 
 func TestMain(m *testing.M) {
+	// Production runs in UTC containers. Without this, a time.Now() value the
+	// server serialises (licence migrated_at, the log time field) carries the
+	// developer's zone offset, and the goldens would depend on the machine.
+	time.Local = time.UTC //nolint:reassign // pin the server's zone to production's
+
 	// The framework logger writes to os.Stdout, captured when fx builds it.
 	// Point os.Stdout at a pipe until the app is up so every log line the
 	// server writes reaches the sink; the testing package gets the real

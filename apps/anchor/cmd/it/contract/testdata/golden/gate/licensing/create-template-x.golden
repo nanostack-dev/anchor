@@ -1,0 +1,16 @@
+# anchor: licensing / Create Template X (to archive)
+request: POST /v1/products/{{create-product.productId}}/licensing/templates
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-tier-x-{{$runId}}","values":{"flows":1,"sso":false}}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/create-template-x
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{create-template-x.templateXId}}","name":"eptest-tier-x-{{$runId}}","product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>","values":{"flows":1,"sso":false}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/licensing/templates -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/licensing/templates","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/create-template-x","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

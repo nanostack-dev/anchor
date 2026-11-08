@@ -1,0 +1,16 @@
+# anchor: register on assign & organization role scope / Org role scope · Invite with member → 201
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations
+request-headers: Authorization, Content-Type
+request-body: {"email": "garbage+eptest-regassign-inv2-{{$runId}}@nanostack.dev", "role_id": "{{role-member.id}}"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/scope-invite-ok
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","email":"garbage+eptest-regassign-inv2-{{$runId}}@nanostack.dev","expires_at":"{{scope-invite-ok.expiresAt}}","id":"{{scope-invite-ok.id}}","organization_id":"{{create-org.orgId}}","role_id":"{{role-member.id}}","status":"pending","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations","principal_type":"user","request_body":"<present>","request_id":"ct/register-on-assign-organization-role-scope/scope-invite-ok","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

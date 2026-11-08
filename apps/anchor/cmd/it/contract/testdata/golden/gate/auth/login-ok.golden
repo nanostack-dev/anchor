@@ -14,4 +14,4 @@ body:
 {"accessToken":"<jwt>","refreshToken":"<jwt>"}
 
 logs: 1 line(s)
-{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/login -> 200 (<duration>)","method":"POST","path":"/v1/auth/login","request_body":"<present>","request_id":"ct/auth/login-ok","status":200,"time":"<time>","user_agent":"anchor-contract/1"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/login -> 200 (<duration>)","method":"POST","path":"/v1/auth/login","request_body":"<present>","request_id":"ct/auth/login-ok","status":200,"time":"<time:timestamp>","user_agent":"anchor-contract/1"}

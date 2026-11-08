@@ -1,0 +1,16 @@
+# anchor: register on assign & organization role scope / Register on assign · The same key still assigns on a registered document → 200
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{role-doc-viewer.id}}"]}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/reg-member-key-assign
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","product_user_id":"{{user-dan.id}}","roles":[{"id":"{{role-doc-viewer.id}}","name":"eptest-doc-viewer"}],"updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-member","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/pricing/members/{{user-dan.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/register-on-assign-organization-role-scope/reg-member-key-assign","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

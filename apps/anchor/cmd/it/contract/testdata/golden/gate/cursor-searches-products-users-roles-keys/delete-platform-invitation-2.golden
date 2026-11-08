@@ -1,0 +1,13 @@
+# anchor: cursor searches — products, users, roles, keys / Delete Platform Invitation 2 (204)
+request: DELETE /v1/platform-invitations/{{platform-invitation-2.id}}
+request-headers: Authorization
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/delete-platform-invitation-2
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/platform-invitations/{{platform-invitation-2.id}} -> 204 (<duration>)","method":"DELETE","path":"/v1/platform-invitations/{{platform-invitation-2.id}}","principal_type":"user","request_id":"ct/cursor-searches-products-users-roles-keys/delete-platform-invitation-2","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

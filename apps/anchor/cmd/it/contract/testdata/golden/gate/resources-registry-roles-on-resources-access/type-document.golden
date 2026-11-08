@@ -1,0 +1,16 @@
+# anchor: resources — registry, roles on resources, access / Setup · Declare type Document under Folder → 201
+request: POST /v1/products/{{create-product.productId}}/resource-types
+request-headers: Authorization, Content-Type
+request-body: {"slug": "document", "name": "Document", "parent_types": ["folder"], "nests_in_itself": false}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/type-document
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"allows_custom_roles":false,"built_in":false,"created_at":"<timestamp.frac>","id":"{{type-document.id}}","name":"Document","nests_in_itself":false,"parent_types":["folder"],"product_id":"{{create-product.productId}}","slug":"document","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/resource-types -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/resource-types","principal_type":"user","request_body":"<present>","request_id":"ct/resources-registry-roles-on-resources-access/type-document","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

@@ -1,0 +1,15 @@
+# anchor: licensing / Get License A
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/get-license
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"adjusted_fields":[],"created_at":"<timestamp.frac>","id":"{{instantiate.licenseId}}","instantiated_at":"<timestamp.frac>","organization_id":"{{create-org-a.orgId}}","product_id":"{{create-product.productId}}","template_id":"{{create-template.templateId}}","updated_at":"<timestamp.frac>","usage":{"flows":{"limit":100,"status":"stale"}},"values":{"flows":100,"sso":false}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license","principal_type":"user","request_id":"ct/licensing/get-license","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

@@ -1,0 +1,15 @@
+# OPTIONS without the CORS preflight headers
+request: OPTIONS /v1/products
+request-headers: Authorization, Content-Type
+
+status: 405
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/seams/route-options-no-preflight
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+method not allowed
+
+logs: 0 line(s)

@@ -1,0 +1,16 @@
+# anchor: product-api-key / Key Calls An Allowed Route (200)
+request: POST /v1/products/{{create-product.productId}}/organizations/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-api-key/key-reads-orgs
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":0,"items":[],"total":0}
+
+logs: 1 line(s)
+{"api_key_id":"{{create-immutable-key.kid}}","api_key_name":"eptest-immkey","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/product-api-key/key-reads-orgs","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

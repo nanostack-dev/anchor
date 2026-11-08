@@ -1,0 +1,16 @@
+# anchor: organization roles / Priya Before Membership (NOT_A_MEMBER)
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "ext-priya-{{$runId}}"}, "resource": {"type": "organization", "id": "{{org-a.orgId}}"}, "action": {"name": "bill:read"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-roles/eval-1-before
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"reason":"NOT_A_MEMBER"},"decision":false}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-orgroles-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluation -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/organization-roles/eval-1-before","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

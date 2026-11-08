@@ -1,0 +1,15 @@
+# anchor: licensing / Get Schema
+request: GET /v1/products/{{create-product.productId}}/licensing/schema
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/get-schema
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","fields":[{"created_at":"<timestamp.frac>","id":"lfld_<id>","name":"flows","rules":{"min":0},"type":"LIMIT","updated_at":"<timestamp.frac>","usage_shape":"GAUGE"},{"created_at":"<timestamp.frac>","id":"lfld_<id>","name":"sso","rules":{},"type":"BOOLEAN","updated_at":"<timestamp.frac>"}],"id":"{{create-schema.schemaId}}","product_id":"{{create-product.productId}}","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/licensing/schema -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/licensing/schema","principal_type":"user","request_id":"ct/licensing/get-schema","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

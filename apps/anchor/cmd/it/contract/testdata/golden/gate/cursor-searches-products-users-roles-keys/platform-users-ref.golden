@@ -1,0 +1,16 @@
+# anchor: cursor searches — products, users, roles, keys / Platform users of the tenant: reference page (200)
+request: POST /v1/platform-users/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":100}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/platform-users-ref
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":2,"items":[{"created_at":"<timestamp.frac>","email":"garbage+contract-owner@nanostack.dev","id":"puser_<id>","role":"OWNER","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>","user_id":"user_<id>"},{"created_at":"<timestamp.frac>","email":"garbage+contract-admin@nanostack.dev","id":"puser_<id>","role":"ADMIN","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>","user_id":"user_<id>"}],"total":2}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/platform-users/search -> 200 (<duration>)","method":"POST","path":"/v1/platform-users/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-products-users-roles-keys/platform-users-ref","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

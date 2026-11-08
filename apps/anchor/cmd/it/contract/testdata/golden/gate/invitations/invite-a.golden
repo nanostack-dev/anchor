@@ -1,0 +1,16 @@
+# anchor: invitations / Invite A
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"email":"{{invite-a.email}}","role_id":"{{create-role.roleId}}"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/invite-a
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","email":"{{invite-a.email}}","expires_at":"<timestamp.frac>","id":"{{invite-a.invitationId}}","organization_id":"{{create-org.orgId}}","role_id":"{{create-role.roleId}}","status":"pending","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/invite-a","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

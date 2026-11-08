@@ -1,0 +1,16 @@
+# anchor: organization-api-key / Point Product Events At The Run Webhook (200)
+request: PUT /v1/products/{{create-product.productId}}
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-orgkey-{{$runId}}","config":{"events":{"endpoint_url":"{{webhook.url}}"}}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/set-endpoint
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config":{"events":{"consecutive_failed_calls":0,"delivery_status":"never_attempted","endpoint_url":"{{webhook.url}}","events":["clerk.user.created","clerk.user.deleted","clerk.user.updated","organization.api_key.created","organization.api_key.deleted","organization.api_key.updated","organization.created","organization.deleted","organization.invitation.accepted","organization.invitation.created","organization.invitation.deleted","organization.invitation.updated","organization.license.updated","organization.membership.created","organization.membership.deleted","organization.membership.updated","organization.role.created","organization.role.deleted","organization.role.updated","organization.updated","product.resource_permission.created","product.resource_permission.deleted","product.resource_permission.updated","product.resource_type.created","product.resource_type.deleted","product.resource_type.updated","product.role.created","product.role.deleted","product.role.updated","product_user.created","product_user.deleted","product_user.updated","resource.role_assignment.created","resource.role_assignment.deleted","resource.role_assignment.updated"],"signing_secret":"whsec_<secret>","signing_secret_obfuscated":"whse******************************************<tail>"},"organization_api_keys":{"prefix":"anchor"},"protected":false},"created_at":"<timestamp.frac>","description":"echopoint test","id":"{{create-product.productId}}","name":"eptest-orgkey-{{$runId}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}","principal_type":"user","request_body":"<present>","request_id":"ct/organization-api-key/set-endpoint","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

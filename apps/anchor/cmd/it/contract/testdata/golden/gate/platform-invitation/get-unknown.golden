@@ -12,4 +12,4 @@ body:
 {"errors":[{"code":"PLATFORM_INVITATION_NOT_FOUND","message":"Platform Invitation does not exist."}]}
 
 logs: 1 line(s)
-{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/platform-invitations/inv_<id> -> 404 (<duration>)","method":"GET","path":"/v1/platform-invitations/inv_<id>","principal_type":"user","request_id":"ct/platform-invitation/get-unknown","status":404,"tenant_id":"{{create-invitation.tenant}}","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/platform-invitations/inv_<id> -> 404 (<duration>)","method":"GET","path":"/v1/platform-invitations/inv_<id>","principal_type":"user","request_id":"ct/platform-invitation/get-unknown","status":404,"tenant_id":"{{create-invitation.tenant}}","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

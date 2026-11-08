@@ -1,0 +1,13 @@
+# anchor: resource-permission / Delete Assigned eptestdoc:share Cascades (204)
+request: DELETE /v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:share
+request-headers: Authorization, Content-Type
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/resource-permission/delete-assigned
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:share -> 204 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/resource-permissions/eptestdoc:share","principal_type":"user","request_id":"ct/resource-permission/delete-assigned","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

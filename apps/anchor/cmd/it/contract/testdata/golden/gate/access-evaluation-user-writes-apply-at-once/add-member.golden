@@ -1,0 +1,16 @@
+# anchor: access evaluation — user writes apply at once / Add The Dev Member With The Reader Role (201)
+request: POST /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"product_user_id": "{{dev-member.userId}}", "role_id": "{{role.roleId}}"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/add-member
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"email":"garbage+contract-echopoint-dev@nanostack.dev","external_id":"{{dev-member.externalId}}","joined_at":"<timestamp.frac>","name":"Echopoint Dev","product_user_id":"{{dev-member.userId}}","role":{"id":"{{role.roleId}}","name":"eptest-access-reader-{{$runId}}"}}
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members -> 201 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation-user-writes-apply-at-once/add-member","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,13 @@
+# anchor: access evaluation — user writes apply at once / Remove The Dev Member (204)
+request: DELETE /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members/{{dev-member.userId}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/remove-member
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members/{{dev-member.userId}} -> 204 (<duration>)","method":"DELETE","path":"/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members/{{dev-member.userId}}","principal_type":"api_key","request_id":"ct/access-evaluation-user-writes-apply-at-once/remove-member","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,16 @@
+# anchor: invitations / Find Expired X By Email
+request: POST /v1/products/{{create-product.productId}}/invitations/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"filter": {"emails": ["{{invite-x.email}}"], "statuses": ["expired"]}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/lookup-x
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp.frac>","email":"{{invite-x.email}}","expires_at":"{{$isoTimestamp:+60s}}","id":"{{invite-x.invitationId}}","organization_id":"{{create-org-expiry.orgId}}","role_id":"{{create-role-five.roleId}}","status":"expired","updated_at":"<timestamp.frac>"}],"total":1}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/invitations/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/invitations/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/lookup-x","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

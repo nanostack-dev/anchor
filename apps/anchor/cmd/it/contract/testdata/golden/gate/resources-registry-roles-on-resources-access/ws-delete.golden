@@ -1,0 +1,13 @@
+# anchor: resources — registry, roles on resources, access / Workspaces · Delete Payments as a resource → 204
+request: DELETE /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/{{ws-create.id}}?cascade=true
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/ws-delete
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-res-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/{{ws-create.id}} -> 204 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/{{ws-create.id}}","principal_type":"api_key","query":"cascade=true","request_id":"ct/resources-registry-roles-on-resources-access/ws-delete","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

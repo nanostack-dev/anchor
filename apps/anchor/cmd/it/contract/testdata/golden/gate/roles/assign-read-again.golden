@@ -1,0 +1,14 @@
+# anchor: roles / Assign eptestdoc:read Again Is A No-Op (204)
+request: POST /v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"permission_name":"eptestdoc:read"}
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/roles/assign-read-again
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions -> 204 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions","principal_type":"api_key","request_body":"<present>","request_id":"ct/roles/assign-read-again","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

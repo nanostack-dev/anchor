@@ -1,0 +1,16 @@
+# anchor: organization roles / Acme Creates Billing Auditor (201, type CUSTOM)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-billing", "resource_type": "organization", "permissions": ["bill:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-roles/custom-create
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{custom-create.rid}}","name":"eptest-billing","organization_id":"{{org-a.orgId}}","permissions":[{"permission_name":"bill:read","product_id":"{{create-product.productId}}","product_role_id":"{{custom-create.rid}}"}],"product_id":"{{create-product.productId}}","resource_type":"organization","type":"CUSTOM","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles","principal_type":"user","request_body":"<present>","request_id":"ct/organization-roles/custom-create","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

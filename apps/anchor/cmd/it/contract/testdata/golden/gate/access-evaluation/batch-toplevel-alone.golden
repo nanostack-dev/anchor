@@ -1,0 +1,16 @@
+# anchor: access evaluation / Batch: Top-Level Action Alone Is Evaluated
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "organization_api_key", "id": "{{okey.value}}"}, "resource": {"type": "workspace", "id": "{{ws-a.wsId}}"}, "action": {"name": "acc:read"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/batch-toplevel-alone
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"api_key":{"id":"{{okey.id}}","name":"eptest-access-okey"},"organization":{"id":"{{org-a.orgId}}"},"permissions":["acc:read"]},"decision":true,"evaluations":[{"decision":true}]}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluations -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/batch-toplevel-alone","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

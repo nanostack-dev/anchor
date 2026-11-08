@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / Setup · Register project Website in Acme → 200
+request: PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/project/website
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "Website", "parent": {"type": "organization", "id": "{{org-acme.orgId}}"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/put-website
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"website","name":"Website","organization_id":"{{org-acme.orgId}}","parent":{"id":"{{org-acme.orgId}}","type":"organization"},"type":"project","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/project/website -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/project/website","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/put-website","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

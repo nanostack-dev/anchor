@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -97,6 +99,7 @@ func (r *flowRun) executeWebhookWait(node *flowNode) nodeState {
 		for {
 			for _, d := range r.webhook.snapshot() {
 				if len(r.checkAssertions(node.Assertions, d)) == 0 {
+					r.recordDeliveries(node, []*response{d})
 					return statePassed
 				}
 			}
@@ -122,6 +125,13 @@ func (r *flowRun) executeWebhookWait(node *flowNode) nodeState {
 	}
 	time.Sleep(time.Duration(data.SettleMs) * time.Millisecond)
 	counts := r.countExpectations(node, data.Expect)
+	var received []*response
+	for _, d := range r.webhook.snapshot() {
+		if len(r.checkAssertions(node.Assertions, d)) == 0 {
+			received = append(received, d)
+		}
+	}
+	r.recordDeliveries(node, received)
 	var problems []string
 	for i, e := range data.Expect {
 		if counts[i] < minimum(e) || (e.Max != nil && counts[i] > *e.Max) {
@@ -154,4 +164,52 @@ func (r *flowRun) countExpectations(node *flowNode, expect []hookExpectation) []
 		}
 	}
 	return counts
+}
+
+// recordDeliveries pins the outbound product-event deliveries a webhook_wait
+// node saw (headers, signature format and payload) in a golden, sorted so
+// that delivery order does not matter.
+func (r *flowRun) recordDeliveries(node *flowNode, deliveries []*response) {
+	rendered := make([]string, 0, len(deliveries))
+	for _, d := range deliveries {
+		rendered = append(rendered, r.renderDelivery(d))
+	}
+	slices.Sort(rendered)
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s / %s\ndeliveries: %d\n", r.flow.Name, node.DisplayName, len(rendered))
+	for _, d := range rendered {
+		b.WriteString("\n")
+		b.WriteString(d)
+	}
+	rel := filepath.Join("gate", r.prefix, safeName(node.ID)+".golden")
+	checkGolden(r.t, rel, b.String())
+	r.goldens = append(r.goldens, rel)
+}
+
+func (r *flowRun) renderDelivery(d *response) string {
+	var b strings.Builder
+	names := make([]string, 0, len(d.header))
+	for name := range d.header {
+		if name != "Content-Length" {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		for _, value := range d.header.Values(name) {
+			switch {
+			case name == "Webhook-Timestamp" && unixSeconds.MatchString(value):
+				value = "<unix-seconds>"
+			default:
+				value = webhookSig.ReplaceAllString(value, "${1}<base64>")
+			}
+			fmt.Fprintf(&b, "header %s: %s\n", name, r.norm.string(value))
+		}
+	}
+	b.WriteString("body:\n")
+	b.WriteString(r.norm.string(string(d.body)))
+	if len(d.body) > 0 && !strings.HasSuffix(string(d.body), "\n") {
+		b.WriteString("\n<no trailing newline>\n")
+	}
+	return b.String()
 }

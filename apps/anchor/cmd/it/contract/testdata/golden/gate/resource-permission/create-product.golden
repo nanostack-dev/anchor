@@ -1,0 +1,16 @@
+# anchor: resource-permission / Create Product With Event Endpoint
+request: POST /v1/products
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-product-resperm-{{$runId}}","description":"echopoint test","config":{"events":{"endpoint_url":"{{webhook.url}}"}}}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resource-permission/create-product
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config":{"events":{"consecutive_failed_calls":0,"delivery_status":"never_attempted","endpoint_url":"{{webhook.url}}","events":["clerk.user.created","clerk.user.deleted","clerk.user.updated","organization.api_key.created","organization.api_key.deleted","organization.api_key.updated","organization.created","organization.deleted","organization.invitation.accepted","organization.invitation.created","organization.invitation.deleted","organization.invitation.updated","organization.license.updated","organization.membership.created","organization.membership.deleted","organization.membership.updated","organization.role.created","organization.role.deleted","organization.role.updated","organization.updated","product.resource_permission.created","product.resource_permission.deleted","product.resource_permission.updated","product.resource_type.created","product.resource_type.deleted","product.resource_type.updated","product.role.created","product.role.deleted","product.role.updated","product_user.created","product_user.deleted","product_user.updated","resource.role_assignment.created","resource.role_assignment.deleted","resource.role_assignment.updated"],"signing_secret":"whsec_<secret>","signing_secret_obfuscated":"whse******************************************<tail>"},"organization_api_keys":{"prefix":"anchor"},"protected":false},"created_at":"<timestamp.frac>","description":"echopoint test","id":"{{create-product.productId}}","name":"eptest-product-resperm-{{$runId}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products -> 201 (<duration>)","method":"POST","path":"/v1/products","principal_type":"user","request_body":"<present>","request_id":"ct/resource-permission/create-product","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

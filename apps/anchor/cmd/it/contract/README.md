@@ -28,6 +28,10 @@ The repository `Makefile` has the same commands as `contract-test`,
 `goTests` in `.dagger/modules/anchor/main.dang` runs `./...` without build
 tags, so adding it is more than a one-line change.
 
+The suite sets `time.Local` to UTC, as in the production containers: some
+values come from `time.Now()` in the local zone (licence `migrated_at`, the
+log `time` field), and their zone is part of the golden.
+
 `CONTRACT_LOG_DUMP=/tmp/anchor.log` writes every server log line to a file,
 for debugging a failing flow.
 
@@ -45,15 +49,25 @@ receiver stands in for the run's webhook endpoint, so the product-event
 deliveries and their `webhook-signature` header are checked too.
 
 - Every gate assertion must hold, except the skipped nodes listed below.
-- Every node that asserts a refusal (status >= 400, an `errors[...]` path or a
-  header) writes a golden: `testdata/golden/gate/<flow>/<node>.golden`.
+- Every request node writes a golden, successes included:
+  `testdata/golden/gate/<flow>/<node>.golden` (a module or loop node nests
+  its nodes under its own id). A 2xx can change on the wire too (JSON
+  encoding, timestamp layout, `null` against an omitted member, headers, log
+  fields), and the flows assert only a few of its members.
+- Every webhook_wait node writes a golden of the deliveries it saw: their
+  headers (`User-Agent`, `Content-Type`, `webhook-id`, the
+  `webhook-signature` layout, ...) and payloads, sorted so that delivery
+  order does not matter.
 
 `TestFrameworkSeams` covers what the gate flows do not: routing (unknown path,
 wrong method, trailing slash), `/health` (GET, HEAD, POST, DELETE), CORS,
 `/docs` and `/openapi.yaml`, path and query parameter validation, the auth
 refusals, request decoding (malformed JSON, empty body, wrong type, array,
-text/plain, no Content-Type, unknown, case-variant and duplicate members,
-trailing data, a 2 MiB body), validation and domain errors, and the 200, 201
+text/plain, a form content type, no Content-Type, unknown, case-variant and
+duplicate members,
+trailing data, a 2 MiB body), HEAD on a GET operation, OPTIONS without
+preflight headers, an inbound webhook body over 1 MiB, validation and domain
+errors, and the 200, 201
 and 204 success shapes with their log lines. Goldens:
 `testdata/golden/seams/<case>.golden`.
 
@@ -65,10 +79,10 @@ and the skip list, and fails when the README is stale.
 Each golden records, after normalisation:
 
 - the request line, the request header names and the request body;
-- the status, the values of selected headers (`Content-Type`,
-  `X-Content-Type-Options`, `Allow`, `Set-Cookie`, `Vary`, CORS headers,
-  `X-Request-Id`, ...) and the sorted names of every other header (except
-  `Date`, `Content-Length` and `Transfer-Encoding`);
+- the status, the value of every response header (except `Date`,
+  `Content-Length` and `Transfer-Encoding`): a fixed list first
+  (`Content-Type`, `Allow`, `Set-Cookie`, `Vary`, `X-Request-Id`, ...), then
+  any other header sorted by name, and the sorted names of all of them;
 - the body bytes exactly as sent (`/docs` and `/openapi.yaml` as length +
   sha256);
 - every log line the server wrote with the request's `request_id`, as a
@@ -87,14 +101,34 @@ and format:
 | A value a flow captured (`outputs`) | `{{node.output}}` |
 | The run id, generated names and timestamps | `{{$runId}}`, `{{$fullName}}`, `{{$slug}}`, `{{$isoTimestamp:+60s}}` |
 | KSUID ids not captured | `<prefix>_<id>` (the prefix stays) |
-| RFC 3339 timestamps, UUIDs, JWTs | `<timestamp>`, `<uuid>`, `<jwt>` |
+| RFC 3339 timestamps | `<timestamp>`, with `.frac` when the value has fractional seconds and the zone when it is not `Z` (`+00:00`, or `+offset`) |
+| UUIDs, JWTs | `<uuid>`, `<jwt>` |
 | Cookie token and HTTP dates | `refresh_token=<token>`, `<http-date>` (the cleared-cookie `Thu, 01 Jan 1970 00:00:00 GMT` stays) |
 | Obfuscated key suffix | `***_<hex>` |
-| Log `time`, `client_ip`, `bytes_out` | `<time>`, `<ip>`, `<int>:number` |
-| Log `caller` | `<file>.go:<line>` only when it is `file:line` (otelcol splits it on `:`) |
+| One-time API key values not captured | `<prefix>_org_apikey_<secret>_<hex8>` (the checksum suffix kept as a marker when present) |
+| Pagination cursors (base64url JSON) | `<cursor>` |
+| Random 32-hex tokens (invitation codes) | `<hex32>` |
+| Webhook signing secrets | `whsec_<secret>` |
+| SMTP integration `last_error` (a background connection check to `smtp.example.com` races the read) | `<smtp check: not configured or connection failed>` |
+| Masked secrets | the stars stay, the visible tail becomes `<tail>` |
+| URL-encoded timestamps in a query string | `<timestamp-urlencoded>` |
+| The product webhook `events` list | sorted (the server builds it from a Go map, so its order changes per call) |
+| Log `time` | `<time:timestamp>` with the same layout markers (a Unix number renders `<time>:number`) |
+| Log `client_ip` | `<ip>`, or `<ip:port>` when a port is appended |
+| Log `bytes_out` | `<int:=body-length>` when it equals the length of the body the client received, else both numbers |
+| Log `caller` | `<file>.go:<line>` or `/<path>/<file>.go:<line>` (absolute) only when it is `file:line` (otelcol splits it on `:`) |
+| Webhook `webhook-timestamp`, `webhook-signature` | `<unix-seconds>`, `v1,<base64>` |
 | Log `duration` | `<duration:number:ms>`: the unit is read against the duration printed in the summary message, so a switch to nanoseconds fails (the slow-request alert filters `duration:>1000`) |
 | Log `trace_id`, `span_id` | `<hex32>`, `<hex16>` when hex |
 | Log `request_body` | `<present>`: the harness sets `LOG_REQUEST_BODY=true`, and the value would hold the passwords of login and register bodies |
+
+Eleven gate nodes record their body in a reduced form, listed in
+`gateBodyModes` (`gate_test.go`) with the reason; their status, headers and
+log lines stay exact. The events catalog is re-encoded with arrays sorted (it
+is built from a Go map). The by-name cursor searches of organizations and
+email templates, and the organization-licence cursor search, record only the
+JSON shape (keys, types, array lengths): all
+their items share one name, so the order follows the random id tie-break.
 
 Everything else, including `level` (lowercase), the message key `message`,
 `method`, `path`, `status`, `request_id`, `env`, `tenant_id`, `user_id`,
@@ -116,6 +150,19 @@ Observed on main `4b10d222` and pinned by the goldens:
 - `/health` skips the validator: HEAD and other methods get chi's 405 with
   `Allow: GET` and an empty body. A `net/http.ServeMux` GET pattern would answer
   HEAD with 200.
+- HEAD on a `/v1` GET operation and OPTIONS without CORS preflight headers get
+  the validator's 405 `text/plain` (HEAD with an empty body), not 200
+  (`seams/route-head-v1.golden`, `seams/route-options-no-preflight.golden`).
+- An inbound webhook body over 1 MiB gets 400 `text/plain` `Cannot read
+  webhook body` before the request id is set: no `X-Request-Id` header and no
+  log line (`seams/webhook-oversized.golden`).
+- The licence migration's `migrated_at` is serialised in the server's local
+  zone (`time.Now()` without `.UTC()`); it reads `Z` only because production
+  runs in UTC.
+- Product-event deliveries go out with `User-Agent: Go-http-client/1.1`,
+  `Accept-Encoding: gzip`, a `pevt_` `webhook-id`, a Unix-seconds
+  `webhook-timestamp`, a `v1,<base64>` signature and a body with no trailing
+  newline (`gate/product-event-delivery/*.golden`).
 - `POST /v1/auth/refresh` refusals are 401 with an **empty body and no
   Content-Type**, only the clearing `Set-Cookie`.
 - Decoding is lenient: unknown members ignored, member names matched without

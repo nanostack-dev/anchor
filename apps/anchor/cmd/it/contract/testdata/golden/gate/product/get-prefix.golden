@@ -1,0 +1,15 @@
+# anchor: product / Prefix Persisted (200)
+request: GET /v1/products/{{create-product-two.productId}}
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product/get-prefix
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config":{"organization_api_keys":{"prefix":"eptestpfx"},"protected":false},"created_at":"<timestamp.frac>","description":"product suite, second","id":"{{create-product-two.productId}}","name":"{{create-product-two.productName}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product-two.productId}} -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product-two.productId}}","principal_type":"user","request_id":"ct/product/get-prefix","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

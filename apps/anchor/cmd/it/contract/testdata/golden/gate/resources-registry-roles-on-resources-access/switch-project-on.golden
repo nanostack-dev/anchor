@@ -1,0 +1,16 @@
+# anchor: resources — registry, roles on resources, access / Custom roles · Turn on custom roles for Project → 200
+request: PATCH /v1/products/{{create-product.productId}}/resource-types/{{type-project.id}}
+request-headers: Authorization, Content-Type
+request-body: {"allows_custom_roles": true}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/switch-project-on
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"allows_custom_roles":true,"built_in":false,"created_at":"<timestamp.frac>","id":"{{type-project.id}}","name":"Project","nests_in_itself":false,"parent_types":["organization"],"product_id":"{{create-product.productId}}","slug":"project","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PATCH /v1/products/{{create-product.productId}}/resource-types/{{type-project.id}} -> 200 (<duration>)","method":"PATCH","path":"/v1/products/{{create-product.productId}}/resource-types/{{type-project.id}}","principal_type":"user","request_body":"<present>","request_id":"ct/resources-registry-roles-on-resources-access/switch-project-on","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

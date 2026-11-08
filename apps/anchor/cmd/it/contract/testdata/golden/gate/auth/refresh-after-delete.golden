@@ -11,4 +11,4 @@ header-names: Set-Cookie, Vary, X-Request-Id
 body:
 
 logs: 1 line(s)
-{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/refresh -> 401 (<duration>)","method":"POST","path":"/v1/auth/refresh","request_id":"ct/auth/refresh-after-delete","status":401,"time":"<time>","user_agent":"anchor-contract/1"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/refresh -> 401 (<duration>)","method":"POST","path":"/v1/auth/refresh","request_id":"ct/auth/refresh-after-delete","status":401,"time":"<time:timestamp>","user_agent":"anchor-contract/1"}

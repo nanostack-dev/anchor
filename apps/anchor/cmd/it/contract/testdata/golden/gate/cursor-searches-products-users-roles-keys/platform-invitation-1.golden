@@ -1,0 +1,16 @@
+# anchor: cursor searches — products, users, roles, keys / Create Platform Invitation 1 (201)
+request: POST /v1/platform-invitations
+request-headers: Authorization, Content-Type
+request-body: {"email":"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/platform-invitation-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"code":"<hex32>","created_at":"<timestamp.frac>","email":"garbage+eptest-cur-pinv1-{{$runId}}@nanostack.dev","id":"{{platform-invitation-1.id}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/platform-invitations -> 201 (<duration>)","method":"POST","path":"/v1/platform-invitations","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-products-users-roles-keys/platform-invitation-1","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

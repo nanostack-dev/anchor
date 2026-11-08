@@ -1,0 +1,17 @@
+# anchor: cursor searches — email & licensing & integrations / Organization licenses (names tie): page 1 of 2 has next_cursor
+request: POST /v1/products/{{create-product.productId}}/licensing/organization-licenses/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":2}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/org-licenses-p1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+<shape: the licences belong to organizations that share one name, so the default order follows the random id tie-break>
+{"count":"\u003cnumber\u003e","items":[{"license":{"adjusted_fields":[],"created_at":"\u003cstring\u003e","id":"\u003cstring\u003e","instantiated_at":"\u003cstring\u003e","organization_id":"\u003cstring\u003e","product_id":"\u003cstring\u003e","template_id":"\u003cstring\u003e","updated_at":"\u003cstring\u003e","values":{"flows":"\u003cnumber\u003e","sso":"\u003cbool\u003e"}},"organization_id":"\u003cstring\u003e","organization_name":"\u003cstring\u003e"},{"license":{"adjusted_fields":[],"created_at":"\u003cstring\u003e","id":"\u003cstring\u003e","instantiated_at":"\u003cstring\u003e","organization_id":"\u003cstring\u003e","product_id":"\u003cstring\u003e","template_id":"\u003cstring\u003e","updated_at":"\u003cstring\u003e","values":{"flows":"\u003cnumber\u003e","sso":"\u003cbool\u003e"}},"organization_id":"\u003cstring\u003e","organization_name":"\u003cstring\u003e"}],"next_cursor":"\u003cstring\u003e","total":"\u003cnumber\u003e"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/licensing/organization-licenses/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/licensing/organization-licenses/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/org-licenses-p1","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

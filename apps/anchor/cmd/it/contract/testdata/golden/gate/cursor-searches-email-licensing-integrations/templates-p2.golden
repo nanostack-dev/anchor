@@ -1,0 +1,16 @@
+# anchor: cursor searches — email & licensing & integrations / Email templates: page 2 by cursor is the last (no next_cursor)
+request: POST /v1/products/{{create-product.productId}}/email/templates/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":2,"cursor":"{{templates-p1.cursor}}"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/templates-p2
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp.frac>","draft_version_id":"etplv_<id>","id":"{{template-1.id}}","is_active":true,"name":"ep-cur-template","product_id":"{{create-product.productId}}","slug":"ep-cur-tpl-1","updated_at":"<timestamp.frac>"}],"total":3}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/templates/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/templates/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/templates-p2","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

@@ -1,0 +1,16 @@
+# anchor: organization / Create Product Key
+request: POST /v1/products/{{create-product.productId}}/api-keys
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-org-key","mutable":false,"permissions":["organization:create","organization:read","organization:update","organization:delete","product_user:create","product_user:read","product_role:create","product_role:read","organization_member:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization/create-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"product_apikey_<id>","mutable":false,"name":"eptest-org-key","obfuscated_value":"anchor_prd_apikey_***_<hex>","permissions":[{"permission_name":"organization:create","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"organization:read","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"organization:update","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"organization:delete","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"product_user:create","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"product_user:read","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"product_role:create","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"product_role:read","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"},{"permission_name":"organization_member:read","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"}],"product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>","value":"{{create-key.apiKey}}"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/api-keys","principal_type":"user","request_body":"<present>","request_id":"ct/organization/create-key","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

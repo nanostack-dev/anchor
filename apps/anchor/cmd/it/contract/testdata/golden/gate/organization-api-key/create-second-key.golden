@@ -1,0 +1,16 @@
+# anchor: organization-api-key / Create Second Org Key (201)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-orgkey-two", "permissions": ["eptestdoc:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/create-second-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{create-second-key.akId}}","name":"eptest-orgkey-two","obfuscated_value":"anchor_org_apikey_***_<hex>","organization_id":"{{create-org.orgId}}","permissions":[{"organization_api_key_id":"{{create-second-key.akId}}","organization_id":"{{create-org.orgId}}","permission_name":"eptestdoc:read","product_id":"{{create-product.productId}}"}],"status":"ACTIVE","updated_at":"<timestamp.frac>","value":"{{create-second-key.akVal}}"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys","principal_type":"api_key","request_body":"<present>","request_id":"ct/organization-api-key/create-second-key","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

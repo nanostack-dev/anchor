@@ -1,0 +1,16 @@
+# anchor: cursor searches — email & licensing & integrations / Adjust Organization 1 flows To 250 (200)
+request: PATCH /v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license
+request-headers: Authorization, Content-Type
+request-body: {"values":{"flows":250}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/license-adjust-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"adjusted_fields":["flows"],"created_at":"<timestamp.frac>","id":"lic_<id>","instantiated_at":"<timestamp.frac>","organization_id":"{{org-1.id}}","product_id":"{{create-product.productId}}","template_id":"{{license-template-1.id}}","updated_at":"<timestamp.frac>","values":{"flows":250,"sso":false}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PATCH /v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license -> 200 (<duration>)","method":"PATCH","path":"/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/license","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/license-adjust-1","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

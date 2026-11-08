@@ -1,0 +1,402 @@
+# anchor: resources — registry, roles on resources, access / Events · resource.* stays internal; role assignment events arrive
+deliveries: 40
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-dan.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.role.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","role_id":"{{custom-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.role.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","role_id":"{{custom-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.role.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","role_id":"{{custom-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.role.updated","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","role_id":"{{custom-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.role.updated","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","role_id":"{{custom-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"document:view"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"folder:view"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"project:manage"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"section:edit"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"workspace:view"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.deleted","timestamp":"<timestamp.frac>","data":{"permission_name":"section:edit"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"document","resource_type_id":"{{type-document.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"folder","resource_type_id":"{{type-folder.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"project","resource_type_id":"{{type-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"section","resource_type_id":"{{type-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"workspace","resource_type_id":"rtype_<id>"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.deleted","timestamp":"<timestamp.frac>","data":{"resource_type":"section","resource_type_id":"{{type-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.updated","timestamp":"<timestamp.frac>","data":{"resource_type":"document","resource_type_id":"{{type-document.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.updated","timestamp":"<timestamp.frac>","data":{"resource_type":"project","resource_type_id":"{{type-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.updated","timestamp":"<timestamp.frac>","data":{"resource_type":"section","resource_type_id":"{{type-section.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-folder-editor.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-folder-viewer.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-member.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-project-admin.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{ws-role.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.updated","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-folder-viewer.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{user-ana.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{user-dan.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{user-out.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"specs","resource_type":"folder","role_id":"{{role-folder-editor.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"website","resource_type":"project","role_id":"{{custom-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"{{ws-create.id}}","resource_type":"workspace","role_id":"{{ws-role.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-dan.id}}","resource_id":"design","resource_type":"folder","role_id":"{{role-folder-viewer.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"specs","resource_type":"folder","role_id":"{{role-folder-editor.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"website","resource_type":"project","role_id":"{{custom-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-ana.id}}","resource_id":"{{ws-create.id}}","resource_type":"workspace","role_id":"{{ws-role.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"resource.role_assignment.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{user-dan.id}}","resource_id":"design","resource_type":"folder","role_id":"{{role-folder-viewer.id}}"}}
+<no trailing newline>

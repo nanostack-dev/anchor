@@ -1,0 +1,15 @@
+# anchor: email-templates / List Templates
+request: GET /v1/products/{{create-product.productId}}/email/templates
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/email-templates/list-templates
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp.frac>","draft_version_id":"{{create-template.draftVersionId}}","id":"{{create-template.tid}}","is_active":true,"name":"Welcome","product_id":"{{create-product.productId}}","slug":"{{create-template.slug}}","updated_at":"<timestamp.frac>"}]}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/email/templates -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/email/templates","principal_type":"user","query":"limit=50&offset=0","request_id":"ct/email-templates/list-templates","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

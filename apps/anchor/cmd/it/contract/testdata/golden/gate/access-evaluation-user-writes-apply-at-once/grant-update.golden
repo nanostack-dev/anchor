@@ -1,0 +1,14 @@
+# anchor: access evaluation — user writes apply at once / Grant flows:update To The Role (204)
+request: POST /v1/products/{{nanostackProductId}}/roles/{{role.roleId}}/permissions
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"permission_name": "flows:update"}
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/grant-update
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/roles/{{role.roleId}}/permissions -> 204 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}/permissions","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation-user-writes-apply-at-once/grant-update","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

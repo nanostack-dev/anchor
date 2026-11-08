@@ -1,0 +1,16 @@
+# anchor: roles / Search By Name Finds Role A (200)
+request: POST /v1/products/{{create-product.productId}}/roles/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"filter":{"names":["eptest-role-alpha"]}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/roles/search-roles
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp.frac>","description":"upd","id":"{{create-role-a.rid}}","name":"eptest-role-alpha","organization_id":null,"permissions":[{"permission_name":"eptestdoc:read","product_id":"{{create-product.productId}}","product_role_id":"{{create-role-a.rid}}"}],"product_id":"{{create-product.productId}}","resource_type":"organization","type":"MANAGED","updated_at":"<timestamp.frac>"}],"total":1}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/roles/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/roles/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/roles/search-roles","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

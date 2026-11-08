@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / Setup · Declare type Project under Organization → 201
+request: POST /v1/products/{{product-acme.productId}}/resource-types
+request-headers: Authorization, Content-Type
+request-body: {"slug": "project", "name": "Project", "parent_types": ["organization"], "nests_in_itself": false}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/type-project
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"allows_custom_roles":false,"built_in":false,"created_at":"<timestamp.frac>","id":"{{type-project.id}}","name":"Project","nests_in_itself":false,"parent_types":["organization"],"product_id":"{{product-acme.productId}}","slug":"project","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product-acme.productId}}/resource-types -> 201 (<duration>)","method":"POST","path":"/v1/products/{{product-acme.productId}}/resource-types","principal_type":"user","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/type-project","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

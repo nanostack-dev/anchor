@@ -1,0 +1,15 @@
+# anchor: access evaluation — user writes apply at once / Read Beta Template (200)
+request: GET /v1/products/{{nanostackProductId}}/organizations/{{echopointOrgId}}/license
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/beta
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"adjusted_fields":[],"created_at":"<timestamp.frac>","id":"lic_<id>","instantiated_at":"<timestamp.frac>","organization_id":"{{echopointOrgId}}","product_id":"{{nanostackProductId}}","template_id":"{{beta.templateId}}","updated_at":"<timestamp.frac>","usage":{"flows":{"limit":100,"status":"stale"}},"values":{"flows":100}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{nanostackProductId}}/organizations/{{echopointOrgId}}/license -> 200 (<duration>)","method":"GET","path":"/v1/products/{{nanostackProductId}}/organizations/{{echopointOrgId}}/license","principal_type":"user","request_id":"ct/access-evaluation-user-writes-apply-at-once/beta","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

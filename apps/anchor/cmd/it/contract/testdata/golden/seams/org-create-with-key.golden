@@ -10,7 +10,7 @@ header X-Request-Id: ct/seams/org-create-with-key
 header-names: Content-Type, Vary, X-Request-Id
 
 body:
-{"created_at":"<timestamp>","id":"{{org}}","name":"contract-seams-org-{{$runId}}","product_id":"{{product}}","updated_at":"<timestamp>"}
+{"created_at":"<timestamp.frac>","id":"{{org}}","name":"contract-seams-org-{{$runId}}","product_id":"{{product}}","updated_at":"<timestamp.frac>"}
 
 logs: 1 line(s)
-{"api_key_id":"{{product_key_id}}","api_key_name":"contract-seams-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product}}/organizations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{product}}/organizations","principal_type":"api_key","request_body":"<present>","request_id":"ct/seams/org-create-with-key","status":201,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}
+{"api_key_id":"{{product_key_id}}","api_key_name":"contract-seams-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product}}/organizations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{product}}/organizations","principal_type":"api_key","request_body":"<present>","request_id":"ct/seams/org-create-with-key","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

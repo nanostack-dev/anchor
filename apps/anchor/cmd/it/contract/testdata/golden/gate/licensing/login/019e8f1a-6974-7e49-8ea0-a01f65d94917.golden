@@ -1,0 +1,17 @@
+# anchor: login (reusable) / login
+request: POST /v1/auth/login
+request-headers: Content-Type
+request-body: {"email":"garbage+contract-owner@nanostack.dev","password":"Contract!Owner1Aa"}
+
+status: 200
+header Content-Type: application/json
+header Set-Cookie: refresh_token=<token>; Path=/v1/auth/refresh; Expires=<http-date>; HttpOnly; Secure; SameSite=None
+header Vary: Origin
+header X-Request-Id: ct/licensing/login/<uuid>
+header-names: Content-Type, Set-Cookie, Vary, X-Request-Id
+
+body:
+{"accessToken":"<jwt>","refreshToken":"<jwt>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/login -> 200 (<duration>)","method":"POST","path":"/v1/auth/login","request_body":"<present>","request_id":"ct/licensing/login/<uuid>","status":200,"time":"<time:timestamp>","user_agent":"anchor-contract/1"}

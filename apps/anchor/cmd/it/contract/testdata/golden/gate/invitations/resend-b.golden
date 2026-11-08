@@ -1,0 +1,16 @@
+# anchor: invitations / Renew B (Update Expiry)
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_id": "{{create-role.roleId}}", "expires_at": "{{$isoTimestamp:+240h}}"}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/resend-b
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","email":"{{invite-b.email}}","expires_at":"{{$isoTimestamp:+240h}}","id":"{{invite-b.invitationId}}","organization_id":"{{create-org.orgId}}","role_id":"{{create-role.roleId}}","status":"pending","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/resend-b","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

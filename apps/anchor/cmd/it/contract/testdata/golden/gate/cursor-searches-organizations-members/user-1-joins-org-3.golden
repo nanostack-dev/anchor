@@ -1,0 +1,16 @@
+# anchor: cursor searches — organizations & members / User 1 Joins Organization 3 (201)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{org-3.id}}/members
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"product_user_id":"{{user-1.id}}","role_id":"{{role.id}}"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-organizations-members/user-1-joins-org-3
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"email":"garbage+eptest-cur-u1-{{$runId}}@nanostack.dev","joined_at":"<timestamp.frac>","name":"ep-cur-user","product_user_id":"{{user-1.id}}","role":{"id":"{{role.id}}","name":"ep-cur-member"}}
+
+logs: 1 line(s)
+{"api_key_id":"{{product-key.id}}","api_key_name":"eptest-cur-orgs-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{org-3.id}}/members -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{org-3.id}}/members","principal_type":"api_key","request_body":"<present>","request_id":"ct/cursor-searches-organizations-members/user-1-joins-org-3","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

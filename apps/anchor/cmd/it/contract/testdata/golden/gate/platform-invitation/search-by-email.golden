@@ -1,0 +1,16 @@
+# anchor: platform-invitation / Search By Email Finds It (200)
+request: POST /v1/platform-invitations/search
+request-headers: Authorization, Content-Type
+request-body: {"filter":{"emails":["{{create-invitation.email}}"]}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/platform-invitation/search-by-email
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"code":"{{create-invitation.code}}","created_at":"<timestamp.frac>","email":"{{create-invitation.email}}","id":"{{create-invitation.invId}}","tenant_id":"{{create-invitation.tenant}}","updated_at":"<timestamp.frac>"}],"total":1}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/platform-invitations/search -> 200 (<duration>)","method":"POST","path":"/v1/platform-invitations/search","principal_type":"user","request_body":"<present>","request_id":"ct/platform-invitation/search-by-email","status":200,"tenant_id":"{{create-invitation.tenant}}","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

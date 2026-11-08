@@ -1,0 +1,16 @@
+# anchor: register on assign & organization role scope / Register on assign · Dan document:view on pricing → allowed
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "ext-regassign-dan-{{$runId}}"}, "resource": {"type": "document", "id": "pricing", "properties": {"organization_id": "{{create-org.orgId}}"}}, "action": {"name": "document:view"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/reg-can
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"organization":{"id":"{{create-org.orgId}}","name":"eptest-regassign-org-{{$runId}}"},"permissions":[],"product_user":{"email":"garbage+eptest-regassign-dan-{{$runId}}@nanostack.dev","id":"{{user-dan.id}}","name":"eptest dan"},"role":{"id":"{{role-member.id}}","name":"eptest-member"}},"decision":true}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluation -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/register-on-assign-organization-role-scope/reg-can","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

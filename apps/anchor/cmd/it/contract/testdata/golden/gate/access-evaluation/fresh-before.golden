@@ -1,0 +1,16 @@
+# anchor: access evaluation / Second Key On Workspace A2 Allowed
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "organization_api_key", "id": "{{okey2.value}}"}, "resource": {"type": "workspace", "id": "{{ws-a2.wsId}}"}, "action": {"name": "acc:read"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/fresh-before
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"api_key":{"id":"{{okey2.id}}","name":"eptest-access-okey2"},"organization":{"id":"{{org-a.orgId}}"},"permissions":["acc:read"]},"decision":true}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluation -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation/fresh-before","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

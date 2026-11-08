@@ -90,6 +90,7 @@ func (s *seamRun) do(c seamCase) *response {
 	ex := exchange{
 		method: c.method, path: path, reqHeaders: headers, reqBody: reqBody,
 		resp: &recorded, logs: lines, requestID: requestID, description: c.desc,
+		bodyLen: len(resp.body),
 	}
 	checkGolden(s.t, filepath.Join("seams", c.name+".golden"), s.norm.render(ex))
 	return resp
@@ -169,6 +170,10 @@ func TestFrameworkSeams(t *testing.T) {
 			path:    "/v1/products/{{product}}/email/templates?limit=abc",
 			headers: s.headers(ownerH),
 		},
+		{name: "route-head-v1", desc: "HEAD on a GET operation", method: http.MethodHead,
+			path: "/v1/products/{{product}}", headers: s.headers(ownerH)},
+		{name: "route-options-no-preflight", desc: "OPTIONS without the CORS preflight headers",
+			method: http.MethodOptions, path: "/v1/products", headers: s.headers(ownerH)},
 		{name: "health-get", desc: "/health skips the validator and the request log",
 			method: http.MethodGet, path: "/health"},
 		{name: "health-head", desc: "HEAD on /health", method: http.MethodHead, path: "/health"},
@@ -217,6 +222,10 @@ func TestFrameworkSeams(t *testing.T) {
 		{name: "decode-text-plain", desc: "valid JSON sent as text/plain is decoded anyway",
 			method: http.MethodPost, path: "/v1/products", headers: s.headers(ownerH, "Content-Type", "text/plain"),
 			body: `{"name":"contract-seams-textplain-{{runId}}"}`},
+		{name: "decode-form-urlencoded", desc: "valid JSON sent as a form content type",
+			method: http.MethodPost, path: "/v1/products",
+			headers: s.headers(ownerH, "Content-Type", "application/x-www-form-urlencoded"),
+			body:    `{"name":"contract-seams-form-{{runId}}"}`},
 		{name: "decode-no-content-type", desc: "valid JSON without Content-Type", method: http.MethodPost,
 			path: "/v1/products", headers: s.headers(ownerH, "Content-Type", ""),
 			body: `{"name":"contract-seams-noct-{{runId}}"}`},
@@ -247,6 +256,10 @@ func TestFrameworkSeams(t *testing.T) {
 			path: "/v1/products/prd_000000000000000000000000000", headers: s.headers(ownerH)},
 		{name: "domain-conflict", desc: "duplicate product name: 409 envelope", method: http.MethodPost,
 			path: "/v1/products", headers: s.headers(ownerH), body: `{"name":"contract-seams-{{runId}}"}`},
+
+		{name: "webhook-oversized", desc: "inbound webhook body over 1 MiB: 400 text/plain before the router",
+			method: http.MethodPost, path: "/v1/products/{{product}}/integrations/webhooks/CLERK",
+			headers: s.headers(""), body: `{"padding":"` + big + `"}`},
 
 		// Teardown, also a 204 shape.
 		{name: "product-delete", desc: "204 success shape", method: http.MethodDelete,

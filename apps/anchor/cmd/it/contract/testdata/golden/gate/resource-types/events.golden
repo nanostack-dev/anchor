@@ -1,0 +1,122 @@
+# anchor: resource types / Resource Type Events
+deliveries: 12
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"folder:read"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"project:read"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.updated","timestamp":"<timestamp.frac>","data":{"permission_name":"folder:read"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"doc","resource_type_id":"rtype_<id>"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"folder","resource_type_id":"{{create-folder.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"page","resource_type_id":"{{create-page.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"project","resource_type_id":"{{create-project.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.created","timestamp":"<timestamp.frac>","data":{"resource_type":"team","resource_type_id":"rtype_<id>"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.deleted","timestamp":"<timestamp.frac>","data":{"resource_type":"page","resource_type_id":"{{create-page.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.deleted","timestamp":"<timestamp.frac>","data":{"resource_type":"team","resource_type_id":"rtype_<id>"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_type.updated","timestamp":"<timestamp.frac>","data":{"resource_type":"folder","resource_type_id":"{{create-folder.id}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{role-project.rid}}"}}
+<no trailing newline>

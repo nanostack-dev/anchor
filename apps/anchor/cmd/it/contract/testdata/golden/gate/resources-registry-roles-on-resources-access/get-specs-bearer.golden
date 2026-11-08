@@ -1,0 +1,15 @@
+# anchor: resources — registry, roles on resources, access / Registry · Read Specifications with the platform session → 200
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/specs
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/get-specs-bearer
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"specs","name":"Specifications","organization_id":"{{create-org.orgId}}","parent":{"id":"website","type":"project"},"type":"folder","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/specs -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/folder/specs","principal_type":"user","request_id":"ct/resources-registry-roles-on-resources-access/get-specs-bearer","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

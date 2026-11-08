@@ -1,0 +1,16 @@
+# anchor: access evaluation — user writes apply at once / Register The Throwaway Org Workspace (200)
+request: PUT /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/{{ep-org-ws.workspaceId}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "Test workspace", "parent": {"type": "organization", "id": "{{ep-org.orgId}}"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/ep-org-ws
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{ep-org-ws.workspaceId}}","name":"Test workspace","organization_id":"{{ep-org.orgId}}","parent":{"id":"{{ep-org.orgId}}","type":"organization"},"type":"workspace","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/{{ep-org-ws.workspaceId}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/{{ep-org-ws.workspaceId}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation-user-writes-apply-at-once/ep-org-ws","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

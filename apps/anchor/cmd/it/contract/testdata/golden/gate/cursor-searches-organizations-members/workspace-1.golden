@@ -1,0 +1,16 @@
+# anchor: cursor searches — organizations & members / Register Workspace ep-cur-ws-1 (200)
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/{{workspace-1.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "ep-cur-ws-1", "parent": {"type": "organization", "id": "{{org-1.id}}"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-organizations-members/workspace-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{workspace-1.id}}","name":"ep-cur-ws-1","organization_id":"{{org-1.id}}","parent":{"id":"{{org-1.id}}","type":"organization"},"type":"workspace","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"{{product-key.id}}","api_key_name":"eptest-cur-orgs-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/{{workspace-1.id}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{org-1.id}}/resources/workspace/{{workspace-1.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/cursor-searches-organizations-members/workspace-1","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

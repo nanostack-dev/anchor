@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / Setup · Globex creates custom role reviewer on Folder (folder:edit) → 201
+request: POST /v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-reviewer", "resource_type": "folder", "permissions": ["folder:edit"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/custom-globex
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{custom-globex.id}}","name":"eptest-reviewer","organization_id":"{{org-globex.orgId}}","permissions":[{"permission_name":"folder:edit","product_id":"{{product-acme.productId}}","product_role_id":"{{custom-globex.id}}"}],"product_id":"{{product-acme.productId}}","resource_type":"folder","type":"CUSTOM","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles -> 201 (<duration>)","method":"POST","path":"/v1/products/{{product-acme.productId}}/organizations/{{org-globex.orgId}}/roles","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/custom-globex","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

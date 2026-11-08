@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / Setup · Other Product creates product user Olga → 201
+request: POST /v1/products/{{product-other.productId}}/product-users
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"email": "garbage+eptest-iso-olga-{{$runId}}@nanostack.dev", "name": "eptest olga"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/other-user
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","email":"garbage+eptest-iso-olga-{{$runId}}@nanostack.dev","id":"{{other-user.id}}","name":"eptest olga","product_id":"{{product-other.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-iso-other-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product-other.productId}}/product-users -> 201 (<duration>)","method":"POST","path":"/v1/products/{{product-other.productId}}/product-users","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/other-user","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

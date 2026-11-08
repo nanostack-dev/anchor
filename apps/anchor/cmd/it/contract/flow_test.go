@@ -298,25 +298,33 @@ func (r *flowRun) executeRequest(node *flowNode, cleanup bool) nodeState {
 	}
 	r.extractOutputs(node, resp)
 	failed := r.checkAssertions(node.Assertions, resp)
-	if goldenWorthy(node) {
-		lines, logErr := suite.logs.linesFor(requestID)
-		if logErr != nil {
-			failed = append(failed, logErr.Error())
-		}
-		ex := exchange{
-			method:      method,
-			path:        strings.TrimPrefix(url, suite.baseURL),
-			reqHeaders:  headers,
-			reqBody:     body,
-			resp:        resp,
-			logs:        lines,
-			requestID:   requestID,
-			description: r.flow.Name + " / " + node.DisplayName,
-		}
-		rel := filepath.Join("gate", r.prefix, safeName(node.ID)+".golden")
-		checkGolden(r.t, rel, r.norm.render(ex))
-		r.goldens = append(r.goldens, rel)
+	// Every response is pinned, successes included: a framework change to
+	// JSON encoding, headers or log fields on a 2xx is as much a wire change
+	// as one on a refusal.
+	lines, logErr := suite.logs.linesFor(requestID)
+	if logErr != nil {
+		failed = append(failed, logErr.Error())
 	}
+	recorded := resp
+	if mode, ok := gateBodyModes[r.prefix+"/"+node.ID]; ok {
+		copied := *resp
+		copied.body = applyBodyMode(mode, resp.body)
+		recorded = &copied
+	}
+	ex := exchange{
+		method:      method,
+		path:        strings.TrimPrefix(url, suite.baseURL),
+		reqHeaders:  headers,
+		reqBody:     body,
+		resp:        recorded,
+		logs:        lines,
+		requestID:   requestID,
+		description: r.flow.Name + " / " + node.DisplayName,
+		bodyLen:     len(resp.body),
+	}
+	rel := filepath.Join("gate", r.prefix, safeName(node.ID)+".golden")
+	checkGolden(r.t, rel, r.norm.render(ex))
+	r.goldens = append(r.goldens, rel)
 	if len(failed) > 0 {
 		return r.fail(
 			node,
@@ -324,27 +332,6 @@ func (r *flowRun) executeRequest(node *flowNode, cleanup bool) nodeState {
 		)
 	}
 	return statePassed
-}
-
-// goldenWorthy picks the nodes whose response is part of the contract the
-// suite pins: refusals (status >= 400), error envelopes and asserted headers.
-func goldenWorthy(node *flowNode) bool {
-	for _, a := range node.Assertions {
-		switch a.ExtractorType {
-		case "status_code":
-			if code, err := strconv.Atoi(fmt.Sprint(a.OperatorData.Value)); err == nil && code >= 400 &&
-				a.OperatorType == "equals" {
-				return true
-			}
-		case "header":
-			return true
-		case "json_path":
-			if strings.Contains(a.ExtractorData.Path, "errors") {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (r *flowRun) extractOutputs(node *flowNode, resp *response) {

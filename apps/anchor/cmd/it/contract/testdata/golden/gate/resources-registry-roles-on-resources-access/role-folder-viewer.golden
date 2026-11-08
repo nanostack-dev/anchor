@@ -1,0 +1,16 @@
+# anchor: resources — registry, roles on resources, access / Setup · Create managed role folder-viewer (folder:view, document:view) → 201
+request: POST /v1/products/{{create-product.productId}}/roles
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-folder-viewer", "resource_type": "folder", "permissions": ["folder:view", "document:view"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/role-folder-viewer
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{role-folder-viewer.id}}","name":"eptest-folder-viewer","organization_id":null,"permissions":[{"permission_name":"folder:view","product_id":"{{create-product.productId}}","product_role_id":"{{role-folder-viewer.id}}"},{"permission_name":"document:view","product_id":"{{create-product.productId}}","product_role_id":"{{role-folder-viewer.id}}"}],"product_id":"{{create-product.productId}}","resource_type":"folder","type":"MANAGED","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/roles -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/roles","principal_type":"user","request_body":"<present>","request_id":"ct/resources-registry-roles-on-resources-access/role-folder-viewer","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

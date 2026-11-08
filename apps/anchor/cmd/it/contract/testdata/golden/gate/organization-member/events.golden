@@ -1,0 +1,82 @@
+# anchor: organization-member / Anchor Emitted Every Membership Event
+deliveries: 8
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{create-member-user.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{create-member-user.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.updated","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}","product_user_id":"{{create-member-user.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{create-role-one.r1}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{create-role-two.r2}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{create-member-user.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{create-outsider.uid}}"}}
+<no trailing newline>

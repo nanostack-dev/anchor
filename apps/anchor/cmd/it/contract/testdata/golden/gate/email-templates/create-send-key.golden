@@ -1,0 +1,16 @@
+# anchor: email-templates / Create Product Key email:send (201)
+request: POST /v1/products/{{create-product.productId}}/api-keys
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-email-send-key", "mutable": false, "permissions": ["email:send"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/email-templates/create-send-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"product_apikey_<id>","mutable":false,"name":"eptest-email-send-key","obfuscated_value":"anchor_prd_apikey_***_<hex>","permissions":[{"permission_name":"email:send","product_api_key_id":"product_apikey_<id>","product_id":"{{create-product.productId}}"}],"product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>","value":"{{create-send-key.apiKey}}"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/api-keys","principal_type":"user","request_body":"<present>","request_id":"ct/email-templates/create-send-key","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}
