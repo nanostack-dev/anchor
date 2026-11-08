@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"anchor/internal/applog"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 
@@ -23,7 +24,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
-	"github.com/nanostack-dev/nanostack-framework/modules/logging"
 	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
 	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
 	"github.com/nanostack-dev/nanostack-framework/modules/transactor"
@@ -135,7 +135,8 @@ func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, er
 	testCtx := &repositoryTestContext{}
 
 	app := fx.New(
-		logging.Module,
+		applog.Module(),
+		applog.LegacyZerolog(),
 		config.Module,
 		postgres.Module,
 		transactor.Module,

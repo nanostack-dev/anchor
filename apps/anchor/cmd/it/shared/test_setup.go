@@ -29,8 +29,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// TestLogger discards until SetupTest replaces it, so a package-level copy
+// taken before (cmd/it/service) is usable, as the zero zerolog.Logger was.
+var TestLogger = slog.New(slog.DiscardHandler) //nolint:gochecknoglobals // Required for test setup
+
 var (
-	TestLogger                   *slog.Logger                                //nolint:gochecknoglobals // Required for test setup
 	ServerURL                    string                                      //nolint:gochecknoglobals // Required for test setup
 	APIKeyService                service.ProductAPIKeyService                //nolint:gochecknoglobals // Required for DSL/repo-backed tests
 	OrganizationAPIKeyService    service.OrganizationAPIKeyService           //nolint:gochecknoglobals // Required for org API key validation tests
