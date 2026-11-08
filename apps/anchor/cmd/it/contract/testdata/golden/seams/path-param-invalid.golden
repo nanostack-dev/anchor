@@ -1,0 +1,21 @@
+# malformed path id: validator 400 text/plain, before auth (no token)
+request: GET /v1/products/not-an-id
+request-headers: 
+
+status: 400
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/seams/path-param-invalid
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+parameter "product_id" in path has an error: validation failed due to: at '': 'not-an-id' does not match pattern '^[a-z_]{2,20}_[0-9a-zA-Z]{27}$'
+Schema:
+  null
+
+Value:
+  null
+
+
+logs: 0 line(s)

@@ -1,0 +1,15 @@
+# unknown path outside /v1
+request: GET /nope
+request-headers: 
+
+status: 404
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/seams/route-unknown-root
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+no matching operation was found
+
+logs: 0 line(s)

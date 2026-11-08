@@ -1,0 +1,16 @@
+# 200 list shape
+request: POST /v1/products/{{product}}/organizations/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/org-search-with-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp>","id":"{{org}}","name":"contract-seams-org-{{$runId}}","product_id":"{{product}}","updated_at":"<timestamp>"}],"total":1}
+
+logs: 1 line(s)
+{"api_key_id":"{{product_key_id}}","api_key_name":"contract-seams-key","bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{product}}/organizations/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{product}}/organizations/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/seams/org-search-with-key","status":200,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1"}

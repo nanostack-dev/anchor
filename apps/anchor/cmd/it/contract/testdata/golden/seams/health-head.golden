@@ -1,0 +1,13 @@
+# HEAD on /health
+request: HEAD /health
+request-headers: 
+
+status: 405
+header Allow: GET
+header Vary: Origin
+header X-Request-Id: ct/seams/health-head
+header-names: Allow, Vary, X-Request-Id
+
+body:
+
+logs: 0 line(s)

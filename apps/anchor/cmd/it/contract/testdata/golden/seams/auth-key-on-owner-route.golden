@@ -1,0 +1,14 @@
+# product API key on a route that takes a bearer token only
+request: GET /v1/me
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/auth-key-on-owner-route
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

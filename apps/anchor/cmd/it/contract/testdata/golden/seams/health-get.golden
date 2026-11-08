@@ -1,0 +1,14 @@
+# /health skips the validator and the request log
+request: GET /health
+request-headers: 
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/health-get
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"commit_sha":"unknown","environment":"development","service":"anchor","status":"HEALTHY","tenant_initialized":true,"version":"dev"}
+
+logs: 0 line(s)

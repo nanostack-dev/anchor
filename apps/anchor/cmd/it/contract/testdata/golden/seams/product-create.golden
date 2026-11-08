@@ -1,0 +1,16 @@
+# 201 success shape and the owner's log enrichment
+request: POST /v1/products
+request-headers: Authorization, Content-Type
+request-body: {"name":"contract-seams-{{$runId}}","description":"golden contract suite"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/product-create
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config":{"organization_api_keys":{"prefix":"anchor"},"protected":false},"created_at":"<timestamp>","description":"golden contract suite","id":"{{product}}","name":"contract-seams-{{$runId}}","tenant_id":"tenant_<id>","updated_at":"<timestamp>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int>:number","caller":"<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products -> 201 (<duration>)","method":"POST","path":"/v1/products","principal_type":"user","request_body":"<present>","request_id":"ct/seams/product-create","status":201,"tenant_id":"tenant_<id>","time":"<time>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

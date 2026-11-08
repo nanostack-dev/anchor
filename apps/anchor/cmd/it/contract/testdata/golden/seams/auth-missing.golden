@@ -1,0 +1,14 @@
+# no credential: 401 JSON envelope
+request: GET /v1/products/{{product}}
+request-headers: 
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/auth-missing
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

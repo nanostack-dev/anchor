@@ -1,0 +1,15 @@
+# CORS preflight from a browser origin
+request: OPTIONS /v1/products
+request-headers: Access-Control-Request-Headers, Access-Control-Request-Method, Origin
+
+status: 200
+header Access-Control-Allow-Credentials: true
+header Access-Control-Allow-Origin: *
+header Vary: Origin
+header Vary: Access-Control-Request-Method
+header Vary: Access-Control-Request-Headers
+header-names: Access-Control-Allow-Credentials, Access-Control-Allow-Headers, Access-Control-Allow-Methods, Access-Control-Allow-Origin, Access-Control-Max-Age, Vary
+
+body:
+
+logs: 0 line(s)
