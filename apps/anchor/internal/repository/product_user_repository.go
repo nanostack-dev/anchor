@@ -101,10 +101,7 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain,
-	)
+	return r.optional(transactor.QueryOptional[model.ProductUsers](ctx, r.db, stmt))
 }
 
 func (r *productUserRepositoryImpl) FindByProductID(
@@ -119,10 +116,11 @@ func (r *productUserRepositoryImpl) FindByProductID(
 		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
 	)
 
-	return transactor.QueryMapSlice(
-		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain,
-	).Value()
+	rows, err := transactor.Query[[]model.ProductUsers](ctx, r.db, stmt).Value()
+	if err != nil {
+		return nil, err
+	}
+	return r.many(rows)
 }
 
 func (r *productUserRepositoryImpl) FindByExternalID(
@@ -140,10 +138,7 @@ func (r *productUserRepositoryImpl) FindByExternalID(
 		),
 	).LIMIT(1)
 
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		r.productUserMapper.ToDomain,
-	)
+	return r.optional(transactor.QueryOptional[model.ProductUsers](ctx, r.db, stmt))
 }
 
 const (
@@ -170,14 +165,10 @@ func (r *productUserRepositoryImpl) Create(
 		productUsersUpdatableColumns(),
 	).MODEL(entity).RETURNING(table.ProductUsers.AllColumns)
 
-	return transactor.QueryMap(
-		ctx,
-		r.db,
-		stmt,
-		r.productUserMapper.ToDomain,
-	).OnUnique(ErrProductUserEmailExists, productUserEmailUniqueConstraint).
+	return r.one(transactor.Query[model.ProductUsers](ctx, r.db, stmt).
+		OnUnique(ErrProductUserEmailExists, productUserEmailUniqueConstraint).
 		OnUnique(ErrProductUserExternalIDExists, productUserExternalIDUniqueConstraint).
-		Value()
+		Value())
 }
 
 func (r *productUserRepositoryImpl) Update(
@@ -202,9 +193,7 @@ func (r *productUserRepositoryImpl) Update(
 		),
 	).RETURNING(table.ProductUsers.AllColumns)
 
-	return transactor.QueryMap(
-		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
-	).Value()
+	return r.one(transactor.Query[model.ProductUsers](ctx, r.db, updateStmt).Value())
 }
 
 func (r *productUserRepositoryImpl) DeleteByID(
@@ -248,9 +237,7 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 		DO_NOTHING().
 		RETURNING(table.ProductUsers.AllColumns)
 
-	inserted, err := transactor.QueryOptionalMap(
-		ctx, r.db, insertStmt, r.productUserMapper.ToDomain,
-	)
+	inserted, err := r.optional(transactor.QueryOptional[model.ProductUsers](ctx, r.db, insertStmt))
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
@@ -270,9 +257,7 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 		).
 		RETURNING(table.ProductUsers.AllColumns)
 
-	updated, err := transactor.QueryMap(
-		ctx, r.db, updateStmt, r.productUserMapper.ToDomain,
-	).Value()
+	updated, err := r.one(transactor.Query[model.ProductUsers](ctx, r.db, updateStmt).Value())
 	if err != nil {
 		return user.ProductUser{}, false, err
 	}
@@ -359,10 +344,55 @@ func (r *productUserRepositoryImpl) SearchByProductID(
 		return search.Result[user.ProductUser]{}, err
 	}
 
-	return transactor.Page(r.db, r.productUserMapper.ToDomain, table.ProductUsers.AllColumns).
+	page, err := transactor.Page(r.db, func(row model.ProductUsers) model.ProductUsers { return row },
+		table.ProductUsers.AllColumns).
 		From(table.ProductUsers).
 		Where(whereStmt).
 		Keyset(order).
 		Run(ctx, request.Pagination).
 		Value()
+	if err != nil {
+		return search.Result[user.ProductUser]{}, err
+	}
+	items, err := r.many(page.Items)
+	if err != nil {
+		return search.Result[user.ProductUser]{}, err
+	}
+	return search.Result[user.ProductUser]{
+		Items: items, Total: page.Total, Count: page.Count, NextCursor: page.NextCursor,
+	}, nil
+}
+
+// one maps a row the query returned. The mapper rejects a status outside the
+// contract enum, so a bad row fails the read instead of reaching a response.
+func (r *productUserRepositoryImpl) one(row model.ProductUsers, err error) (user.ProductUser, error) {
+	if err != nil {
+		return user.ProductUser{}, err
+	}
+	return r.productUserMapper.ToDomain(row)
+}
+
+func (r *productUserRepositoryImpl) optional(
+	found functional.Option[model.ProductUsers], err error,
+) (functional.Option[user.ProductUser], error) {
+	if err != nil || !found.IsPresent() {
+		return functional.None[user.ProductUser](), err
+	}
+	mapped, err := r.productUserMapper.ToDomain(found.Value())
+	if err != nil {
+		return functional.None[user.ProductUser](), err
+	}
+	return functional.Some(mapped), nil
+}
+
+func (r *productUserRepositoryImpl) many(rows []model.ProductUsers) ([]user.ProductUser, error) {
+	mapped := make([]user.ProductUser, 0, len(rows))
+	for _, row := range rows {
+		item, err := r.productUserMapper.ToDomain(row)
+		if err != nil {
+			return nil, err
+		}
+		mapped = append(mapped, item)
+	}
+	return mapped, nil
 }

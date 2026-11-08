@@ -45,7 +45,7 @@ func TestClerkUpsertWouldChange(t *testing.T) {
 	t.Run("InactiveExistingUser", func(t *testing.T) {
 		t.Parallel()
 		inactive := existing
-		inactive.Status = user.ProductUserStatusInactive
+		inactive.Status = user.ProductUserStatusSuspended
 		assert.True(t, clerkUpsertWouldChange(inactive, same))
 	})
 }

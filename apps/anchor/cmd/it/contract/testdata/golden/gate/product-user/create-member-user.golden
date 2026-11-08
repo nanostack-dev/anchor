@@ -10,7 +10,7 @@ header X-Request-Id: ct/product-user/create-member-user
 header-names: Content-Type, Vary, X-Request-Id
 
 body:
-{"created_at":"<timestamp.frac>","email":"garbage+<uuid>@nanostack.dev","id":"{{create-member-user.uid}}","name":"{{$fullName}}","product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>"}
+{"created_at":"<timestamp.frac>","email":"garbage+<uuid>@nanostack.dev","id":"{{create-member-user.uid}}","name":"{{$fullName}}","product_id":"{{create-product.productId}}","status":"active","updated_at":"<timestamp.frac>"}
 
 logs: 1 line(s)
 {"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/product-users -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/product-users","principal_type":"api_key","request_body":"<present>","request_id":"ct/product-user/create-member-user","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"fmt"
+
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/product/user"
 
@@ -15,8 +17,15 @@ func NewProductUserMapper() *ProductUserMapper { // Return concrete type
 	return &ProductUserMapper{}
 }
 
-func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) user.ProductUser {
+// ToDomain returns an error for a row whose status is outside the contract
+// enum, so a bad row fails loudly instead of reaching a response.
+func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) (user.ProductUser, error) {
 	name := functional.FromPtr(entity.Name).OrElse("")
+
+	status, err := user.ParseProductUserStatus(entity.Status)
+	if err != nil {
+		return user.ProductUser{}, fmt.Errorf("product user %s: %w", entity.ID, err)
+	}
 
 	return user.ProductUser{
 		ID:         entity.ID,
@@ -24,10 +33,10 @@ func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) user.ProductUser
 		Email:      entity.Email,
 		Name:       name,
 		ExternalID: entity.ExternalID,
-		Status:     user.ProductUserStatus(entity.Status),
+		Status:     status,
 		CreatedAt:  entity.CreatedAt,
 		UpdatedAt:  entity.UpdatedAt,
-	}
+	}, nil
 }
 
 func (m *ProductUserMapper) ToEntity(domain user.ProductUser) model.ProductUsers {

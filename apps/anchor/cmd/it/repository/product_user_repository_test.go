@@ -138,7 +138,7 @@ func TestProductUserRepositorySearchByProductIDSortDirections(t *testing.T) {
 		ProductID: productID,
 		Name:      "Bravo",
 		Email:     "bravo@example.com",
-		Status:    user.ProductUserStatusInactive,
+		Status:    user.ProductUserStatusSuspended,
 	})
 	charlie := createProductUserWithDetails(t, user.ProductUser{
 		ProductID: productID,
@@ -357,7 +357,7 @@ func TestProductUserRepositorySearchByProductIDFilterByStatuses(t *testing.T) {
 		ProductID: productID,
 		Name:      uniqueName(t, "Inactive User"),
 		Email:     uniqueName(t, "inactive") + "@example.com",
-		Status:    user.ProductUserStatusInactive,
+		Status:    user.ProductUserStatusSuspended,
 	})
 
 	result, err := repoCtx.ProductUserRepository.SearchByProductID(
@@ -467,4 +467,37 @@ func TestProductUserRepositorySearchByProductIDScopesToProduct(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), otherResult.Total)
+}
+
+// TestProductUserRepositoryReadsStoredStatuses covers rows that the previous
+// release wrote: ACTIVE reads back as active, and a value outside the contract
+// enum fails the read instead of reaching a response.
+func TestProductUserRepositoryReadsStoredStatuses(t *testing.T) {
+	productID := tenantProductChain(t)
+	ctx := context.Background()
+
+	setStatus := func(id, status string) {
+		t.Helper()
+		_, err := repoCtx.DB.ExecContext(ctx, "UPDATE product_users SET status = $1 WHERE id = $2", status, id)
+		require.NoError(t, err)
+	}
+
+	legacyID := createProductUser(t, productID)
+	setStatus(legacyID, "ACTIVE")
+	legacy, err := repoCtx.ProductUserRepository.FindByProductIDAndID(ctx, productID, legacyID)
+	require.NoError(t, err)
+	require.True(t, legacy.IsPresent())
+	assert.Equal(t, user.ProductUserStatusActive, legacy.Value().Status, "a legacy ACTIVE row reads as active")
+
+	unknownID := createProductUser(t, productID)
+	setStatus(unknownID, "banana")
+	_, err = repoCtx.ProductUserRepository.FindByProductIDAndID(ctx, productID, unknownID)
+	require.ErrorIs(t, err, user.ErrUnknownProductUserStatus, "find rejects an unknown stored status")
+	_, err = repoCtx.ProductUserRepository.FindByProductID(ctx, productID)
+	require.ErrorIs(t, err, user.ErrUnknownProductUserStatus, "list rejects an unknown stored status")
+	_, err = repoCtx.ProductUserRepository.SearchByProductID(ctx, productID,
+		search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]{
+			Pagination: search.Pagination{Limit: 10},
+		})
+	require.ErrorIs(t, err, user.ErrUnknownProductUserStatus, "search rejects an unknown stored status")
 }
