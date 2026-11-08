@@ -100,7 +100,12 @@ func setupRepositoryIntegration(ctx context.Context) (*repositoryTestContext, er
 		tcpostgres.WithUsername(repoTestDatabaseName),
 		tcpostgres.WithPassword(repoTestDatabaseName),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").WithStartupTimeout(time.Minute),
+			// The image logs this line once for the init server, then
+			// restarts; only the second line means the final server is up
+			// (as cmd/it/shared waits for it).
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(time.Minute),
 		),
 	)
 	if err != nil {

@@ -3,7 +3,7 @@ package source
 import (
 	"context"
 
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 

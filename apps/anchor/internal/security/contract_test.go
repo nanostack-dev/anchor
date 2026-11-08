@@ -39,7 +39,9 @@ func TestContractSecurityIsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load embedded spec: %v", err)
 	}
-	resolver, err := apisec.NewResolver(doc)
+	// MatchChi resolves as the production resolver does (modules/apisec):
+	// anchor serves on chi, so the test must match requests as chi routes them.
+	resolver, err := apisec.NewResolver(doc, apisec.MatchChi())
 	if err != nil {
 		t.Fatalf("new resolver: %v", err)
 	}

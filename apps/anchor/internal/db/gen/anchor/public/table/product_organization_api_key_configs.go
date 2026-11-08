@@ -8,7 +8,7 @@
 package table
 
 import (
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
 var ProductOrganizationAPIKeyConfigs = newProductOrganizationAPIKeyConfigsTable("public", "product_organization_api_key_configs", "")

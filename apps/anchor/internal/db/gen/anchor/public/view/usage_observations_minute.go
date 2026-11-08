@@ -8,7 +8,7 @@
 package view
 
 import (
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
 var UsageObservationsMinute = newUsageObservationsMinuteTable("public", "usage_observations_minute", "")

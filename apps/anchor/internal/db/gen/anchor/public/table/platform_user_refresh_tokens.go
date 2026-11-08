@@ -8,7 +8,7 @@
 package table
 
 import (
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
 var PlatformUserRefreshTokens = newPlatformUserRefreshTokensTable("public", "platform_user_refresh_tokens", "")

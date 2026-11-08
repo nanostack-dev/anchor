@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,8 +29,8 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 		require.NoError(t, cfg.FromSmtpIntegrationConfig(ct.SmtpIntegrationConfig{
 			Host:        new(mp.SMTPHost),
 			Port:        new(mp.SMTPPort),
-			Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
-			AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
+			Encryption:  new(ct.SmtpIntegrationConfigEncryptionNONE),
+			AuthMethod:  new(ct.SmtpIntegrationConfigAuthMethodPLAIN),
 			Username:    new("test"),
 			FromAddress: new("noreply@tryanchor.dev"),
 			FromName:    new("Anchor Updated"),

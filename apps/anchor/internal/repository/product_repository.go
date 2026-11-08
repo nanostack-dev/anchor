@@ -17,7 +17,7 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/mapper"
 
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/rs/zerolog"
 )
 

@@ -9,7 +9,6 @@ import (
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,8 +67,8 @@ func createSMTPIntegrationAndWaitForVerification(t *testing.T, port int) (int, s
 		Config: ct.SmtpIntegrationConfig{
 			Host:        new("127.0.0.1"),
 			Port:        new(port),
-			Encryption:  ptr.Ptr(ct.SmtpIntegrationConfigEncryptionNONE),
-			AuthMethod:  ptr.Ptr(ct.SmtpIntegrationConfigAuthMethodPLAIN),
+			Encryption:  new(ct.SmtpIntegrationConfigEncryptionNONE),
+			AuthMethod:  new(ct.SmtpIntegrationConfigAuthMethodPLAIN),
 			Username:    new("secaudit-user"),
 			Password:    new("secaudit-password"),
 			FromAddress: new("noreply@example.test"),

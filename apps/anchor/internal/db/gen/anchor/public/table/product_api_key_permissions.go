@@ -8,7 +8,7 @@
 package table
 
 import (
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
 var ProductAPIKeyPermissions = newProductAPIKeyPermissionsTable("public", "product_api_key_permissions", "")
