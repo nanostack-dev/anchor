@@ -28,7 +28,7 @@
   },
   "trigger": "The routine's email-only create in `anchor: product-user` (run 01a1a3e7, 00:13:56Z) asserted `$.status` equals `active` and got `ACTIVE`; the same flow's creates that send `status: active` get `active` back.",
   "detection": "Detected by a new flow check written from the contract, not from observed responses, while the routine updated the check for anchor#321. No test, alert or customer report had shown it in six months.",
-  "resolution": "Not resolved on dev or prod yet. The fix, anchor#PRNUM, supersedes anchor#323 (it adds the backfill and the strict read). It passes the unit, repository, service and CT suites and the golden contract suite locally, and waits for review. The reproduction moved to `anchor: known bugs`; the gate flow no longer asserts the default status.",
+  "resolution": "Not resolved on dev or prod yet. The fix, anchor#340, supersedes anchor#323 (it adds the backfill and the strict read). It passes the unit, repository, service and CT suites and the golden contract suite locally, and waits for review. The reproduction moved to `anchor: known bugs`; the gate flow no longer asserts the default status.",
   "timeline": {
     "events": [
       {
@@ -176,8 +176,8 @@
         "R4"
       ],
       "ticket": {
-        "label": "anchor#PRNUM",
-        "url": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+        "label": "anchor#340",
+        "url": "https://github.com/nanostack-dev/anchor/pull/340"
       }
     },
     {
@@ -253,8 +253,8 @@
       "url": "https://github.com/nanostack-dev/anchor/pull/321"
     },
     {
-      "label": "anchor#PRNUM (fix, waiting review; supersedes anchor#323)",
-      "url": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+      "label": "anchor#340 (fix, waiting review; supersedes anchor#323)",
+      "url": "https://github.com/nanostack-dev/anchor/pull/340"
     },
     {
       "label": "skills#48",

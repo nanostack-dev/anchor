@@ -35,7 +35,7 @@ Detected by a new flow check written from the contract, not from observed respon
 
 ## Resolution
 
-Not resolved on dev or prod yet. The fix, anchor#PRNUM, supersedes anchor#323 (it adds the backfill and the strict read). It passes the unit, repository, service and CT suites and the golden contract suite locally, and waits for review. The reproduction moved to `anchor: known bugs`; the gate flow no longer asserts the default status.
+Not resolved on dev or prod yet. The fix, anchor#340, supersedes anchor#323 (it adds the backfill and the strict read). It passes the unit, repository, service and CT suites and the golden contract suite locally, and waits for review. The reproduction moved to `anchor: known bugs`; the gate flow no longer asserts the default status.
 
 ## Timeline (UTC)
 
@@ -134,7 +134,7 @@ flowchart TD
 
 | ID | Action | Type | Owner | Due | Status | Ticket | Fixes |
 |---|---|---|---|---|---|---|---|
-| A1 | Store and return contract statuses, backfill stored rows, fold input case, validate the enum in the service, reject unknown stored values | prevent | anchor maintainers (review) | 2026-11-11 | open | [anchor#PRNUM](https://github.com/nanostack-dev/anchor/pull/PRNUM) | R1, R4 |
+| A1 | Store and return contract statuses, backfill stored rows, fold input case, validate the enum in the service, reject unknown stored values | prevent | anchor maintainers (review) | 2026-11-11 | open | [anchor#340](https://github.com/nanostack-dev/anchor/pull/340) | R1, R4 |
 | A2 | CT per create operation with only the contract's required fields, asserting every defaulted field | prevent | anchor maintainers | 2026-11-18 | open |  | R2 |
 | A3 | Validate CT responses against openapi.yaml (kin-openapi response validation in the CT client) | detect | anchor maintainers | 2026-11-18 | open |  | R3 |
 | A4 | Known-bugs reproduction; move into `anchor: product-user` once the fix is live | detect | Nanostack routine (echopoint-investigation) | 2026-11-04 | done |  | R3 |
@@ -159,5 +159,5 @@ Product users created without a status, and users synced from Clerk, were return
 - [Report (artifact)](https://claude.ai/artifact/NXLTbTpn4q1aJo85G41tUC)
 - [SEV3 name contract drift (same class)](https://claude.ai/artifact/9cd5VjqLrPT86J5Kr7rsVq)
 - [anchor#321](https://github.com/nanostack-dev/anchor/pull/321)
-- [anchor#PRNUM (fix, waiting review; supersedes anchor#323)](https://github.com/nanostack-dev/anchor/pull/PRNUM)
+- [anchor#340 (fix, waiting review; supersedes anchor#323)](https://github.com/nanostack-dev/anchor/pull/340)
 - [skills#48](https://github.com/nanostack-dev/skills/pull/48)
