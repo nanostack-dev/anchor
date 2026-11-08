@@ -35,3 +35,7 @@ echopoint --profile prod --workspace "$ws" flows get <id> -o json > <id>.json
 
 Trim each file to the keys above and name it after the flow name
 (`anchor: product user external id` -> `product-user-external-id.json`).
+
+Then, from `apps/anchor`, run `rm -rf cmd/it/contract/testdata/golden/gate` and
+`go test -tags contract ./cmd/it/contract/ -update` so goldens of renamed or dropped nodes do not stay behind,
+and review the diff: every changed golden is a contract change on the gate side.

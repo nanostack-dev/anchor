@@ -47,11 +47,17 @@ Desktop) for TimescaleDB 2.23.0-pg18 and Redis 7.
   from Docker Desktop I/O; rerun both sides back to back.
 - `StartupToReady` runs the binary as a subprocess against the suite's
   containers. Its `B/op` columns count only the polling client and are left
-  out above. The first start after a build was about 1.2 s (cold caches) and
-  is not in these samples, because `-count=10` reuses one built binary.
+  out above. The first of the ten samples is the first exec of the freshly
+  built binary and took 1.21 s (cold caches); the other nine are 180-188 ms.
+  The median (184.6 ms) reports the warm start; benchstat's interval does not
+  flag the outlier, so look at the raw samples when comparing cold starts.
 - `HeapAfterWarmup` measures the test process, which also holds the
   testcontainers client and the suite; its time/op is meaningless (the
   benchmark only reports metrics).
+
+The benchmark code was reorganised for lint after this run (shared state
+grouped in structs, the fixture helper's signature); the request bodies,
+routes and measurements are unchanged.
 
 ## benchstat
 
