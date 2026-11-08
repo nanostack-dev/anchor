@@ -15,7 +15,7 @@ import (
 	"anchor/internal/domain/product/user"
 	"anchor/internal/mapper"
 
-	"github.com/go-jet/jet/v2/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"

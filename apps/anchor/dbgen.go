@@ -6,11 +6,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-jet/jet/v2/generator/metadata"
-	"github.com/go-jet/jet/v2/generator/postgres"
-	"github.com/go-jet/jet/v2/generator/template"
-	postgres2 "github.com/go-jet/jet/v2/postgres"
 	"github.com/lib/pq"
+	"github.com/nanostack-dev/nanostack-framework/db/generator/metadata"
+	"github.com/nanostack-dev/nanostack-framework/db/generator/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/generator/template"
+	postgres2 "github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/rs/zerolog"
 )
 
