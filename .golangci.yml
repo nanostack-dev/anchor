@@ -210,13 +210,9 @@ linters:
             - pkg: log$
               desc: Use log/slog instead, see https://go.dev/blog/slog
         # Anchor logs through log/slog with injected loggers (internal/applog).
-        # zerolog stays only where modules/cache's cache.New takes a
-        # zerolog.Logger, until the cache moves to redis/nanocache.
         "slog only":
           files:
             - "$all"
-            - "!**/internal/service/caches.go"
-            - "!**/internal/license/service/organization_license_cache.go"
           deny:
             - pkg: github.com/rs/zerolog
               desc: Use log/slog through an injected *slog.Logger (internal/applog)
@@ -224,6 +220,23 @@ linters:
               desc: Use core/log and internal/applog (LevelFor, Error)
             - pkg: github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog
               desc: The request summary is internal/middleware.NewRequestLoggingMiddleware on slog
+        # Anchor is wired by nano gen wire (cmd/app/manifest.go) and configured
+        # by nano gen config (cmd/app.Config). fx and the framework packages
+        # built on it are deprecated (ADR 0013).
+        "nano only":
+          files:
+            - "$all"
+          deny:
+            - pkg: go.uber.org/fx
+              desc: Add a provider to a nano.Module and run go generate ./cmd/app
+            - pkg: go.uber.org/dig
+              desc: Add a provider to a nano.Module and run go generate ./cmd/app
+            - pkg: github.com/nanostack-dev/nanostack-framework/modules/
+              desc: Use the nano module (pg/nanopg, pg/nanomigrate, redis/nanocache, otel/nanotrace, http/nanoserver, http/nanoapisec)
+            - pkg: github.com/nanostack-dev/nanostack-framework/app$
+              desc: cmd/app.Main runs anchor with nano.Main
+            - pkg: github.com/nanostack-dev/nanostack-framework/pkg/fxlog
+              desc: fx is gone; the App logs through the component logger
 
     errcheck:
       # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
@@ -459,16 +472,6 @@ linters:
       # them (G6).
       - path: 'cmd/it/'
         text: "SA1019: .* is deprecated: Workspaces are resources of the product's workspace resource type"
-        linters: [ staticcheck ]
-      # nanostack-framework v0.23.0-beta.1 deprecates its fx modules. They keep
-      # working in the beta; this rule allows only the ones anchor still wires
-      # through fx, by import path, so any other deprecation fails lint,
-      # including the legacy logging stack the logging step removed (app,
-      # pkg/fxlog, pkg/httputil/requestlog, modules/httpserver). modules/logging
-      # stays for the zerolog.Logger the other fx modules take. Remove each
-      # module from the list as it moves to its nano replacement (RELEASING.md,
-      # "Upgrade from v0.22.0", step 5).
-      - text: 'SA1019: github\.com/nanostack-dev/nanostack-framework/modules/(apisec|cache|config|logging|migrations|pglock|postgres|tracing|transactor) is deprecated: removed with fx \(ADR 0013\)'
         linters: [ staticcheck ]
       # A component test runs in parallel with the others, but its subtests are
       # ordered steps over one shared fixture, so they stay sequential.
