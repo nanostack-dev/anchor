@@ -1,0 +1,15 @@
+# anchor: organization-api-key / Get Org Key (200)
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/get-org-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{create-org-key.akId}}","name":"eptest-orgkey","obfuscated_value":"anchor_org_apikey_***_<hex>","organization_id":"{{create-org.orgId}}","permissions":[{"organization_api_key_id":"{{create-org-key.akId}}","organization_id":"{{create-org.orgId}}","permission_name":"eptestdoc:read","product_id":"{{create-product.productId}}"}],"status":"ACTIVE","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}} -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/{{create-org-key.akId}}","principal_type":"api_key","request_id":"ct/organization-api-key/get-org-key","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

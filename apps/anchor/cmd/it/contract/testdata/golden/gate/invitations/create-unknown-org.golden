@@ -1,0 +1,17 @@
+# anchor: invitations / Invite Into An Unknown Organization (404)
+request: POST /v1/products/{{create-product.productId}}/organizations/org_<id>/invitations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"email":"garbage+<uuid>@nanostack.dev","role_id":"{{create-role.roleId}}"}
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/create-unknown-org
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_NOT_FOUND","message":"This product has no organization with that identifier"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"This product has no organization with that identifier","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/org_<id>/invitations","principal_type":"api_key","request_id":"ct/invitations/create-unknown-org","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/org_<id>/invitations -> 404 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/org_<id>/invitations","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/create-unknown-org","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

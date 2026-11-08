@@ -1,0 +1,17 @@
+# anchor: register on assign & organization role scope / Register on assign · A key without resource:write sends the block → 403
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo/members/{{user-dan.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{role-doc-viewer.id}}"], "resource": {"name": "Memo", "parent": {"type": "folder", "id": "design"}}}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/reg-no-write-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"product_apikey_<id>","current_scopes":["resource_member:write","resource:read"],"required_scopes":["resource:write"]}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-member","caller":"/<path>/<file>.go:<line>","env":"development","error":"The product API key does not have sufficient permissions.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo/members/{{user-dan.id}}","principal_type":"api_key","request_id":"ct/register-on-assign-organization-role-scope/reg-no-write-scope","status":403,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-member","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo/members/{{user-dan.id}} -> 403 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/memo/members/{{user-dan.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/register-on-assign-organization-role-scope/reg-no-write-scope","status":403,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,15 @@
+# anchor: access isolation and privilege changes / IDOR other Product · Give Dan a role on Design with the other Product's key → 401 INVALID_PRODUCT_API_KEY
+request: PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{role-guest.id}}"]}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/other-assign
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_PRODUCT_API_KEY","message":"The product API key is invalid."}]}
+
+logs: 0 line(s)

@@ -1,0 +1,17 @@
+# anchor: organization roles / Update Nina With {} (400 VALIDATION_ERROR)
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}
+request-headers: Authorization, Content-Type
+request-body: {}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-roles/set-2-empty
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"VALIDATION_ERROR","message":"role_id is a required field; send null for no role","field":"role_id","metadata":{"rule":"required"}}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"role_id is a required field; send null for no role","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}","principal_type":"user","request_id":"ct/organization-roles/set-2-empty","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}} -> 400 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}","principal_type":"user","request_body":"<present>","request_id":"ct/organization-roles/set-2-empty","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

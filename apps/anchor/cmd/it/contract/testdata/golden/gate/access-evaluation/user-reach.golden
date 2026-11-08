@@ -1,0 +1,16 @@
+# anchor: access evaluation / Member Reaches Dev Org With Org, Role And User Echoed
+request: POST /v1/products/{{nanostackProductId}}/access/v1/evaluations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "{{dev-member.externalId}}"}, "resource": {"type": "organization", "id": "{{echopointOrgId}}"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/user-reach
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"organization":{"id":"{{echopointOrgId}}","name":"echopoint"},"permissions":["flows:read"],"product_user":{"email":"{{dev-member.email}}","id":"{{dev-member.userId}}","name":"Echopoint Dev"},"role":{"id":"{{dev-member.roleId}}","name":"echopoint-member"}},"decision":true,"evaluations":[]}
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/access/v1/evaluations -> 200 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/user-reach","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

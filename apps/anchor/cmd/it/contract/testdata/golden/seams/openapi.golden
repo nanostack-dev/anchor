@@ -1,0 +1,14 @@
+# embedded OpenAPI document
+request: GET /openapi.yaml
+request-headers: 
+
+status: 200
+header Content-Type: application/yaml
+header Vary: Origin
+header X-Request-Id: ct/seams/openapi
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+<390775 bytes, sha256 4e626b3b218b81ad045f40bfdaa53d93c9e743c12ed9bcb5e54584cef28beb42>
+
+logs: 0 line(s)

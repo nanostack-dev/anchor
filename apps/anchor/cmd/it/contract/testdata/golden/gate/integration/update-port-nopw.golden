@@ -1,0 +1,17 @@
+# anchor: integration / Update SMTP new port, no password (400 INTEGRATION_INVALID_CONFIG)
+request: PUT /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}
+request-headers: Authorization, Content-Type
+request-body: {"config": {"host": "smtp.example.com", "port": 465, "encryption": "STARTTLS", "auth_method": "LOGIN", "username": "u", "from_address": "{{create-integration.fromAddress}}", "from_name": "Ep Test Moved"}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/integration/update-port-nopw
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INTEGRATION_INVALID_CONFIG","message":"Invalid provider config: Send the SMTP password again when the host or the port changes."}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"Invalid provider config: Send the SMTP password again when the host or the port changes.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}","principal_type":"user","request_id":"ct/integration/update-port-nopw","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}} -> 400 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}","principal_type":"user","request_body":"<present>","request_id":"ct/integration/update-port-nopw","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

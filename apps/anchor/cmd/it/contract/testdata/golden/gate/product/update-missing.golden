@@ -1,0 +1,15 @@
+# anchor: product / Update Unknown Product (404)
+request: PUT /v1/products/prd_<id>
+request-headers: Authorization, Content-Type
+request-body: {"name":"eptest-product-missing-{{$runId}}"}
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product/update-missing
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_NOT_FOUND","message":"This tenant has no product with that identifier"}]}
+
+logs: 0 line(s)

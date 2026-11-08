@@ -1,0 +1,898 @@
+{
+ "id": "f8ef0478-6cba-4d34-8f2e-1e194dcc9eff",
+ "name": "anchor: platform-users",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Platform users with a fixture this run owns (invite, register, read /v1/me): get and search by id and email return exactly that user and no password material, a user cannot delete itself (403), the 401/404 cases, and delete verified by a read, a search and the deleted user's token.",
+ "updated_at": "2026-11-06T00:38:37.754802Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "ad4a790a-4ba2-41ec-9aa2-797b3878062b",
+    "source": "login",
+    "target": "create-invitation",
+    "type": "success"
+   },
+   {
+    "id": "7a37a376-4f0d-4b19-9b28-c56c116f19dd",
+    "source": "create-invitation",
+    "target": "register",
+    "type": "success"
+   },
+   {
+    "id": "c7be2b48-e08f-4afd-982b-50686827dab6",
+    "source": "register",
+    "target": "me",
+    "type": "success"
+   },
+   {
+    "id": "a8bb6fb3-6836-4553-8b50-c5ad05d80046",
+    "source": "me",
+    "target": "get-user",
+    "type": "success"
+   },
+   {
+    "id": "0b3a645a-7e65-4bfd-9a1b-66e6bfcd5c77",
+    "source": "me",
+    "target": "search-by-id",
+    "type": "success"
+   },
+   {
+    "id": "a0543662-e1a2-4021-981c-cd30d2c14e23",
+    "source": "me",
+    "target": "search-by-email",
+    "type": "success"
+   },
+   {
+    "id": "06a90d4b-74c4-463c-85cf-bc2d66fcdd1c",
+    "source": "me",
+    "target": "self-delete",
+    "type": "success"
+   },
+   {
+    "id": "2cb453fd-6953-4d68-9649-ef6b8dfee50a",
+    "source": "login",
+    "target": "get-missing",
+    "type": "success"
+   },
+   {
+    "id": "5f5fa53d-d94b-4ff2-a03d-fdfec65f31a3",
+    "source": "login",
+    "target": "no-credential",
+    "type": "success"
+   },
+   {
+    "id": "3f734361-753d-4a59-b8b6-eb2586419e7f",
+    "source": "login",
+    "target": "bad-token",
+    "type": "success"
+   },
+   {
+    "id": "5aa4add7-c590-4971-bd15-2d5a804c7c13",
+    "source": "get-user",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "16d81e71-d633-42b3-a992-bee9a8319f4c",
+    "source": "search-by-id",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "78d9b2ef-b0e2-4a45-8957-792fbdc03d8d",
+    "source": "search-by-email",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "41ed426c-1558-4769-af3e-b30972be3689",
+    "source": "self-delete",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "8216bb45-8530-4d57-b13f-5febb2496c93",
+    "source": "get-missing",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "456c4028-dc04-46e5-a754-19d140f44971",
+    "source": "no-credential",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "9f830b24-710d-45dd-879e-c39566148cd9",
+    "source": "bad-token",
+    "target": "cleanup-find",
+    "type": "success"
+   },
+   {
+    "id": "4ff1475c-96aa-4ce1-a1c6-ce41bf1ca92f",
+    "source": "get-user",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "7d18291d-1d84-40a4-a6ae-49586ea7fc77",
+    "source": "search-by-id",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "ab90718b-c86b-460f-8fae-42261cfbb4c0",
+    "source": "search-by-email",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "452d3059-9b2d-4a8e-ab95-cc74a1fc8a04",
+    "source": "self-delete",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "9b1a51d7-0acd-4ccf-9e0b-892facde46f1",
+    "source": "get-missing",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "6fef0592-6879-439b-b77c-2f5e1b71ebbc",
+    "source": "no-credential",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "e3c8598a-4562-4eeb-92ca-aa1c4b6fabca",
+    "source": "bad-token",
+    "target": "cleanup-invite",
+    "type": "success"
+   },
+   {
+    "id": "4a41bcbf-4ced-4adb-bfec-e176871aaf51",
+    "source": "delete-user",
+    "target": "verify-gone",
+    "type": "success"
+   },
+   {
+    "id": "547eef43-ebf6-460c-8b78-a5dbe52e14cb",
+    "source": "delete-user",
+    "target": "search-gone",
+    "type": "success"
+   },
+   {
+    "id": "db860ca2-65f9-4584-8e91-1db1dba173ba",
+    "source": "delete-user",
+    "target": "deleted-user-token",
+    "type": "success"
+   },
+   {
+    "id": "e15d9e1c-92e7-47d8-854d-94e6128a8adc",
+    "source": "cleanup-find",
+    "target": "delete-user",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-invitation",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "code",
+      "secret": false,
+      "extractor": {
+       "path": "$.code",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "inviteEmail",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "invId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Invite A Throwaway Admin (201)"
+   },
+   {
+    "id": "register",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/auth/register",
+     "body": "{\"email\":\"{{create-invitation.inviteEmail}}\",\"password\":\"Ep!{{$runId}}Aa1\",\"invitation_code\":\"{{create-invitation.code}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "regAccess",
+      "secret": false,
+      "extractor": {
+       "path": "$.accessToken",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Ep!{{$runId}}Aa1"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Register With The Invitation (200)"
+   },
+   {
+    "id": "me",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/me",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{register.regAccess}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "meId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invitation.inviteEmail}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ADMIN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read The New User's Id (200)"
+   },
+   {
+    "id": "get-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/{{me.meId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{me.meId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invitation.inviteEmail}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ADMIN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.tenant_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "Ep!{{$runId}}Aa1"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Get The New User (200)"
+   },
+   {
+    "id": "search-by-id",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"filter\":{\"ids\":[\"{{me.meId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{me.meId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invitation.inviteEmail}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Search By Id Finds Exactly It (200)"
+   },
+   {
+    "id": "search-by-email",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"filter\":{\"emails\":[\"{{create-invitation.inviteEmail}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{me.meId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "password"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Search By Email Finds Exactly It (200)"
+   },
+   {
+    "id": "self-delete",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/{{me.meId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{register.regAccess}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "SELF_DELETION_NOT_ALLOWED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "A User Cannot Delete Itself (403)"
+   },
+   {
+    "id": "get-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/puser_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PLATFORM_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown User (404)"
+   },
+   {
+    "id": "no-credential",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Without A Token (401)"
+   },
+   {
+    "id": "bad-token",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/puser_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer not-a-real-token"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get With A Malformed Token (401)"
+   },
+   {
+    "id": "delete-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/{{cleanup-find.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The User (204)"
+   },
+   {
+    "id": "cleanup-invite",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-invitations/{{create-invitation.invId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Invitation (204)"
+   },
+   {
+    "id": "verify-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/{{me.meId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PLATFORM_USER_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted User (404)"
+   },
+   {
+    "id": "search-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"filter\":{\"ids\":[\"{{me.meId}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted User Not Listed (200)"
+   },
+   {
+    "id": "deleted-user-token",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/me",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{register.regAccess}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted User's Token Is Refused (401)"
+   },
+   {
+    "id": "cleanup-find",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/platform-users/search",
+     "body": "{\"filter\": {\"emails\": [\"{{create-invitation.inviteEmail}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[0].id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Find The Registered User By Email (cleanup)"
+   }
+  ],
+  "version": ""
+ }
+}

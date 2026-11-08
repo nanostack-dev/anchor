@@ -1,0 +1,14 @@
+# product API key without the scope: 403 with required_scopes
+request: DELETE /v1/products/{{product}}/organizations/{{org}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/auth-key-missing-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"{{product_key_id}}","current_scopes":["organization:read","organization:create"],"required_scopes":["organization:delete"]}}]}
+
+logs: 0 line(s)

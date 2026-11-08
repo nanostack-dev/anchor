@@ -1,0 +1,6077 @@
+{
+ "id": "6ffb318e-60c9-44b4-b370-b3fbcf7cb585",
+ "name": "anchor: invitations",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: invitations\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Every behaviour of the organization invitation API, then one final webhook wait proving each successful write emitted its event.",
+ "updated_at": "2026-11-03T15:14:20.865068Z",
+ "flow_definition": {
+  "description": "Every behaviour of the organization invitation API, then one final webhook wait proving each successful write emitted its event.",
+  "edges": [
+   {
+    "id": "01a0f354-1400-7f90-aa59-2bea0e6edfbe",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-18a4-70a1-aec3-8206580f57d9",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-1b97-7659-82f3-94e769eaef18",
+    "source": "create-product",
+    "target": "create-read-key",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-1e7c-78af-8556-861107279161",
+    "source": "login",
+    "target": "create-product-two",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-215b-7ab9-b9dc-a65f0be4c363",
+    "source": "create-product-two",
+    "target": "create-key-two",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-247b-701f-9a4b-a7395039c39e",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-2762-706f-a549-48ec50ada6f5",
+    "source": "create-key",
+    "target": "create-org-two",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-2a64-7cdb-be5a-8949b2a1502e",
+    "source": "create-key",
+    "target": "create-org-search",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-2d44-734b-a7e6-4b531818c823",
+    "source": "create-key",
+    "target": "create-org-expiry",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-3051-7e8a-afc0-45d5541310fb",
+    "source": "create-key",
+    "target": "create-role",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-33d6-71db-bb6f-3bb03f7544d2",
+    "source": "create-key",
+    "target": "create-role-two",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-367d-761a-a552-9f92fc5a119c",
+    "source": "create-key",
+    "target": "create-role-three",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-396a-7cf5-8b63-593bbefc64d8",
+    "source": "create-key",
+    "target": "create-role-four",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-3c21-7ee4-bc0f-6f16de06db03",
+    "source": "create-key",
+    "target": "create-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-3ee9-7661-bf05-2efb3f2b2dc4",
+    "source": "create-key",
+    "target": "create-invitee",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-4253-7616-b050-11e4fa2d6ea5",
+    "source": "create-key",
+    "target": "create-bystander",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-4636-7f8b-9569-a60b731fed8d",
+    "source": "create-org",
+    "target": "invite-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-4636-7f8c-8954-dd5183defa43",
+    "source": "create-role",
+    "target": "invite-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-4637-7f8c-bd12-f8f5f1fd83a8",
+    "source": "create-role-two",
+    "target": "invite-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-4df2-736a-b5e0-c751e9e3d22c",
+    "source": "invite-a",
+    "target": "get-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-51e2-78e3-8179-30c5f0905d1d",
+    "source": "invite-a",
+    "target": "lookup-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-55b5-73f2-af97-286d29951afd",
+    "source": "get-a",
+    "target": "update-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-55b6-73f2-a6b1-d91d13730ea1",
+    "source": "lookup-a",
+    "target": "update-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-5a29-75fb-8be5-6d1db475389b",
+    "source": "update-a",
+    "target": "accept-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-5a2a-75fb-87c4-2a57ab65cd49",
+    "source": "create-invitee",
+    "target": "accept-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-5e41-7590-8c09-60f6922124fd",
+    "source": "accept-a",
+    "target": "get-member-a",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-6042-74fb-85f0-cf56187dff83",
+    "source": "accept-a",
+    "target": "accept-a-again",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-633f-7b20-95f8-4525536da67d",
+    "source": "accept-a",
+    "target": "update-a-accepted",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-69a4-7238-b372-0f3a793fdbe6",
+    "source": "accept-a",
+    "target": "invite-member-email",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-6c5b-75b6-8037-bf5484b660aa",
+    "source": "accept-a",
+    "target": "invite-d",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-739c-7c18-b8e9-7052dcd437a6",
+    "source": "invite-d",
+    "target": "accept-d-by-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-76ff-7ba7-8cc6-5b641bab1849",
+    "source": "accept-d-by-member",
+    "target": "get-d",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7a23-77cf-86d1-e3c2c7412cb5",
+    "source": "get-member-a",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7a23-77d0-847b-eca61887b90d",
+    "source": "accept-a-again",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7a23-77d1-a315-b3d94250eb03",
+    "source": "update-a-accepted",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7a24-77d2-a8fb-a91379b1398f",
+    "source": "invite-member-email",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7a24-77d3-beec-57bc2239ca9f",
+    "source": "get-d",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7c24-7252-868e-ad3a2011becb",
+    "source": "remove-member",
+    "target": "delete-role-two",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-7e2d-7c97-8c09-c8341b908d51",
+    "source": "delete-role-two",
+    "target": "get-a-gone",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-813e-7b96-859f-404b2eba589b",
+    "source": "create-org",
+    "target": "invite-b",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-813f-7b96-8d4d-4bc76bd028b3",
+    "source": "create-role",
+    "target": "invite-b",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-88c1-7f65-839c-eabd5d2884a8",
+    "source": "invite-b",
+    "target": "resend-b",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-92fb-79f2-9f9a-61e09a22a54e",
+    "source": "create-bystander",
+    "target": "accept-b",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-9502-7bdd-9c47-b98734613d46",
+    "source": "create-org",
+    "target": "invite-c",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-9502-7bde-b0d5-aa652b0e58aa",
+    "source": "create-role",
+    "target": "invite-c",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-9c46-744c-8909-2ef231ab0e6e",
+    "source": "invite-c",
+    "target": "delete-c",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-9e83-7479-93a3-f88becd01a73",
+    "source": "delete-c",
+    "target": "get-c-gone",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-a29c-7a10-acf8-0e8032929bfc",
+    "source": "delete-c",
+    "target": "accept-c",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-a29d-7a10-8109-e94353d20d57",
+    "source": "create-invitee",
+    "target": "accept-c",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-a5df-7139-96ea-850748f232d1",
+    "source": "delete-c",
+    "target": "delete-c-again",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-a7f3-7f86-88b2-d14df6f760f9",
+    "source": "delete-c",
+    "target": "invite-c2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-af77-7d7a-a1b2-91bccd92c711",
+    "source": "create-org",
+    "target": "invite-e",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-af77-7d7b-9063-5a7c4e554053",
+    "source": "create-role",
+    "target": "invite-e",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-b74f-7c05-98b6-0180a25082b3",
+    "source": "invite-e",
+    "target": "invite-e-case",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ba61-78ac-941e-38f5de6fc451",
+    "source": "invite-e",
+    "target": "invite-e-other-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ba61-78ad-9e03-b58caa2665c5",
+    "source": "create-org-two",
+    "target": "invite-e-other-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-c130-79ad-8975-a760d4daac9f",
+    "source": "invite-e",
+    "target": "get-e-other-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-c130-79ae-881a-68be6101fa5e",
+    "source": "create-org-two",
+    "target": "get-e-other-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-c34e-79b2-8d72-45ad43afc41e",
+    "source": "create-org",
+    "target": "invite-f",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-c34e-79b3-ade6-ede95848e6a2",
+    "source": "create-role",
+    "target": "invite-f",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ca6b-75c8-a97d-46ee58bdee7c",
+    "source": "invite-f",
+    "target": "update-f-past",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-cdd7-7145-a4dd-6bb9fb7f97fc",
+    "source": "invite-f",
+    "target": "update-f-role",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d100-7439-8c50-13875adecb3e",
+    "source": "invite-f",
+    "target": "accept-f-unknown-user",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d36f-756a-8958-486b80204b28",
+    "source": "update-f-past",
+    "target": "get-f",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d36f-756b-b19b-b6069261c076",
+    "source": "update-f-role",
+    "target": "get-f",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d370-756b-84fe-2b8acd5d29b8",
+    "source": "accept-f-unknown-user",
+    "target": "get-f",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d6ea-74a9-87f9-d5ba56a14d82",
+    "source": "create-org",
+    "target": "create-bad-email",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-d6ea-74aa-ace7-20a9d850868d",
+    "source": "create-role",
+    "target": "create-bad-email",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-da2b-7fcc-8ed2-d58066041a00",
+    "source": "create-org",
+    "target": "create-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-da2b-7fcd-8121-4d2f04fe84ea",
+    "source": "create-role",
+    "target": "create-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-dd7d-7973-b04d-db4732d2d39b",
+    "source": "create-org",
+    "target": "create-past-expiry",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-dd7d-7974-be59-03e5cbefe722",
+    "source": "create-role",
+    "target": "create-past-expiry",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e18e-7a15-b23f-f2e3af177473",
+    "source": "create-org",
+    "target": "create-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e18e-7a16-b61a-3c56e135065b",
+    "source": "create-role",
+    "target": "create-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e3ee-7496-9ad1-645ca79a2f08",
+    "source": "create-org",
+    "target": "get-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e3ee-7497-b718-68bf67a522ad",
+    "source": "create-role",
+    "target": "get-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e74d-7b52-9f54-f37c4c7fbea2",
+    "source": "create-org",
+    "target": "update-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-e74d-7b53-bab2-e8c101e9c3c9",
+    "source": "create-role",
+    "target": "update-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ec18-7620-89b9-723a2c54cf72",
+    "source": "create-org",
+    "target": "delete-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ec18-7621-9165-6fb4d83f775d",
+    "source": "create-role",
+    "target": "delete-unknown",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-f220-78a1-86ce-85b54be23c2c",
+    "source": "create-invitee",
+    "target": "accept-unknown-token",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-f5c9-7735-af2f-87a7459586d4",
+    "source": "create-org",
+    "target": "search-unknown-status",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-f5c9-7736-ae56-1d5af7753dc8",
+    "source": "create-role",
+    "target": "search-unknown-status",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-f873-7cc5-b203-b7f2469eca7f",
+    "source": "create-key",
+    "target": "search-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-fadc-7737-9975-a2e8f2a13b9a",
+    "source": "create-org",
+    "target": "create-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-fadc-7738-a3a1-aad3f79360c1",
+    "source": "create-role",
+    "target": "create-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-fadc-7739-a703-18ccca5bc467",
+    "source": "create-read-key",
+    "target": "create-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-fd26-7aae-affe-bc8d48f69767",
+    "source": "invite-b",
+    "target": "get-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-fd26-7aaf-8da6-3dfbd8c56ba1",
+    "source": "create-read-key",
+    "target": "get-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ffb0-7024-b349-efb3a291868b",
+    "source": "invite-f",
+    "target": "accept-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ffb0-7025-99f0-3b38402cd636",
+    "source": "create-read-key",
+    "target": "accept-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f354-ffb0-7026-bb5e-46f7824655a5",
+    "source": "create-invitee",
+    "target": "accept-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-01d6-79ae-8661-ad7af37ecc0b",
+    "source": "invite-f",
+    "target": "delete-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-01d6-79af-aa22-f526b96fbe5d",
+    "source": "create-read-key",
+    "target": "delete-read-only",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-0463-76d6-ba14-35d748785580",
+    "source": "invite-f",
+    "target": "get-no-key",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-06c8-790c-aad0-e5679309686a",
+    "source": "invite-b",
+    "target": "get-other-product",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-06c8-790d-9a08-f53bf3b9b89e",
+    "source": "create-key-two",
+    "target": "get-other-product",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-0930-7442-b0fe-da3a00967732",
+    "source": "invite-f",
+    "target": "lookup-other-product",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-0930-7443-b86f-e1c09f0977d4",
+    "source": "create-key-two",
+    "target": "lookup-other-product",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-0b8d-78db-8264-a9d0f8ff4fc8",
+    "source": "create-org-search",
+    "target": "invite-s1",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-0b8d-78dc-bb95-18b56386f737",
+    "source": "create-role",
+    "target": "invite-s1",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-139a-759a-b5cc-9bd4288cfa7f",
+    "source": "create-org-search",
+    "target": "invite-s2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-139a-759b-893b-4e590b1e22ba",
+    "source": "create-role",
+    "target": "invite-s2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-1cb1-7128-96d1-95f8cc21a404",
+    "source": "invite-s2",
+    "target": "accept-s2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-1cb1-7129-b889-4745967e8f26",
+    "source": "create-bystander",
+    "target": "accept-s2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-1ef9-70b2-8dc8-3998706174cc",
+    "source": "invite-s1",
+    "target": "search-all",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-1efa-70b2-8a35-98c6f164597d",
+    "source": "accept-s2",
+    "target": "search-all",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-23fb-7355-aa88-9b4fb870b3a4",
+    "source": "invite-s1",
+    "target": "search-pending",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-23fb-7356-bef4-043c99a0807d",
+    "source": "accept-s2",
+    "target": "search-pending",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-28ad-7219-bf2e-59f0bb5ac359",
+    "source": "invite-s1",
+    "target": "search-accepted",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-28ad-721a-a5b2-c6a269183816",
+    "source": "accept-s2",
+    "target": "search-accepted",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-2d94-7d26-82ab-99dfc71961b7",
+    "source": "invite-s1",
+    "target": "search-both",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-2d95-7d26-96d2-a1a0c055f115",
+    "source": "accept-s2",
+    "target": "search-both",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-31ec-7292-9b81-6ff1c1970a30",
+    "source": "create-org",
+    "target": "invite-r",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-31ed-7292-afd3-b0895c98a1e9",
+    "source": "create-role-three",
+    "target": "invite-r",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-3ad7-7b47-9eb5-bbf72010a036",
+    "source": "invite-r",
+    "target": "delete-role-three-held",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-3e6c-7246-b86d-1bee9f4a8cfb",
+    "source": "delete-role-three-held",
+    "target": "update-r",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-3e6c-7247-a5a9-69d8cbb87c71",
+    "source": "create-role",
+    "target": "update-r",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-40ec-70c8-b99a-3da54a241069",
+    "source": "update-r",
+    "target": "delete-role-three",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-43d9-7fa9-b341-5ce9bc1e2161",
+    "source": "create-org",
+    "target": "invite-r2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-43d9-7faa-924e-76f613f0a7c9",
+    "source": "create-role-four",
+    "target": "invite-r2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-4d91-7627-a15b-52f821113674",
+    "source": "invite-r2",
+    "target": "delete-r2",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-500e-7189-b303-577fb67a7562",
+    "source": "delete-r2",
+    "target": "delete-role-four",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-5272-7c4d-87a6-9ccf00fb137b",
+    "source": "create-org-expiry",
+    "target": "invite-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-5272-7c4e-8e07-114d37058067",
+    "source": "create-role-five",
+    "target": "invite-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-5afc-7e1b-a3a7-520a5ac28eba",
+    "source": "invite-x",
+    "target": "wait-x-expiry",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-5c4d-72c0-90cc-24d0356515d1",
+    "source": "wait-x-expiry",
+    "target": "get-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-6006-7044-a5d1-e1c25612ee27",
+    "source": "wait-x-expiry",
+    "target": "lookup-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-6405-770a-8614-035a1ec049ab",
+    "source": "wait-x-expiry",
+    "target": "accept-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-6406-770a-b344-081f728a02d3",
+    "source": "create-invitee",
+    "target": "accept-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-67ac-7197-bd3e-5a5e4a5a5c8c",
+    "source": "wait-x-expiry",
+    "target": "update-x",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-6f77-77b4-8f3c-81fd504f45f0",
+    "source": "wait-x-expiry",
+    "target": "search-x-expired",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-7382-798b-9090-54783c055953",
+    "source": "wait-x-expiry",
+    "target": "search-x-pending",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-7749-77c9-815f-feacc10409a2",
+    "source": "search-x-pending",
+    "target": "invite-x-again",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-774a-77c9-80fe-d28a5426b4cd",
+    "source": "search-x-expired",
+    "target": "invite-x-again",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-774a-77ca-8c87-821b0373caa7",
+    "source": "create-role",
+    "target": "invite-x-again",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c3-7417-b498-45427ce9d2fc",
+    "source": "get-x",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c4-7417-b17e-cbeb86211624",
+    "source": "lookup-x",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c4-7418-8937-419f8d7380be",
+    "source": "accept-x",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c5-7418-89ef-a223cd01be16",
+    "source": "update-x",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c6-7419-98bc-b2afe4cebf73",
+    "source": "search-x-expired",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c6-741a-8ddf-29dacd66fe22",
+    "source": "search-x-pending",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-82c7-741a-adb2-53779fe2edb5",
+    "source": "invite-x-again",
+    "target": "delete-role-five",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-85ad-7675-8af4-27002f4d9c44",
+    "source": "delete-role-five",
+    "target": "get-x-gone",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88d9-7234-8f1b-7a3e0c4f97b8",
+    "source": "get-a-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88d9-7235-9f14-42473b27f006",
+    "source": "accept-b",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88da-7235-8c22-e84dfbfc36f2",
+    "source": "get-c-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88db-7236-85f8-653f9ce4c83e",
+    "source": "accept-c",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88db-7237-8024-5cd45adf2b7c",
+    "source": "delete-c-again",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88dc-7237-8280-bd6832a6d043",
+    "source": "invite-c2",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88dc-7238-b3d1-918dd75a4092",
+    "source": "invite-e-case",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88dc-7239-b787-8ca65d302386",
+    "source": "invite-e-other-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88dd-7239-8167-591e6cc03145",
+    "source": "get-e-other-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88dd-723a-a977-841a71d907fa",
+    "source": "get-f",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88de-723a-abaa-b2d9e5a4fc5c",
+    "source": "create-bad-email",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88de-723b-93da-7cda311695f6",
+    "source": "create-unknown-role",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88de-723c-8e2e-2befedc660c8",
+    "source": "create-past-expiry",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88df-723c-afed-1f6219f9190d",
+    "source": "create-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88df-723d-a239-699d94f6c89c",
+    "source": "get-unknown",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88df-723e-b16f-40294594dbe5",
+    "source": "update-unknown",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e0-723f-b8df-e936a1ea68bd",
+    "source": "delete-unknown",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e0-7241-a01a-7538f5323a87",
+    "source": "accept-unknown-token",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e1-7241-a21b-ca63bdd49542",
+    "source": "search-unknown-status",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e1-7242-bdfc-c30930187a05",
+    "source": "search-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e1-7243-9692-85d1bbb16149",
+    "source": "create-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e1-7244-8365-6f81a50885d6",
+    "source": "get-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e2-7244-af0f-e191676b4161",
+    "source": "accept-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e2-7245-a6da-965d81b07f50",
+    "source": "delete-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e2-7246-b8c0-8107c684a37d",
+    "source": "get-no-key",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e3-7246-8209-98caeedb5fc5",
+    "source": "get-other-product",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e3-7247-bc23-7ec853645c7c",
+    "source": "lookup-other-product",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e3-7248-ac5f-752ff7d455e8",
+    "source": "search-all",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e3-7249-a2a6-5430bd66d263",
+    "source": "search-pending",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e4-7249-9071-ab0f395ad00c",
+    "source": "search-accepted",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e4-724a-9e4c-0399919629ee",
+    "source": "search-both",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e4-724b-b100-12b65694edea",
+    "source": "delete-role-three",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e5-724b-ac46-0928aa63aa9b",
+    "source": "delete-role-four",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-88e5-724c-bbf5-f483e978eb00",
+    "source": "get-x-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-c03b-778f-a295-863f7dad67d9",
+    "source": "events",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "01a0f355-c3ec-75c1-b3e5-f23df8771541",
+    "source": "events",
+    "target": "cleanup-two",
+    "type": "success"
+   },
+   {
+    "id": "rw-create-org-accept-unknown-token",
+    "source": "create-org",
+    "target": "accept-unknown-token",
+    "type": "success"
+   },
+   {
+    "id": "rw-accept-a-remove-member",
+    "source": "accept-a",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "rw-resend-b-accept-b",
+    "source": "resend-b",
+    "target": "accept-b",
+    "type": "success"
+   },
+   {
+    "id": "rw-delete-c-events",
+    "source": "delete-c",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "rw-create-org-events",
+    "source": "create-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "rw-create-role-events",
+    "source": "create-role",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "rw-create-key-events",
+    "source": "create-key",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "rw-wait-x-expiry-delete-role-five",
+    "source": "wait-x-expiry",
+    "target": "delete-role-five",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: invitations",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-invitations-{{$runId}}\",\"description\":\"invitations suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-invitations-key\",\"mutable\":false,\"permissions\":[\"organization:create\",\"organization:read\",\"organization:delete\",\"organization_invitation:create\",\"organization_invitation:read\",\"organization_invitation:update\",\"organization_invitation:delete\",\"organization_member:read\",\"organization_member:delete\",\"product_user:create\",\"product_user:read\",\"product_user:delete\",\"product_role:create\",\"product_role:read\",\"product_role:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key"
+   },
+   {
+    "id": "create-read-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-invitations-read\",\"mutable\":false,\"permissions\":[\"organization_invitation:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Read-Only Invitation Key"
+   },
+   {
+    "id": "create-product-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-invitations-other-{{$runId}}\",\"description\":\"invitations suite, isolation\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Another Product"
+   },
+   {
+    "id": "create-key-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product-two.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-invitations-other-key\",\"mutable\":false,\"permissions\":[\"organization:read\",\"organization_invitation:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Another Product's Key"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-create-org-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization"
+   },
+   {
+    "id": "create-org-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-create-org-two-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Second Organization"
+   },
+   {
+    "id": "create-org-search",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-create-org-search-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Search Organization"
+   },
+   {
+    "id": "create-org-expiry",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-create-org-expiry-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Expiry Organization"
+   },
+   {
+    "id": "create-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-inv-member\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Member Role"
+   },
+   {
+    "id": "create-role-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-inv-admin\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Admin Role"
+   },
+   {
+    "id": "create-role-three",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-inv-pending-holder\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role Kept By A Pending Invitation"
+   },
+   {
+    "id": "create-role-four",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-inv-withdrawn-holder\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role Of A Withdrawn Invitation"
+   },
+   {
+    "id": "create-role-five",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-inv-expired-holder\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role Of An Expired Invitation"
+   },
+   {
+    "id": "create-invitee",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "userId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Invitee"
+   },
+   {
+    "id": "create-bystander",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "userId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Second Product User"
+   },
+   {
+    "id": "invite-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite A"
+   },
+   {
+    "id": "get-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get A"
+   },
+   {
+    "id": "lookup-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/invitations/search",
+     "body": "{\"filter\": {\"emails\": [\"{{invite-a.email}}\"], \"statuses\": [\"pending\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Find A Across The Product By Email"
+   },
+   {
+    "id": "update-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}",
+     "body": "{\"role_id\":\"{{create-role-two.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+720h}}\",\"email\":\"garbage+intruder@nanostack.dev\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-two.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+720h}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Change A's Role And Expiry"
+   },
+   {
+    "id": "accept-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-a.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "accepted"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.accepted_at"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-two.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+720h}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept A"
+   },
+   {
+    "id": "get-member-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-invitee.userId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invitee.userId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-invitee.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-two.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invitee Is A Member"
+   },
+   {
+    "id": "accept-a-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_ALREADY_ACCEPTED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept A Again (409)"
+   },
+   {
+    "id": "update-a-accepted",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}",
+     "body": "{\"role_id\":\"{{create-role.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+720h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_ALREADY_ACCEPTED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Accepted A (409)"
+   },
+   {
+    "id": "invite-member-email",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"{{create-invitee.email}}\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_EMAIL_IS_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite A Member's Email (409)"
+   },
+   {
+    "id": "invite-d",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite D"
+   },
+   {
+    "id": "accept-d-by-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-d.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Member Accepts D (409)"
+   },
+   {
+    "id": "get-d",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-d.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-d.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "D Stays Pending"
+   },
+   {
+    "id": "remove-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-invitee.userId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Remove The Invitee"
+   },
+   {
+    "id": "delete-role-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-two.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete A's Role"
+   },
+   {
+    "id": "get-a-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "A Deleted With Its Role (404)"
+   },
+   {
+    "id": "invite-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite B"
+   },
+   {
+    "id": "resend-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}",
+     "body": "{\"role_id\": \"{{create-role.roleId}}\", \"expires_at\": \"{{$isoTimestamp:+240h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-b.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+240h}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Renew B (Update Expiry)"
+   },
+   {
+    "id": "accept-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-bystander.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-b.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "accepted"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.accepted_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept B After The Renewal"
+   },
+   {
+    "id": "invite-c",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite C"
+   },
+   {
+    "id": "delete-c",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-c.invitationId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Withdraw C"
+   },
+   {
+    "id": "get-c-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-c.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Withdrawn C (404)"
+   },
+   {
+    "id": "accept-c",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-c.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept Withdrawn C (404)"
+   },
+   {
+    "id": "delete-c-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-c.invitationId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Withdraw C Again (404)"
+   },
+   {
+    "id": "invite-c2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"{{invite-c.email}}\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-c.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-c.invitationId}}"
+      },
+      "operator_type": "not_equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite C's Email Again"
+   },
+   {
+    "id": "invite-e",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+Ana.{{$runId}}@Nanostack.DEV\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+Ana.{{$runId}}@Nanostack.DEV"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite E"
+   },
+   {
+    "id": "invite-e-case",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+ana.{{$runId}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_ALREADY_PENDING"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite E's Email In Lower Case (409)"
+   },
+   {
+    "id": "invite-e-other-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-two.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+Ana.{{$runId}}@Nanostack.DEV\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-two.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "garbage+Ana.{{$runId}}@Nanostack.DEV"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite E's Email In Another Organization"
+   },
+   {
+    "id": "get-e-other-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-two.orgId}}/invitations/{{invite-e.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "E Is Not Visible From Another Organization (404)"
+   },
+   {
+    "id": "invite-f",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "expiresAt",
+      "secret": false,
+      "extractor": {
+       "path": "$.expires_at",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite F"
+   },
+   {
+    "id": "update-f-past",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}",
+     "body": "{\"role_id\":\"{{create-role.roleId}}\",\"expires_at\":\"2020-01-01T00:00:00Z\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_EXPIRY_NOT_IN_FUTURE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update F With A Past Expiry (400)"
+   },
+   {
+    "id": "update-f-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}",
+     "body": "{\"role_id\":\"product_role_000000000000000000000000000\",\"expires_at\":\"{{$isoTimestamp:+720h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update F With An Unknown Role (400)"
+   },
+   {
+    "id": "accept-f-unknown-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"pusr_000000000000000000000000000\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept F For An Unknown User (400)"
+   },
+   {
+    "id": "get-f",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-f.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-f.expiresAt}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "F Stays Pending"
+   },
+   {
+    "id": "create-bad-email",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"not-an-email\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "BAD_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite A Malformed Email (400)"
+   },
+   {
+    "id": "create-unknown-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"product_role_000000000000000000000000000\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite With An Unknown Role (400)"
+   },
+   {
+    "id": "create-past-expiry",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\",\"expires_at\":\"2020-01-01T00:00:00Z\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_EXPIRY_NOT_IN_FUTURE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite With A Past Expiry (400)"
+   },
+   {
+    "id": "create-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite Into An Unknown Organization (404)"
+   },
+   {
+    "id": "get-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/oinv_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get An Unknown Invitation (404)"
+   },
+   {
+    "id": "update-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/oinv_000000000000000000000000000",
+     "body": "{\"role_id\":\"{{create-role.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+720h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update An Unknown Invitation (404)"
+   },
+   {
+    "id": "delete-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/oinv_000000000000000000000000000",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete An Unknown Invitation (404)"
+   },
+   {
+    "id": "accept-unknown-token",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/oinv_000000000000000000000000000/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept Unknown Invitation (404)"
+   },
+   {
+    "id": "search-unknown-status",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"archived\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "archived"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.value"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search With An Unknown Status (400)"
+   },
+   {
+    "id": "search-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/invitations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search An Unknown Organization (404)"
+   },
+   {
+    "id": "create-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization_invitation:create"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.required_scopes[0]"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite With A Read-Only Key (403)"
+   },
+   {
+    "id": "get-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-b.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get B With A Read-Only Key"
+   },
+   {
+    "id": "accept-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization_invitation:update"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.required_scopes[0]"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept With A Read-Only Key (403)"
+   },
+   {
+    "id": "delete-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization_invitation:delete"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.required_scopes[0]"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Withdraw With A Read-Only Key (403)"
+   },
+   {
+    "id": "get-no-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-f.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     }
+    ],
+    "display_name": "Get Without A Key (401)"
+   },
+   {
+    "id": "get-other-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product-two.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-b.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key-two.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Another Product Cannot Read B (404)"
+   },
+   {
+    "id": "lookup-other-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product-two.productId}}/invitations/search",
+     "body": "{\"filter\": {\"emails\": [\"{{invite-f.email}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key-two.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Other Product Finds Nothing By Email"
+   },
+   {
+    "id": "invite-s1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite S1"
+   },
+   {
+    "id": "invite-s2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite S2"
+   },
+   {
+    "id": "accept-s2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/{{invite-s2.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-bystander.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-s2.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "accepted"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept S2"
+   },
+   {
+    "id": "search-all",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Every Invitation"
+   },
+   {
+    "id": "search-pending",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"pending\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-s1.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Pending"
+   },
+   {
+    "id": "search-accepted",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"accepted\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-s2.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "accepted"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Accepted"
+   },
+   {
+    "id": "search-both",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"pending\",\"accepted\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Pending Or Accepted"
+   },
+   {
+    "id": "invite-r",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role-three.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite R"
+   },
+   {
+    "id": "delete-role-three-held",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-three.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete A Role A Pending Invitation Holds (409)"
+   },
+   {
+    "id": "update-r",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-r.invitationId}}",
+     "body": "{\"role_id\":\"{{create-role.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+720h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-r.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+720h}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Move R To Another Role"
+   },
+   {
+    "id": "delete-role-three",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-three.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Role Once R Moved"
+   },
+   {
+    "id": "invite-r2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role-four.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite R2"
+   },
+   {
+    "id": "delete-r2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-r2.invitationId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Withdraw R2"
+   },
+   {
+    "id": "delete-role-four",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-four.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Role Once R2 Is Withdrawn"
+   },
+   {
+    "id": "invite-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"role_id\":\"{{create-role-five.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+60s}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+60s}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite X, Expiring 60s After Run Start"
+   },
+   {
+    "id": "wait-x-expiry",
+    "data": {
+     "duration": 61000
+    },
+    "type": "delay",
+    "run_when": "on_success",
+    "display_name": "Wait For X To Expire"
+   },
+   {
+    "id": "get-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/{{invite-x.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-x.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "expired"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{$isoTimestamp:+60s}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.expires_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "X Reads Expired"
+   },
+   {
+    "id": "lookup-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/invitations/search",
+     "body": "{\"filter\": {\"emails\": [\"{{invite-x.email}}\"], \"statuses\": [\"expired\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-x.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "expired"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Find Expired X By Email"
+   },
+   {
+    "id": "accept-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/{{invite-x.invitationId}}/accept",
+     "body": "{\"product_user_id\": \"{{create-invitee.userId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_EXPIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Accept Expired X (409)"
+   },
+   {
+    "id": "update-x",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/{{invite-x.invitationId}}",
+     "body": "{\"role_id\":\"{{create-role-five.roleId}}\",\"expires_at\":\"{{$isoTimestamp:+720h}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_EXPIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Expired X (409)"
+   },
+   {
+    "id": "search-x-expired",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"expired\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-x.invitationId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Expired"
+   },
+   {
+    "id": "search-x-pending",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/search",
+     "body": "{\"filter\":{\"statuses\":[\"pending\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Pending Drops Expired"
+   },
+   {
+    "id": "invite-x-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations",
+     "body": "{\"email\":\"{{invite-x.email}}\",\"role_id\":\"{{create-role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "invitationId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "pending"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{invite-x.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org-expiry.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Invite X's Email Again After Expiry"
+   },
+   {
+    "id": "delete-role-five",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-five.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete X's Role, Deleting Expired X"
+   },
+   {
+    "id": "get-x-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org-expiry.orgId}}/invitations/{{invite-x.invitationId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_INVITATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Expired X Deleted With Its Role (404)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-a.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "B created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-b.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "C created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-c.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "C2 created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-c2.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "D created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-d.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "E created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-e.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "E-OTHER-ORG created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-e-other-org.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "F created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-f.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "R created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-r.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "R2 created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-r2.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "S1 created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-s1.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "S2 created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-s2.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "X created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-x.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "X-AGAIN created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-x-again.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A role and expiry changed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-a.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A accepted by the invitee",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-a.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-invitee.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Invitee joined",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-invitee.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Invitee removed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-invitee.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A deleted with its role",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-a.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "B renewed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-b.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "B accepted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-b.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-bystander.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Second user joined",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-bystander.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "C withdrawn",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-c.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No accept of withdrawn C",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-c.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No accept of D by a member",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-d.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No change to F",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-f.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No accept of F",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-f.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "F not withdrawn",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-f.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "R moved to another role",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-r.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "R2 withdrawn",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-r2.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "S2 accepted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-s2.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Second user joined the search organization",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org-search.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Expired X deleted with its role",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-x.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No change to expired X",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-x.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "No accept of expired X",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.invitation.accepted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{invite-x.invitationId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.invitation_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "@"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Invitation Event"
+   },
+   {
+    "id": "cleanup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   },
+   {
+    "id": "cleanup-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product-two.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Other Product"
+   }
+  ],
+  "version": "1.0"
+ }
+}

@@ -1,0 +1,15 @@
+# anchor: licensing / Usage Series
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage/series?key=flows&granularity=HOUR&from={{$isoTimestamp:-1h}}
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/usage-series
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":0,"items":[],"total":0}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage/series -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-u.orgId}}/license/usage/series","principal_type":"user","query":"from=<timestamp-urlencoded>&granularity=HOUR&key=flows&limit=50&offset=0","request_id":"ct/licensing/usage-series","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

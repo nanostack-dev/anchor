@@ -1,0 +1,16 @@
+# anchor: licensing / Migrate License A To Template B
+request: POST /v1/products/{{create-product.productId}}/licensing/organization-licenses/migrate
+request-headers: Authorization, Content-Type
+request-body: {"template_id":"{{create-template-b.templateBId}}","organization_ids":["{{create-org-a.orgId}}"]}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/migrate
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"changed":1,"count":1,"failed":0,"migrated_at":"<timestamp.frac>","results":[{"changes":[{"field":"sso","kind":"changed","license_value":false,"template_value":true}],"count":1,"organization_id":"{{create-org-a.orgId}}","outcome":"CHANGED","previous_template_id":"{{create-template.templateId}}"}],"template_id":"{{create-template-b.templateBId}}","unchanged":0}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/licensing/organization-licenses/migrate -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/licensing/organization-licenses/migrate","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/migrate","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

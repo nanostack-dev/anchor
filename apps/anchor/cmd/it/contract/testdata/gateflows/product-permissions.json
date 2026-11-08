@@ -1,0 +1,669 @@
+{
+ "id": "624f08ca-8740-4d4f-9107-9dc9a0eff002",
+ "name": "anchor: product-permissions",
+ "tags": [
+  "anchor"
+ ],
+ "description": "The built-in product permission catalog every new product gets: search, name filters (case-folded), pagination, lookup by name, and the 400/401/404 cases.",
+ "updated_at": "2026-10-30T18:23:51.299337Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "042911e5-a138-4f51-8d62-f9d037c98a23",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "9e3f3d80-a443-4914-87ce-85ffa605b63a",
+    "source": "create-product",
+    "target": "search-page",
+    "type": "success"
+   },
+   {
+    "id": "f78cbd41-f9ce-45e5-8d65-52621677fa96",
+    "source": "create-product",
+    "target": "search-by-name",
+    "type": "success"
+   },
+   {
+    "id": "3070e15b-5f86-4c6a-bf12-0e7b03f17ed9",
+    "source": "create-product",
+    "target": "search-uppercase",
+    "type": "success"
+   },
+   {
+    "id": "40ff16ba-f9ae-4ebf-997c-690a035448aa",
+    "source": "create-product",
+    "target": "search-unknown",
+    "type": "success"
+   },
+   {
+    "id": "a797adb0-474c-4969-9466-953210393144",
+    "source": "create-product",
+    "target": "get-permission",
+    "type": "success"
+   },
+   {
+    "id": "6590c1e9-f7b0-4207-855d-1a4602ac3a63",
+    "source": "create-product",
+    "target": "get-uppercase",
+    "type": "success"
+   },
+   {
+    "id": "5cdfd5bd-0401-478a-a68a-745878195000",
+    "source": "create-product",
+    "target": "get-missing",
+    "type": "success"
+   },
+   {
+    "id": "4127901a-5b0c-426d-bd05-73113fa3c6e9",
+    "source": "create-product",
+    "target": "get-invalid-name",
+    "type": "success"
+   },
+   {
+    "id": "70b4460f-2ec0-4dbe-afc0-d06862539de3",
+    "source": "create-product",
+    "target": "no-credential",
+    "type": "success"
+   },
+   {
+    "id": "01ff681a-80ea-44c4-9eea-76832001b42f",
+    "source": "login",
+    "target": "unknown-product",
+    "type": "success"
+   },
+   {
+    "id": "3c72813e-a7b8-4edf-9882-e9b4413419b6",
+    "source": "search-page",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "cce43882-f9e6-4bd3-baba-5e5c596a641a",
+    "source": "search-by-name",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "d039f885-c660-41b6-8545-857a1c61a729",
+    "source": "search-uppercase",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "222e4c97-2bf2-48fa-816c-c18643e03a75",
+    "source": "search-unknown",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "212ac924-7bcb-4286-8efe-08e7f99acef5",
+    "source": "get-permission",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "7d00780b-6534-4d73-9250-9e1a98fb35e0",
+    "source": "get-uppercase",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "7e5395a2-254c-4a65-ae5f-149aa839f396",
+    "source": "get-missing",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "73704b50-7338-430c-ad9d-413f417448b2",
+    "source": "get-invalid-name",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "71a1951b-6730-4e81-b41f-22015675a56d",
+    "source": "no-credential",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "70fdfe15-a6a4-4897-a083-b14785e9bd07",
+    "source": "unknown-product",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: product-permissions",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-perms-{{$runId}}\", \"description\": \"product permissions suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "search-page",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"pagination\": {\"limit\": 5, \"offset\": 0}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "53"
+      },
+      "operator_type": "greater_than_or_equal",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search First Page (200)"
+   },
+   {
+    "id": "search-by-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"filter\": {\"names\": [\"organization:read\", \"email:send\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Allow sending transactional email for the product"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.name=='email:send'].description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Allow reading of the organization resource"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.name=='organization:read'].description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search By Names (200)"
+   },
+   {
+    "id": "search-uppercase",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"filter\": {\"names\": [\"ORGANIZATION_API_KEY:DELETE\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization_api_key:delete"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Folds Case (200)"
+   },
+   {
+    "id": "search-unknown",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{\"filter\": {\"names\": [\"nonexistent:scope\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Unknown Name Is Empty (200)"
+   },
+   {
+    "id": "get-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/license_usage:update",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "license_usage:update"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Allow updating the license_usage resource"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Permission By Name (200)"
+   },
+   {
+    "id": "get-uppercase",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/ORGANIZATION:CREATE",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "organization:create"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Folds Case (200)"
+   },
+   {
+    "id": "get-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/nonexistent:scope",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown Permission (404)"
+   },
+   {
+    "id": "get-invalid-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/not_a_permission",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Malformed Name (400)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   },
+   {
+    "id": "no-credential",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/permissions/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Without A Token (401)"
+   },
+   {
+    "id": "unknown-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/prd_000000000000000000000000000/permissions/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search An Unknown Product (404)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

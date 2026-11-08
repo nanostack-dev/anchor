@@ -1,0 +1,15 @@
+# anchor: register on assign & organization role scope / Org role scope · Ana keeps member → 200
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}}
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/scope-update-kept
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"email":"garbage+eptest-regassign-ana-{{$runId}}@nanostack.dev","external_id":"ext-regassign-ana-{{$runId}}","joined_at":"<timestamp.frac>","name":"eptest ana","product_user_id":"{{user-ana.id}}","role":{"id":"{{role-member.id}}","name":"eptest-member"}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}} -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{user-ana.id}}","principal_type":"user","request_id":"ct/register-on-assign-organization-role-scope/scope-update-kept","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

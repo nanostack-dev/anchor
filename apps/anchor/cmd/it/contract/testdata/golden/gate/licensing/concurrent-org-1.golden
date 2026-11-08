@@ -1,0 +1,16 @@
+# anchor: licensing / Concurrent Sign-up 1 With Template C (201)
+request: POST /v1/products/{{create-product.productId}}/organizations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-license-conc-1-{{$runId}}", "license": {"template_id": "{{create-template-c.templateCId}}"}}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/concurrent-org-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{concurrent-org-1.orgId}}","license":{"adjusted_fields":[],"created_at":"<timestamp.frac>","id":"lic_<id>","instantiated_at":"<timestamp.frac>","organization_id":"{{concurrent-org-1.orgId}}","product_id":"{{create-product.productId}}","template_id":"{{create-template-c.templateCId}}","updated_at":"<timestamp.frac>","values":{"flows":300,"sso":false}},"name":"eptest-license-conc-1-{{$runId}}","product_id":"{{create-product.productId}}","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-license-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations","principal_type":"api_key","request_body":"<present>","request_id":"ct/licensing/concurrent-org-1","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

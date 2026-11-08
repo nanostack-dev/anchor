@@ -1,0 +1,1067 @@
+{
+ "id": "1cc724b4-6d26-4b8a-a5d5-fdfc7f7e2a8a",
+ "name": "anchor: access evaluation — user writes apply at once",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: access evaluation — user writes apply at once\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. anchor#252 access evaluation, user path: the dev org's real synced member joins a throwaway org with a throwaway reader role and is evaluated right after each write: allowed with role/org/user echoed; MISSING_PERMISSION; a permission granted to the role applies on the next call; a deleted workspace is refused (WORKSPACE_NOT_IN_ORGANIZATION); a removed member is refused (NOT_A_MEMBER). Org, role and 15-min key deleted always and read back. Generator: gen_access_user_freshness.py.",
+ "updated_at": "2026-10-30T19:51:14.172815Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "2896ff3b-700c-49f7-9c78-65511212acdc",
+    "source": "login",
+    "target": "beta",
+    "type": "success"
+   },
+   {
+    "id": "4199c554-8136-423a-8364-8e5e0cd8558d",
+    "source": "login",
+    "target": "ep-key",
+    "type": "success"
+   },
+   {
+    "id": "c23ccf76-0bc7-44fc-9d6d-7e4388267931",
+    "source": "ep-key",
+    "target": "dev-member",
+    "type": "success"
+   },
+   {
+    "id": "47c55d86-7678-4b30-97cd-3837a3435ec2",
+    "source": "beta",
+    "target": "ep-org",
+    "type": "success"
+   },
+   {
+    "id": "b3d2d423-16a0-41f7-991f-0bd51652a8e4",
+    "source": "ep-key",
+    "target": "ep-org",
+    "type": "success"
+   },
+   {
+    "id": "d5bd885c-15da-43f6-97b0-a2a7a22ed955",
+    "source": "ep-org",
+    "target": "ep-org-ws",
+    "type": "success"
+   },
+   {
+    "id": "6a80e607-4956-4b0e-95c1-f336cea16c3a",
+    "source": "ep-org",
+    "target": "ws2",
+    "type": "success"
+   },
+   {
+    "id": "efb7cbd5-78b3-4aee-bc35-c67054a36649",
+    "source": "ep-key",
+    "target": "role",
+    "type": "success"
+   },
+   {
+    "id": "9bf9f3a4-ec6e-41ae-8f7c-76e327bd0a11",
+    "source": "dev-member",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "ad4b6038-78d1-4bd3-8fd3-f36b92306d40",
+    "source": "ep-org",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "0a3c2a4d-79c0-492c-b350-1f41d0d8c070",
+    "source": "role",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "34476cc6-6d37-4078-9762-d6e3c1d7a1d7",
+    "source": "add-member",
+    "target": "allowed",
+    "type": "success"
+   },
+   {
+    "id": "7753ee12-97aa-496e-ab0a-1c7750debad2",
+    "source": "ep-org-ws",
+    "target": "allowed",
+    "type": "success"
+   },
+   {
+    "id": "5370d9f4-01e8-463c-b860-540635f75a2f",
+    "source": "add-member",
+    "target": "missing-update",
+    "type": "success"
+   },
+   {
+    "id": "5370d304-bf3f-4ba1-9bdb-42bda73782cb",
+    "source": "missing-update",
+    "target": "grant-update",
+    "type": "success"
+   },
+   {
+    "id": "3c08ea42-cc34-4f4e-8eae-32c0be643b9d",
+    "source": "grant-update",
+    "target": "update-after-grant",
+    "type": "success"
+   },
+   {
+    "id": "e5e4ed58-ff42-40a4-9563-4fd798c34e61",
+    "source": "add-member",
+    "target": "ws2-allowed",
+    "type": "success"
+   },
+   {
+    "id": "04088fe1-fc8b-4b5f-b853-4d805c9176b5",
+    "source": "ws2",
+    "target": "ws2-allowed",
+    "type": "success"
+   },
+   {
+    "id": "97d0e3d1-d609-4217-a50f-a844bb4654a8",
+    "source": "ws2-allowed",
+    "target": "ws2-delete",
+    "type": "success"
+   },
+   {
+    "id": "f103c4f8-5a50-4c92-9b50-55193c916719",
+    "source": "ws2-delete",
+    "target": "ws2-refused",
+    "type": "success"
+   },
+   {
+    "id": "aac1a70f-7d5a-4947-946e-c30858e28b2f",
+    "source": "allowed",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "d69e2c77-79fd-4930-99da-6c8cdf6230e8",
+    "source": "update-after-grant",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "942fac36-439f-443f-b079-2c6e1b5b2f01",
+    "source": "ws2-refused",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "b261aed0-de16-4271-b0fd-6d5a2e79de1f",
+    "source": "remove-member",
+    "target": "removed-refused",
+    "type": "success"
+   },
+   {
+    "id": "dd7ea8f3-5344-407d-a9d6-8c2e283625cf",
+    "source": "allowed",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "fe4dff48-c6a4-42ab-91a0-bb16c4ee7455",
+    "source": "missing-update",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "124d3c0b-0a75-4011-9b9b-f538e1e27549",
+    "source": "grant-update",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "af12a94c-b7a8-4e93-9086-668115c2babb",
+    "source": "update-after-grant",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "731105c9-60e1-4ac6-8a9d-cb093e9ccd5a",
+    "source": "ws2-allowed",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "055ac562-5a58-4388-a1e4-976fabd2ee26",
+    "source": "ws2-delete",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "e90bdfa5-c4c7-40e2-ba13-2257921a635d",
+    "source": "ws2-refused",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "2d6870e1-0f33-4bcb-b065-519f202a5e50",
+    "source": "remove-member",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "661c98c0-1e49-4fa6-a4bd-953e79e61dc9",
+    "source": "removed-refused",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "1d9df60c-233f-4bb2-b615-daa0e7e39706",
+    "source": "add-member",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "51130e5f-c9c3-4e69-93ba-45bc7fc55812",
+    "source": "ep-org-ws",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "1364a576-4b04-4be7-bd77-b3ab4fb13171",
+    "source": "ws2",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "e98ab04b-93fe-4351-9b83-6e199c2df962",
+    "source": "role",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "0003ccdb-808a-4cd8-8419-3984bdc54e3e",
+    "source": "dev-member",
+    "target": "cleanup-ep-org",
+    "type": "success"
+   },
+   {
+    "id": "1aa2e696-b508-4894-abf0-5749b5eb780c",
+    "source": "cleanup-ep-org",
+    "target": "verify-org-gone",
+    "type": "success"
+   },
+   {
+    "id": "35e00c12-07f1-4602-8eca-0f2cf5b69732",
+    "source": "cleanup-ep-org",
+    "target": "cleanup-role",
+    "type": "success"
+   },
+   {
+    "id": "ff07f40a-6a2b-4c65-a857-972c032be924",
+    "source": "verify-org-gone",
+    "target": "cleanup-role",
+    "type": "success"
+   },
+   {
+    "id": "587a3210-d203-418b-a864-882449abda6c",
+    "source": "cleanup-role",
+    "target": "verify-role-gone",
+    "type": "success"
+   },
+   {
+    "id": "deaf5d94-5a9c-4112-b95f-49d174feac79",
+    "source": "cleanup-role",
+    "target": "cleanup-ep-key",
+    "type": "success"
+   },
+   {
+    "id": "28275ef3-8353-4992-a741-dc5f4dce8a79",
+    "source": "verify-role-gone",
+    "target": "cleanup-ep-key",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: access evaluation — user writes apply at once",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "beta",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{echopointOrgId}}/license",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "templateId",
+      "secret": false,
+      "extractor": {
+       "path": "$.template_id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Read Beta Template (200)"
+   },
+   {
+    "id": "ep-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/api-keys",
+     "body": "{\"name\": \"eptest-access-writes-{{$runId}}\", \"mutable\": false, \"expires_at\": \"{{$isoTimestamp:+15m}}\", \"permissions\": [\"product_user:read\", \"organization_api_key:read\", \"organization_member:read\", \"organization_member:create\", \"organization_member:delete\", \"organization:create\", \"organization:read\", \"organization:delete\", \"product_role:create\", \"product_role:read\", \"product_role:update\", \"product_role:delete\", \"resource_type:create\", \"resource:read\", \"resource:write\", \"resource:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "key",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Mint 15-min Echopoint Product Key With Member And Role Scopes (201)"
+   },
+   {
+    "id": "dev-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{echopointOrgId}}/members/search",
+     "body": "{\"pagination\": {\"limit\": 1}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "externalId",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[0].external_id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "userId",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[0].product_user_id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.items[0].external_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read The Dev Org's Synced Member (200)"
+   },
+   {
+    "id": "ep-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations",
+     "body": "{\"name\": \"eptest-access-writes-{{$runId}}\", \"license\": {\"template_id\": \"{{beta.templateId}}\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Throwaway Echopoint Org (201)"
+   },
+   {
+    "id": "ep-org-ws",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/ep-ws-{{$runId}}",
+     "body": "{\"name\": \"Test workspace\", \"parent\": {\"type\": \"organization\", \"id\": \"{{ep-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "workspaceId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ep-ws-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Register The Throwaway Org Workspace (200)"
+   },
+   {
+    "id": "ws2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/ws2-{{$runId}}",
+     "body": "{\"name\": \"Temp {{$runId}}\", \"parent\": {\"type\": \"organization\", \"id\": \"{{ep-org.orgId}}\"}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "wsId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Register A Second Workspace (200)"
+   },
+   {
+    "id": "role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/roles",
+     "body": "{\"name\": \"eptest-access-reader-{{$runId}}\", \"permissions\": [\"flows:read\"], \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "roleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Throwaway Role With flows:read Only (201)"
+   },
+   {
+    "id": "add-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{dev-member.userId}}\", \"role_id\": \"{{role.roleId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Add The Dev Member With The Reader Role (201)"
+   },
+   {
+    "id": "allowed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"workspace\", \"id\": \"{{ep-org-ws.workspaceId}}\", \"properties\": {\"organization_id\": \"{{ep-org.orgId}}\"}}, \"action\": {\"name\": \"flows:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role.roleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{ep-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.organization.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{dev-member.userId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.product_user.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "New Member Allowed flows:read On The Org Workspace At Once"
+   },
+   {
+    "id": "missing-update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{ep-org.orgId}}\"}, \"action\": {\"name\": \"flows:update\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"missing_permissions\":[\"flows:update\"]"
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Reader Lacks flows:update: MISSING_PERMISSION"
+   },
+   {
+    "id": "grant-update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}/permissions",
+     "body": "{\"permission_name\": \"flows:update\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Grant flows:update To The Role (204)"
+   },
+   {
+    "id": "update-after-grant",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{ep-org.orgId}}\"}, \"action\": {\"name\": \"flows:update\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Granted flows:update Applies On The Next Call"
+   },
+   {
+    "id": "ws2-allowed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"workspace\", \"id\": \"{{ws2.wsId}}\", \"properties\": {\"organization_id\": \"{{ep-org.orgId}}\"}}, \"action\": {\"name\": \"flows:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Member Allowed On The Second Workspace"
+   },
+   {
+    "id": "ws2-delete",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/resources/workspace/{{ws2.wsId}}?cascade=true",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete The Second Workspace (204)"
+   },
+   {
+    "id": "ws2-refused",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"workspace\", \"id\": \"{{ws2.wsId}}\", \"properties\": {\"organization_id\": \"{{ep-org.orgId}}\"}}, \"action\": {\"name\": \"flows:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted Workspace Refused On The Next Call: RESOURCE_NOT_FOUND"
+   },
+   {
+    "id": "remove-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}/members/{{dev-member.userId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Remove The Dev Member (204)"
+   },
+   {
+    "id": "removed-refused",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"{{dev-member.externalId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{ep-org.orgId}}\"}, \"action\": {\"name\": \"flows:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Removed Member Refused On The Next Call: NOT_A_MEMBER"
+   },
+   {
+    "id": "cleanup-ep-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Throwaway Echopoint Org (always)"
+   },
+   {
+    "id": "verify-org-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/organizations/{{ep-org.orgId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Throwaway Org Gone (404)"
+   },
+   {
+    "id": "cleanup-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Throwaway Role (always)"
+   },
+   {
+    "id": "verify-role-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{ep-key.key}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Throwaway Role Gone (404)"
+   },
+   {
+    "id": "cleanup-ep-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{nanostackProductId}}/api-keys/{{ep-key.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Echopoint Product Key (always)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

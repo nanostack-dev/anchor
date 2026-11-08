@@ -1,0 +1,16 @@
+# anchor: invitations / Search Pending
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"filter":{"statuses":["pending"]}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/search-pending
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":1,"items":[{"created_at":"<timestamp.frac>","email":"{{invite-s1.email}}","expires_at":"<timestamp.frac>","id":"{{invite-s1.invitationId}}","organization_id":"{{create-org-search.orgId}}","role_id":"{{create-role.roleId}}","status":"pending","updated_at":"<timestamp.frac>"}],"total":1}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-search.orgId}}/invitations/search","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/search-pending","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

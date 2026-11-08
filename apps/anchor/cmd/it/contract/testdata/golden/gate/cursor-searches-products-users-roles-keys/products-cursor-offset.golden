@@ -1,0 +1,17 @@
+# anchor: cursor searches — products, users, roles, keys / Products: cursor with offset 2 (400 INVALID_CURSOR)
+request: POST /v1/products/search
+request-headers: Authorization, Content-Type
+request-body: {"filter":{"names":["eptest-cur-products-{{$runId}}","eptest-cur-products-{{$runId}}-2","eptest-cur-products-{{$runId}}-3"]},"pagination":{"limit":2,"offset":2,"cursor":"{{products-p1.cursor}}"}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/products-cursor-offset
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_CURSOR","message":"A cursor cannot be combined with an offset.","field":"pagination.cursor"}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"search: cursor cannot be combined with offset","level":"info","message":"Request error","method":"POST","path":"/v1/products/search","principal_type":"user","request_id":"ct/cursor-searches-products-users-roles-keys/products-cursor-offset","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/search -> 400 (<duration>)","method":"POST","path":"/v1/products/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-products-users-roles-keys/products-cursor-offset","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

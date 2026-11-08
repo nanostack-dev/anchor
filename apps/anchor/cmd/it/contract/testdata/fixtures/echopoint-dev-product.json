@@ -1,0 +1,439 @@
+{
+ "id": "contract-echopoint-dev-product",
+ "name": "contract fixture: Echopoint dev product",
+ "description": "Seeds what the access-evaluation gate flows read from Echopoint's own dev data: a product, an organization licensed on template beta, a member with an external_id and an organization role holding flows:read, and a registered workspace. TestGateFlows binds nanostackProductId, echopointOrgId and echopointWorkspaceId from it.",
+ "flow_definition": {
+  "nodes": [
+   {
+    "id": "login",
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    }
+   },
+   {
+    "id": "create-product",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Create the stand-in Echopoint product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"contract-echopoint-{{$runId}}\", \"description\": \"stand-in for Echopoint's dev product\"}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "productId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   },
+   {
+    "id": "create-key",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Product key for the setup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"contract-echopoint-setup\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization:read\", \"organization_member:create\", \"product_user:create\", \"product_user:read\", \"resource:write\", \"resource:read\", \"resource_type:create\"]}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "key",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.value"
+      }
+     }
+    ]
+   },
+   {
+    "id": "declare-workspace",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Declare the workspace resource type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.key}}"
+     },
+     "body": "{\"slug\": \"workspace\", \"name\": \"Workspace\", \"parent_types\": [\"organization\"]}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": []
+   },
+   {
+    "id": "perm-flows-read",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Permission flows:read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"flows:read\", \"resource_type\": \"organization\"}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": []
+   },
+   {
+    "id": "perm-flows-update",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Permission flows:update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"flows:update\", \"resource_type\": \"organization\"}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": []
+   },
+   {
+    "id": "schema",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "License schema",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/schema",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"fields\": [{\"name\": \"flows\", \"type\": \"LIMIT\", \"usage_shape\": \"GAUGE\", \"rules\": {\"min\": 0}}]}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": []
+   },
+   {
+    "id": "template",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "License template beta",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/licensing/templates",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"beta\", \"values\": {\"flows\": 100}}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "templateId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   },
+   {
+    "id": "create-org",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "The Echopoint organization, licensed on beta",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.key}}"
+     },
+     "body": "{\"name\": \"echopoint\", \"license\": {\"template_id\": \"{{template.templateId}}\"}}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "orgId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   },
+   {
+    "id": "create-user",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "The dev member's product user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.key}}"
+     },
+     "body": "{\"email\": \"garbage+contract-echopoint-dev@nanostack.dev\", \"name\": \"Echopoint Dev\", \"external_id\": \"user_contract_echopoint_dev\"}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "userId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   },
+   {
+    "id": "create-role",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Member role with flows:read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     },
+     "body": "{\"name\": \"echopoint-member\", \"resource_type\": \"organization\", \"permissions\": [\"flows:read\"]}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "roleId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   },
+   {
+    "id": "add-member",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "Dev member joins the organization",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.key}}"
+     },
+     "body": "{\"product_user_id\": \"{{create-user.userId}}\", \"role_id\": \"{{create-role.roleId}}\"}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "201"
+      }
+     }
+    ],
+    "outputs": []
+   },
+   {
+    "id": "create-ws",
+    "type": "request",
+    "run_when": "on_success",
+    "display_name": "The Echopoint workspace",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/workspace/contract-echopoint-ws",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.key}}"
+     },
+     "body": "{\"name\": \"Echopoint workspace\", \"parent\": {\"type\": \"organization\", \"id\": \"{{create-org.orgId}}\"}}"
+    },
+    "assertions": [
+     {
+      "extractor_type": "status_code",
+      "extractor_data": {},
+      "operator_type": "equals",
+      "operator_data": {
+       "value": "200"
+      }
+     }
+    ],
+    "outputs": [
+     {
+      "name": "wsId",
+      "extractor": {
+       "type": "json_path",
+       "path": "$.id"
+      }
+     }
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "source": "login",
+    "target": "create-product"
+   },
+   {
+    "source": "create-product",
+    "target": "create-key"
+   },
+   {
+    "source": "create-key",
+    "target": "declare-workspace"
+   },
+   {
+    "source": "declare-workspace",
+    "target": "perm-flows-read"
+   },
+   {
+    "source": "perm-flows-read",
+    "target": "perm-flows-update"
+   },
+   {
+    "source": "perm-flows-update",
+    "target": "schema"
+   },
+   {
+    "source": "schema",
+    "target": "template"
+   },
+   {
+    "source": "template",
+    "target": "create-org"
+   },
+   {
+    "source": "create-org",
+    "target": "create-user"
+   },
+   {
+    "source": "create-user",
+    "target": "create-role"
+   },
+   {
+    "source": "create-role",
+    "target": "add-member"
+   },
+   {
+    "source": "add-member",
+    "target": "create-ws"
+   }
+  ]
+ }
+}

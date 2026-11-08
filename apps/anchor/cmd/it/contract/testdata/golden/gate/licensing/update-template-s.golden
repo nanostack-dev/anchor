@@ -1,0 +1,16 @@
+# anchor: licensing / Update Template S (syncs license S)
+request: PUT /v1/products/{{create-product.productId}}/licensing/templates/{{create-template-s.templateSId}}
+request-headers: Authorization, Content-Type
+request-body: {"values":{"flows":20,"sso":false}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/update-template-s
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{create-template-s.templateSId}}","name":"eptest-tier-s-{{$runId}}","product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>","values":{"flows":20,"sso":false}}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/licensing/templates/{{create-template-s.templateSId}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/licensing/templates/{{create-template-s.templateSId}}","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/update-template-s","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

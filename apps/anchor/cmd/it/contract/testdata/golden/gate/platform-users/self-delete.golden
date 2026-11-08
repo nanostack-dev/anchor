@@ -1,0 +1,16 @@
+# anchor: platform-users / A User Cannot Delete Itself (403)
+request: DELETE /v1/platform-users/{{me.meId}}
+request-headers: Authorization, Content-Type
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/platform-users/self-delete
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"SELF_DELETION_NOT_ALLOWED","message":"You cannot delete your own platform user account."}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"You cannot delete your own platform user account.","level":"info","message":"Request error","method":"DELETE","path":"/v1/platform-users/{{me.meId}}","principal_type":"user","request_id":"ct/platform-users/self-delete","status":403,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/platform-users/{{me.meId}} -> 403 (<duration>)","method":"DELETE","path":"/v1/platform-users/{{me.meId}}","principal_type":"user","request_id":"ct/platform-users/self-delete","status":403,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

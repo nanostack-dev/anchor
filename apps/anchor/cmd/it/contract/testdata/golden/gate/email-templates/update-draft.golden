@@ -1,0 +1,16 @@
+# anchor: email-templates / Update Draft
+request: PUT /v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft
+request-headers: Authorization, Content-Type
+request-body: {"subject":"Draft subj","body_html":"<p>Draft</p>"}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/email-templates/update-draft
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"body_html":"\u003cp\u003eDraft\u003c/p\u003e","created_at":"<timestamp.frac>","id":"{{create-template.draftVersionId}}","status":"DRAFT","subject":"Draft subj","template_id":"{{create-template.tid}}","updated_at":"<timestamp.frac>","version_number":1}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft","principal_type":"user","request_body":"<present>","request_id":"ct/email-templates/update-draft","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

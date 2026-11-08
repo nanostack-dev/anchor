@@ -1,0 +1,17 @@
+# anchor: access evaluation / User Without Organization (400 INVALID_ACCESS_RESOURCE)
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "user_eptest_{{$runId}}"}, "resource": {"type": "workspace", "id": "{{ws-a.wsId}}"}, "action": {"name": "acc:read"}}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/user-no-org
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_ACCESS_RESOURCE","message":"A user subject needs the organization: the organization id, or properties.organization_id for any other resource."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"A user subject needs the organization: the organization id, or properties.organization_id for any other resource.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation/user-no-org","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluation -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation/user-no-org","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

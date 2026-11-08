@@ -1,0 +1,16 @@
+# anchor: cursor searches — email & licensing & integrations / Integration audit logs: page 1 of 2 has next_cursor
+request: POST /v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":2}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/audit-logs-p1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":2,"items":[{"action":"CONFIG_UPDATED","created_at":"<timestamp.frac>","id":"ial_<id>","integration_instance_id":"{{integration.id}}","message":"Integration configuration updated","metadata":{"config_version":1,"status":"INACTIVE"},"severity":"INFO"},{"action":"CONFIG_UPDATED","created_at":"<timestamp.frac>","id":"ial_<id>","integration_instance_id":"{{integration.id}}","message":"Integration configuration updated","metadata":{"config_version":1,"status":"INACTIVE"},"severity":"INFO"}],"next_cursor":"{{audit-logs-p1.cursor}}","total":3}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/integrations/{{integration.id}}/audit-logs/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/audit-logs-p1","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

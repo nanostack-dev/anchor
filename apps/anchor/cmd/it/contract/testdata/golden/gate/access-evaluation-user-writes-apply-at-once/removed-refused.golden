@@ -1,0 +1,16 @@
+# anchor: access evaluation — user writes apply at once / Removed Member Refused On The Next Call: NOT_A_MEMBER
+request: POST /v1/products/{{nanostackProductId}}/access/v1/evaluation
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "{{dev-member.externalId}}"}, "resource": {"type": "organization", "id": "{{ep-org.orgId}}"}, "action": {"name": "flows:read"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/removed-refused
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"context":{"reason":"NOT_A_MEMBER"},"decision":false}
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/access/v1/evaluation -> 200 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/access/v1/evaluation","principal_type":"api_key","request_id":"ct/access-evaluation-user-writes-apply-at-once/removed-refused","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

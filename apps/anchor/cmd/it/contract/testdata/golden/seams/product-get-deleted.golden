@@ -1,0 +1,14 @@
+# 404 after delete
+request: GET /v1/products/{{product}}
+request-headers: Authorization, Content-Type
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/product-get-deleted
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_NOT_FOUND","message":"This tenant has no product with that identifier"}]}
+
+logs: 0 line(s)

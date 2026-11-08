@@ -1,0 +1,1628 @@
+{
+ "id": "f809a9a2-c534-40c4-93f7-f200df06f6a2",
+ "name": "anchor: product event delivery",
+ "tags": [
+  "anchor"
+ ],
+ "description": "The product events configuration itself: the event catalog (and its 401/404), the subscription filter (a subscribed type is delivered, an unsubscribed one is not), the whsec_ signing secret returned once and never again on any read or in any event, delivery_status after a delivery, endpoint URL validation, and clearing the endpoint stopping delivery.",
+ "updated_at": "2026-11-03T15:14:25.291337Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "434873e4-d9ee-4cc2-9f66-6d4484cea34b",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "7e6a7827-65bc-4aa6-955f-8b2b99bce8aa",
+    "source": "create-product",
+    "target": "catalog",
+    "type": "success"
+   },
+   {
+    "id": "8926b8b1-3bd1-4dbb-80c1-77da828c4d0c",
+    "source": "create-product",
+    "target": "get-product",
+    "type": "success"
+   },
+   {
+    "id": "8e38d54a-7c9e-4116-807b-5dc893f1c447",
+    "source": "login",
+    "target": "unknown-event",
+    "type": "success"
+   },
+   {
+    "id": "5194d9d0-7c1c-4e77-9a56-a573de56a28a",
+    "source": "login",
+    "target": "bad-url",
+    "type": "success"
+   },
+   {
+    "id": "7783e539-3d61-4d99-a064-fad287b82419",
+    "source": "login",
+    "target": "metadata-url",
+    "type": "success"
+   },
+   {
+    "id": "9288099e-ecd8-4def-bc65-7a516da7e1bc",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "e4a3046e-e5fa-44a5-8563-f40a0a0dc4ae",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "5e50a1a2-85c6-40f9-9834-af87f1d7d5f4",
+    "source": "create-org",
+    "target": "create-user",
+    "type": "success"
+   },
+   {
+    "id": "27e99686-cd62-487c-910d-e0e648190b87",
+    "source": "create-user",
+    "target": "update-org",
+    "type": "success"
+   },
+   {
+    "id": "24d65f65-5ad0-4859-a133-c3757af576f3",
+    "source": "update-org",
+    "target": "wait-delivered",
+    "type": "success"
+   },
+   {
+    "id": "df2624ba-eb3f-4a38-bfdf-f931da5d62c3",
+    "source": "wait-delivered",
+    "target": "settle",
+    "type": "success"
+   },
+   {
+    "id": "3ed3288f-ce93-4bd4-8fb9-2da317bf6b1c",
+    "source": "settle",
+    "target": "delivery-status",
+    "type": "success"
+   },
+   {
+    "id": "d869a2b2-56c5-4f3e-9fe9-df1431219d1e",
+    "source": "delivery-status",
+    "target": "clear-endpoint",
+    "type": "success"
+   },
+   {
+    "id": "0936780a-52f8-45a3-9978-9e88e21534f0",
+    "source": "clear-endpoint",
+    "target": "get-after-clear",
+    "type": "success"
+   },
+   {
+    "id": "b2a93cf6-83a6-46d7-bbe4-831caea925f5",
+    "source": "clear-endpoint",
+    "target": "update-org-after-clear",
+    "type": "success"
+   },
+   {
+    "id": "63c1ca8e-2a05-46c7-8470-a97091123858",
+    "source": "catalog",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "9ddc53cd-86d1-4552-9d35-94ffc2babc96",
+    "source": "get-product",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "d39446d8-c04f-4066-9c80-2e8f0265f153",
+    "source": "unknown-event",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "93bebddc-0db2-4774-ab12-790feca3924b",
+    "source": "bad-url",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "65f05a54-6384-4029-ab25-24b02e48ca58",
+    "source": "metadata-url",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "beddecce-e46d-45cf-8b75-8ed99c84968d",
+    "source": "get-after-clear",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "93d23dcf-6f25-4dd1-86c6-77e36b43aca0",
+    "source": "update-org-after-clear",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "6d7090cb-c2aa-41b2-b2c7-654db037a75d",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "3958c845-d6a1-49e2-84b2-1e17fcbba908",
+    "source": "create-product",
+    "target": "catalog-no-credential",
+    "type": "success"
+   },
+   {
+    "id": "31a6e43b-9751-4a4b-a07f-c0c76369aa09",
+    "source": "login",
+    "target": "catalog-unknown-product",
+    "type": "success"
+   },
+   {
+    "id": "b4352143-f32a-4509-88a9-d7987d720ed8",
+    "source": "catalog-no-credential",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "fdaaaffb-08b5-4795-9a5a-f97ca7f5b1b7",
+    "source": "catalog-unknown-product",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: product event delivery",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-evt-{{$runId}}\",\"description\":\"event delivery suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\",\"events\":[\"organization.created\",\"organization.updated\"]}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "secret",
+      "secret": false,
+      "extractor": {
+       "path": "$.config.events.signing_secret",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^whsec_[A-Za-z0-9+/]{43}=$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.config.events.signing_secret"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "*"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.signing_secret_obfuscated"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization.created"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.events[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization.updated"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.events[1]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "never_attempted"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.delivery_status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.consecutive_failed_calls"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-evt-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product Subscribed To Two Types (201)"
+   },
+   {
+    "id": "catalog",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/events/catalog",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Organizations"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.membership.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.invitation.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.invitation.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.invitation.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.invitation.accepted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "API Keys"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "API Keys"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "API Keys"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.api_key.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Users"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Users"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Users"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product_user.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.license.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Licensing"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='organization.license.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.role.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.created'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.updated'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "internal"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Roles & Permissions"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='product.resource_permission.deleted'].group_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "integration"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='clerk.user.created'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "integration"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='clerk.user.updated'].group_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "integration"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[?@.type=='clerk.user.deleted'].group_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Catalog Lists Every Event Type (200)"
+   },
+   {
+    "id": "get-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "\"signing_secret\":"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "whsec_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "*"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.signing_secret_obfuscated"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization.updated"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.events[1]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Secret Obfuscated On Read (200)"
+   },
+   {
+    "id": "unknown-event",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-evt-unknown-{{$runId}}\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\",\"events\":[\"nonexistent.event\"]}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "UNKNOWN_EVENT_TYPE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Subscribe To An Unknown Type (400)"
+   },
+   {
+    "id": "bad-url",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-evt-badurl-{{$runId}}\",\"config\":{\"events\":{\"endpoint_url\":\"not-a-url\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_EVENT_ENDPOINT_URL"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Relative Endpoint URL (400)"
+   },
+   {
+    "id": "metadata-url",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-evt-metadata-{{$runId}}\",\"config\":{\"events\":{\"endpoint_url\":\"http://169.254.169.254/latest/meta-data\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_EVENT_ENDPOINT_URL"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Cloud Metadata Endpoint URL (400)"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-evt-key\", \"permissions\": [\"organization:create\", \"organization:update\", \"product_user:create\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key (201)"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-evt-org\", \"description\": \"d\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-evt-org"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "create-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-evt-{{$runId}}@nanostack.dev\", \"name\": \"eptest evt\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "userId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create A Product User, An Unsubscribed Type (201)"
+   },
+   {
+    "id": "update-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "body": "{\"name\": \"eptest-evt-org\", \"description\": \"before clear\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "before clear"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Organization (200)"
+   },
+   {
+    "id": "wait-delivered",
+    "data": {
+     "settle_ms": 0,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "organization.updated"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-org.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.data.organization_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-key.apiKey}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Update Delivered Before The Clear"
+   },
+   {
+    "id": "settle",
+    "data": {
+     "duration": 1000
+    },
+    "type": "delay",
+    "run_when": "on_success",
+    "display_name": "Let Anchor Record The Delivery"
+   },
+   {
+    "id": "delivery-status",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "succeeded"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.delivery_status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.config.events.consecutive_failed_calls"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "whsec_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delivery Status Succeeded (200)"
+   },
+   {
+    "id": "clear-endpoint",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "body": "{\"name\":\"eptest-evt-{{$runId}}\",\"config\":{\"events\":{\"endpoint_url\":\"\"}}}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "endpoint_url"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Clear The Endpoint (200)"
+   },
+   {
+    "id": "get-after-clear",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "endpoint_url"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Cleared Endpoint Is Gone (200)"
+   },
+   {
+    "id": "update-org-after-clear",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}",
+     "body": "{\"name\": \"eptest-evt-org\", \"description\": \"after clear\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Update Organization After The Clear (200)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Subscribed organization.created delivered",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Subscribed organization.updated delivered once, not after the clear",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Unsubscribed product_user.created not delivered",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product_user.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-user.userId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "whsec_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.secret}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-key.apiKey}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "_prd_apikey_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Only Subscribed Events Reached The Endpoint"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   },
+   {
+    "id": "catalog-no-credential",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/events/catalog",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Catalog Without A Token (401)"
+   },
+   {
+    "id": "catalog-unknown-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/prd_000000000000000000000000000/events/catalog",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Catalog Of An Unknown Product (404)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

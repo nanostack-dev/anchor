@@ -1,0 +1,16 @@
+# anchor: roles / PUT With Permissions Replaces E's Set (200)
+request: PUT /v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name":"eptest-role-epsilon-renamed","description":"replaced","permissions":["eptestrace:p1","eptestdoc:write"]}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/roles/replace-e-perms
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"replaced","id":"{{create-role-e.rid}}","name":"eptest-role-epsilon-renamed","organization_id":null,"permissions":[{"permission_name":"eptestrace:p1","product_id":"{{create-product.productId}}","product_role_id":"{{create-role-e.rid}}"},{"permission_name":"eptestdoc:write","product_id":"{{create-product.productId}}","product_role_id":"{{create-role-e.rid}}"}],"product_id":"{{create-product.productId}}","resource_type":"organization","type":"MANAGED","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/roles/replace-e-perms","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,82 @@
+# anchor: resource-permission / Anchor Emitted Every Resource Permission Event
+deliveries: 8
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:read"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:share"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:write"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.deleted","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:share"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.deleted","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:write"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.updated","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:read"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{create-holder-role.rid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.updated","timestamp":"<timestamp.frac>","data":{"role_id":"{{create-holder-role.rid}}"}}
+<no trailing newline>

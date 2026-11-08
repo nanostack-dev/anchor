@@ -1,0 +1,14 @@
+# API reference page
+request: GET /docs
+request-headers: 
+
+status: 200
+header Content-Type: text/html; charset=utf-8
+header Vary: Origin
+header X-Request-Id: ct/seams/docs
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+<878 bytes, sha256 ff8abed98ca428433e01fd6d2ccd16180f98bdc55d60e50436623c4cb80db2ea>
+
+logs: 0 line(s)

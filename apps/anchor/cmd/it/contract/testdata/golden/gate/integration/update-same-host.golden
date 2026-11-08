@@ -1,0 +1,16 @@
+# anchor: integration / Update SMTP same host, no password (200, kept)
+request: PUT /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}
+request-headers: Authorization, Content-Type
+request-body: {"config": {"host": "smtp.example.com", "port": 587, "encryption": "STARTTLS", "auth_method": "LOGIN", "username": "u", "from_address": "{{create-integration.fromAddress}}", "from_name": "Ep Test Same Host"}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/integration/update-same-host
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config_version":1,"created_at":"<timestamp.frac>","id":"{{create-integration.iid}}","is_enabled":false,"last_error":"<smtp check: not configured or connection failed>","product_id":"{{create-product.productId}}","provider_type":"SMTP","public_config":{"auth_method":"LOGIN","encryption":"STARTTLS","from_address":"{{create-integration.fromAddress}}","from_name":"Ep Test Same Host","host":"smtp.example.com","port":587,"username":"u"},"status":"INACTIVE","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/integrations/{{create-integration.iid}}","principal_type":"user","request_body":"<present>","request_id":"ct/integration/update-same-host","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

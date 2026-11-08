@@ -1,0 +1,63 @@
+{
+ "id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+ "name": "anchor: login (reusable)",
+ "tags": [],
+ "updated_at": "2026-11-03T03:37:05.33387Z",
+ "flow_definition": {
+  "edges": [],
+  "name": "",
+  "nodes": [
+   {
+    "id": "019e8f1a-6974-7e49-8ea0-a01f65d94917",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/auth/login",
+     "body": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "accessToken",
+      "secret": true,
+      "extractor": {
+       "path": "$.accessToken",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "refreshToken",
+      "secret": true,
+      "extractor": {
+       "path": "$.refreshToken",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.accessToken"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "login"
+   }
+  ],
+  "version": ""
+ }
+}

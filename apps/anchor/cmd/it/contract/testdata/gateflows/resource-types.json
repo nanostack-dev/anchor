@@ -1,0 +1,1911 @@
+{
+ "id": "09f0db32-f0b9-4a33-b997-9fbf004de00f",
+ "name": "anchor: resource types",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#270 (ADR-0022 PR 1): resource type tree on an own product. Built-in organization (search, 409 BUILT_IN on declare/rename/delete), create/duplicate/unknown parent/no parent, cycle, depth 5, resource_type required on role and permission create, permission and role scope immutable, role bundles only permissions at or below its scope, delete/shrink in use (blocked_by, role_ids), whole-tree PUT add + drop, delete + 404, and product.resource_type.* events. Generator: echopoint-investigation/gen_resource_types.py.",
+ "updated_at": "2026-10-26T05:15:13.59946Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "f9c50568-1709-46eb-a054-92af9bde4256",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "cafc88dd-4cdc-478b-910d-289fdc7bb855",
+    "source": "create-product",
+    "target": "search-initial",
+    "type": "success"
+   },
+   {
+    "id": "4ddd4838-dbf4-44db-b287-078640b929d0",
+    "source": "search-initial",
+    "target": "create-project",
+    "type": "success"
+   },
+   {
+    "id": "99ff3ca7-f0ce-4a84-a254-bfbb8ca66368",
+    "source": "create-project",
+    "target": "create-folder",
+    "type": "success"
+   },
+   {
+    "id": "0e5fa483-14d9-48fc-9311-6aeddc51e9de",
+    "source": "create-folder",
+    "target": "create-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "16df88aa-f353-4826-be8b-78b4f127d274",
+    "source": "create-folder",
+    "target": "create-unknown-parent",
+    "type": "success"
+   },
+   {
+    "id": "f6320d1e-2976-4625-a781-b48d24ffb1ba",
+    "source": "create-folder",
+    "target": "create-no-parent",
+    "type": "success"
+   },
+   {
+    "id": "ca4c1ce5-380e-4791-813d-50d8e1991381",
+    "source": "create-folder",
+    "target": "create-organization",
+    "type": "success"
+   },
+   {
+    "id": "f4ae453e-67b7-4a96-a686-41b684c70ca4",
+    "source": "create-folder",
+    "target": "patch-organization",
+    "type": "success"
+   },
+   {
+    "id": "7d869bae-03d8-4460-9ce8-ef2d81d71cb1",
+    "source": "create-folder",
+    "target": "delete-organization",
+    "type": "success"
+   },
+   {
+    "id": "09bd3336-c117-45da-894a-9e8c33f35646",
+    "source": "create-folder",
+    "target": "patch-cycle",
+    "type": "success"
+   },
+   {
+    "id": "fa3dd8f0-f9ef-4750-916d-15701401f7f3",
+    "source": "create-folder",
+    "target": "perm-no-type",
+    "type": "success"
+   },
+   {
+    "id": "e1370b12-f1ab-4e34-90ce-1d32c24554b3",
+    "source": "create-folder",
+    "target": "perm-unknown-type",
+    "type": "success"
+   },
+   {
+    "id": "448ceda7-65ca-43e6-805f-10ccb1991643",
+    "source": "create-folder",
+    "target": "role-no-type",
+    "type": "success"
+   },
+   {
+    "id": "5b479745-1cc1-4fd4-b810-f2953a6ec5e2",
+    "source": "create-folder",
+    "target": "create-doc",
+    "type": "success"
+   },
+   {
+    "id": "a2c13a13-440a-43f5-a845-c5cd67d7aaae",
+    "source": "create-doc",
+    "target": "create-page",
+    "type": "success"
+   },
+   {
+    "id": "8e0154b1-01f4-4ff5-8862-16e34ea8b5e0",
+    "source": "create-page",
+    "target": "create-too-deep",
+    "type": "success"
+   },
+   {
+    "id": "50803689-3f7c-4968-aa28-31b9f76ae771",
+    "source": "create-folder",
+    "target": "perm-project",
+    "type": "success"
+   },
+   {
+    "id": "bdad2e3f-9e11-4aad-90ba-1e0071068e2d",
+    "source": "perm-project",
+    "target": "perm-folder",
+    "type": "success"
+   },
+   {
+    "id": "8e152cc6-bf3a-47f6-8f41-67989c6eb73b",
+    "source": "perm-folder",
+    "target": "role-outside",
+    "type": "success"
+   },
+   {
+    "id": "688c441a-a489-4c55-9b9c-9f43bd7f2dec",
+    "source": "role-outside",
+    "target": "role-project",
+    "type": "success"
+   },
+   {
+    "id": "e4ccb313-1111-42f2-abf0-0bcce426f3b7",
+    "source": "role-project",
+    "target": "perm-rescope",
+    "type": "success"
+   },
+   {
+    "id": "1937d673-9d7c-48c2-897d-c101b4f520ca",
+    "source": "perm-rescope",
+    "target": "perm-same-scope",
+    "type": "success"
+   },
+   {
+    "id": "28f3867e-1ac0-4d5c-80bf-339eac58f6c1",
+    "source": "perm-same-scope",
+    "target": "role-rescope",
+    "type": "success"
+   },
+   {
+    "id": "48ff439b-5472-4f44-9575-adf486869517",
+    "source": "role-rescope",
+    "target": "delete-in-use",
+    "type": "success"
+   },
+   {
+    "id": "a6b7843a-c533-48cd-b109-3cc281419074",
+    "source": "delete-in-use",
+    "target": "shrink-scope",
+    "type": "success"
+   },
+   {
+    "id": "b6d389a8-27fb-47f0-864d-8f80025e0c62",
+    "source": "create-duplicate",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "d4289861-03c6-4f7e-bf06-654a67ff9a4b",
+    "source": "create-unknown-parent",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "abc318db-bec0-4367-808b-4cba6d6f2331",
+    "source": "create-no-parent",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "67bd5c04-fcdc-4e20-8a2b-ec665e3aca3d",
+    "source": "create-organization",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "3eec21cf-8173-4785-a8b2-ad1d555b4eb5",
+    "source": "patch-organization",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "88467355-933e-4b79-9484-cc5e4c02a6f1",
+    "source": "delete-organization",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "b68c9ec4-ee12-4f6a-9b7d-643fb186e98b",
+    "source": "patch-cycle",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "8b4677c8-8b32-4e5d-b68c-e23ed1671b15",
+    "source": "perm-no-type",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "42b45301-b0d9-4d36-a76d-171bae0b94c4",
+    "source": "perm-unknown-type",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "81310655-4e5d-4739-b7fb-22dec5f65e87",
+    "source": "role-no-type",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "ba135f2f-e7b7-4aec-ae8b-40c45856315e",
+    "source": "create-too-deep",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "1db95b6b-917f-482e-b4cb-3f8e21dae704",
+    "source": "shrink-scope",
+    "target": "rename-folder",
+    "type": "success"
+   },
+   {
+    "id": "71eddb53-4318-488a-a619-0860ec6314bc",
+    "source": "rename-folder",
+    "target": "tree-add-team",
+    "type": "success"
+   },
+   {
+    "id": "82cfcc9c-df5b-4d95-b24d-78c8aa47a86f",
+    "source": "tree-add-team",
+    "target": "tree-drop-team",
+    "type": "success"
+   },
+   {
+    "id": "dfdf8841-deb6-466f-b8e0-95f7dbf056d2",
+    "source": "tree-drop-team",
+    "target": "search-after",
+    "type": "success"
+   },
+   {
+    "id": "636623c4-1ba6-459b-9c1f-4f363f8b9350",
+    "source": "search-after",
+    "target": "delete-page",
+    "type": "success"
+   },
+   {
+    "id": "dd5f5e29-61fc-4ccb-8177-ffe26523c01f",
+    "source": "delete-page",
+    "target": "get-page-gone",
+    "type": "success"
+   },
+   {
+    "id": "028dddbf-5ff2-4b30-bee8-1b85bdb51b99",
+    "source": "get-page-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "2687d230-f689-4776-b897-af3f343fb138",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: resource types",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-rtype-{{$runId}}\", \"description\": \"echopoint test\", \"config\": {\"events\": {\"endpoint_url\": \"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint (201)"
+   },
+   {
+    "id": "search-initial",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgTypeId",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[0].id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].built_in"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "[]"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].parent_types"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].nests_in_itself"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Types: Only organization, Built In"
+   },
+   {
+    "id": "create-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.built_in"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "rtype_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create project Under organization (201)"
+   },
+   {
+    "id": "create-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"folder\", \"name\": \"Folder\", \"parent_types\": [\"project\"], \"nests_in_itself\": true}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.nests_in_itself"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create folder Under project, Nests (201)"
+   },
+   {
+    "id": "create-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_SLUG_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create project Again (409 RESOURCE_TYPE_SLUG_DUPLICATE)"
+   },
+   {
+    "id": "create-unknown-parent",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"orphan\", \"name\": \"Orphan\", \"parent_types\": [\"nope\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Under Unknown Parent (400 RESOURCE_TYPE_NOT_FOUND)"
+   },
+   {
+    "id": "create-no-parent",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"orphan\", \"name\": \"Orphan\", \"parent_types\": [], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_PARENT_REQUIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create With No Parent (400 RESOURCE_TYPE_PARENT_REQUIRED)"
+   },
+   {
+    "id": "create-organization",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"organization\", \"name\": \"Organization\", \"parent_types\": [\"project\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "BUILT_IN_RESOURCE_TYPE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Declare organization Again (409 BUILT_IN_RESOURCE_TYPE)"
+   },
+   {
+    "id": "patch-organization",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{search-initial.orgTypeId}}",
+     "body": "{\"name\": \"Org\"}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "BUILT_IN_RESOURCE_TYPE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename organization (409 BUILT_IN_RESOURCE_TYPE)"
+   },
+   {
+    "id": "delete-organization",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{search-initial.orgTypeId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "BUILT_IN_RESOURCE_TYPE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete organization (409 BUILT_IN_RESOURCE_TYPE)"
+   },
+   {
+    "id": "patch-cycle",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-project.id}}",
+     "body": "{\"parent_types\": [\"folder\"]}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_CYCLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Put project Under folder (400 RESOURCE_TYPE_CYCLE)"
+   },
+   {
+    "id": "perm-no-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"project:none\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_REQUIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission Without resource_type (400 RESOURCE_TYPE_REQUIRED)"
+   },
+   {
+    "id": "perm-unknown-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"project:none\", \"resource_type\": \"nope\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission On Unknown Type (400 RESOURCE_TYPE_NOT_FOUND)"
+   },
+   {
+    "id": "role-no-type",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-untyped\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_REQUIRED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Role Without resource_type (400 RESOURCE_TYPE_REQUIRED)"
+   },
+   {
+    "id": "create-doc",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"doc\", \"name\": \"Doc\", \"parent_types\": [\"folder\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create doc Under folder (201)"
+   },
+   {
+    "id": "create-page",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"page\", \"name\": \"Page\", \"parent_types\": [\"doc\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create page Under doc (201)"
+   },
+   {
+    "id": "create-too-deep",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"para\", \"name\": \"Para\", \"parent_types\": [\"page\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_TOO_DEEP"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Sixth Level (400 RESOURCE_TYPE_TOO_DEEP)"
+   },
+   {
+    "id": "perm-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"project:read\", \"resource_type\": \"project\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create project:read On project (201)"
+   },
+   {
+    "id": "perm-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"folder:read\", \"resource_type\": \"folder\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "folder"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create folder:read On folder (201)"
+   },
+   {
+    "id": "role-outside",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-folder-viewer\", \"resource_type\": \"folder\", \"permissions\": [\"project:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSION_OUTSIDE_ROLE_SCOPE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Folder Role With project:read (400 PERMISSION_OUTSIDE_ROLE_SCOPE)"
+   },
+   {
+    "id": "role-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-project-viewer\", \"resource_type\": \"project\", \"permissions\": [\"project:read\", \"folder:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "folder:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Project Role With project:read + folder:read (201)"
+   },
+   {
+    "id": "perm-rescope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/folder:read",
+     "body": "{\"description\": \"x\", \"resource_type\": \"project\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSION_SCOPE_IMMUTABLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Move folder:read To project (409 PERMISSION_SCOPE_IMMUTABLE)"
+   },
+   {
+    "id": "perm-same-scope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions/folder:read",
+     "body": "{\"description\": \"same scope\", \"resource_type\": \"folder\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "folder"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "same scope"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update folder:read Sending Its Own Type (200)"
+   },
+   {
+    "id": "role-rescope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{role-project.rid}}",
+     "body": "{\"name\": \"eptest-project-viewer\", \"resource_type\": \"folder\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_SCOPE_IMMUTABLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Move Role To folder (409 ROLE_SCOPE_IMMUTABLE)"
+   },
+   {
+    "id": "delete-in-use",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-project.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.blocked_by.child_types"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.blocked_by.roles"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.blocked_by.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete project While Used (409 RESOURCE_TYPE_IN_USE)"
+   },
+   {
+    "id": "shrink-scope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}}",
+     "body": "{\"parent_types\": [\"organization\"]}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-project.rid}}"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.role_ids"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Move folder Out Of project (409 RESOURCE_TYPE_IN_USE, role_ids)"
+   },
+   {
+    "id": "rename-folder",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-folder.id}}",
+     "body": "{\"name\": \"Folders\"}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Folders"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "folder"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "project"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.parent_types"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename folder (200)"
+   },
+   {
+    "id": "tree-add-team",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"resource_types\": [{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"folder\", \"name\": \"Folders\", \"parent_types\": [\"project\"], \"nests_in_itself\": true}, {\"slug\": \"doc\", \"name\": \"Doc\", \"parent_types\": [\"folder\"], \"nests_in_itself\": false}, {\"slug\": \"page\", \"name\": \"Page\", \"parent_types\": [\"doc\"], \"nests_in_itself\": false}, {\"slug\": \"team\", \"name\": \"Team\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "organization"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_types[0].slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "team"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_types[5].slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Replace Tree Adding team (200, 6 types)"
+   },
+   {
+    "id": "tree-drop-team",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"resource_types\": [{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}, {\"slug\": \"folder\", \"name\": \"Folders\", \"parent_types\": [\"project\"], \"nests_in_itself\": true}, {\"slug\": \"doc\", \"name\": \"Doc\", \"parent_types\": [\"folder\"], \"nests_in_itself\": false}, {\"slug\": \"page\", \"name\": \"Page\", \"parent_types\": [\"doc\"], \"nests_in_itself\": false}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "page"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.resource_types[4].slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"team\""
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {
+       "path": "$.resource_types"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Replace Tree Without team (200, 5 types)"
+   },
+   {
+    "id": "search-after",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "5"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Types: 5 Left"
+   },
+   {
+    "id": "delete-page",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-page.id}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete page (204)"
+   },
+   {
+    "id": "get-page-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{create-page.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_TYPE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get page (404 RESOURCE_TYPE_NOT_FOUND)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "project created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "project"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "folder created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "folder"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "doc created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "doc"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "page created once",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "page"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "team created by the tree",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "team"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "team deleted by the tree",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "team"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "page deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "page"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 2,
+       "min": 1,
+       "name": "folder renamed (patch, tree may repeat)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "folder"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "project never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "project"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "organization never changes",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.resource_type."
+         },
+         "operator_type": "starts_with",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "organization"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.resource_type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "display_name": "Resource Type Events"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

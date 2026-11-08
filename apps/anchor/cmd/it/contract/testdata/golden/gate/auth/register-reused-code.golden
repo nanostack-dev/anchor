@@ -1,0 +1,17 @@
+# anchor: auth / Register With A Used Code (400)
+request: POST /v1/auth/register
+request-headers: Content-Type
+request-body: {"email": "garbage+<uuid>@nanostack.dev", "password": "Ep!{{$runId}}Aa1", "invitation_code": "{{create-invitation.code}}"}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/auth/register-reused-code
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVITATION_CODE_IS_INVALID","message":"The invitation code is invalid."}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","error":"failed to handle invitation: The invitation code is invalid.","level":"info","message":"Request error","method":"POST","path":"/v1/auth/register","request_id":"ct/auth/register-reused-code","status":400,"time":"<time:timestamp>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/register -> 400 (<duration>)","method":"POST","path":"/v1/auth/register","request_body":"<present>","request_id":"ct/auth/register-reused-code","status":400,"time":"<time:timestamp>","user_agent":"anchor-contract/1"}

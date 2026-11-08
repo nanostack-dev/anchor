@@ -1,0 +1,17 @@
+# anchor: invitations / Accept A Again (409)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"product_user_id": "{{create-invitee.userId}}"}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/accept-a-again
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_INVITATION_ALREADY_ACCEPTED","message":"This invitation is accepted already."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"This invitation is accepted already.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept","principal_type":"api_key","request_id":"ct/invitations/accept-a-again","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-invitations-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept -> 409 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations/{{invite-a.invitationId}}/accept","principal_type":"api_key","request_body":"<present>","request_id":"ct/invitations/accept-a-again","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

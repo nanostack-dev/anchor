@@ -1,0 +1,16 @@
+# anchor: resource types / Update folder:read Sending Its Own Type (200)
+request: PUT /v1/products/{{create-product.productId}}/resource-permissions/folder:read
+request-headers: Authorization, Content-Type
+request-body: {"description": "same scope", "resource_type": "folder"}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resource-types/perm-same-scope
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"same scope","name":"folder:read","product_id":"{{create-product.productId}}","resource_type":"folder","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/resource-permissions/folder:read -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/resource-permissions/folder:read","principal_type":"user","request_body":"<present>","request_id":"ct/resource-types/perm-same-scope","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

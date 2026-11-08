@@ -1,0 +1,16 @@
+# anchor: product user external id / Change external_id Later (405, no update route)
+request: PATCH /v1/products/{{create-product.productId}}/product-users/{{user-a.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"external_id": "ext-other-{{$runId}}"}
+
+status: 405
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/product-user-external-id/user-patch
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+method not allowed
+
+logs: 0 line(s)

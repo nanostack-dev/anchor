@@ -1,0 +1,2086 @@
+{
+ "id": "6d29fe68-84ba-4a3e-93ac-b82695ca9726",
+ "name": "anchor: email-templates",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Email templates end to end: create, read, list, duplicate slug; rename, examples and drafts as independent branches; examples saved before a rename survive it (anchor #154); draft, publish, next draft, preview of draft vs published; delete. Not covered: a successful send. It needs a configured SMTP integration and a mail sink; only the 409 without an integration is asserted. Optional variables: a missing optional variable renders empty so an if-guard stays false, a missing required one keeps its [name] placeholder and warning (anchor#153; body in flow variable emailOptionalVarBody). List counts are totals (limit=1 -> count 2) and sends filter by template_id/status (anchor#185). Render bounds: range 1000000 previews 400 EMAIL_TEMPLATE_RENDER_ERROR (anchor#329); a product key with use_draft gets 403 EMAIL_DRAFT_SEND_FORBIDDEN (anchor#327).",
+ "updated_at": "2026-11-06T12:13:20.82298Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "765113be-e84d-4f0f-a299-2c90c544cc8e",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "761c7f3d-275d-470b-bd06-b718ed2fb97f",
+    "source": "create-product",
+    "target": "create-template",
+    "type": "success"
+   },
+   {
+    "id": "679f807c-4d8e-418b-ac9b-cc845d5d3ed1",
+    "source": "create-product",
+    "target": "missing-subject",
+    "type": "success"
+   },
+   {
+    "id": "50955e7f-7a2f-40ff-a1b1-f276161d9f11",
+    "source": "create-product",
+    "target": "list-sends",
+    "type": "success"
+   },
+   {
+    "id": "b9381e61-f124-4e54-bcbf-3bf516979331",
+    "source": "create-template",
+    "target": "get-template",
+    "type": "success"
+   },
+   {
+    "id": "ed850634-91d3-4167-aa75-cd8cbbc801c8",
+    "source": "create-template",
+    "target": "list-templates",
+    "type": "success"
+   },
+   {
+    "id": "4a5aee70-6adc-4427-8b8a-f6aee02b30b9",
+    "source": "create-template",
+    "target": "duplicate-slug",
+    "type": "success"
+   },
+   {
+    "id": "8b106f6d-867d-443c-bbf6-67b774a577c2",
+    "source": "get-examples",
+    "target": "save-examples",
+    "type": "success"
+   },
+   {
+    "id": "45a3569f-168b-472f-aed9-e4ad869e5c34",
+    "source": "save-examples",
+    "target": "get-examples-saved",
+    "type": "success"
+   },
+   {
+    "id": "2eb9a8db-9a2e-4703-93a7-e2b799c116a0",
+    "source": "update-draft",
+    "target": "get-draft",
+    "type": "success"
+   },
+   {
+    "id": "a365f7d1-b988-4e38-b1d4-119b96b16ffc",
+    "source": "update-draft",
+    "target": "preview-unpublished",
+    "type": "success"
+   },
+   {
+    "id": "4e53b25f-98ef-42f4-80cc-9688515b879c",
+    "source": "get-draft",
+    "target": "publish-template",
+    "type": "success"
+   },
+   {
+    "id": "0d094e75-22ca-429f-af79-3b9b40705b22",
+    "source": "preview-unpublished",
+    "target": "publish-template",
+    "type": "success"
+   },
+   {
+    "id": "2cded573-9e4a-49ef-aa42-eb7ed354d4a1",
+    "source": "publish-template",
+    "target": "send-email-no-integration",
+    "type": "success"
+   },
+   {
+    "id": "cdccb974-b2a6-40bb-8475-76470fc87c07",
+    "source": "publish-template",
+    "target": "get-template-published",
+    "type": "success"
+   },
+   {
+    "id": "88e64bc2-5b44-4e16-80f0-ba5cf984ad19",
+    "source": "update-draft-v2",
+    "target": "preview-draft",
+    "type": "success"
+   },
+   {
+    "id": "73db493e-30bf-454d-bf7a-e0a029c972e5",
+    "source": "update-draft-v2",
+    "target": "preview-published",
+    "type": "success"
+   },
+   {
+    "id": "b2538ff9-903e-43f0-b569-163d325b4323",
+    "source": "delete-template",
+    "target": "verify-gone",
+    "type": "success"
+   },
+   {
+    "id": "0bb830c2-9de0-419c-8186-388354dfbfda",
+    "source": "verify-gone",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "440fdc9c-f97a-4fd6-9526-a54a0b1b5c73",
+    "source": "missing-subject",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "8db04350-f880-4eb6-96fb-6b6959353c89",
+    "source": "list-sends",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "69c4f3fb-a440-4745-8fcc-8fb48554e0a9",
+    "source": "get-template",
+    "target": "rename-template",
+    "type": "success"
+   },
+   {
+    "id": "2c5698f5-1584-41d9-89b9-b2a4e7524359",
+    "source": "create-template",
+    "target": "get-examples",
+    "type": "success"
+   },
+   {
+    "id": "355b7fec-a7cb-47ac-a488-a399d51230a8",
+    "source": "get-examples-saved",
+    "target": "rename-after-examples",
+    "type": "success"
+   },
+   {
+    "id": "b6b2c9a2-c56e-4934-baf5-6209651b5340",
+    "source": "get-template",
+    "target": "rename-after-examples",
+    "type": "success"
+   },
+   {
+    "id": "335d0f49-5d2e-49a1-a3ab-28dd99195405",
+    "source": "rename-after-examples",
+    "target": "examples-after-rename",
+    "type": "success"
+   },
+   {
+    "id": "eec6aefd-44b5-47e6-8ff2-cae5a1829ce7",
+    "source": "create-template",
+    "target": "update-draft",
+    "type": "success"
+   },
+   {
+    "id": "0526c90e-9403-48e7-9b5b-d26d9bfdd671",
+    "source": "get-template-published",
+    "target": "update-draft-v2",
+    "type": "success"
+   },
+   {
+    "id": "cbba48e4-e81b-47f0-b537-b6c8c50daef1",
+    "source": "list-templates",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "1b576a55-277a-4a96-8e11-bf8b504e5b29",
+    "source": "duplicate-slug",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "9579c601-96df-4e9a-affc-533b5cc63e69",
+    "source": "rename-template",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "c7a7dafd-fb32-4e4c-aa43-29f98a392493",
+    "source": "examples-after-rename",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "c526e418-7fcc-4333-a46a-8d6e190d4b0a",
+    "source": "send-email-no-integration",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "5ba5350f-65ed-45ac-aa89-b774bc6aa9b9",
+    "source": "preview-draft",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "4d186e97-5ecb-4691-8b24-bef1f8c79393",
+    "source": "preview-published",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "e-list-templates-create-vars-template",
+    "source": "list-templates",
+    "target": "create-vars-template",
+    "type": "success"
+   },
+   {
+    "id": "e-create-vars-template-preview-optional-missing",
+    "source": "create-vars-template",
+    "target": "preview-optional-missing",
+    "type": "success"
+   },
+   {
+    "id": "e-create-vars-template-preview-optional-given",
+    "source": "create-vars-template",
+    "target": "preview-optional-given",
+    "type": "success"
+   },
+   {
+    "id": "e-create-vars-template-list-templates-page",
+    "source": "create-vars-template",
+    "target": "list-templates-page",
+    "type": "success"
+   },
+   {
+    "id": "e-create-template-list-sends-filtered",
+    "source": "create-template",
+    "target": "list-sends-filtered",
+    "type": "success"
+   },
+   {
+    "id": "e-preview-optional-missing-delete-vars-template",
+    "source": "preview-optional-missing",
+    "target": "delete-vars-template",
+    "type": "success"
+   },
+   {
+    "id": "e-preview-optional-given-delete-vars-template",
+    "source": "preview-optional-given",
+    "target": "delete-vars-template",
+    "type": "success"
+   },
+   {
+    "id": "e-list-templates-page-delete-vars-template",
+    "source": "list-templates-page",
+    "target": "delete-vars-template",
+    "type": "success"
+   },
+   {
+    "id": "e-list-templates-page-delete-template",
+    "source": "list-templates-page",
+    "target": "delete-template",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-vars-template-cleanup-product",
+    "source": "delete-vars-template",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-list-sends-filtered-cleanup-product",
+    "source": "list-sends-filtered",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product-create-send-key",
+    "source": "create-product",
+    "target": "create-send-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-send-key-send-draft-by-key",
+    "source": "create-send-key",
+    "target": "send-draft-by-key",
+    "type": "success"
+   },
+   {
+    "id": "e-send-draft-by-key-cleanup-product",
+    "source": "send-draft-by-key",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-list-templates-page-create-bomb-template",
+    "source": "list-templates-page",
+    "target": "create-bomb-template",
+    "type": "success"
+   },
+   {
+    "id": "e-create-bomb-template-preview-bomb",
+    "source": "create-bomb-template",
+    "target": "preview-bomb",
+    "type": "success"
+   },
+   {
+    "id": "e-preview-bomb-delete-bomb-template",
+    "source": "preview-bomb",
+    "target": "delete-bomb-template",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-bomb-template-cleanup-product",
+    "source": "delete-bomb-template",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-product-email-{{$runId}}\",\"description\":\"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product"
+   },
+   {
+    "id": "create-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"eptest-welcome-{{$runId}}\",\"name\":\"Welcome\",\"subject\":\"Hello there\",\"body_html\":\"<p>Welcome</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "tid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "slug",
+      "secret": false,
+      "extractor": {
+       "path": "$.slug",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "draftVersionId",
+      "secret": false,
+      "extractor": {
+       "path": "$.draft_version_id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-welcome-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Welcome"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.draft_version_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.is_active"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Template"
+   },
+   {
+    "id": "missing-subject",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"eptest-bad-{{$runId}}\",\"name\":\"X\",\"body_html\":\"<p>x</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Subject"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].metadata.field"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Missing Subject (400)"
+   },
+   {
+    "id": "list-sends",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Email Sends (none)"
+   },
+   {
+    "id": "get-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Welcome"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-welcome-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.draftVersionId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.draft_version_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.is_active"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Template"
+   },
+   {
+    "id": "list-templates",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-welcome-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Templates"
+   },
+   {
+    "id": "duplicate-slug",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"{{create-template.slug}}\",\"name\":\"Dup\",\"subject\":\"s\",\"body_html\":\"<p>d</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_TEMPLATE_SLUG_TAKEN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Duplicate Slug (409)"
+   },
+   {
+    "id": "rename-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "body": "{\"name\":\"Welcome v2\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Welcome v2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-welcome-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename Template"
+   },
+   {
+    "id": "get-examples",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/examples",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.examples"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Examples (none yet)"
+   },
+   {
+    "id": "save-examples",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/examples",
+     "body": "{\"examples\":[{\"id\":\"{{$uuid}}\",\"name\":\"Happy path\",\"variables\":{\"first_name\":\"Ada\"}}]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "exampleId",
+      "secret": false,
+      "extractor": {
+       "path": "$.examples[0].id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Happy path"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Ada"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].variables.first_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Save Template Examples"
+   },
+   {
+    "id": "get-examples-saved",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/examples",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{save-examples.exampleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Happy path"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Ada"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].variables.first_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Examples Read Back"
+   },
+   {
+    "id": "rename-after-examples",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "body": "{\"name\":\"Welcome v3\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Welcome v3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename After Saving Examples"
+   },
+   {
+    "id": "examples-after-rename",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/examples",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{save-examples.exampleId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Happy path"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Ada"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.examples[0].variables.first_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Examples Survive The Rename"
+   },
+   {
+    "id": "update-draft",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft",
+     "body": "{\"subject\":\"Draft subj\",\"body_html\":\"<p>Draft</p>\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.draftVersionId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "DRAFT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Draft subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.version_number"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Draft"
+   },
+   {
+    "id": "get-draft",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.draftVersionId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Draft subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "<p>Draft</p>"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "DRAFT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Draft"
+   },
+   {
+    "id": "preview-unpublished",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/preview",
+     "body": "{\"use_published\":true}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_TEMPLATE_NOT_PUBLISHED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview Published Before Publish (409)"
+   },
+   {
+    "id": "publish-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/publish",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "versionId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.draftVersionId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-template.tid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.template_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.version_number"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "PUBLISHED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.published_at"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Draft subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Publish Template"
+   },
+   {
+    "id": "send-email-no-integration",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends",
+     "body": "{\"template_id\":\"{{create-template.tid}}\",\"to_address\":\"garbage+{{$uuid}}@nanostack.dev\",\"variables\":{},\"dedupe_key\":\"{{$uuid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_INTEGRATION_NOT_CONFIGURED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Send Email Without Integration (409)"
+   },
+   {
+    "id": "get-template-published",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "nextDraftId",
+      "secret": false,
+      "extractor": {
+       "path": "$.draft_version_id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{publish-template.versionId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.published_version_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{publish-template.versionId}}"
+      },
+      "operator_type": "not_equals",
+      "extractor_data": {
+       "path": "$.draft_version_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-welcome-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Template Points At The Published Version"
+   },
+   {
+    "id": "update-draft-v2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/draft",
+     "body": "{\"subject\":\"Next subj\",\"body_html\":\"<p>Next</p>\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{get-template-published.nextDraftId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.version_number"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "DRAFT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Next subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Edit The Next Draft"
+   },
+   {
+    "id": "preview-draft",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/preview",
+     "body": "{\"use_published\":false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Next subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "<p>Next</p>"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Next"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_text"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview The Draft"
+   },
+   {
+    "id": "preview-published",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}/preview",
+     "body": "{\"use_published\":true}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "Draft subj"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "<p>Draft</p>"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "Draft"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_text"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview Published Keeps Version 1"
+   },
+   {
+    "id": "delete-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Template"
+   },
+   {
+    "id": "verify-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-template.tid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_TEMPLATE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Verify Gone (404)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   },
+   {
+    "id": "create-vars-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"eptest-invite-{{$runId}}\",\"name\":\"Invite\",\"subject\":\"Invite\",\"body_html\":\"{{emailOptionalVarBody}}\",\"variables\":[{\"name\":\"inviter_name\",\"type\":\"STRING\",\"required\":false},{\"name\":\"first_name\",\"type\":\"STRING\",\"required\":true}]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "tid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-invite-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.slug"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Template With Optional Variable (201)"
+   },
+   {
+    "id": "preview-optional-missing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-vars-template.tid}}/preview",
+     "body": "{\"use_published\":false,\"variables\":{}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "<p>You are invited, [first_name]</p>"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "[inviter_name]"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "first_name"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.warnings[0]"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "inviter_name"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {
+       "path": "$.warnings[*]"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview: Missing Optional Renders Empty (200)"
+   },
+   {
+    "id": "preview-optional-given",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-vars-template.tid}}/preview",
+     "body": "{\"use_published\":false,\"variables\":{\"inviter_name\":\"Ada\",\"first_name\":\"Bo\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "<p>Ada invited you, Bo</p>"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.body_html"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.warnings"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview: Both Variables Given (200)"
+   },
+   {
+    "id": "list-templates-page",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates?limit=1",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Templates limit=1 Counts Total (200)"
+   },
+   {
+    "id": "list-sends-filtered",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends?template_id={{create-template.tid}}&status=FAILED&limit=10",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.count"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "List Sends Filtered By Template And Status (200)"
+   },
+   {
+    "id": "delete-vars-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-vars-template.tid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Optional-Variable Template (204)"
+   },
+   {
+    "id": "create-send-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-email-send-key\", \"mutable\": false, \"permissions\": [\"email:send\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key email:send (201)"
+   },
+   {
+    "id": "send-draft-by-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/sends",
+     "body": "{\"template_slug\": \"eptest-nope-{{$runId}}\", \"to_address\": \"garbage+draft-{{$runId}}@nanostack.dev\", \"use_draft\": true}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-send-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_DRAFT_SEND_FORBIDDEN"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Product Key Sends use_draft (403 EMAIL_DRAFT_SEND_FORBIDDEN)"
+   },
+   {
+    "id": "create-bomb-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\":\"eptest-bomb-{{$runId}}\",\"name\":\"Bomb\",\"subject\":\"Bomb\",\"body_html\":\"\\u007b\\u007brange 1000000\\u007d\\u007dx\\u007b\\u007bend\\u007d\\u007d\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "tid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Template With range 1000000 (201)"
+   },
+   {
+    "id": "preview-bomb",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-bomb-template.tid}}/preview",
+     "body": "{\"use_published\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "EMAIL_TEMPLATE_RENDER_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Preview range 1000000 (400 EMAIL_TEMPLATE_RENDER_ERROR)"
+   },
+   {
+    "id": "delete-bomb-template",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{create-bomb-template.tid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [],
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Bomb Template (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

@@ -1,0 +1,14 @@
+# anchor: auth / Me Without A Token (401, JSON error)
+request: GET /v1/me
+request-headers: Content-Type
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/auth/me-noauth
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

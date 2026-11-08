@@ -1,0 +1,16 @@
+# anchor: cursor searches — organizations & members / Create Organization 5 Named ep-cur-org (201)
+request: POST /v1/products/{{create-product.productId}}/organizations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name":"ep-cur-org"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-organizations-members/org-5
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{org-5.id}}","name":"ep-cur-org","product_id":"{{create-product.productId}}","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"{{product-key.id}}","api_key_name":"eptest-cur-orgs-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations","principal_type":"api_key","request_body":"<present>","request_id":"ct/cursor-searches-organizations-members/org-5","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

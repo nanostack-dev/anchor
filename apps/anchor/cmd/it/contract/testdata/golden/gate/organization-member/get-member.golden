@@ -1,0 +1,15 @@
+# anchor: organization-member / Get Member
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-member/get-member
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"email":"{{create-member-user.email}}","joined_at":"<timestamp.frac>","name":"{{$fullName}}","product_user_id":"{{create-member-user.uid}}","role":{"id":"{{create-role-one.r1}}","name":"eptest-mrole-one"}}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-member-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}} -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}","principal_type":"api_key","request_id":"ct/organization-member/get-member","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

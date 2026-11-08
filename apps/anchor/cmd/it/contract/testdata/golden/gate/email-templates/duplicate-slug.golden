@@ -1,0 +1,17 @@
+# anchor: email-templates / Duplicate Slug (409)
+request: POST /v1/products/{{create-product.productId}}/email/templates
+request-headers: Authorization, Content-Type
+request-body: {"slug":"{{create-template.slug}}","name":"Dup","subject":"s","body_html":"<p>d</p>"}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/email-templates/duplicate-slug
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"EMAIL_TEMPLATE_SLUG_TAKEN","message":"An email template with this slug already exists for the product"}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"An email template with this slug already exists for the product","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/email/templates","principal_type":"user","request_id":"ct/email-templates/duplicate-slug","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/templates -> 409 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/templates","principal_type":"user","request_body":"<present>","request_id":"ct/email-templates/duplicate-slug","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

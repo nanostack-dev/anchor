@@ -1,0 +1,15 @@
+# anchor: concurrent unique names / Draft Still Reads After Racing Publishes (200)
+request: GET /v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/draft
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/concurrent-unique-names/tpl-draft-read
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"body_html":"\u003cp\u003eRace\u003c/p\u003e","created_at":"<timestamp.frac>","id":"etplv_<id>","status":"DRAFT","subject":"Race subj","template_id":"{{tpl-create.tid}}","updated_at":"<timestamp.frac>","version_number":4}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/draft -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/draft","principal_type":"user","request_id":"ct/concurrent-unique-names/tpl-draft-read","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

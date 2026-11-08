@@ -1,0 +1,102 @@
+# anchor: organization / Anchor Emitted Every Organization Event
+deliveries: 10
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org-with-member.orgFmId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-twin-again.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-twin.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.deleted","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.membership.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org-with-member.orgFmId}}","product_user_id":"{{create-founding-user.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.updated","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.role.created","timestamp":"<timestamp.frac>","data":{"role_id":"{{create-founding-role.rid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{create-bystander.uid}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product_user.created","timestamp":"<timestamp.frac>","data":{"product_user_id":"{{create-founding-user.uid}}"}}
+<no trailing newline>

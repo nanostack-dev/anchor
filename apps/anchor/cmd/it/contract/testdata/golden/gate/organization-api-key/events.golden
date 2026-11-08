@@ -1,0 +1,82 @@
+# anchor: organization-api-key / Anchor Emitted Every Org Key Event
+deliveries: 8
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.created","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-expiring-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.created","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-org-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.created","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-second-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.deleted","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-org-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.updated","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-org-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.api_key.updated","timestamp":"<timestamp.frac>","data":{"api_key_id":"{{create-second-key.akId}}","organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.created","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"product.resource_permission.created","timestamp":"<timestamp.frac>","data":{"permission_name":"eptestdoc:read"}}
+<no trailing newline>

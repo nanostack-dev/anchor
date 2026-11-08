@@ -1,0 +1,17 @@
+# anchor: access evaluation / Item Without Action Or Default (400 INVALID_ACCESS_ACTION)
+request: POST /v1/products/{{create-product.productId}}/access/v1/evaluations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "organization_api_key", "id": "{{okey.value}}"}, "resource": {"type": "organization"}, "evaluations": [{}]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/item-no-action
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_ACCESS_ACTION","message":"Each evaluation needs an action, or a top-level action as its default."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"Each evaluation needs an action, or a top-level action as its default.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/item-no-action","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/access/v1/evaluations -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/item-no-action","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

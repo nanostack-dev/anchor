@@ -1,0 +1,17 @@
+# anchor: organization-api-key / Past Expiration (400)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-pastkey", "permissions": ["eptestdoc:read"], "expires_at": "<timestamp>"}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/past-exp
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_API_KEY_EXPIRES_AT_IN_PAST","message":"The organization API key expiration date must be in the future."}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"The organization API key expiration date must be in the future.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys","principal_type":"api_key","request_id":"ct/organization-api-key/past-exp","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys -> 400 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys","principal_type":"api_key","request_body":"<present>","request_id":"ct/organization-api-key/past-exp","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

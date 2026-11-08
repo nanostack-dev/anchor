@@ -1,0 +1,336 @@
+{
+ "id": "96a1677d-35c2-46c5-8962-12387d1cf534",
+ "name": "anchor: role search names",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#321: product role search names are exact matches (letter case ignored) and name_contains is a case-insensitive substring. Own product: kbadmin, ws_kbadmin (near miss), kbviewer. Cleanup always: product. Generator: echopoint-investigation/gen_role_search_names.py.",
+ "updated_at": "2026-11-04T00:27:06.750039Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "d7d84893-26a6-4023-872a-2e75fc1b1920",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "bd8e9c80-89f6-4e2d-8408-8d3615203f8b",
+    "source": "create-product",
+    "target": "role-short",
+    "type": "success"
+   },
+   {
+    "id": "f45f550d-fd38-4c20-936c-33b62c70ae4a",
+    "source": "role-short",
+    "target": "role-long",
+    "type": "success"
+   },
+   {
+    "id": "f8a72ca6-4eaf-4820-8748-2cf84372ab4d",
+    "source": "role-long",
+    "target": "role-other",
+    "type": "success"
+   },
+   {
+    "id": "fb9d5759-d52d-4245-8c10-78d6889944d3",
+    "source": "role-other",
+    "target": "role-names-exact",
+    "type": "success"
+   },
+   {
+    "id": "eab1e74c-b85b-4be5-9597-c527bc63b4c2",
+    "source": "role-names-exact",
+    "target": "role-names-case",
+    "type": "success"
+   },
+   {
+    "id": "c2949792-5510-415d-a7db-c0d2f5f9ccfd",
+    "source": "role-names-case",
+    "target": "role-name-contains",
+    "type": "success"
+   },
+   {
+    "id": "f84ad093-0a81-4971-954d-b004bbfbd953",
+    "source": "role-name-contains",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: role search names",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-rolenames-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "role-short",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"kbadmin-{{$runId}}\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role kbadmin (201)"
+   },
+   {
+    "id": "role-long",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"ws_kbadmin-{{$runId}}\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role ws_kbadmin, Containing The First Name (201)"
+   },
+   {
+    "id": "role-other",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"kbviewer-{{$runId}}\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role kbviewer, Matching Neither Search (201)"
+   },
+   {
+    "id": "role-names-exact",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"filter\": {\"names\": [\"kbadmin-{{$runId}}\"]}, \"pagination\": {\"limit\": 5}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "kbadmin-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Roles names [kbadmin] (200, total 1: names are exact matches)"
+   },
+   {
+    "id": "role-name-contains",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"filter\": {\"name_contains\": \"KBADMIN-{{$runId}}\"}, \"pagination\": {\"limit\": 5}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Roles name_contains KBADMIN (200, total 2: substring, any case)"
+   },
+   {
+    "id": "role-names-case",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"filter\": {\"names\": [\"KBADMIN-{{$runId}}\"]}, \"pagination\": {\"limit\": 5}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "kbadmin-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Roles names [KBADMIN] (200, total 1: exact, letter case ignored)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

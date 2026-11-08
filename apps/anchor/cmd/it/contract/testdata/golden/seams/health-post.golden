@@ -1,0 +1,13 @@
+# wrong method on /health: chi 405
+request: POST /health
+request-headers: 
+
+status: 405
+header Allow: GET
+header Vary: Origin
+header X-Request-Id: ct/seams/health-post
+header-names: Allow, Vary, X-Request-Id
+
+body:
+
+logs: 0 line(s)

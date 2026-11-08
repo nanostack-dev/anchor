@@ -1,0 +1,14 @@
+# anchor: access isolation and privilege changes / IDOR other Product · Read Acme's custom role with the other Product's key → 401 INVALID_PRODUCT_API_KEY
+request: GET /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/roles/{{custom-acme.id}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/other-custom
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_PRODUCT_API_KEY","message":"The product API key is invalid."}]}
+
+logs: 0 line(s)

@@ -1,0 +1,16 @@
+# contract fixture: Echopoint dev product / The dev member's product user
+request: POST /v1/products/{{create-product.productId}}/product-users
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"email": "garbage+contract-echopoint-dev@nanostack.dev", "name": "Echopoint Dev", "external_id": "user_contract_echopoint_dev"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/fixture-echopoint-dev-product/create-user
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","email":"garbage+contract-echopoint-dev@nanostack.dev","external_id":"user_contract_echopoint_dev","id":"{{create-user.userId}}","name":"Echopoint Dev","product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"contract-echopoint-setup","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/product-users -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/product-users","principal_type":"api_key","request_body":"<present>","request_id":"ct/fixture-echopoint-dev-product/create-user","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

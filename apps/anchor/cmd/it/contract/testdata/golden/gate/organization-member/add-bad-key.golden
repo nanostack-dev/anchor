@@ -1,0 +1,15 @@
+# anchor: organization-member / Add With An Unknown Key (401)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"product_user_id":"{{create-outsider.uid}}","role_id":"{{create-role-one.r1}}"}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-member/add-bad-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"INVALID_PRODUCT_API_KEY","message":"The product API key is invalid."}]}
+
+logs: 0 line(s)

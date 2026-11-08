@@ -1,0 +1,16 @@
+# anchor: organization-member / Get Removed Member (404)
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-member/verify-gone
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_MEMBERSHIP_NOT_FOUND","message":"This organization has no membership for that product user"}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-member-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"This organization has no membership for that product user","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}","principal_type":"api_key","request_id":"ct/organization-member/verify-gone","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-member-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}} -> 404 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}","principal_type":"api_key","request_id":"ct/organization-member/verify-gone","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

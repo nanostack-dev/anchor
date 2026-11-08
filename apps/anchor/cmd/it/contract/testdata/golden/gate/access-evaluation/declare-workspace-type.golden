@@ -1,0 +1,16 @@
+# anchor: access evaluation / Declare The Workspace Type (201)
+request: POST /v1/products/{{create-product.productId}}/resource-types
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"slug": "workspace", "name": "Workspace", "parent_types": ["organization"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/declare-workspace-type
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"allows_custom_roles":false,"built_in":false,"created_at":"<timestamp.frac>","id":"rtype_<id>","name":"Workspace","nests_in_itself":false,"parent_types":["organization"],"product_id":"{{create-product.productId}}","slug":"workspace","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/resource-types -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/resource-types","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation/declare-workspace-type","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

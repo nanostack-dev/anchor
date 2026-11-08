@@ -1,0 +1,16 @@
+# anchor: access evaluation — user writes apply at once / Throwaway Role Gone (404)
+request: GET /v1/products/{{nanostackProductId}}/roles/{{role.roleId}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/verify-role-gone
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ROLE_NOT_FOUND","message":"This product has no role with that identifier"}]}
+
+logs: 2 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","caller":"/<path>/<file>.go:<line>","env":"development","error":"This product has no role with that identifier","level":"info","message":"Request error","method":"GET","path":"/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}","principal_type":"api_key","request_id":"ct/access-evaluation-user-writes-apply-at-once/verify-role-gone","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{nanostackProductId}}/roles/{{role.roleId}} -> 404 (<duration>)","method":"GET","path":"/v1/products/{{nanostackProductId}}/roles/{{role.roleId}}","principal_type":"api_key","request_id":"ct/access-evaluation-user-writes-apply-at-once/verify-role-gone","status":404,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

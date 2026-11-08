@@ -1,0 +1,2049 @@
+{
+ "id": "1b4fdf6f-a99a-46f9-be1a-bb03e9aacdbc",
+ "name": "anchor: organization roles",
+ "tags": [
+  "anchor"
+ ],
+ "description": "anchor#271/#272/#274 (ADR-0022 DR-G4) on an own product: role type MANAGED vs CUSTOM, custom roles behind allows_custom_roles (off: 400 CUSTOM_ROLES_DISABLED, other type 400 the project switch opening (anchor#284)), duplicate names 409, other Organization and product route 404, managed role 409 ROLE_NOT_EDITABLE through the org route, cross-org assignment 400, ROLE_IN_USE, switch off keeps access and allows delete; members without a role, role_id null removes it, {} 400; access decisions follow each change at once. Generator: echopoint-investigation/gen_org_roles.py.",
+ "updated_at": "2026-11-03T15:14:18.814361Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "60accbb7-e19f-4f59-a50d-cb76fba47ee5",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "62739415-a2a7-4d65-b44a-dd051768925e",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "8432b835-2e06-4887-ae10-ff25eb5a6c3e",
+    "source": "create-key",
+    "target": "perm-doc",
+    "type": "success"
+   },
+   {
+    "id": "4fe3fb85-55a7-44f2-8f70-6f6a661822bc",
+    "source": "perm-doc",
+    "target": "perm-bill",
+    "type": "success"
+   },
+   {
+    "id": "38c82bf6-a6c8-47a4-8c56-f375f96a7e85",
+    "source": "perm-bill",
+    "target": "role-admin",
+    "type": "success"
+   },
+   {
+    "id": "887eddb4-2223-4ea9-9734-0c8efadc953e",
+    "source": "role-admin",
+    "target": "get-admin",
+    "type": "success"
+   },
+   {
+    "id": "60cb17ec-568a-414d-85c9-843ffab3f6be",
+    "source": "get-admin",
+    "target": "org-a",
+    "type": "success"
+   },
+   {
+    "id": "14357ee3-5ed3-40f0-a67e-1a2945ab7ee3",
+    "source": "org-a",
+    "target": "org-b",
+    "type": "success"
+   },
+   {
+    "id": "a8072203-8b4b-44b4-946b-fc845ed6adb7",
+    "source": "org-b",
+    "target": "user-1",
+    "type": "success"
+   },
+   {
+    "id": "d5b71614-9d44-424b-9468-f44d11d02628",
+    "source": "user-1",
+    "target": "user-2",
+    "type": "success"
+   },
+   {
+    "id": "2d21da8a-24dc-4dbe-81db-f1b16195a603",
+    "source": "user-2",
+    "target": "custom-off",
+    "type": "success"
+   },
+   {
+    "id": "d63d307f-dcda-4f7d-a23f-7252fdfea632",
+    "source": "custom-off",
+    "target": "rt-search",
+    "type": "success"
+   },
+   {
+    "id": "beb99269-c5bc-494f-a229-e90ead6ef299",
+    "source": "rt-search",
+    "target": "rt-project",
+    "type": "success"
+   },
+   {
+    "id": "687ef7b1-fa46-4df9-a849-8c2e885a8c79",
+    "source": "rt-project",
+    "target": "switch-project",
+    "type": "success"
+   },
+   {
+    "id": "4b2479cd-6cd8-4b5e-aa00-0081308118a2",
+    "source": "switch-project",
+    "target": "switch-on",
+    "type": "success"
+   },
+   {
+    "id": "639e25ea-833b-4151-a0a5-098ab139c234",
+    "source": "switch-on",
+    "target": "custom-create",
+    "type": "success"
+   },
+   {
+    "id": "51d61fd9-0293-4694-92ef-68135c88c8a9",
+    "source": "custom-create",
+    "target": "custom-dup-own",
+    "type": "success"
+   },
+   {
+    "id": "3727f066-1d3b-454f-98c4-a7e575851130",
+    "source": "custom-dup-own",
+    "target": "custom-dup-managed",
+    "type": "success"
+   },
+   {
+    "id": "9abc890e-85f0-42e9-bf2c-97ae5708908d",
+    "source": "custom-dup-managed",
+    "target": "search-a",
+    "type": "success"
+   },
+   {
+    "id": "da9fa988-dbbd-4ea8-8269-96763308ad91",
+    "source": "search-a",
+    "target": "search-b",
+    "type": "success"
+   },
+   {
+    "id": "d5526c85-fbf6-48e0-9403-6d4f789de253",
+    "source": "search-b",
+    "target": "get-custom-b",
+    "type": "success"
+   },
+   {
+    "id": "809602cf-e85d-48ad-a8a0-2b3a67141281",
+    "source": "get-custom-b",
+    "target": "get-custom-product",
+    "type": "success"
+   },
+   {
+    "id": "dd7e726e-2be1-4cf1-bc78-596e95fb8dbc",
+    "source": "get-custom-product",
+    "target": "edit-managed",
+    "type": "success"
+   },
+   {
+    "id": "43990f04-41dc-4753-b566-f2aa2d66c4ca",
+    "source": "edit-managed",
+    "target": "delete-managed",
+    "type": "success"
+   },
+   {
+    "id": "8b8d7a12-48fe-483e-9c0c-edb1cab7daf2",
+    "source": "delete-managed",
+    "target": "member-b-custom",
+    "type": "success"
+   },
+   {
+    "id": "ee299aff-7a29-4092-93f4-6fab83d3b34a",
+    "source": "member-b-custom",
+    "target": "eval-1-before",
+    "type": "success"
+   },
+   {
+    "id": "104779ed-ec67-4448-962d-107f06c04858",
+    "source": "eval-1-before",
+    "target": "member-a-custom",
+    "type": "success"
+   },
+   {
+    "id": "a64b6cd5-e58e-4ff9-9d84-587519aad03f",
+    "source": "member-a-custom",
+    "target": "eval-1-custom",
+    "type": "success"
+   },
+   {
+    "id": "a011cc90-4514-4305-9e23-47b48f54f52a",
+    "source": "eval-1-custom",
+    "target": "eval-1-doc",
+    "type": "success"
+   },
+   {
+    "id": "3cf7cff9-e8ab-404b-a209-e7814bd7254d",
+    "source": "eval-1-doc",
+    "target": "delete-custom-used",
+    "type": "success"
+   },
+   {
+    "id": "80a6ca87-734d-414e-ab34-66d40bf5d19f",
+    "source": "delete-custom-used",
+    "target": "member-norole",
+    "type": "success"
+   },
+   {
+    "id": "c9deab4c-896b-45e5-bad7-64c6bba86e20",
+    "source": "member-norole",
+    "target": "eval-2-norole",
+    "type": "success"
+   },
+   {
+    "id": "c95e3287-5447-4560-b526-4cc3ce88a027",
+    "source": "eval-2-norole",
+    "target": "set-2-admin",
+    "type": "success"
+   },
+   {
+    "id": "718f220b-123d-4479-b6b9-23f76abb1016",
+    "source": "set-2-admin",
+    "target": "eval-2-admin",
+    "type": "success"
+   },
+   {
+    "id": "db11e3ec-3018-4a6c-8785-47fbd7d29a4d",
+    "source": "eval-2-admin",
+    "target": "set-2-empty",
+    "type": "success"
+   },
+   {
+    "id": "f2a30001-2e84-4e38-a715-fe1504a6a967",
+    "source": "set-2-empty",
+    "target": "set-2-null",
+    "type": "success"
+   },
+   {
+    "id": "01a59d75-ea64-49d2-9783-e0404924713f",
+    "source": "set-2-null",
+    "target": "get-2",
+    "type": "success"
+   },
+   {
+    "id": "57082f34-e93a-44e6-ba84-184852d54ce4",
+    "source": "get-2",
+    "target": "eval-2-null",
+    "type": "success"
+   },
+   {
+    "id": "65a925a2-254b-421e-a9ef-87e3f36bb7e3",
+    "source": "eval-2-null",
+    "target": "switch-off",
+    "type": "success"
+   },
+   {
+    "id": "f276b35a-f67a-4cdd-9dac-436a8c26b99a",
+    "source": "switch-off",
+    "target": "custom-create-off",
+    "type": "success"
+   },
+   {
+    "id": "c72ed674-0668-43be-af03-ca5c763b3bc8",
+    "source": "custom-create-off",
+    "target": "custom-update-off",
+    "type": "success"
+   },
+   {
+    "id": "c081dffe-46cb-48b6-a244-f7ccdba2abfe",
+    "source": "custom-update-off",
+    "target": "eval-1-off",
+    "type": "success"
+   },
+   {
+    "id": "3f60a0fb-4cff-41cc-951d-f177c4054e9a",
+    "source": "eval-1-off",
+    "target": "set-1-admin",
+    "type": "success"
+   },
+   {
+    "id": "3979b0ca-30f6-4f47-be10-e3e5ed4472a9",
+    "source": "set-1-admin",
+    "target": "delete-custom",
+    "type": "success"
+   },
+   {
+    "id": "f7926260-d5ef-4251-a54b-fe8298437777",
+    "source": "delete-custom",
+    "target": "get-custom-gone",
+    "type": "success"
+   },
+   {
+    "id": "c956e1af-9c58-4480-8981-5c20e612ec89",
+    "source": "get-custom-gone",
+    "target": "eval-1-gone",
+    "type": "success"
+   },
+   {
+    "id": "87eae3e1-ff29-48c6-a02a-17d641dcce8a",
+    "source": "eval-1-gone",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: organization roles",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-orgroles-{{$runId}}\", \"description\": \"echopoint test\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-orgroles-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"product_user:create\", \"product_user:read\", \"organization_api_key:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": true,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key (201)"
+   },
+   {
+    "id": "perm-doc",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"doc:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create doc:read (201)"
+   },
+   {
+    "id": "perm-bill",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"bill:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create bill:read (201)"
+   },
+   {
+    "id": "role-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-admin\", \"resource_type\": \"organization\", \"permissions\": [\"doc:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "MANAGED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": ""
+      },
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Managed Admin Role (201, type MANAGED)"
+   },
+   {
+    "id": "get-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{role-admin.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "MANAGED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.type"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Managed Role (200, type MANAGED)"
+   },
+   {
+    "id": "org-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-acme-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Acme (201)"
+   },
+   {
+    "id": "org-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-globex-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Globex (201)"
+   },
+   {
+    "id": "user-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-priya-{{$runId}}@nanostack.dev\", \"name\": \"eptest priya\", \"external_id\": \"ext-priya-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Priya (201)"
+   },
+   {
+    "id": "user-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\": \"garbage+eptest-nina-{{$runId}}@nanostack.dev\", \"name\": \"eptest nina\", \"external_id\": \"ext-nina-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Nina (201)"
+   },
+   {
+    "id": "custom-off",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles",
+     "body": "{\"name\": \"eptest-billing\", \"resource_type\": \"organization\", \"permissions\": [\"bill:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "CUSTOM_ROLES_DISABLED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Custom Role While Switch Off (400 CUSTOM_ROLES_DISABLED)"
+   },
+   {
+    "id": "rt-search",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgTypeId",
+      "secret": false,
+      "extractor": {
+       "path": "$.items[0].id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "organization"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].slug"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].allows_custom_roles"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Find organization Type (allows_custom_roles false)"
+   },
+   {
+    "id": "rt-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types",
+     "body": "{\"slug\": \"project\", \"name\": \"Project\", \"parent_types\": [\"organization\"], \"nests_in_itself\": false}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "id",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.allows_custom_roles"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create project Type (201)"
+   },
+   {
+    "id": "switch-project",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{rt-project.id}}",
+     "body": "{\"allows_custom_roles\": true}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.allows_custom_roles"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Switch On For project (200, opens project only)"
+   },
+   {
+    "id": "switch-on",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{rt-search.orgTypeId}}",
+     "body": "{\"allows_custom_roles\": true}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.allows_custom_roles"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Switch On For organization (200)"
+   },
+   {
+    "id": "custom-create",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles",
+     "body": "{\"name\": \"eptest-billing\", \"resource_type\": \"organization\", \"permissions\": [\"bill:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "CUSTOM"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.type"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{org-a.orgId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.organization_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Acme Creates Billing Auditor (201, type CUSTOM)"
+   },
+   {
+    "id": "custom-dup-own",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles",
+     "body": "{\"name\": \"eptest-billing\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Acme Reuses Its Own Name (409 ROLE_NAME_DUPLICATE)"
+   },
+   {
+    "id": "custom-dup-managed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles",
+     "body": "{\"name\": \"eptest-admin\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Acme Takes A Managed Name (409 ROLE_NAME_DUPLICATE)"
+   },
+   {
+    "id": "search-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{custom-create.rid}}"
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-admin.rid}}"
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Acme Roles: Managed + Custom"
+   },
+   {
+    "id": "search-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-b.orgId}}/roles/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{custom-create.rid}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Globex Roles: Managed Only"
+   },
+   {
+    "id": "get-custom-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-b.orgId}}/roles/{{custom-create.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read Acme's Role Through Globex (404 ROLE_NOT_FOUND)"
+   },
+   {
+    "id": "get-custom-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{custom-create.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read Custom Role On Product Route (404 ROLE_NOT_FOUND)"
+   },
+   {
+    "id": "edit-managed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}}",
+     "body": "{\"name\": \"eptest-admin-2\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_EDITABLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Change Managed Role Through Acme (409 ROLE_NOT_EDITABLE)"
+   },
+   {
+    "id": "delete-managed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{role-admin.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_EDITABLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Managed Role Through Acme (409 ROLE_NOT_EDITABLE)"
+   },
+   {
+    "id": "member-b-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-b.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-1.id}}\", \"role_id\": \"{{custom-create.rid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Globex Member With Acme's Role (400 ROLE_NOT_FOUND_IN_REQUEST)"
+   },
+   {
+    "id": "eval-1-before",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-priya-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"bill:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "NOT_A_MEMBER"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Priya Before Membership (NOT_A_MEMBER)"
+   },
+   {
+    "id": "member-a-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-1.id}}\", \"role_id\": \"{{custom-create.rid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{custom-create.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add Priya To Acme As Billing Auditor (201)"
+   },
+   {
+    "id": "eval-1-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-priya-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"bill:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Priya bill:read On Acme (allow)"
+   },
+   {
+    "id": "eval-1-doc",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-priya-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"doc:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Priya doc:read On Acme (MISSING_PERMISSION)"
+   },
+   {
+    "id": "delete-custom-used",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{custom-create.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Held Custom Role (409 ROLE_IN_USE)"
+   },
+   {
+    "id": "member-norole",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members",
+     "body": "{\"product_user_id\": \"{{user-2.id}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": ""
+      },
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.role"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add Nina To Acme Without Role (201, role null)"
+   },
+   {
+    "id": "eval-2-norole",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-nina-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"doc:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Nina doc:read Without Role (MISSING_PERMISSION)"
+   },
+   {
+    "id": "set-2-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}",
+     "body": "{\"role_id\": \"{{role-admin.rid}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-admin.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Give Nina Admin (200)"
+   },
+   {
+    "id": "eval-2-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-nina-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"doc:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Nina doc:read As Admin (allow)"
+   },
+   {
+    "id": "set-2-empty",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}",
+     "body": "{}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Nina With {} (400 VALIDATION_ERROR)"
+   },
+   {
+    "id": "set-2-null",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}",
+     "body": "{\"role_id\": null}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": ""
+      },
+      "operator_type": "empty",
+      "extractor_data": {
+       "path": "$.role"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Remove Nina's Role (200, role null)"
+   },
+   {
+    "id": "get-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-2.id}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "\"role\":null"
+      },
+      "operator_type": "contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Read Nina (role null)"
+   },
+   {
+    "id": "eval-2-null",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-nina-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"doc:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Nina doc:read After Removal (MISSING_PERMISSION)"
+   },
+   {
+    "id": "switch-off",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-types/{{rt-search.orgTypeId}}",
+     "body": "{\"allows_custom_roles\": false}",
+     "method": "PATCH",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.allows_custom_roles"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Switch Off For organization (200)"
+   },
+   {
+    "id": "custom-create-off",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles",
+     "body": "{\"name\": \"eptest-other\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "CUSTOM_ROLES_DISABLED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Custom Role While Off (400 CUSTOM_ROLES_DISABLED)"
+   },
+   {
+    "id": "custom-update-off",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{custom-create.rid}}",
+     "body": "{\"name\": \"eptest-billing-2\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "CUSTOM_ROLES_DISABLED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Change Custom Role While Off (400 CUSTOM_ROLES_DISABLED)"
+   },
+   {
+    "id": "eval-1-off",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-priya-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"bill:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Priya Keeps bill:read While Off (allow)"
+   },
+   {
+    "id": "set-1-admin",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/members/{{user-1.id}}",
+     "body": "{\"role_id\": \"{{role-admin.rid}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{role-admin.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Move Priya To Admin (200)"
+   },
+   {
+    "id": "delete-custom",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{custom-create.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Custom Role While Off (204)"
+   },
+   {
+    "id": "get-custom-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/roles/{{custom-create.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read Deleted Custom Role (404 ROLE_NOT_FOUND)"
+   },
+   {
+    "id": "eval-1-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/access/v1/evaluation",
+     "body": "{\"subject\": {\"type\": \"user\", \"id\": \"ext-priya-{{$runId}}\"}, \"resource\": {\"type\": \"organization\", \"id\": \"{{org-a.orgId}}\"}, \"action\": {\"name\": \"bill:read\"}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.decision"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "MISSING_PERMISSION"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.context.reason"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Priya bill:read As Admin (MISSING_PERMISSION)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

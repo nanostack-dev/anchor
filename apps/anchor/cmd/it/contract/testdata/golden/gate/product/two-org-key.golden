@@ -1,0 +1,16 @@
+# anchor: product / Org Key Uses The Prefix (201)
+request: POST /v1/products/{{create-product-two.productId}}/organizations/{{two-org.orgId}}/api-keys
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-prefix-org-key", "permissions": ["eptestdoc:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product/two-org-key
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"organization_apikey_<id>","name":"eptest-prefix-org-key","obfuscated_value":"eptestpfx_org_apikey_***_<hex>","organization_id":"{{two-org.orgId}}","permissions":[{"organization_api_key_id":"organization_apikey_<id>","organization_id":"{{two-org.orgId}}","permission_name":"eptestdoc:read","product_id":"{{create-product-two.productId}}"}],"status":"ACTIVE","updated_at":"<timestamp.frac>","value":"eptestpfx_org_apikey_<secret>_<hex8>"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-prefix-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product-two.productId}}/organizations/{{two-org.orgId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product-two.productId}}/organizations/{{two-org.orgId}}/api-keys","principal_type":"api_key","request_body":"<present>","request_id":"ct/product/two-org-key","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

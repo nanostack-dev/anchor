@@ -1,0 +1,15 @@
+# trailing slash is a different route
+request: GET /v1/products/{{product}}/
+request-headers: Authorization, Content-Type
+
+status: 404
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/seams/route-trailing-slash
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+no matching operation was found
+
+logs: 0 line(s)

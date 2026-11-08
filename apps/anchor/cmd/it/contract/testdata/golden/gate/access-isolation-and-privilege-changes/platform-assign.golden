@@ -1,0 +1,15 @@
+# anchor: access isolation and privilege changes / IDOR credentials · The platform session can't assign a role on a resource → 401
+request: PUT /v1/products/{{product-acme.productId}}/organizations/{{org-acme.orgId}}/resources/folder/design/members/{{user-dan.id}}
+request-headers: Authorization, Content-Type
+request-body: {"role_ids": ["{{role-guest.id}}"]}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/platform-assign
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

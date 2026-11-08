@@ -1,0 +1,12 @@
+# anchor: product event delivery / Update Delivered Before The Clear
+deliveries: 1
+
+header Accept-Encoding: gzip
+header Content-Type: application/json
+header User-Agent: Go-http-client/1.1
+header Webhook-Id: pevt_<id>
+header Webhook-Signature: v1,<base64>
+header Webhook-Timestamp: <unix-seconds>
+body:
+{"type":"organization.updated","timestamp":"<timestamp.frac>","data":{"organization_id":"{{create-org.orgId}}"}}
+<no trailing newline>

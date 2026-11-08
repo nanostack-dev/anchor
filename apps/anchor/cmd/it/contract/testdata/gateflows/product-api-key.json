@@ -1,0 +1,1300 @@
+{
+ "id": "c226b08e-c3d5-45ea-9b8b-4d4fdc421e18",
+ "name": "anchor: product-api-key",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Product API keys: create (immutable by default, or mutable), read, search, rename, the permission rules (immutable keys refuse a new set, a mutable key's new set takes effect), scope enforcement when the key calls the API, the 401 cases (no token, unknown key, deleted key), no key value echoed on any read, and the 404s.",
+ "updated_at": "2026-10-30T18:29:32.749333Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "1bc6a7d8-4cfa-4e26-8ed9-1483ef17be27",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "efa0b938-8a50-4c97-a570-9dcfaaced9b0",
+    "source": "create-product",
+    "target": "create-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "3d6257c1-11b4-4ff7-897f-4f6390005ec4",
+    "source": "create-immutable-key",
+    "target": "key-reads-orgs",
+    "type": "success"
+   },
+   {
+    "id": "a2190d21-b459-4509-9813-a1c11d489f25",
+    "source": "create-immutable-key",
+    "target": "key-lacks-scope",
+    "type": "success"
+   },
+   {
+    "id": "39ce8c12-6ae0-4c99-96f9-eb505ac55402",
+    "source": "create-immutable-key",
+    "target": "get-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "dcd14dd9-0fa4-44d3-adbc-0029beca6ae1",
+    "source": "create-immutable-key",
+    "target": "update-immutable-name",
+    "type": "success"
+   },
+   {
+    "id": "3d28b11e-6e74-4a97-871d-880411c91516",
+    "source": "create-immutable-key",
+    "target": "update-immutable-perms",
+    "type": "success"
+   },
+   {
+    "id": "bedc2b43-0ddb-450c-a412-0c10098c1550",
+    "source": "key-reads-orgs",
+    "target": "delete-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "f10f3d32-5c1d-40ae-ba14-4d20220de0a2",
+    "source": "key-lacks-scope",
+    "target": "delete-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "9162cc1b-5d96-4d03-b545-20998cb1008b",
+    "source": "get-immutable-key",
+    "target": "delete-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "5ed77187-f405-4fa3-99f6-6cc0c970f226",
+    "source": "update-immutable-name",
+    "target": "delete-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "20615938-2acd-42de-bc62-e8f2e00ccf5c",
+    "source": "update-immutable-perms",
+    "target": "delete-immutable-key",
+    "type": "success"
+   },
+   {
+    "id": "2e8b2adf-93a8-4565-818a-87fdb583e16f",
+    "source": "delete-immutable-key",
+    "target": "deleted-key-rejected",
+    "type": "success"
+   },
+   {
+    "id": "fcc9d51d-9717-4bd1-920e-873d571eada1",
+    "source": "delete-immutable-key",
+    "target": "get-deleted-key",
+    "type": "success"
+   },
+   {
+    "id": "3d104b82-c29c-4c7d-89c2-e4e59305e9e2",
+    "source": "create-product",
+    "target": "create-mutable-key",
+    "type": "success"
+   },
+   {
+    "id": "5510fb6a-6dfd-428d-871e-d48c44bee7f3",
+    "source": "create-mutable-key",
+    "target": "update-mutable-perms",
+    "type": "success"
+   },
+   {
+    "id": "e779673e-e00f-49aa-8253-86afa3a056a8",
+    "source": "update-mutable-perms",
+    "target": "mutable-lost-scope",
+    "type": "success"
+   },
+   {
+    "id": "5cdcba94-8229-4d01-86ae-5272243d4cdc",
+    "source": "create-mutable-key",
+    "target": "search-api-keys",
+    "type": "success"
+   },
+   {
+    "id": "cbd1cdba-5ed1-4419-8761-0255ae8d9de5",
+    "source": "create-mutable-key",
+    "target": "create-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "52113573-7fac-4227-b739-e5e5feb738ae",
+    "source": "create-product",
+    "target": "create-empty-name",
+    "type": "success"
+   },
+   {
+    "id": "0672171e-3d1d-4435-bc49-0e06bf95184e",
+    "source": "create-product",
+    "target": "create-unknown-permission",
+    "type": "success"
+   },
+   {
+    "id": "62928709-27d6-4859-b83b-7aa6680f81e9",
+    "source": "create-product",
+    "target": "get-unknown-key",
+    "type": "success"
+   },
+   {
+    "id": "958d16e1-2cdf-4716-9876-94d006b5897e",
+    "source": "create-product",
+    "target": "no-credential",
+    "type": "success"
+   },
+   {
+    "id": "f6548c73-f5d0-49ca-9f24-07a1c1620a68",
+    "source": "create-product",
+    "target": "unknown-key",
+    "type": "success"
+   },
+   {
+    "id": "551b6c0b-bb58-47dd-a475-017972f19067",
+    "source": "create-product",
+    "target": "delete-unknown-key",
+    "type": "success"
+   },
+   {
+    "id": "341d9493-0cd9-4992-b5f2-e492e4a35c53",
+    "source": "deleted-key-rejected",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "342ba6f1-1ce4-45ce-af09-d0a174005865",
+    "source": "get-deleted-key",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "9b57f0cd-f50e-4d0c-aa59-0dfc1ee643e4",
+    "source": "mutable-lost-scope",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "1a609442-642e-4361-9006-e899bdbec18e",
+    "source": "search-api-keys",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "781140e7-a95c-40de-add0-94db82790575",
+    "source": "create-duplicate",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "d9847d74-56bc-49f8-b764-88773e760ab0",
+    "source": "create-empty-name",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "c4cb98ab-f97f-4361-af38-ef83287e60a7",
+    "source": "create-unknown-permission",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e643c1bd-0f78-4e7c-ae00-d1587319c500",
+    "source": "get-unknown-key",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "c4830f50-e6ec-4a91-8a7f-37671007af90",
+    "source": "no-credential",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "896e8383-9473-4358-b42a-8c8f1db2fd20",
+    "source": "unknown-key",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "2c75b0e9-0174-40fe-a54c-9ca0782bd3cf",
+    "source": "delete-unknown-key",
+    "target": "cleanup-product",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: product-api-key",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-product-key-{{$runId}}\", \"description\": \"product API key suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-product-key-{{$runId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "create-immutable-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-immkey\", \"permissions\": [\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "kid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "value",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.mutable"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_prd_apikey_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-immkey"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Immutable Key (201)"
+   },
+   {
+    "id": "key-reads-orgs",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-immutable-key.value}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "0"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Key Calls An Allowed Route (200)"
+   },
+   {
+    "id": "key-lacks-scope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-forbidden-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-immutable-key.value}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Key Calls A Route Outside Its Scopes (403)"
+   },
+   {
+    "id": "get-immutable-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "false"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.mutable"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "*"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.obfuscated_value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "\"value\":"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.kid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Get Immutable Key (200)"
+   },
+   {
+    "id": "update-immutable-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}",
+     "body": "{\"name\": \"eptest-immkey-renamed\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-immkey-renamed"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.kid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Rename Immutable Key (200)"
+   },
+   {
+    "id": "update-immutable-perms",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}",
+     "body": "{\"name\": \"eptest-immkey\", \"permissions\": [\"product_user:read\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_PERMISSIONS_IMMUTABLE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-immutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Immutable Key Refuses New Permissions (400)"
+   },
+   {
+    "id": "delete-immutable-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Immutable Key (204)"
+   },
+   {
+    "id": "deleted-key-rejected",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-immutable-key.value}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Deleted Key No Longer Authenticates (401)"
+   },
+   {
+    "id": "get-deleted-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-immutable-key.kid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted Key (404)"
+   },
+   {
+    "id": "create-mutable-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-mutkey\", \"mutable\": true, \"permissions\": [\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "mkid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "value",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.mutable"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mutkey"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "ACTIVE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_prd_apikey_"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "path": "$.value"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "organization:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Mutable Key (201)"
+   },
+   {
+    "id": "update-mutable-perms",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/{{create-mutable-key.mkid}}",
+     "body": "{\"name\": \"eptest-mutkey\", \"permissions\": [\"product_user:read\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "product_user:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[0].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-mutable-key.mkid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.mutable"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-mutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Replace Mutable Key Permissions (200)"
+   },
+   {
+    "id": "mutable-lost-scope",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-mutable-key.value}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Replaced Set Drops The Old Scope (403)"
+   },
+   {
+    "id": "search-api-keys",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/search",
+     "body": "{\"filter\": {\"names\": [\"eptest-mutkey\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "true"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].mutable"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-mutable-key.mkid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mutkey"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-mutable-key.value}}"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Search Keys By Name (200)"
+   },
+   {
+    "id": "create-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-mutkey\", \"permissions\": [\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Duplicate Name (409)"
+   },
+   {
+    "id": "create-empty-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"\", \"permissions\": [\"organization:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Empty Name (400)"
+   },
+   {
+    "id": "create-unknown-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-badperm\", \"permissions\": [\"nonexistent:scope\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSIONS_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create With Unknown Permission (400)"
+   },
+   {
+    "id": "get-unknown-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/pak_000000000000000000000000000",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Unknown Key (404)"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   },
+   {
+    "id": "no-credential",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "UNAUTHORIZED"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Keys Without A Token (401)"
+   },
+   {
+    "id": "unknown-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "anchor_prd_apikey_doesnotexist000000000000"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "application/json"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "header_name": "Content-Type"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Call With A Key Anchor Never Issued (401)"
+   },
+   {
+    "id": "delete-unknown-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys/pak_000000000000000000000000000",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Unknown Key (404)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

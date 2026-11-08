@@ -1,0 +1,16 @@
+# anchor: product / Enable Product Protection (200)
+request: PUT /v1/products/{{create-protection-product.productId}}
+request-headers: Authorization, Content-Type
+request-body: {"name": "{{create-protection-product.productName}}", "config": {"protected": true}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product/enable-protection
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"config":{"organization_api_keys":{"prefix":"anchor"},"protected":true},"created_at":"<timestamp.frac>","description":"product deletion protection","id":"{{create-protection-product.productId}}","name":"{{create-protection-product.productName}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-protection-product.productId}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-protection-product.productId}}","principal_type":"user","request_body":"<present>","request_id":"ct/product/enable-protection","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

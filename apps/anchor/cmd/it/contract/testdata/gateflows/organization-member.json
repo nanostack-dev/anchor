@@ -1,0 +1,1780 @@
+{
+ "id": "8fae3729-bd9c-415e-9fa5-d5b7aa8f13c3",
+ "name": "anchor: organization-member",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: organization-member\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Organization membership add / read / search / role change / remove, one not-found code (ORGANIZATION_MEMBERSHIP_NOT_FOUND) on GET/PUT/DELETE for a removed member and for a user who never joined, every refusal with its code, and each membership event checked in one final webhook wait.",
+ "updated_at": "2026-11-03T15:14:22.029477Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "e-login--create-product",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--create-key",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-product--create-read-key",
+    "source": "create-product",
+    "target": "create-read-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-org",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-member-user",
+    "source": "create-key",
+    "target": "create-member-user",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-outsider",
+    "source": "create-key",
+    "target": "create-outsider",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-role-one",
+    "source": "create-key",
+    "target": "create-role-one",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--create-role-two",
+    "source": "create-key",
+    "target": "create-role-two",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--add-member",
+    "source": "create-org",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-member-user--add-member",
+    "source": "create-member-user",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--add-member",
+    "source": "create-role-one",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "e-add-member--get-member",
+    "source": "add-member",
+    "target": "get-member",
+    "type": "success"
+   },
+   {
+    "id": "e-add-member--search-members",
+    "source": "add-member",
+    "target": "search-members",
+    "type": "success"
+   },
+   {
+    "id": "e-add-member--search-read-only",
+    "source": "add-member",
+    "target": "search-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-read-key--search-read-only",
+    "source": "create-read-key",
+    "target": "search-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-add-member--add-duplicate",
+    "source": "add-member",
+    "target": "add-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-two--add-duplicate",
+    "source": "create-role-two",
+    "target": "add-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "e-add-member--update-unknown-role",
+    "source": "add-member",
+    "target": "update-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "e-get-member--update-member-role",
+    "source": "get-member",
+    "target": "update-member-role",
+    "type": "success"
+   },
+   {
+    "id": "e-search-members--update-member-role",
+    "source": "search-members",
+    "target": "update-member-role",
+    "type": "success"
+   },
+   {
+    "id": "e-search-read-only--update-member-role",
+    "source": "search-read-only",
+    "target": "update-member-role",
+    "type": "success"
+   },
+   {
+    "id": "e-add-duplicate--update-member-role",
+    "source": "add-duplicate",
+    "target": "update-member-role",
+    "type": "success"
+   },
+   {
+    "id": "e-update-unknown-role--update-member-role",
+    "source": "update-unknown-role",
+    "target": "update-member-role",
+    "type": "success"
+   },
+   {
+    "id": "e-update-member-role--get-member-updated",
+    "source": "update-member-role",
+    "target": "get-member-updated",
+    "type": "success"
+   },
+   {
+    "id": "e-get-member-updated--remove-member",
+    "source": "get-member-updated",
+    "target": "remove-member",
+    "type": "success"
+   },
+   {
+    "id": "e-remove-member--verify-gone",
+    "source": "remove-member",
+    "target": "verify-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-remove-member--remove-again",
+    "source": "remove-member",
+    "target": "remove-again",
+    "type": "success"
+   },
+   {
+    "id": "e-remove-member--update-removed",
+    "source": "remove-member",
+    "target": "update-removed",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--add-bad-user",
+    "source": "create-org",
+    "target": "add-bad-user",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--add-bad-user",
+    "source": "create-role-one",
+    "target": "add-bad-user",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--add-bad-role",
+    "source": "create-org",
+    "target": "add-bad-role",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--add-bad-role",
+    "source": "create-outsider",
+    "target": "add-bad-role",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--add-unknown-org",
+    "source": "create-outsider",
+    "target": "add-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--add-unknown-org",
+    "source": "create-role-one",
+    "target": "add-unknown-org",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--get-non-member",
+    "source": "create-org",
+    "target": "get-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--get-non-member",
+    "source": "create-outsider",
+    "target": "get-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--add-read-only",
+    "source": "create-org",
+    "target": "add-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--add-read-only",
+    "source": "create-outsider",
+    "target": "add-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--add-read-only",
+    "source": "create-role-one",
+    "target": "add-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-read-key--add-read-only",
+    "source": "create-read-key",
+    "target": "add-read-only",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--add-bad-key",
+    "source": "create-org",
+    "target": "add-bad-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--add-bad-key",
+    "source": "create-outsider",
+    "target": "add-bad-key",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--add-bad-key",
+    "source": "create-role-one",
+    "target": "add-bad-key",
+    "type": "success"
+   },
+   {
+    "id": "e-verify-gone--events",
+    "source": "verify-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-remove-again--events",
+    "source": "remove-again",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-update-removed--events",
+    "source": "update-removed",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-add-bad-user--events",
+    "source": "add-bad-user",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-add-bad-role--events",
+    "source": "add-bad-role",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-add-unknown-org--events",
+    "source": "add-unknown-org",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-get-non-member--events",
+    "source": "get-non-member",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-add-read-only--events",
+    "source": "add-read-only",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-add-bad-key--events",
+    "source": "add-bad-key",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-events--cleanup",
+    "source": "events",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--update-non-member",
+    "source": "create-org",
+    "target": "update-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--update-non-member",
+    "source": "create-outsider",
+    "target": "update-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-role-one--update-non-member",
+    "source": "create-role-one",
+    "target": "update-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-org--remove-non-member",
+    "source": "create-org",
+    "target": "remove-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-create-outsider--remove-non-member",
+    "source": "create-outsider",
+    "target": "remove-non-member",
+    "type": "success"
+   },
+   {
+    "id": "e-update-non-member--events",
+    "source": "update-non-member",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-remove-non-member--events",
+    "source": "remove-non-member",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-orgmember-{{$runId}}\",\"description\":\"organization-member suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-member-key\",\"mutable\":false,\"permissions\":[\"organization:create\",\"organization:read\",\"product_user:create\",\"product_user:read\",\"product_role:create\",\"product_role:read\",\"organization_member:create\",\"organization_member:read\",\"organization_member:update\",\"organization_member:delete\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key"
+   },
+   {
+    "id": "create-read-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-member-read\",\"mutable\":false,\"permissions\":[\"organization_member:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Read-Only Member Key"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-orgmember-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization"
+   },
+   {
+    "id": "create-member-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     },
+     {
+      "name": "email",
+      "secret": false,
+      "extractor": {
+       "path": "$.email",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create User"
+   },
+   {
+    "id": "create-outsider",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create User Who Never Joins"
+   },
+   {
+    "id": "create-role-one",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-mrole-one\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "r1",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role One"
+   },
+   {
+    "id": "create-role-two",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-mrole-two\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "r2",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role Two"
+   },
+   {
+    "id": "add-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-member-user.uid}}\",\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-one.r1}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mrole-one"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.joined_at"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add Member"
+   },
+   {
+    "id": "get-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.email}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.email"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-one.r1}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mrole-one"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Member"
+   },
+   {
+    "id": "search-members",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/search",
+     "body": "{\"filter\":{\"product_user_ids\":[\"{{create-member-user.uid}}\"],\"emails\":[\"{{create-member-user.email}}\"],\"role_ids\":[\"{{create-role-one.r1}}\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mrole-one"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].role.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_user_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search Members By User, Email And Role"
+   },
+   {
+    "id": "search-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/search",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].product_user_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Read-Only Key Can Search Members"
+   },
+   {
+    "id": "add-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-member-user.uid}}\",\"role_id\":\"{{create-role-two.r2}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add The Same Member Again (409)"
+   },
+   {
+    "id": "update-unknown-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "body": "{\"role_id\":\"product_role_000000000000000000000000000\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update To An Unknown Role (400)"
+   },
+   {
+    "id": "update-member-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "body": "{\"role_id\":\"{{create-role-two.r2}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-two.r2}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mrole-two"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Member Role"
+   },
+   {
+    "id": "get-member-updated",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-member-user.uid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_user_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-two.r2}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-mrole-two"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.role.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "New Role Is Stored (200)"
+   },
+   {
+    "id": "remove-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Remove Member"
+   },
+   {
+    "id": "verify-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Removed Member (404)"
+   },
+   {
+    "id": "remove-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Remove Member Again (404)"
+   },
+   {
+    "id": "update-removed",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-member-user.uid}}",
+     "body": "{\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Removed Member (404)"
+   },
+   {
+    "id": "add-bad-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"pusr_000000000000000000000000000\",\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_USER_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add Nonexistent User (400)"
+   },
+   {
+    "id": "add-bad-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-outsider.uid}}\",\"role_id\":\"product_role_000000000000000000000000000\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND_IN_REQUEST"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add With An Unknown Role (400)"
+   },
+   {
+    "id": "add-unknown-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/org_000000000000000000000000000/members",
+     "body": "{\"product_user_id\":\"{{create-outsider.uid}}\",\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add To An Unknown Organization (404)"
+   },
+   {
+    "id": "get-non-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-outsider.uid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get A User Who Never Joined (404)"
+   },
+   {
+    "id": "add-read-only",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-outsider.uid}}\",\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-read-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "403"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add With A Read-Only Key (403)"
+   },
+   {
+    "id": "add-bad-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-outsider.uid}}\",\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "anchor_not_a_real_key"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "401"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "INVALID_PRODUCT_API_KEY"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Add With An Unknown Key (401)"
+   },
+   {
+    "id": "update-non-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-outsider.uid}}",
+     "body": "{\"role_id\":\"{{create-role-one.r1}}\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update A User Who Never Joined (404)"
+   },
+   {
+    "id": "remove-non-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members/{{create-outsider.uid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_MEMBERSHIP_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Remove A User Who Never Joined (404)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Organization created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Member added",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-member-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Member role changed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-member-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "Member removed",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-org.orgId}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.organization_id"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-member-user.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Outsider never joins",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-outsider.uid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.product_user_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other membership created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other membership updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 0,
+       "name": "No other membership deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "organization.membership.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Membership Event"
+   },
+   {
+    "id": "cleanup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product"
+   }
+  ],
+  "version": ""
+ }
+}

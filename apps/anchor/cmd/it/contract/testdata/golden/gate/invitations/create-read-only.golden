@@ -1,0 +1,15 @@
+# anchor: invitations / Invite With A Read-Only Key (403)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/invitations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"email":"garbage+<uuid>@nanostack.dev","role_id":"{{create-role.roleId}}"}
+
+status: 403
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/invitations/create-read-only
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_API_KEY_INSUFFICIENT_PERMISSIONS","message":"The product API key does not have sufficient permissions.","metadata":{"api_key_id":"product_apikey_<id>","current_scopes":["organization_invitation:read"],"required_scopes":["organization_invitation:create"]}}]}
+
+logs: 0 line(s)

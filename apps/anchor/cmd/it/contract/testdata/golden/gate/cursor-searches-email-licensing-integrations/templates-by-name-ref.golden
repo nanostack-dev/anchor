@@ -1,0 +1,17 @@
+# anchor: cursor searches — email & licensing & integrations / Email templates by name (all tie): one page of 3 holds the scope (200)
+request: POST /v1/products/{{create-product.productId}}/email/templates/search
+request-headers: Authorization, Content-Type
+request-body: {"sort_by":"name","sort_direction":"ASC","pagination":{"limit":100}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/templates-by-name-ref
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+<shape: every item has the same name, so the order (and the page an item lands on) follows the random id tie-break>
+{"count":"\u003cnumber\u003e","items":[{"created_at":"\u003cstring\u003e","draft_version_id":"\u003cstring\u003e","id":"\u003cstring\u003e","is_active":"\u003cbool\u003e","name":"\u003cstring\u003e","product_id":"\u003cstring\u003e","slug":"\u003cstring\u003e","updated_at":"\u003cstring\u003e"},{"created_at":"\u003cstring\u003e","draft_version_id":"\u003cstring\u003e","id":"\u003cstring\u003e","is_active":"\u003cbool\u003e","name":"\u003cstring\u003e","product_id":"\u003cstring\u003e","slug":"\u003cstring\u003e","updated_at":"\u003cstring\u003e"},{"created_at":"\u003cstring\u003e","draft_version_id":"\u003cstring\u003e","id":"\u003cstring\u003e","is_active":"\u003cbool\u003e","name":"\u003cstring\u003e","product_id":"\u003cstring\u003e","slug":"\u003cstring\u003e","updated_at":"\u003cstring\u003e"}],"total":"\u003cnumber\u003e"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/templates/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/templates/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/templates-by-name-ref","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

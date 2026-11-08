@@ -1,0 +1,16 @@
+# anchor: cursor searches — products, users, roles, keys / Create Product API Key ep-cur-pkey-1 (201)
+request: POST /v1/products/{{create-product.productId}}/api-keys
+request-headers: Authorization, Content-Type
+request-body: {"name":"ep-cur-pkey-1","mutable":false,"permissions":["organization:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/product-key-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{product-key-1.id}}","mutable":false,"name":"ep-cur-pkey-1","obfuscated_value":"anchor_prd_apikey_***_<hex>","permissions":[{"permission_name":"organization:read","product_api_key_id":"{{product-key-1.id}}","product_id":"{{create-product.productId}}"}],"product_id":"{{create-product.productId}}","status":"ACTIVE","updated_at":"<timestamp.frac>","value":"anchor_prd_apikey_<secret>_<hex8>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/api-keys","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-products-users-roles-keys/product-key-1","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

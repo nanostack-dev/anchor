@@ -1,0 +1,16 @@
+# anchor: access evaluation / Create Second Org A API Key (201)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/api-keys
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-access-okey2", "permissions": ["acc:read"]}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/okey2
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","id":"{{okey2.id}}","name":"eptest-access-okey2","obfuscated_value":"anchor_org_apikey_***_<hex>","organization_id":"{{org-a.orgId}}","permissions":[{"organization_api_key_id":"{{okey2.id}}","organization_id":"{{org-a.orgId}}","permission_name":"acc:read","product_id":"{{create-product.productId}}"}],"status":"ACTIVE","updated_at":"<timestamp.frac>","value":"{{okey2.value}}"}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-access-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/api-keys -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{org-a.orgId}}/api-keys","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation/okey2","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

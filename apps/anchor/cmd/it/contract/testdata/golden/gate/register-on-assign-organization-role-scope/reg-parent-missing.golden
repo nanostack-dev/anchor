@@ -1,0 +1,17 @@
+# anchor: register on assign & organization role scope / Register on assign · A parent that is not registered → 409 PARENT_NOT_REGISTERED
+request: PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan/members/{{user-dan.id}}
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"role_ids": ["{{role-doc-viewer.id}}"], "resource": {"name": "Orphan", "parent": {"type": "folder", "id": "nope"}}}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/register-on-assign-organization-role-scope/reg-parent-missing
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PARENT_NOT_REGISTERED","message":"Register the parent before its children.","metadata":{"parent":{"id":"nope","type":"folder"}}}]}
+
+logs: 2 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-key","caller":"/<path>/<file>.go:<line>","env":"development","error":"Register the parent before its children.","level":"info","message":"Request error","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan/members/{{user-dan.id}}","principal_type":"api_key","request_id":"ct/register-on-assign-organization-role-scope/reg-parent-missing","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-regassign-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan/members/{{user-dan.id}} -> 409 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/resources/document/orphan/members/{{user-dan.id}}","principal_type":"api_key","request_body":"<present>","request_id":"ct/register-on-assign-organization-role-scope/reg-parent-missing","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,14 @@
+# anchor: auth / Replay Revokes The Whole Session (401)
+request: POST /v1/auth/refresh
+request-headers: Content-Type, Cookie
+
+status: 401
+header Set-Cookie: refresh_token=; Path=/v1/auth/refresh; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=None
+header Vary: Origin
+header X-Request-Id: ct/auth/replay-revokes-session
+header-names: Set-Cookie, Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","level":"info","message":"POST /v1/auth/refresh -> 401 (<duration>)","method":"POST","path":"/v1/auth/refresh","request_id":"ct/auth/replay-revokes-session","status":401,"time":"<time:timestamp>","user_agent":"anchor-contract/1"}

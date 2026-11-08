@@ -1,0 +1,14 @@
+# anchor: product event delivery / Catalog Of An Unknown Product (404)
+request: GET /v1/products/prd_<id>/events/catalog
+request-headers: Authorization, Content-Type
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-event-delivery/catalog-unknown-product
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_NOT_FOUND","message":"This tenant has no product with that identifier"}]}
+
+logs: 0 line(s)

@@ -1,0 +1,3189 @@
+{
+ "id": "1a89540f-156f-46c1-979b-08babb641fc4",
+ "name": "anchor: roles",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: roles\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Product role CRUD, name uniqueness, permission assign / unassign (no-ops emit nothing), a role held by a member cannot be deleted, one not-found code (ROLE_NOT_FOUND) on GET/PUT/DELETE/assign/unassign, and every role event checked in one final webhook wait. Atomic permission writes (anchor#163): role C's two assigns run concurrently; role E takes four concurrent assigns racing a rename-only PUT, then holds exactly all four and the new name, with exactly one product.role.updated per write; a PUT with permissions replaces the set (response and fresh read exact).",
+ "updated_at": "2026-11-03T15:14:18.473162Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "cc75b640-75ae-499c-a516-a8203fb0db2d",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "d46574a6-72af-43a4-8ce4-9d7815bd548c",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "f6daf52b-0a44-4132-949a-5dc8a7791cfb",
+    "source": "create-product",
+    "target": "create-perm-read",
+    "type": "success"
+   },
+   {
+    "id": "37fde79e-fc70-40b0-8cb3-83f2d0211070",
+    "source": "create-product",
+    "target": "create-perm-write",
+    "type": "success"
+   },
+   {
+    "id": "3b1a58f5-1dd3-4251-9e49-6a67c87d1f00",
+    "source": "create-key",
+    "target": "create-role-a",
+    "type": "success"
+   },
+   {
+    "id": "ca2318b9-bb83-44e8-8fc3-6a0f28fe147d",
+    "source": "create-perm-read",
+    "target": "create-role-a",
+    "type": "success"
+   },
+   {
+    "id": "08b906ff-3064-434e-8a20-f2a5f05007ad",
+    "source": "create-role-a",
+    "target": "get-role-a",
+    "type": "success"
+   },
+   {
+    "id": "ce7d8155-4f40-41ae-8c3f-1b0857edb17c",
+    "source": "get-role-a",
+    "target": "update-role-a",
+    "type": "success"
+   },
+   {
+    "id": "636b0aaa-f532-4cba-8cf7-3e0491aa47d1",
+    "source": "create-role-a",
+    "target": "search-roles",
+    "type": "success"
+   },
+   {
+    "id": "699f10fc-77b8-40d3-a331-6c1b61de190a",
+    "source": "create-role-a",
+    "target": "create-duplicate",
+    "type": "success"
+   },
+   {
+    "id": "f481fc21-cdb4-4393-b624-e1dfc0959023",
+    "source": "create-key",
+    "target": "create-empty-name",
+    "type": "success"
+   },
+   {
+    "id": "ea4f6427-d636-4cc4-96f8-ac0bcb410d21",
+    "source": "create-key",
+    "target": "create-role-b",
+    "type": "success"
+   },
+   {
+    "id": "8f1d9d44-b6fd-41fb-9fcd-a7607b4d9f93",
+    "source": "create-role-b",
+    "target": "delete-role-b",
+    "type": "success"
+   },
+   {
+    "id": "e2eb2abd-800d-4c75-928a-3d1083e6b21e",
+    "source": "delete-role-b",
+    "target": "get-role-b-gone",
+    "type": "success"
+   },
+   {
+    "id": "92f8b245-771f-4b1c-a24a-21827514c9af",
+    "source": "create-key",
+    "target": "create-role-c",
+    "type": "success"
+   },
+   {
+    "id": "6cb452c0-76f4-48ac-b299-22e4128161d4",
+    "source": "create-role-c",
+    "target": "assign-read",
+    "type": "success"
+   },
+   {
+    "id": "ed73b77c-d3ce-4649-b3a8-7c3df209d535",
+    "source": "create-perm-read",
+    "target": "assign-read",
+    "type": "success"
+   },
+   {
+    "id": "28589304-af5e-4f4d-8366-61bff7882c2e",
+    "source": "assign-read",
+    "target": "assign-read-again",
+    "type": "success"
+   },
+   {
+    "id": "2d81d7bf-8f8b-441c-aab1-5eda94921d55",
+    "source": "create-perm-write",
+    "target": "assign-write",
+    "type": "success"
+   },
+   {
+    "id": "b92ec1ba-56aa-488a-9929-a037e0c87482",
+    "source": "assign-write",
+    "target": "role-has-both",
+    "type": "success"
+   },
+   {
+    "id": "2fbe14fc-1b39-4aa6-88f2-4364ba4ec6ce",
+    "source": "role-has-both",
+    "target": "unassign-read",
+    "type": "success"
+   },
+   {
+    "id": "9768b1c8-f484-4d45-b92b-92e9422639f9",
+    "source": "unassign-read",
+    "target": "unassign-read-again",
+    "type": "success"
+   },
+   {
+    "id": "182c9f38-d283-4753-8740-50824f037757",
+    "source": "unassign-read-again",
+    "target": "role-lost-perm",
+    "type": "success"
+   },
+   {
+    "id": "3f6604cf-4a45-4f37-af1b-79ea63f1e460",
+    "source": "create-role-a",
+    "target": "rename-to-existing",
+    "type": "success"
+   },
+   {
+    "id": "1aab98a4-4df7-43c1-820a-915db7bd50ef",
+    "source": "create-role-c",
+    "target": "rename-to-existing",
+    "type": "success"
+   },
+   {
+    "id": "7f98774c-a82e-44ea-b14d-bdd16b2b3e1d",
+    "source": "create-role-c",
+    "target": "assign-unknown-perm",
+    "type": "success"
+   },
+   {
+    "id": "a932d76f-1be3-4f35-a02e-d4d639761704",
+    "source": "create-role-c",
+    "target": "unassign-unknown-perm",
+    "type": "success"
+   },
+   {
+    "id": "c443ca80-5793-40e7-89b0-f608ed3c35e0",
+    "source": "create-key",
+    "target": "assign-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "18048131-cc6b-4291-b8c7-d6e63a9d627d",
+    "source": "create-perm-read",
+    "target": "assign-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "a02a2767-8716-4a33-bc2d-5f585d7ba0c8",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "89526ff6-4311-4abb-9c98-e43495196308",
+    "source": "create-key",
+    "target": "create-user",
+    "type": "success"
+   },
+   {
+    "id": "a879407a-828f-4186-a117-523f1a762a35",
+    "source": "create-key",
+    "target": "create-role-d",
+    "type": "success"
+   },
+   {
+    "id": "f8145e52-a2e1-4728-ad26-1246ace5b1f8",
+    "source": "create-org",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "08253b19-577e-4333-a3ad-50e68d2d6625",
+    "source": "create-user",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "27dfed06-2cd6-4ca2-b2ed-d97dd62b6ab2",
+    "source": "create-role-d",
+    "target": "add-member",
+    "type": "success"
+   },
+   {
+    "id": "d726ab3a-3241-4281-b0a8-d8554bdf7abe",
+    "source": "add-member",
+    "target": "delete-role-d-held",
+    "type": "success"
+   },
+   {
+    "id": "038aa995-0623-4de3-ab41-c2dc925b756f",
+    "source": "update-role-a",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "1ffa17d5-bf26-4d12-b8bf-62f7533a6f93",
+    "source": "search-roles",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "ab476705-1e44-410e-87e2-294338e0f3ba",
+    "source": "create-duplicate",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "d9648ea4-27e3-4a24-beae-54413befd3bb",
+    "source": "create-empty-name",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "6ac921e8-7c49-4561-ac5d-0f65d78606d1",
+    "source": "get-role-b-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "b6a0571f-2516-4e86-9773-666b40240fc0",
+    "source": "role-lost-perm",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "791a9b0f-9cde-47a2-a59b-7acebc7e22fd",
+    "source": "rename-to-existing",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "93f0a735-5918-4d7a-8dd0-f456ac761d34",
+    "source": "assign-unknown-perm",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "08904118-534c-4f91-b3be-cba305c2e30f",
+    "source": "unassign-unknown-perm",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "87655e02-6043-4ba3-8780-274d9caa3989",
+    "source": "assign-unknown-role",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "8864f417-c7a0-4075-9c2b-a16b54228ed8",
+    "source": "events",
+    "target": "cleanup-product",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-role-b--update-role-b-gone",
+    "source": "delete-role-b",
+    "target": "update-role-b-gone",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-role-b--delete-role-b-again",
+    "source": "delete-role-b",
+    "target": "delete-role-b-again",
+    "type": "success"
+   },
+   {
+    "id": "e-create-key--unassign-unknown-role",
+    "source": "create-key",
+    "target": "unassign-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "e-create-perm-read--unassign-unknown-role",
+    "source": "create-perm-read",
+    "target": "unassign-unknown-role",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-role-d-held--role-d-still-there",
+    "source": "delete-role-d-held",
+    "target": "role-d-still-there",
+    "type": "success"
+   },
+   {
+    "id": "e-update-role-b-gone--events",
+    "source": "update-role-b-gone",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-delete-role-b-again--events",
+    "source": "delete-role-b-again",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-unassign-unknown-role--events",
+    "source": "unassign-unknown-role",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "e-role-d-still-there--events",
+    "source": "role-d-still-there",
+    "target": "events",
+    "type": "success"
+   },
+   {
+    "id": "6674d56b-c6e4-402e-a660-860c6686d01c",
+    "source": "create-role-c",
+    "target": "assign-write",
+    "type": "success"
+   },
+   {
+    "id": "b58a8431-d88e-4185-aae6-ee6a3119c1bb",
+    "source": "assign-read-again",
+    "target": "role-has-both",
+    "type": "success"
+   },
+   {
+    "id": "4c893c5b-1ccd-431d-8ffc-5d4049c1ed80",
+    "source": "create-product",
+    "target": "create-perm-p1",
+    "type": "success"
+   },
+   {
+    "id": "f4e59ae3-3d4e-43a2-acb0-7979f4c894c9",
+    "source": "create-product",
+    "target": "create-perm-p2",
+    "type": "success"
+   },
+   {
+    "id": "ad644189-2faa-42db-824a-4a1b0db40c92",
+    "source": "create-product",
+    "target": "create-perm-p3",
+    "type": "success"
+   },
+   {
+    "id": "10dc9a8f-1948-4ce2-a79c-ea25f0e39be6",
+    "source": "create-product",
+    "target": "create-perm-p4",
+    "type": "success"
+   },
+   {
+    "id": "1583be31-3905-4333-949a-e942b23a3b90",
+    "source": "create-key",
+    "target": "create-role-e",
+    "type": "success"
+   },
+   {
+    "id": "90b52449-ebdb-428b-93ec-3e5e8e4e3ef1",
+    "source": "create-role-e",
+    "target": "assign-e-1",
+    "type": "success"
+   },
+   {
+    "id": "7568f5c9-ac49-452f-b5dd-f1bc3acc07df",
+    "source": "create-perm-p1",
+    "target": "assign-e-1",
+    "type": "success"
+   },
+   {
+    "id": "24f47703-4e45-4a7b-9e2e-53433a1dc8f0",
+    "source": "create-perm-p2",
+    "target": "assign-e-1",
+    "type": "success"
+   },
+   {
+    "id": "b7539ba7-88d5-4e4c-b524-efd8c6b9e92a",
+    "source": "create-perm-p3",
+    "target": "assign-e-1",
+    "type": "success"
+   },
+   {
+    "id": "d59aa74f-2dd7-46cc-a5fa-e0c3da721d2d",
+    "source": "create-perm-p4",
+    "target": "assign-e-1",
+    "type": "success"
+   },
+   {
+    "id": "f8d934df-26c5-4ecb-9b07-5b89fc1f7690",
+    "source": "assign-e-1",
+    "target": "role-e-has-all",
+    "type": "success"
+   },
+   {
+    "id": "2190d0b0-9c89-4e6a-a474-845c1a5a6da2",
+    "source": "create-role-e",
+    "target": "assign-e-2",
+    "type": "success"
+   },
+   {
+    "id": "1b8817f3-e785-492a-a0c0-9e5bf7d7d59a",
+    "source": "create-perm-p1",
+    "target": "assign-e-2",
+    "type": "success"
+   },
+   {
+    "id": "4872ca25-08c8-495b-ac55-12bb90cc9e96",
+    "source": "create-perm-p2",
+    "target": "assign-e-2",
+    "type": "success"
+   },
+   {
+    "id": "d822ea7c-82c5-459c-9f4e-adc90bcf622e",
+    "source": "create-perm-p3",
+    "target": "assign-e-2",
+    "type": "success"
+   },
+   {
+    "id": "3bd752e9-c518-4ec6-9ad9-ca35685f67ef",
+    "source": "create-perm-p4",
+    "target": "assign-e-2",
+    "type": "success"
+   },
+   {
+    "id": "914b1e6e-91c0-45c5-a3fa-10987ee6aef8",
+    "source": "assign-e-2",
+    "target": "role-e-has-all",
+    "type": "success"
+   },
+   {
+    "id": "d99c4908-cc73-4aed-915a-25e5d2c3625c",
+    "source": "create-role-e",
+    "target": "assign-e-3",
+    "type": "success"
+   },
+   {
+    "id": "409a1022-9853-4ad7-af7d-247ca7b3a920",
+    "source": "create-perm-p1",
+    "target": "assign-e-3",
+    "type": "success"
+   },
+   {
+    "id": "5b369791-2aaa-450b-b1cd-a49abeb088ac",
+    "source": "create-perm-p2",
+    "target": "assign-e-3",
+    "type": "success"
+   },
+   {
+    "id": "08fa0d6a-b82e-4ae5-9c7b-80fadc2c3f40",
+    "source": "create-perm-p3",
+    "target": "assign-e-3",
+    "type": "success"
+   },
+   {
+    "id": "3f154660-6e92-4caa-9a12-d5bf2758b9cb",
+    "source": "create-perm-p4",
+    "target": "assign-e-3",
+    "type": "success"
+   },
+   {
+    "id": "4d032702-2a90-40cb-b899-3456193671b9",
+    "source": "assign-e-3",
+    "target": "role-e-has-all",
+    "type": "success"
+   },
+   {
+    "id": "ba271ab1-e2a4-4ffe-bf26-196e360ce899",
+    "source": "create-role-e",
+    "target": "assign-e-4",
+    "type": "success"
+   },
+   {
+    "id": "f348d2a8-bb8f-4298-9346-8bf66b2d40e2",
+    "source": "create-perm-p1",
+    "target": "assign-e-4",
+    "type": "success"
+   },
+   {
+    "id": "fca4cf78-483e-4a1c-96ed-89a54a4bc656",
+    "source": "create-perm-p2",
+    "target": "assign-e-4",
+    "type": "success"
+   },
+   {
+    "id": "1d6a18fa-e908-4e6c-8f20-669d24d6f56e",
+    "source": "create-perm-p3",
+    "target": "assign-e-4",
+    "type": "success"
+   },
+   {
+    "id": "cfbf4916-d59e-4426-b33f-2d41f5208df3",
+    "source": "create-perm-p4",
+    "target": "assign-e-4",
+    "type": "success"
+   },
+   {
+    "id": "3439fee7-8a23-4dd0-8e66-792585493a6b",
+    "source": "assign-e-4",
+    "target": "role-e-has-all",
+    "type": "success"
+   },
+   {
+    "id": "ab2ddd4b-2dea-4f27-89ec-3c1f9a4db5b8",
+    "source": "create-role-e",
+    "target": "rename-e",
+    "type": "success"
+   },
+   {
+    "id": "a0024f03-2aa4-4a5c-829e-b3f57f906e5f",
+    "source": "create-perm-p1",
+    "target": "rename-e",
+    "type": "success"
+   },
+   {
+    "id": "018df3a5-9f04-45b0-a1b2-818abf55c557",
+    "source": "create-perm-p2",
+    "target": "rename-e",
+    "type": "success"
+   },
+   {
+    "id": "c9d265d8-c7ef-4869-94cb-badc0b3f9539",
+    "source": "create-perm-p3",
+    "target": "rename-e",
+    "type": "success"
+   },
+   {
+    "id": "d120fc25-a4b6-4ac5-a052-5823e39ec121",
+    "source": "create-perm-p4",
+    "target": "rename-e",
+    "type": "success"
+   },
+   {
+    "id": "6a716856-7481-4955-98e3-fcaea7ddba5a",
+    "source": "rename-e",
+    "target": "role-e-has-all",
+    "type": "success"
+   },
+   {
+    "id": "431a8681-0107-4bd6-abec-b0b2c150eba6",
+    "source": "role-e-has-all",
+    "target": "replace-e-perms",
+    "type": "success"
+   },
+   {
+    "id": "799a6c0e-7ed6-4661-8437-9937f9ab2df0",
+    "source": "create-perm-write",
+    "target": "replace-e-perms",
+    "type": "success"
+   },
+   {
+    "id": "09f0f41b-26c7-4ffa-b1e7-63b8be3f6712",
+    "source": "replace-e-perms",
+    "target": "get-e-replaced",
+    "type": "success"
+   },
+   {
+    "id": "e74b9d8a-3424-45e8-8867-6bec073f560a",
+    "source": "get-e-replaced",
+    "target": "clear-e-perms",
+    "type": "success"
+   },
+   {
+    "id": "99372aab-b333-4674-aea5-78d3bfd0a44d",
+    "source": "clear-e-perms",
+    "target": "get-e-cleared",
+    "type": "success"
+   },
+   {
+    "id": "836c05b7-79f1-4a22-867b-7c5368c06fb4",
+    "source": "get-e-cleared",
+    "target": "events",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: roles",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\":\"eptest-roles-{{$runId}}\",\"description\":\"roles suite\",\"config\":{\"events\":{\"endpoint_url\":\"{{webhook.url}}\"}}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "/webhook/"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.config.events.endpoint_url"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Product With Event Endpoint"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\":\"eptest-roles-key\",\"mutable\":false,\"permissions\":[\"product_role:create\",\"product_role:read\",\"product_role:update\",\"product_role:delete\",\"organization:create\",\"product_user:create\",\"organization_member:create\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product API Key (201)"
+   },
+   {
+    "id": "create-perm-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestdoc:read (201)"
+   },
+   {
+    "id": "create-perm-write",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestdoc:write\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestdoc:write (201)"
+   },
+   {
+    "id": "create-role-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-alpha\", \"description\": \"alpha\", \"permissions\": [\"eptestdoc:read\"], \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-alpha"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-product.productId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.product_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Role A With Permission (201)"
+   },
+   {
+    "id": "get-role-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-a.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-a.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-alpha"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "alpha"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Role A (200)"
+   },
+   {
+    "id": "update-role-a",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-a.rid}}",
+     "body": "{\"name\":\"eptest-role-alpha\",\"description\":\"upd\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-a.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-alpha"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "upd"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Role A Description (200)"
+   },
+   {
+    "id": "search-roles",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/search",
+     "body": "{\"filter\":{\"names\":[\"eptest-role-alpha\"]}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-a.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.items[0].id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Search By Name Finds Role A (200)"
+   },
+   {
+    "id": "create-duplicate",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-alpha\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Duplicate Name (409)"
+   },
+   {
+    "id": "create-empty-name",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "VALIDATION_ERROR"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Empty Name (400)"
+   },
+   {
+    "id": "create-role-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-beta\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-beta"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Role B Without Permissions (201)"
+   },
+   {
+    "id": "delete-role-b",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Delete Role B (204)"
+   },
+   {
+    "id": "get-role-b-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Get Deleted Role B (404)"
+   },
+   {
+    "id": "create-role-c",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-gamma\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role C For Assignment (201)"
+   },
+   {
+    "id": "assign-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestdoc:read\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestdoc:read To C (204)"
+   },
+   {
+    "id": "assign-read-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestdoc:read\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestdoc:read Again Is A No-Op (204)"
+   },
+   {
+    "id": "assign-write",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestdoc:write\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestdoc:write To C, Concurrent With Read (204)"
+   },
+   {
+    "id": "role-has-both",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-c.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:read"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^\\[\\S+ \\S+\\]$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role C Holds Exactly Read And Write (200)"
+   },
+   {
+    "id": "unassign-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/eptestdoc:read",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Unassign eptestdoc:read From C (204)"
+   },
+   {
+    "id": "unassign-read-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/eptestdoc:read",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Unassign Not-Assigned eptestdoc:read Is A No-Op (204)"
+   },
+   {
+    "id": "role-lost-perm",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-c.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role C Kept Only eptestdoc:write (200)"
+   },
+   {
+    "id": "rename-to-existing",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}",
+     "body": "{\"name\":\"eptest-role-alpha\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename Role C To Role A's Name (409)"
+   },
+   {
+    "id": "assign-unknown-perm",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions",
+     "body": "{\"permission_name\":\"nope:nope\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "400"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "PERMISSIONS_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Assign Unknown Permission (400)"
+   },
+   {
+    "id": "unassign-unknown-perm",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-c.rid}}/permissions/nope:nope",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Unassign Unknown Permission (404)"
+   },
+   {
+    "id": "assign-unknown-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/product_role_000000000000000000000000000/permissions",
+     "body": "{\"permission_name\":\"eptestdoc:read\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Assign To Unknown Role (404)"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\":\"eptest-roles-org\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "create-user",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/product-users",
+     "body": "{\"email\":\"garbage+{{$uuid}}@nanostack.dev\",\"name\":\"{{$fullName}}\",\"status\":\"active\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "uid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product User (201)"
+   },
+   {
+    "id": "create-role-d",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-delta\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Role D (201)"
+   },
+   {
+    "id": "add-member",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/members",
+     "body": "{\"product_user_id\":\"{{create-user.uid}}\",\"role_id\":\"{{create-role-d.rid}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Give Role D To A Member (201)"
+   },
+   {
+    "id": "delete-role-d-held",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-d.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_IN_USE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Role Held By A Member (409)"
+   },
+   {
+    "id": "update-role-b-gone",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}",
+     "body": "{\"name\":\"eptest-role-ghost\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Update Deleted Role B (404)"
+   },
+   {
+    "id": "delete-role-b-again",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Delete Role B Again (404)"
+   },
+   {
+    "id": "unassign-unknown-role",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/product_role_000000000000000000000000000/permissions/eptestdoc:read",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "404"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NOT_FOUND"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Unassign From Unknown Role (404)"
+   },
+   {
+    "id": "role-d-still-there",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-d.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-d.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-delta"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Held Role D Still Exists (200)"
+   },
+   {
+    "id": "create-perm-p1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestrace:p1\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestrace:p1 (201)"
+   },
+   {
+    "id": "create-perm-p2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestrace:p2\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p2"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestrace:p2 (201)"
+   },
+   {
+    "id": "create-perm-p3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestrace:p3\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p3"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestrace:p3 (201)"
+   },
+   {
+    "id": "create-perm-p4",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"eptestrace:p4\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p4"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Permission eptestrace:p4 (201)"
+   },
+   {
+    "id": "create-role-e",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"eptest-role-epsilon\", \"description\": \"race\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "rid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-epsilon"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "race"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Create Role E Without Permissions (201)"
+   },
+   {
+    "id": "assign-e-1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestrace:p1\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestrace:p1 To E Concurrently (204)"
+   },
+   {
+    "id": "assign-e-2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestrace:p2\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestrace:p2 To E Concurrently (204)"
+   },
+   {
+    "id": "assign-e-3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestrace:p3\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestrace:p3 To E Concurrently (204)"
+   },
+   {
+    "id": "assign-e-4",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}/permissions",
+     "body": "{\"permission_name\":\"eptestrace:p4\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Assign eptestrace:p4 To E Concurrently (204)"
+   },
+   {
+    "id": "rename-e",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "body": "{\"name\":\"eptest-role-epsilon-renamed\",\"description\":\"renamed during assigns\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-epsilon-renamed"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "renamed during assigns"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Rename E Without Permissions While The Assigns Run (200)"
+   },
+   {
+    "id": "role-e-has-all",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptest-role-epsilon-renamed"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "renamed during assigns"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p1"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p2"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p3"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p4"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^\\[\\S+ \\S+ \\S+ \\S+\\]$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role E Holds Exactly All Four And The New Name (200)"
+   },
+   {
+    "id": "replace-e-perms",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "body": "{\"name\":\"eptest-role-epsilon-renamed\",\"description\":\"replaced\",\"permissions\":[\"eptestrace:p1\",\"eptestdoc:write\"]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "replaced"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p1"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^\\[\\S+ \\S+\\]$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "PUT With Permissions Replaces E's Set (200)"
+   },
+   {
+    "id": "get-e-replaced",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestrace:p1"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "eptestdoc:write"
+      },
+      "operator_type": "contains",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "^\\[\\S+ \\S+\\]$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {
+       "path": "$.permissions[*].permission_name"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role E Holds Exactly The Replaced Set (200)"
+   },
+   {
+    "id": "events",
+    "data": {
+     "expect": [
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-a.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "B created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-b.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "C created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-c.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "D created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-d.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "A updated by PUT",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-a.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 1,
+       "name": "C updated by assign eptestdoc:read",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-c.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 1,
+       "name": "C updated by assign eptestdoc:write",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-c.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 3,
+       "min": 1,
+       "name": "C updated by unassign eptestdoc:read (no event for either no-op)",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-c.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "E created",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.created"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by concurrent assign eptestrace:p1",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by concurrent assign eptestrace:p2",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by concurrent assign eptestrace:p3",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by concurrent assign eptestrace:p4",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by the rename-only PUT",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by the replacing PUT",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 1,
+       "min": 1,
+       "name": "B deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-b.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Held role D never deleted",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.deleted"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-d.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "Held role D never updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-d.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 0,
+       "min": 0,
+       "name": "B never updated",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-b.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      },
+      {
+       "max": 7,
+       "min": 1,
+       "name": "E updated by the clearing PUT",
+       "assertions": [
+        {
+         "operator_data": {
+          "value": "product.role.updated"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.type"
+         },
+         "extractor_type": "json_path"
+        },
+        {
+         "operator_data": {
+          "value": "{{create-role-e.rid}}"
+         },
+         "operator_type": "equals",
+         "extractor_data": {
+          "path": "$.data.role_id"
+         },
+         "extractor_type": "json_path"
+        }
+       ]
+      }
+     ],
+     "settle_ms": 3000,
+     "timeout_ms": 30000
+    },
+    "type": "webhook_wait",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "v1,"
+      },
+      "operator_type": "starts_with",
+      "extractor_data": {
+       "header_name": "webhook-signature"
+      },
+      "extractor_type": "header"
+     },
+     {
+      "operator_data": {
+       "value": "anchor_prd_apikey_"
+      },
+      "operator_type": "not_contains",
+      "extractor_data": {},
+      "extractor_type": "body"
+     }
+    ],
+    "display_name": "Anchor Emitted Every Role Event"
+   },
+   {
+    "id": "cleanup-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (204)"
+   },
+   {
+    "id": "clear-e-perms",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "body": "{\"name\":\"eptest-role-epsilon-renamed\",\"permissions\":[]}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "[]"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "PUT With Empty Permissions Clears E's Set (200)"
+   },
+   {
+    "id": "get-e-cleared",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles/{{create-role-e.rid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{create-role-e.rid}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "replaced"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.description"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "[]"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.permissions"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Role E Holds No Permissions After Reload (200)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

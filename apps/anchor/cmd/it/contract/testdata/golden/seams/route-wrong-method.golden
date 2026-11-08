@@ -1,0 +1,16 @@
+# known path, undeclared method: 405 from the validator
+request: PATCH /v1/products
+request-headers: Authorization, Content-Type
+request-body: {}
+
+status: 405
+header Content-Type: text/plain; charset=utf-8
+header Vary: Origin
+header X-Content-Type-Options: nosniff
+header X-Request-Id: ct/seams/route-wrong-method
+header-names: Content-Type, Vary, X-Content-Type-Options, X-Request-Id
+
+body:
+method not allowed
+
+logs: 0 line(s)

@@ -1,0 +1,16 @@
+# anchor: cursor searches — products, users, roles, keys / Products: page 1 of 2 has next_cursor
+request: POST /v1/products/search
+request-headers: Authorization, Content-Type
+request-body: {"filter":{"names":["eptest-cur-products-{{$runId}}","eptest-cur-products-{{$runId}}-2","eptest-cur-products-{{$runId}}-3"]},"pagination":{"limit":2}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-products-users-roles-keys/products-p1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":2,"items":[{"config":{"organization_api_keys":{"prefix":"anchor"},"protected":false},"created_at":"<timestamp.frac>","description":"cursor search suite","id":"{{create-product.productId}}","name":"eptest-cur-products-{{$runId}}","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"},{"config":{"organization_api_keys":{"prefix":"anchor"},"protected":false},"created_at":"<timestamp.frac>","description":"cursor search suite","id":"{{product-2.id}}","name":"eptest-cur-products-{{$runId}}-2","tenant_id":"tenant_<id>","updated_at":"<timestamp.frac>"}],"next_cursor":"{{products-p1.cursor}}","total":3}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/search -> 200 (<duration>)","method":"POST","path":"/v1/products/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-products-users-roles-keys/products-p1","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

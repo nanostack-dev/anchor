@@ -1,0 +1,16 @@
+# anchor: authz model size limit / Create Permission (201)
+request: POST /v1/products/{{create-product.productId}}/resource-permissions
+request-headers: Authorization, Content-Type
+request-body: {"name":"document:permission_with_a_long_readable_name_018","resource_type":"organization"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/authz-model-size-limit/fill/18/fill-perm
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","name":"document:permission_with_a_long_readable_name_018","product_id":"{{create-product.productId}}","resource_type":"organization","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/resource-permissions -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/resource-permissions","principal_type":"user","request_body":"<present>","request_id":"ct/authz-model-size-limit/fill/18/fill-perm","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

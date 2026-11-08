@@ -1,4 +1,4 @@
-.PHONY: generate-client
+.PHONY: generate-client contract-test contract-update contract-bench
 
 generate-client:
 	@echo "Generating Anchor Go client..."
@@ -9,3 +9,14 @@ generate-client:
 		--config=client-codegen.yaml ./cmd/http/openapi-cleaned.yaml
 	cd clients/go && go mod tidy
 	rm -f apps/anchor/cmd/http/openapi-cleaned.yaml
+
+# Golden contract suite (apps/anchor/cmd/it/contract, build tag contract).
+# Needs Docker. See apps/anchor/cmd/it/contract/README.md.
+contract-test:
+	cd apps/anchor && go test -tags contract -count=1 -timeout 30m ./cmd/it/contract/
+
+contract-update:
+	cd apps/anchor && go test -tags contract -count=1 -timeout 30m ./cmd/it/contract/ -update
+
+contract-bench:
+	cd apps/anchor && go test -tags contract -run '^$$' -bench . -benchmem -count=10 -timeout 60m ./cmd/it/contract/

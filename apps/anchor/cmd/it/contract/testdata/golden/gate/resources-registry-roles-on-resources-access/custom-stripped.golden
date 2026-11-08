@@ -1,0 +1,15 @@
+# anchor: resources — registry, roles on resources, access / Type tree · release-manager lost document:view and kept project:manage
+request: GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/roles/{{custom-project.id}}
+request-headers: Authorization, Content-Type
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/custom-stripped
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{custom-project.id}}","name":"eptest-release-manager","organization_id":"{{create-org.orgId}}","permissions":[{"permission_name":"project:manage","product_id":"{{create-product.productId}}","product_role_id":"{{custom-project.id}}"}],"product_id":"{{create-product.productId}}","resource_type":"project","type":"CUSTOM","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"GET /v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/roles/{{custom-project.id}} -> 200 (<duration>)","method":"GET","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/roles/{{custom-project.id}}","principal_type":"user","request_id":"ct/resources-registry-roles-on-resources-access/custom-stripped","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

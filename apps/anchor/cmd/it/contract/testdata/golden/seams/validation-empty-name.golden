@@ -1,0 +1,17 @@
+# service validation: 400 VALIDATION_ERROR with metadata
+request: POST /v1/products
+request-headers: Authorization, Content-Type
+request-body: {"name":""}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/validation-empty-name
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"VALIDATION_ERROR","message":"name is a required field","metadata":{"field":"name","param":"","rule":"required","value":""}}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"name is a required field","level":"info","message":"Request error","method":"POST","path":"/v1/products","principal_type":"user","request_id":"ct/seams/validation-empty-name","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products -> 400 (<duration>)","method":"POST","path":"/v1/products","principal_type":"user","request_body":"<present>","request_id":"ct/seams/validation-empty-name","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

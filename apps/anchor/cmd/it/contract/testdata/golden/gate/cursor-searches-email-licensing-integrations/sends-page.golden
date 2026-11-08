@@ -1,0 +1,16 @@
+# anchor: cursor searches — email & licensing & integrations / Email Sends: Empty Page Without next_cursor (200)
+request: POST /v1/products/{{create-product.productId}}/email/sends/search
+request-headers: Authorization, Content-Type
+request-body: {"pagination":{"limit":2}}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/sends-page
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"count":0,"items":[],"total":0}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/sends/search -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/sends/search","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/sends-page","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

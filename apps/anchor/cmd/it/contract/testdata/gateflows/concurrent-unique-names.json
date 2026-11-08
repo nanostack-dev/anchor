@@ -1,0 +1,1017 @@
+{
+ "id": "93da6067-9c4d-49b4-b28d-b9ca5d6b555e",
+ "name": "anchor: concurrent unique names",
+ "tags": [
+  "anchor"
+ ],
+ "description": "Copy of \"anchor: concurrent unique names\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. anchor#237 concurrent same-name creates: 3 sibling writers each for an organization API key, a workspace, a product role and a resource permission (mixed case) answer 201 or 409, never 500; searches count one key and one workspace; a late serial create of each name answers 409 with its domain code. anchor#240: 3 sibling publishes of one email template (200 or 409), then the draft reads and updates (200) and the template points at it. Own product without event endpoint, deleted always. Generator: echopoint-investigation/gen_unique_names.py.",
+ "updated_at": "2026-10-30T18:23:51.757679Z",
+ "flow_definition": {
+  "edges": [
+   {
+    "id": "130fe9cf-7ebb-4ede-9536-984db732264a",
+    "source": "login",
+    "target": "create-product",
+    "type": "success"
+   },
+   {
+    "id": "bad84ac7-0d36-4495-b918-3ee8b11c8603",
+    "source": "create-product",
+    "target": "create-key",
+    "type": "success"
+   },
+   {
+    "id": "9262b959-68ea-4334-b2bf-67766356cf09",
+    "source": "create-product",
+    "target": "create-permission",
+    "type": "success"
+   },
+   {
+    "id": "33b0fb8f-3a6d-42b7-a688-dd11ba85457a",
+    "source": "create-key",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "92feb26d-ce84-41af-a887-0da342f49bc9",
+    "source": "create-permission",
+    "target": "create-org",
+    "type": "success"
+   },
+   {
+    "id": "18858719-6010-421e-926d-2d73581e5b23",
+    "source": "create-org",
+    "target": "okey-w1",
+    "type": "success"
+   },
+   {
+    "id": "e127e834-5e41-435c-9875-b26e5cea432a",
+    "source": "create-org",
+    "target": "okey-w2",
+    "type": "success"
+   },
+   {
+    "id": "24d5be55-9c80-4e74-b759-e175bcf6063e",
+    "source": "create-org",
+    "target": "okey-w3",
+    "type": "success"
+   },
+   {
+    "id": "8fbbc684-0aad-4a05-bd19-6800f10d4745",
+    "source": "okey-w1",
+    "target": "okey-count",
+    "type": "success"
+   },
+   {
+    "id": "bae9e2a1-dfa8-4dfd-803c-66c70f188cbd",
+    "source": "okey-w2",
+    "target": "okey-count",
+    "type": "success"
+   },
+   {
+    "id": "8b2231f2-94ce-4431-9cb2-4db2348cecfe",
+    "source": "okey-w3",
+    "target": "okey-count",
+    "type": "success"
+   },
+   {
+    "id": "3f9cae67-eecc-4a88-a1a0-070c75fcf0c1",
+    "source": "okey-count",
+    "target": "okey-late",
+    "type": "success"
+   },
+   {
+    "id": "8eb238f7-45ef-4cb5-b05e-8b38013e37aa",
+    "source": "create-org",
+    "target": "role-w1",
+    "type": "success"
+   },
+   {
+    "id": "8a2d050f-99d9-434a-8b6a-3e76dceec4db",
+    "source": "create-org",
+    "target": "role-w2",
+    "type": "success"
+   },
+   {
+    "id": "a3786b4e-cecc-4088-8167-b3dfc2dc8153",
+    "source": "create-org",
+    "target": "role-w3",
+    "type": "success"
+   },
+   {
+    "id": "8306921d-0154-4b60-b948-63dbb023ab54",
+    "source": "role-w1",
+    "target": "role-late",
+    "type": "success"
+   },
+   {
+    "id": "4716eaa1-838e-4c54-8148-010903c593fa",
+    "source": "role-w2",
+    "target": "role-late",
+    "type": "success"
+   },
+   {
+    "id": "2981b030-d737-4f06-9956-a54a178f9ba5",
+    "source": "role-w3",
+    "target": "role-late",
+    "type": "success"
+   },
+   {
+    "id": "2f51a0a8-e051-4aa3-9fe7-094c2d6ddfe1",
+    "source": "create-org",
+    "target": "perm-w1",
+    "type": "success"
+   },
+   {
+    "id": "bad51894-c90d-4f95-b4e1-da07e1199591",
+    "source": "create-org",
+    "target": "perm-w2",
+    "type": "success"
+   },
+   {
+    "id": "94053dce-fd3c-4cc5-8816-425ae89279fb",
+    "source": "create-org",
+    "target": "perm-w3",
+    "type": "success"
+   },
+   {
+    "id": "e43f94da-bd5e-4996-a352-29641c96666e",
+    "source": "perm-w1",
+    "target": "perm-late",
+    "type": "success"
+   },
+   {
+    "id": "b5fea3a4-cf9c-497d-8975-152170df2baf",
+    "source": "perm-w2",
+    "target": "perm-late",
+    "type": "success"
+   },
+   {
+    "id": "6468e896-f4a4-4d82-9252-fe1576c43d07",
+    "source": "perm-w3",
+    "target": "perm-late",
+    "type": "success"
+   },
+   {
+    "id": "29fd35ad-3eca-44d7-9297-81b4d4563a8d",
+    "source": "create-product",
+    "target": "tpl-create",
+    "type": "success"
+   },
+   {
+    "id": "9aee27bb-955d-4263-bda5-afb14bdc0400",
+    "source": "tpl-create",
+    "target": "tpl-pub-w1",
+    "type": "success"
+   },
+   {
+    "id": "3340dced-dc49-42f8-a6c9-7a7fa3af3252",
+    "source": "tpl-create",
+    "target": "tpl-pub-w2",
+    "type": "success"
+   },
+   {
+    "id": "3f67a5a3-d4df-4696-90ee-840b8601e453",
+    "source": "tpl-create",
+    "target": "tpl-pub-w3",
+    "type": "success"
+   },
+   {
+    "id": "7b3877e8-5944-4cde-9e53-1b5b649d083d",
+    "source": "tpl-pub-w1",
+    "target": "tpl-draft-read",
+    "type": "success"
+   },
+   {
+    "id": "a0ba7475-db79-435e-bcee-31b3937d60b5",
+    "source": "tpl-pub-w2",
+    "target": "tpl-draft-read",
+    "type": "success"
+   },
+   {
+    "id": "c31b26c2-1848-435d-9d3b-8f4432fb84f7",
+    "source": "tpl-pub-w3",
+    "target": "tpl-draft-read",
+    "type": "success"
+   },
+   {
+    "id": "ce52fba8-94d1-4754-9107-2653b815b3a5",
+    "source": "tpl-draft-read",
+    "target": "tpl-draft-update",
+    "type": "success"
+   },
+   {
+    "id": "563446f5-1a2c-4a01-8577-04ebf0d46e96",
+    "source": "tpl-draft-update",
+    "target": "tpl-get",
+    "type": "success"
+   },
+   {
+    "id": "d87dbbe6-3461-48a7-9589-1518c2703caf",
+    "source": "okey-late",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "c95a4f33-ab51-4330-b7b8-726b2cee4858",
+    "source": "role-late",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "d2c04fa2-ea7c-4973-a218-34632162eb3d",
+    "source": "perm-late",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "b38c0b37-085d-4544-a894-ce1078afbf6b",
+    "source": "tpl-get",
+    "target": "cleanup",
+    "type": "success"
+   },
+   {
+    "id": "e2623606-7ac9-4fec-bf8a-e2633d801de4",
+    "source": "create-org",
+    "target": "cleanup",
+    "type": "success"
+   }
+  ],
+  "name": "anchor: concurrent unique names",
+  "nodes": [
+   {
+    "id": "login",
+    "data": {
+     "flow_id": "eac266b3-2f3f-41b4-b061-f63b92b7b80e",
+     "output_bindings": {
+      "authToken": "019e8f1a-6974-7e49-8ea0-a01f65d94917.accessToken"
+     }
+    },
+    "type": "module",
+    "run_when": "on_success",
+    "display_name": "Login"
+   },
+   {
+    "id": "create-product",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products",
+     "body": "{\"name\": \"eptest-unique-{{$runId}}\", \"description\": \"concurrent unique names suite\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "productId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product (201)"
+   },
+   {
+    "id": "create-key",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/api-keys",
+     "body": "{\"name\": \"eptest-unique-key\", \"mutable\": false, \"permissions\": [\"organization:create\", \"organization_api_key:create\", \"organization_api_key:read\", \"product_role:create\", \"product_role:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "apiKey",
+      "secret": false,
+      "extractor": {
+       "path": "$.value",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Product Key (201)"
+   },
+   {
+    "id": "create-permission",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"uniq:read\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Resource Permission uniq:read (201)"
+   },
+   {
+    "id": "create-org",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations",
+     "body": "{\"name\": \"eptest-unique-org-{{$runId}}\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "orgId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Organization (201)"
+   },
+   {
+    "id": "okey-w1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys",
+     "body": "{\"name\": \"race-key\", \"permissions\": [\"uniq:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org API Key Writer 1 (201 or 409)"
+   },
+   {
+    "id": "okey-w2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys",
+     "body": "{\"name\": \"race-key\", \"permissions\": [\"uniq:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org API Key Writer 2 (201 or 409)"
+   },
+   {
+    "id": "okey-w3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys",
+     "body": "{\"name\": \"race-key\", \"permissions\": [\"uniq:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Org API Key Writer 3 (201 or 409)"
+   },
+   {
+    "id": "okey-count",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys/search",
+     "body": "{\"pagination\": {\"limit\": 10}}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "1"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.total"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Org API Key Search Counts One"
+   },
+   {
+    "id": "okey-late",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/organizations/{{create-org.orgId}}/api-keys",
+     "body": "{\"name\": \"race-key\", \"permissions\": [\"uniq:read\"]}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ORGANIZATION_API_KEY_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Late Org API Key Create (409 ORGANIZATION_API_KEY_NAME_DUPLICATE)"
+   },
+   {
+    "id": "role-w1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"race-role\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Product Role Writer 1 (201 or 409)"
+   },
+   {
+    "id": "role-w2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"Race-Role\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Product Role Writer 2 (201 or 409)"
+   },
+   {
+    "id": "role-w3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"RACE-ROLE\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Product Role Writer 3 (201 or 409)"
+   },
+   {
+    "id": "role-late",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/roles",
+     "body": "{\"name\": \"race-role\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "X-Product-Api-Key": "{{create-key.apiKey}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "ROLE_NAME_DUPLICATE"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Late Product Role Create (409 ROLE_NAME_DUPLICATE)"
+   },
+   {
+    "id": "perm-w1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"race:doc\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Resource Permission Writer 1 (201 or 409)"
+   },
+   {
+    "id": "perm-w2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"Race:Doc\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Resource Permission Writer 2 (201 or 409)"
+   },
+   {
+    "id": "perm-w3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"RACE:DOC\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(201|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Resource Permission Writer 3 (201 or 409)"
+   },
+   {
+    "id": "perm-late",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/resource-permissions",
+     "body": "{\"name\": \"race:doc\", \"resource_type\": \"organization\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "409"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "RESOURCE_PERMISSION_ALREADY_EXISTS"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.errors[0].code"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Late Resource Permission Create (409 RESOURCE_PERMISSION_ALREADY_EXISTS)"
+   },
+   {
+    "id": "tpl-create",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates",
+     "body": "{\"slug\": \"eptest-race-{{$runId}}\", \"name\": \"Race\", \"subject\": \"Race subj\", \"body_html\": \"<p>Race</p>\"}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "tid",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "201"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Create Email Template (201)"
+   },
+   {
+    "id": "tpl-pub-w1",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/publish",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(200|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Publish Writer 1 (200 or 409)"
+   },
+   {
+    "id": "tpl-pub-w2",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/publish",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(200|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Publish Writer 2 (200 or 409)"
+   },
+   {
+    "id": "tpl-pub-w3",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/publish",
+     "body": "{}",
+     "method": "POST",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "^(200|409)$"
+      },
+      "operator_type": "regex",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Publish Writer 3 (200 or 409)"
+   },
+   {
+    "id": "tpl-draft-read",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/draft",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "DRAFT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Draft Still Reads After Racing Publishes (200)"
+   },
+   {
+    "id": "tpl-draft-update",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}/draft",
+     "body": "{\"subject\": \"After race\", \"body_html\": \"<p>After</p>\"}",
+     "method": "PUT",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "outputs": [
+     {
+      "name": "draftId",
+      "secret": false,
+      "extractor": {
+       "path": "$.id",
+       "type": "json_path"
+      }
+     }
+    ],
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "DRAFT"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.status"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {
+       "value": "After race"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.subject"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Draft Still Updates (200)"
+   },
+   {
+    "id": "tpl-get",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}/email/templates/{{tpl-create.tid}}",
+     "method": "GET",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "on_success",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "200"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     },
+     {
+      "operator_data": {
+       "value": "{{tpl-draft-update.draftId}}"
+      },
+      "operator_type": "equals",
+      "extractor_data": {
+       "path": "$.draft_version_id"
+      },
+      "extractor_type": "json_path"
+     },
+     {
+      "operator_data": {},
+      "operator_type": "not_empty",
+      "extractor_data": {
+       "path": "$.published_version_id"
+      },
+      "extractor_type": "json_path"
+     }
+    ],
+    "display_name": "Template Points At The Draft And A Published Version"
+   },
+   {
+    "id": "cleanup",
+    "data": {
+     "url": "{{nanostackBaseUrl}}/v1/products/{{create-product.productId}}",
+     "method": "DELETE",
+     "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{login.authToken}}"
+     }
+    },
+    "type": "request",
+    "run_when": "always",
+    "assertions": [
+     {
+      "operator_data": {
+       "value": "204"
+      },
+      "operator_type": "equals",
+      "extractor_data": {},
+      "extractor_type": "status_code"
+     }
+    ],
+    "display_name": "Cleanup Product (always)"
+   }
+  ],
+  "version": "1.0"
+ }
+}

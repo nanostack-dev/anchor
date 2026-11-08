@@ -1,0 +1,16 @@
+# anchor: access isolation and privilege changes / Setup · Turn on custom roles for Folder → 200
+request: PATCH /v1/products/{{product-acme.productId}}/resource-types/{{type-folder.id}}
+request-headers: Authorization, Content-Type
+request-body: {"allows_custom_roles": true}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-isolation-and-privilege-changes/switch-folder
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"allows_custom_roles":true,"built_in":false,"created_at":"<timestamp.frac>","id":"{{type-folder.id}}","name":"Folder","nests_in_itself":false,"parent_types":["project"],"product_id":"{{product-acme.productId}}","slug":"folder","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PATCH /v1/products/{{product-acme.productId}}/resource-types/{{type-folder.id}} -> 200 (<duration>)","method":"PATCH","path":"/v1/products/{{product-acme.productId}}/resource-types/{{type-folder.id}}","principal_type":"user","request_body":"<present>","request_id":"ct/access-isolation-and-privilege-changes/switch-folder","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

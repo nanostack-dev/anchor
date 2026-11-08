@@ -1,0 +1,16 @@
+# anchor: organization-api-key / Introspect Without Scopes (200)
+request: POST /v1/products/{{create-product.productId}}/auth/introspect
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"api_key":"{{create-org-key.akVal}}"}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/organization-api-key/introspect-no-scopes
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"api_key":{"created_at":"<timestamp.frac>","id":"{{create-org-key.akId}}","last_used_at":"<timestamp.frac>","name":"eptest-orgkey-renamed","obfuscated_value":"anchor_org_apikey_***_<hex>","organization_id":"{{create-org.orgId}}","permissions":[{"organization_api_key_id":"{{create-org-key.akId}}","organization_id":"{{create-org.orgId}}","permission_name":"eptestdoc:read","product_id":"{{create-product.productId}}"}],"status":"ACTIVE","updated_at":"<timestamp.frac>"},"missing_privileges":null,"permissions":["eptestdoc:read"]}
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/auth/introspect -> 200 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/auth/introspect","principal_type":"api_key","request_id":"ct/organization-api-key/introspect-no-scopes","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

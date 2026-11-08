@@ -1,0 +1,15 @@
+# anchor: platform-invitation / Create With A Malformed Token (401)
+request: POST /v1/platform-invitations
+request-headers: Authorization, Content-Type
+request-body: {"email":"garbage+<uuid>@nanostack.dev"}
+
+status: 401
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/platform-invitation/bad-token
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNAUTHORIZED","message":"Unauthorized"}]}
+
+logs: 0 line(s)

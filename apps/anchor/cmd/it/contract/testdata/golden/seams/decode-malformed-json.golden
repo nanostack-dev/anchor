@@ -1,0 +1,16 @@
+# truncated JSON: decoder text reaches the client
+request: POST /v1/products
+request-headers: Authorization, Content-Type
+request-body: {"name":
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/seams/decode-malformed-json
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"BAD_REQUEST","message":"can't decode JSON body: unexpected EOF"}]}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products -> 400 (<duration>)","method":"POST","path":"/v1/products","principal_type":"user","request_body":"<present>","request_id":"ct/seams/decode-malformed-json","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

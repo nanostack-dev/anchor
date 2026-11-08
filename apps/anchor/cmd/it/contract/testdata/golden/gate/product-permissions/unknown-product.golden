@@ -1,0 +1,15 @@
+# anchor: product-permissions / Search An Unknown Product (404)
+request: POST /v1/products/prd_<id>/permissions/search
+request-headers: Authorization, Content-Type
+request-body: {}
+
+status: 404
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/product-permissions/unknown-product
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"PRODUCT_NOT_FOUND","message":"This tenant has no product with that identifier"}]}
+
+logs: 0 line(s)

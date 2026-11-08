@@ -1,0 +1,17 @@
+# anchor: access evaluation / Per-Item Subject Override (400 UNSUPPORTED_ACCESS_OVERRIDE)
+request: POST /v1/products/{{nanostackProductId}}/access/v1/evaluations
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"subject": {"type": "user", "id": "{{dev-member.externalId}}"}, "resource": {"type": "organization", "id": "{{echopointOrgId}}"}, "evaluations": [{"action": {"name": "flows:read"}, "subject": {"type": "user", "id": "user_eptest_{{$runId}}"}}]}
+
+status: 400
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation/user-override
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"UNSUPPORTED_ACCESS_OVERRIDE","message":"Per-item subject and resource overrides are not supported; send one request per subject and resource."}]}
+
+logs: 2 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-{{$runId}}","caller":"/<path>/<file>.go:<line>","env":"development","error":"Per-item subject and resource overrides are not supported; send one request per subject and resource.","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{nanostackProductId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/user-override","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>"}
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/access/v1/evaluations -> 400 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/access/v1/evaluations","principal_type":"api_key","request_id":"ct/access-evaluation/user-override","status":400,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

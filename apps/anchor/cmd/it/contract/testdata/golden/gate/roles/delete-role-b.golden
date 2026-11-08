@@ -1,0 +1,13 @@
+# anchor: roles / Delete Role B (204)
+request: DELETE /v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}
+request-headers: Content-Type, X-Product-Api-Key
+
+status: 204
+header Vary: Origin
+header X-Request-Id: ct/roles/delete-role-b
+header-names: Vary, X-Request-Id
+
+body:
+
+logs: 1 line(s)
+{"api_key_id":"product_apikey_<id>","api_key_name":"eptest-roles-key","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"DELETE /v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}} -> 204 (<duration>)","method":"DELETE","path":"/v1/products/{{create-product.productId}}/roles/{{create-role-b.rid}}","principal_type":"api_key","request_id":"ct/roles/delete-role-b","status":204,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

@@ -1,0 +1,16 @@
+# anchor: access evaluation — user writes apply at once / Create Throwaway Role With flows:read Only (201)
+request: POST /v1/products/{{nanostackProductId}}/roles
+request-headers: Content-Type, X-Product-Api-Key
+request-body: {"name": "eptest-access-reader-{{$runId}}", "permissions": ["flows:read"], "resource_type": "organization"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/access-evaluation-user-writes-apply-at-once/role
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{role.roleId}}","name":"eptest-access-reader-{{$runId}}","organization_id":null,"permissions":[{"permission_name":"flows:read","product_id":"{{nanostackProductId}}","product_role_id":"{{role.roleId}}"}],"product_id":"{{nanostackProductId}}","resource_type":"organization","type":"MANAGED","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"api_key_id":"{{ep-key.id}}","api_key_name":"eptest-access-writes-{{$runId}}","bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{nanostackProductId}}/roles -> 201 (<duration>)","method":"POST","path":"/v1/products/{{nanostackProductId}}/roles","principal_type":"api_key","request_body":"<present>","request_id":"ct/access-evaluation-user-writes-apply-at-once/role","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1"}

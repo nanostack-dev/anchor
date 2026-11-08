@@ -1,0 +1,16 @@
+# anchor: cursor searches — email & licensing & integrations / Create Email Template ep-cur-tpl-1 Named ep-cur-template (201)
+request: POST /v1/products/{{create-product.productId}}/email/templates
+request-headers: Authorization, Content-Type
+request-body: {"slug":"ep-cur-tpl-1","name":"ep-cur-template","subject":"Hello","body_html":"<p>Hello</p>"}
+
+status: 201
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/cursor-searches-email-licensing-integrations/template-1
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","draft_version_id":"etplv_<id>","id":"{{template-1.id}}","is_active":true,"name":"ep-cur-template","product_id":"{{create-product.productId}}","slug":"ep-cur-tpl-1","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/email/templates -> 201 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/email/templates","principal_type":"user","request_body":"<present>","request_id":"ct/cursor-searches-email-licensing-integrations/template-1","status":201,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

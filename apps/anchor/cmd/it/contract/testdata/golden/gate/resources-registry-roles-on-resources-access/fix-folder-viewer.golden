@@ -1,0 +1,16 @@
+# anchor: resources — registry, roles on resources, access / Type tree · The Product removes document:view from folder-viewer → 200
+request: PUT /v1/products/{{create-product.productId}}/roles/{{role-folder-viewer.id}}
+request-headers: Authorization, Content-Type
+request-body: {"name": "eptest-folder-viewer", "permissions": ["folder:view"]}
+
+status: 200
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/resources-registry-roles-on-resources-access/fix-folder-viewer
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"created_at":"<timestamp.frac>","description":"","id":"{{role-folder-viewer.id}}","name":"eptest-folder-viewer","organization_id":null,"permissions":[{"permission_name":"folder:view","product_id":"{{create-product.productId}}","product_role_id":"{{role-folder-viewer.id}}"}],"product_id":"{{create-product.productId}}","resource_type":"folder","type":"MANAGED","updated_at":"<timestamp.frac>"}
+
+logs: 1 line(s)
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"PUT /v1/products/{{create-product.productId}}/roles/{{role-folder-viewer.id}} -> 200 (<duration>)","method":"PUT","path":"/v1/products/{{create-product.productId}}/roles/{{role-folder-viewer.id}}","principal_type":"user","request_body":"<present>","request_id":"ct/resources-registry-roles-on-resources-access/fix-folder-viewer","status":200,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}

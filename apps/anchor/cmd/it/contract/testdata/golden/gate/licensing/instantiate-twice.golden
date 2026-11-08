@@ -1,0 +1,17 @@
+# anchor: licensing / Instantiate Twice (409)
+request: POST /v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license
+request-headers: Authorization, Content-Type
+request-body: {"template_id":"{{create-template-b.templateBId}}"}
+
+status: 409
+header Content-Type: application/json
+header Vary: Origin
+header X-Request-Id: ct/licensing/instantiate-twice
+header-names: Content-Type, Vary, X-Request-Id
+
+body:
+{"errors":[{"code":"ORGANIZATION_LICENSE_EXISTS","message":"This organization already has a license; adjust it instead"}]}
+
+logs: 2 line(s)
+{"caller":"/<path>/<file>.go:<line>","env":"development","error":"This organization already has a license; adjust it instead","level":"info","message":"Request error","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license","principal_type":"user","request_id":"ct/licensing/instantiate-twice","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_id":"user_<id>"}
+{"bytes_out":"<int:=body-length>","caller":"/<path>/<file>.go:<line>","client_ip":"<ip>","duration":"<duration:number:ms>","env":"development","level":"info","message":"POST /v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license -> 409 (<duration>)","method":"POST","path":"/v1/products/{{create-product.productId}}/organizations/{{create-org-a.orgId}}/license","principal_type":"user","request_body":"<present>","request_id":"ct/licensing/instantiate-twice","status":409,"tenant_id":"tenant_<id>","time":"<time:timestamp>","user_agent":"anchor-contract/1","user_id":"user_<id>"}
