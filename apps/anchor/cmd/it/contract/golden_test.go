@@ -85,6 +85,12 @@ func (n *normalizer) register(value, placeholder string) {
 	if len(value) < minLen || isNumeric(value) || value == placeholder {
 		return
 	}
+	// Two JWTs minted in the same second for the same subject are identical
+	// (no jti), so a captured token can reappear in another response by
+	// timing alone. JWTs always render as <jwt>.
+	if jwtPattern.MatchString(value) {
+		return
+	}
 	for _, existing := range n.values {
 		if existing.value == value {
 			return

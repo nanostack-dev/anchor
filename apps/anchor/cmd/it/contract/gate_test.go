@@ -3,9 +3,12 @@
 package contract_test
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -16,18 +19,47 @@ const gateFlowDir = "testdata/gateflows"
 // the reason. Their assertion failures are logged, not failed, and README.md
 // lists them as not covered.
 var gateSkips = map[string]string{
-	"access-evaluation/beta":                             envFixtureReason,
-	"access-evaluation/ep-key":                           envFixtureReason,
-	"access-evaluation-user-writes-apply-at-once/beta":   envFixtureReason,
-	"access-evaluation-user-writes-apply-at-once/ep-key": envFixtureReason,
 	"email-templates/preview-optional-missing": "needs the Echopoint workspace variable emailOptionalVarBody, " +
 		"which the flow export does not carry",
 	"email-templates/preview-optional-given": "needs the Echopoint workspace variable emailOptionalVarBody, " +
 		"which the flow export does not carry",
 }
 
-const envFixtureReason = "needs Echopoint's own dev product, organization, member and workspace " +
-	"(nanostackProductId, echopointOrgId, echopointWorkspaceId); every node after it is skipped"
+// echopointEnv seeds, once per process, the stand-in for the Echopoint dev data
+// the access-evaluation flows read (testdata/fixtures/echopoint-dev-product.json).
+var echopointEnv struct {
+	once   sync.Once
+	inputs map[string]string
+	err    error
+}
+
+func echopointInputs(t *testing.T) (map[string]string, error) {
+	t.Helper()
+	echopointEnv.once.Do(func() {
+		flow, err := loadFlow(filepath.Join("testdata", "fixtures", "echopoint-dev-product.json"))
+		if err != nil {
+			echopointEnv.err = err
+			return
+		}
+		run := newFlowRun(t, flow, "fixture-echopoint-dev-product")
+		run.run(flow.Definition)
+		if len(run.failures) > 0 {
+			echopointEnv.err = fmt.Errorf("echopoint fixture: %s", strings.Join(run.failures, "; "))
+			return
+		}
+		value := func(node, output string) string {
+			outputs, _ := run.scope[node].(map[string]any)
+			s, _ := outputs[output].(string)
+			return s
+		}
+		echopointEnv.inputs = map[string]string{
+			"nanostackProductId":   value("create-product", "productId"),
+			"echopointOrgId":       value("create-org", "orgId"),
+			"echopointWorkspaceId": value("create-ws", "wsId"),
+		}
+	})
+	return echopointEnv.inputs, echopointEnv.err
+}
 
 func skipReason(slug, failure string) (string, bool) {
 	if reason, ok := gateSkips[slug+"/*"]; ok {
@@ -64,6 +96,16 @@ func TestGateFlows(t *testing.T) {
 				t.Fatal(err)
 			}
 			run := newFlowRun(t, flow, slug)
+			if raw, _ := os.ReadFile(path); strings.Contains(string(raw), "nanostackProductId") {
+				inputs, envErr := echopointInputs(t)
+				if envErr != nil {
+					t.Fatal(envErr)
+				}
+				for name, value := range inputs {
+					run.inputs[name] = value
+					run.norm.register(value, "{{"+name+"}}")
+				}
+			}
 			run.run(flow.Definition)
 			for _, failure := range run.failures {
 				if reason, skipped := skipReason(slug, failure); skipped {
