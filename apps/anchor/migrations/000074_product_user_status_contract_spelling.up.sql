@@ -8,7 +8,7 @@
 -- the service layer.
 SET LOCAL lock_timeout = '5s';
 
--- lint: allow-backfill product_users is small (one product in prod, under 500 user writes in 30 days); the WHERE skips rows already in the contract spelling
+-- lint: allow-backfill product_users is small (one product in prod; its logs show under 500 product-user requests in 30 days, no creates); the WHERE skips rows already in the contract spelling
 UPDATE product_users
 SET status = lower(status)
 WHERE status IN ('ACTIVE', 'INVITED', 'SUSPENDED');
