@@ -203,7 +203,7 @@ func (b *Builder) ProductUser(opts ProductUserOpts) *Builder {
 	if email == "" {
 		email = itshared.Faker.Internet().Email()
 	}
-	status := nanostackClient.ProductUserStatus("ACTIVE")
+	status := nanostackClient.Active
 	resp, err := apiKeyClient.CreateProductUserWithResponse(
 		context.Background(),
 		productCtx.ProductID,

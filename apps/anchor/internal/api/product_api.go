@@ -273,8 +273,7 @@ func mapToSearchProductUserInput(
 			result.Names = *f.Names
 		}
 		if f.Statuses != nil {
-			result.Statuses = functional.Slice(*f.Statuses).Map(
-				func(status ProductUserStatus) user.ProductUserStatus { return user.ProductUserStatus(status) })
+			result.Statuses = functional.Slice(*f.Statuses).Map(foldProductUserStatus)
 		}
 		if f.ExternalIds != nil {
 			result.ExternalIDs = f.ExternalIds
@@ -288,6 +287,17 @@ func mapToSearchProductUserInput(
 			request.Body.SortBy,
 			request.Body.SortDirection,
 		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
+}
+
+// foldProductUserStatus ignores the letter case of a requested status: Anchor
+// returned ACTIVE until 2026-11-08, so a client may send it back. Any other
+// value passes through unchanged, and the service validation rejects it.
+func foldProductUserStatus(status ProductUserStatus) user.ProductUserStatus {
+	parsed, err := user.ParseProductUserStatus(string(status))
+	if err != nil {
+		return user.ProductUserStatus(status)
+	}
+	return parsed
 }
 
 func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
@@ -308,9 +318,7 @@ func mapProductUserToResponse(user user.ProductUser) ProductUserResponse {
 func (s *AnchorAPI) CreateProductUser(
 	ctx context.Context, request CreateProductUserRequestObject,
 ) (CreateProductUserResponseObject, error) {
-	status := functional.FromPtr(request.Body.Status).Map(func(s ProductUserStatus) user.ProductUserStatus {
-		return user.ProductUserStatus(s)
-	}).OrElse(user.ProductUserStatusActive)
+	status := functional.FromPtr(request.Body.Status).Map(foldProductUserStatus).OrElse(user.ProductUserStatusActive)
 
 	input := user.CreateProductUserInput{
 		ProductID:  request.ProductId,
