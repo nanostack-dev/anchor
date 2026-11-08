@@ -17,7 +17,7 @@ The W3C TraceContext + Baggage propagator is installed even without an endpoint,
 
 - `tracing.Middleware()` wraps the whole HTTP handler. It starts the server span, continuing a caller's `traceparent` (Echopoint sends one), and skips `/health`.
 - `tracing.RouteMiddleware` is the first router middleware. It names the span `METHOD /route/{pattern}` (for example `GET /v1/products/{product_id}`) and sets `http.route`. A request rejected before routing, such as an OpenAPI path-parameter validation failure, keeps the method-only name.
-- `requestlog.Contextualize` and the framework log enricher add `trace_id`/`span_id` to request and service log lines, once per line.
+- The scoped logger (`internal/applog`, on `core/log` with `tracing.LogAttrs`) adds `trace_id`/`span_id` to the request lines: the request summary, the error-hook lines and the sampled access warnings. The component loggers injected into services write without the request context, so their lines carry no trace ids yet.
 - `modules/postgres` records queries as child spans (`sql.conn.query`, `sql.conn.exec`, ...). Queries without a span on their context (migrations, pollers, lock heartbeats) start no trace.
 - pgkit (v0.0.44+) stores the enqueuer's W3C context in `pgqueue_jobs.trace_context` (queue schema v3, applied by `EnsureSchema` at startup). Workers run each job under a `pgkit.queue <queue>` consumer span that is a child of that context, so integration-event processing and webhook delivery join the request trace that enqueued them.
 
