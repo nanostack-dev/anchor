@@ -13,8 +13,5 @@ migrations:
   # refuses a release whose role migrations were forced past.
   auto_fix_dirty: true
 
-redis:
-  address: localhost:6379
-
 server:
   allowed_origin: http://localhost:3000
