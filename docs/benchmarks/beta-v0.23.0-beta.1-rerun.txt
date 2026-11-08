@@ -1,0 +1,44 @@
+goos: darwin
+goarch: arm64
+pkg: anchor/cmd/it/contract
+cpu: Apple M2 Max
+BenchmarkHealth-12                	    4700	    282535 ns/op	   16078 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4239	    270616 ns/op	   16034 B/op	     210 allocs/op
+BenchmarkHealth-12                	    5002	    287060 ns/op	   16423 B/op	     214 allocs/op
+BenchmarkHealth-12                	    4434	    281086 ns/op	   16037 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4266	    286152 ns/op	   16034 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4039	    296976 ns/op	   16058 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4500	    284442 ns/op	   16064 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4117	    310891 ns/op	   16026 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4700	    289428 ns/op	   16056 B/op	     210 allocs/op
+BenchmarkHealth-12                	    4002	    297409 ns/op	   16026 B/op	     210 allocs/op
+BenchmarkReadOrganization-12      	     699	   1670983 ns/op	  196203 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     760	   1831399 ns/op	  197336 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     763	   1637876 ns/op	  196892 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     700	   1588088 ns/op	  196823 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     793	   1638832 ns/op	  196610 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     728	   1889810 ns/op	  196638 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     712	   1595639 ns/op	  196559 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     733	   1746996 ns/op	  197139 B/op	    1919 allocs/op
+BenchmarkReadOrganization-12      	     613	   1782904 ns/op	  197242 B/op	    1920 allocs/op
+BenchmarkReadOrganization-12      	     795	   1669244 ns/op	  196881 B/op	    1919 allocs/op
+BenchmarkSearchProductUsers-12    	     501	   2104451 ns/op	  254917 B/op	    2866 allocs/op
+BenchmarkSearchProductUsers-12    	     499	   2258119 ns/op	  253117 B/op	    2863 allocs/op
+BenchmarkSearchProductUsers-12    	     519	   2298098 ns/op	  252891 B/op	    2864 allocs/op
+BenchmarkSearchProductUsers-12    	     453	   2305668 ns/op	  253323 B/op	    2863 allocs/op
+BenchmarkSearchProductUsers-12    	     558	   2900289 ns/op	  255200 B/op	    2866 allocs/op
+BenchmarkSearchProductUsers-12    	     489	   2736160 ns/op	  255359 B/op	    2865 allocs/op
+BenchmarkSearchProductUsers-12    	     481	   2684472 ns/op	  255160 B/op	    2865 allocs/op
+BenchmarkSearchProductUsers-12    	     232	   4332978 ns/op	  256306 B/op	    2866 allocs/op
+BenchmarkSearchProductUsers-12    	     265	   4275899 ns/op	  254621 B/op	    2864 allocs/op
+BenchmarkSearchProductUsers-12    	     357	   2883786 ns/op	  256203 B/op	    2867 allocs/op
+BenchmarkNotFound-12              	     522	   2302496 ns/op	  194389 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     590	   1897274 ns/op	  194475 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     604	   2350702 ns/op	  193784 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     397	   3353992 ns/op	  194680 B/op	    1871 allocs/op
+BenchmarkNotFound-12              	     306	   4242183 ns/op	  193795 B/op	    1872 allocs/op
+BenchmarkNotFound-12              	     340	   3715460 ns/op	  194976 B/op	    1874 allocs/op
+BenchmarkNotFound-12              	     523	   2263196 ns/op	  194588 B/op	    1870 allocs/op
+BenchmarkNotFound-12              	     584	   2250598 ns/op	  193564 B/op	    1869 allocs/op
+BenchmarkNotFound-12              	     568	   2024406 ns/op	  194052 B/op	    1869 allocs/op
+BenchmarkNotFound-12              	     648	   2161151 ns/op	  194442 B/op	    1871 allocs/op
