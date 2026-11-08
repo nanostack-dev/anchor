@@ -28,6 +28,7 @@ func NewModule() fx.Option {
 			service.NewLicenseSchemaService,
 			service.NewLicenseTemplateService,
 			service.NewLicenseTemplateSyncEnqueuer,
+			service.NewOrganizationLicenseEntries,
 			service.NewLicenseTemplateSyncService,
 			service.NewOrganizationLicenseService,
 			service.NewLicenseHistoryService,

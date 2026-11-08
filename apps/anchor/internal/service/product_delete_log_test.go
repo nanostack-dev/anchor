@@ -3,13 +3,16 @@ package service_test
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"anchor/internal/applog"
 	"anchor/internal/domain/product"
 	"anchor/internal/repository"
 	"anchor/internal/service"
@@ -39,7 +42,8 @@ func (inlineTransactor) InTx(ctx context.Context, fn func(context.Context) error
 func TestDeleteProtectedProductDoesNotLogAtError(t *testing.T) {
 	var buf bytes.Buffer
 	svc := service.NewProductService(
-		protectedProducts{}, nil, nil, nil, nil, inlineTransactor{}, zerolog.New(&buf),
+		protectedProducts{}, nil, nil, nil, cache.Cache[product.Product]{}, inlineTransactor{},
+		applog.New(log.Config{Wire: log.WireLegacy, Output: &buf, Level: slog.LevelDebug}).Component,
 	)
 
 	err := svc.Delete(context.Background(), product.DeleteProductInput{TenantID: "tenant", ProductID: "product"})

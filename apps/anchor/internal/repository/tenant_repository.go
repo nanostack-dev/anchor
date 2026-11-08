@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/tenant"
@@ -11,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 )
 
 var _ TenantRepository = (*tenantRepositoryImpl)(nil)
@@ -34,18 +34,16 @@ type TenantRepository interface {
 type tenantRepositoryImpl struct {
 	db           *sql.DB
 	tenantMapper *mapper.TenantMapper
-	logger       zerolog.Logger
+	logger       *slog.Logger
 }
 
 func NewTenantRepository(
-	db *sql.DB, tenantMapper *mapper.TenantMapper, logger zerolog.Logger,
+	db *sql.DB, tenantMapper *mapper.TenantMapper, logger *slog.Logger,
 ) TenantRepository {
 	return &tenantRepositoryImpl{
 		db:           db,
 		tenantMapper: tenantMapper,
-		logger: logger.With().Str(
-			"component", "tenant_repository",
-		).Logger(),
+		logger:       logger.With(slog.String("component", "tenant_repository")),
 	}
 }
 

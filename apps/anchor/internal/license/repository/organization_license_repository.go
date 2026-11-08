@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -30,16 +30,16 @@ func organizationLicensesUpdatableColumns() postgres.ColumnList {
 type organizationLicenseRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.OrganizationLicenseMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewOrganizationLicenseRepository(
-	db *sql.DB, m *mapper.OrganizationLicenseMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.OrganizationLicenseMapper, logger *slog.Logger,
 ) OrganizationLicenseRepository {
 	return &organizationLicenseRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "organization_license_repository").Logger(),
+		logger: logger.With(slog.String("component", "organization_license_repository")),
 	}
 }
 

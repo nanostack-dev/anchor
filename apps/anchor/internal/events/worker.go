@@ -6,14 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	serviceconfig "anchor/internal/service/config"
 	"anchor/internal/telemetry"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -39,12 +41,12 @@ type WorkerParams struct {
 	Queue           *queue.Client
 	EndpointService EndpointService
 	Endpoints       EndpointRepository
-	Logger          zerolog.Logger
+	Logger          *slog.Logger
 	Core            *serviceconfig.CoreConfig
 }
 
 func RegisterWorker(p WorkerParams) {
-	logger := p.Logger.With().Str("component", "product_events_worker").Logger()
+	logger := p.Logger.With(slog.String("component", "product_events_worker"))
 	deliverer := &deliverer{
 		endpoints: p.EndpointService,
 		repo:      p.Endpoints,
@@ -61,7 +63,7 @@ func RegisterWorker(p WorkerParams) {
 
 	registry := queue.NewHandlerRegistry()
 	if err := registry.Register(queueName, deliverer.handleJob); err != nil {
-		logger.Error().Err(err).Msg("failed to register product events queue handler")
+		logger.Error("failed to register product events queue handler", log.Err(err))
 		return
 	}
 
@@ -78,30 +80,30 @@ func RegisterWorker(p WorkerParams) {
 		BatchSizePerQueue: workerBatchSize,
 		BackoffBase:       workerBackoffBase,
 		BackoffMax:        workerBackoffMax,
-		OnJobFailed: func(_ context.Context, job queue.Job) {
-			logger.Error().
-				Int64("job_id", job.ID).
-				Int("attempts", job.Attempts).
-				Str("last_error", job.LastError.String).
-				Msg("product event delivery permanently failed")
+		OnJobFailed: func(ctx context.Context, job queue.Job) {
+			logger.ErrorContext(ctx, "product event delivery permanently failed",
+				slog.Int64("job_id", job.ID),
+				slog.Int("attempts", job.Attempts),
+				slog.String("last_error", job.LastError.String),
+			)
 		},
 	})
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize product events worker")
+		logger.Error("failed to initialize product events worker", log.Err(err))
 		return
 	}
 
 	var cancel context.CancelFunc
 	p.Lifecycle.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
+		OnStart: func(ctx context.Context) error {
 			workerCtx, workerCancel := context.WithCancel(context.Background()) //nolint:gosec // canceled in OnStop
 			cancel = workerCancel
 			go func() {
 				if runErr := worker.Run(workerCtx); runErr != nil {
-					logger.Error().Err(runErr).Msg("product events worker stopped")
+					logger.ErrorContext(workerCtx, "product events worker stopped", log.Err(runErr))
 				}
 			}()
-			logger.Info().Str("queue_name", queueName).Msg("product events worker started")
+			logger.InfoContext(ctx, "product events worker started", slog.String("queue_name", queueName))
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
@@ -118,7 +120,7 @@ type deliverer struct {
 	repo      EndpointRepository
 	http      *http.Client
 	now       func() time.Time
-	logger    zerolog.Logger
+	logger    *slog.Logger
 }
 
 func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
@@ -184,15 +186,18 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		return nil
 	}
 	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
-	d.logger.Warn().
-		Int("status", resp.StatusCode).
-		Str("event_id", payload.EventID).
-		Msg("product event delivery rejected")
+	d.logger.WarnContext(ctx, "product event delivery rejected",
+		slog.Int("status", resp.StatusCode),
+		slog.String("event_id", payload.EventID),
+	)
 	return fmt.Errorf("events: delivery status %d", resp.StatusCode)
 }
 
 func (d *deliverer) recordDeliveryResult(ctx context.Context, productID, endpointURL string, succeeded bool) {
 	if err := d.repo.RecordDeliveryResultInternal(ctx, productID, endpointURL, succeeded); err != nil {
-		d.logger.Error().Err(err).Str("product_id", productID).Msg("failed to record event delivery result")
+		d.logger.ErrorContext(ctx, "failed to record event delivery result",
+			log.Err(err),
+			slog.String("product_id", productID),
+		)
 	}
 }

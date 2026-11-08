@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 type ProductPermissionRepository interface {
@@ -69,20 +69,18 @@ func productPermissionsUpdatableColumns() postgres.ColumnList {
 type productPermissionRepositoryImpl struct {
 	db                      *sql.DB
 	productPermissionMapper *mapper.ProductPermissionMapper
-	logger                  zerolog.Logger
+	logger                  *slog.Logger
 }
 
 func NewProductPermissionRepository(
 	db *sql.DB,
 	productPermissionMapper *mapper.ProductPermissionMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ProductPermissionRepository {
 	return &productPermissionRepositoryImpl{
 		db:                      db,
 		productPermissionMapper: productPermissionMapper,
-		logger: logger.With().Str(
-			"component", "product_permission_repository",
-		).Logger(),
+		logger:                  logger.With(slog.String("component", "product_permission_repository")),
 	}
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -10,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -23,16 +23,16 @@ var _ OrganizationLicenseChangeRepository = (*organizationLicenseChangeRepositor
 type organizationLicenseChangeRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.OrganizationLicenseChangeMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewOrganizationLicenseChangeRepository(
-	db *sql.DB, m *mapper.OrganizationLicenseChangeMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.OrganizationLicenseChangeMapper, logger *slog.Logger,
 ) OrganizationLicenseChangeRepository {
 	return &organizationLicenseChangeRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "organization_license_change_repository").Logger(),
+		logger: logger.With(slog.String("component", "organization_license_change_repository")),
 	}
 }
 

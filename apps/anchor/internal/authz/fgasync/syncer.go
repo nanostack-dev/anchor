@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/authz/fga"
 )
@@ -42,7 +42,7 @@ type Deps struct {
 	Locker     Locker
 	Models     ModelSource
 	Sources    []Source
-	Logger     zerolog.Logger
+	Logger     *slog.Logger
 	// Now defaults to time.Now.
 	Now func() time.Time
 }
@@ -57,7 +57,7 @@ type Syncer struct {
 	sources  []Source
 	byName   map[string]Source
 	compiled *modelCache
-	logger   zerolog.Logger
+	logger   *slog.Logger
 	now      func() time.Time
 	timing   timing
 	// storesToken continues the walk over OpenFGA's stores between sweeps.
@@ -79,7 +79,7 @@ func New(deps Deps) (*Syncer, error) {
 		engines: deps.Engines, stores: deps.Stores, repo: deps.Repository, locker: deps.Locker,
 		models: deps.Models, sources: deps.Sources, byName: byName,
 		compiled: newModelCache(),
-		logger:   deps.Logger.With().Str("component", "authz_syncer").Logger(),
+		logger:   deps.Logger.With(slog.String("component", "authz_syncer")),
 		now:      now,
 		timing:   defaultTiming(),
 	}, nil
@@ -183,8 +183,11 @@ func (s *Syncer) Reconcile(ctx context.Context, productID string) error {
 			return lockedErr
 		}
 		if !changes.IsEmpty() {
-			s.logger.Info().Str("product_id", productID).Int("writes", len(changes.Writes)).
-				Int("deletes", len(changes.Deletes)).Msg("reconcile repaired the relationship store")
+			s.logger.InfoContext(txCtx, "reconcile repaired the relationship store",
+				slog.String("product_id", productID),
+				slog.Int("writes", len(changes.Writes)),
+				slog.Int("deletes", len(changes.Deletes)),
+			)
 		}
 		return s.repo.SetReconciled(txCtx, productID, s.now())
 	})

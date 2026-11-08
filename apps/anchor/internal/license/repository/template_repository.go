@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -35,16 +35,16 @@ func activeOnly() postgres.BoolExpression {
 type templateRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.LicenseTemplateMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewTemplateRepository(
-	db *sql.DB, m *mapper.LicenseTemplateMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.LicenseTemplateMapper, logger *slog.Logger,
 ) TemplateRepository {
 	return &templateRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "license_template_repository").Logger(),
+		logger: logger.With(slog.String("component", "license_template_repository")),
 	}
 }
 

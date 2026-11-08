@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -19,7 +20,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 )
 
 var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)(nil)
@@ -146,18 +146,16 @@ type OrganizationMembershipRepository interface {
 
 type organizationMembershipRepositoryImpl struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewOrganizationMembershipRepository(
 	db *sql.DB,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationMembershipRepository {
 	return &organizationMembershipRepositoryImpl{
-		db: db,
-		logger: logger.With().Str(
-			"component", "organization_membership_repository",
-		).Logger(),
+		db:     db,
+		logger: logger.With(slog.String("component", "organization_membership_repository")),
 	}
 }
 

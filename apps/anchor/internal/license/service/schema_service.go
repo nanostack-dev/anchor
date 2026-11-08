@@ -9,13 +9,13 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	licenserepo "anchor/internal/license/repository"
@@ -141,7 +141,7 @@ type licenseSchemaService struct {
 	fieldRepo    licenserepo.SchemaFieldRepository
 	templateRepo licenserepo.TemplateRepository
 	sync         LicenseTemplateSyncEnqueuer
-	logger       zerolog.Logger
+	logger       *slog.Logger
 }
 
 func NewLicenseSchemaService(
@@ -150,7 +150,7 @@ func NewLicenseSchemaService(
 	fieldRepo licenserepo.SchemaFieldRepository,
 	templateRepo licenserepo.TemplateRepository,
 	sync LicenseTemplateSyncEnqueuer,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) LicenseSchemaService {
 	return &licenseSchemaService{
 		transactor:   tx,
@@ -158,7 +158,7 @@ func NewLicenseSchemaService(
 		fieldRepo:    fieldRepo,
 		templateRepo: templateRepo,
 		sync:         sync,
-		logger:       logger.With().Str("component", "license_schema_service").Logger(),
+		logger:       logger.With(slog.String("component", "license_schema_service")),
 	}
 }
 

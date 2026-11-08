@@ -11,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/generator/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/generator/template"
 	postgres2 "github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 type DBConfig struct {
@@ -39,7 +38,6 @@ func useArray(f *template.TableModelField, _ metadata.Table, c metadata.Column) 
 }
 
 func generateModels(config DBConfig) error {
-	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	dbConnection := postgres.DBConnection{
 		User:       config.User,
 		Password:   config.Password,
@@ -77,12 +75,11 @@ func generateModels(config DBConfig) error {
 	if err != nil {
 		return fmt.Errorf("error generating models for DB '%s': %w", config.Name, err)
 	}
-	log.Printf("Successfully generated models for DB '%s' at '%s'\n", config.Name, config.OutputDir)
+	fmt.Fprintf(os.Stdout, "Successfully generated models for DB '%s' at '%s'\n", config.Name, config.OutputDir)
 	return nil
 }
 
 func ensureDatabaseExists(adminConfig AdminDBConfig, dbName string) error {
-	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	connStr := fmt.Sprintf(
 		"host=localhost port=%d user=%s password=%s dbname=postgres sslmode=%s",
 		adminConfig.Port, adminConfig.User, adminConfig.Password, adminConfig.SSLMode,
@@ -101,22 +98,20 @@ func ensureDatabaseExists(adminConfig AdminDBConfig, dbName string) error {
 	}
 
 	if exists {
-		log.Printf("Database '%s' already exists.\n", dbName)
+		fmt.Fprintf(os.Stdout, "Database '%s' already exists.\n", dbName)
 	} else {
 		createQuery := fmt.Sprintf("CREATE DATABASE %s", pq.QuoteIdentifier(dbName))
 		_, err = db.Exec(createQuery)
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %w", dbName, err)
 		}
-		log.Printf("Database '%s' created successfully.\n", dbName)
+		fmt.Fprintf(os.Stdout, "Database '%s' created successfully.\n", dbName)
 	}
 
 	return nil
 }
 
 func main() {
-	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
-
 	adminConfig := AdminDBConfig{
 		User:     "postgres",
 		Password: getEnv("ANCHOR_DB_PASSWORD", ""),
@@ -126,7 +121,7 @@ func main() {
 	}
 
 	if adminConfig.Password == "" {
-		log.Fatal().Msgf("ADMIN_DB_PASSWORD environment variable is required for admin connection")
+		fatalf("ADMIN_DB_PASSWORD environment variable is required for admin connection")
 	}
 
 	databases := []DBConfig{
@@ -146,20 +141,20 @@ func main() {
 	// Validate and ensure databases exist
 	for _, dbConfig := range databases {
 		if dbConfig.Password == "" {
-			log.Fatal().Msgf("%s_DB_PASSWORD environment variable is required", dbConfig.Name)
+			fatalf("%s_DB_PASSWORD environment variable is required", dbConfig.Name)
 		}
 		if dbConfig.DBName == "" {
-			log.Fatal().Msgf("%s_DB_NAME environment variable is required", dbConfig.Name)
+			fatalf("%s_DB_NAME environment variable is required", dbConfig.Name)
 		}
 
 		// Ensure the database exists
 		if err := ensureDatabaseExists(adminConfig, dbConfig.DBName); err != nil {
-			log.Fatal().Msgf("Failed to ensure database '%s': %v", dbConfig.DBName, err)
+			fatalf("Failed to ensure database '%s': %v", dbConfig.DBName, err)
 		}
 
 		// Generate models for the database
 		if err := generateModels(dbConfig); err != nil {
-			log.Fatal().Err(err)
+			fatalf("Failed to generate models for DB '%s': %v", dbConfig.Name, err)
 		}
 	}
 }
@@ -174,13 +169,18 @@ func getEnv(key, defaultVal string) string {
 
 // getEnvAsInt reads an environment variable as integer or returns a default value.
 func getEnvAsInt(name string, defaultVal int) int {
-	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	if valueStr, exists := os.LookupEnv(name); exists && valueStr != "" {
 		value, err := strconv.Atoi(valueStr)
 		if err != nil {
-			log.Fatal().Msgf("Invalid value for %s: %v", name, err)
+			fatalf("Invalid value for %s: %v", name, err)
 		}
 		return value
 	}
 	return defaultVal
+}
+
+// fatalf prints the message to stderr and exits with status 1.
+func fatalf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	os.Exit(1)
 }

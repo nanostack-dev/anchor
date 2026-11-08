@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -12,7 +15,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -80,7 +82,7 @@ type licenseMigrationService struct {
 	lock          *pglock.Client
 	licenses      *organizationLicenseCache
 	events        events.Emitter
-	logger        zerolog.Logger
+	logger        *slog.Logger
 }
 
 func NewLicenseMigrationService(
@@ -90,9 +92,9 @@ func NewLicenseMigrationService(
 	organizations intrepo.OrganizationRepository,
 	tx transactor.Transactor,
 	lock *pglock.Client,
-	cacheStore cache.Store,
+	licenseEntries cache.Cache[license.OrganizationLicense],
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) LicenseMigrationService {
 	return &licenseMigrationService{
 		licenseRepo:   licenseRepo,
@@ -101,9 +103,9 @@ func NewLicenseMigrationService(
 		organizations: organizations,
 		transactor:    tx,
 		lock:          lock,
-		licenses:      newOrganizationLicenseCache(cacheStore, logger),
+		licenses:      newOrganizationLicenseCache(licenseEntries, logger),
 		events:        eventEmitter,
-		logger:        logger.With().Str("component", "license_migration_service").Logger(),
+		logger:        logger.With(slog.String("component", "license_migration_service")),
 	}
 }
 
@@ -199,15 +201,15 @@ func (s *licenseMigrationService) migrate(
 	}
 
 	tally := migration.Tally()
-	s.logger.Info().
-		Str("product_id", in.ProductID).
-		Str("license_template_id", target.ID).
-		Str("on_difference", string(run.policy())).
-		Int("considered", len(migration.Results)).
-		Int("changed", tally.Changed).
-		Int("unchanged", tally.Unchanged).
-		Int("failed", tally.Failed).
-		Msg("organization license migration run finished")
+	s.logger.InfoContext(ctx, "organization license migration run finished",
+		slog.String("product_id", in.ProductID),
+		slog.String("license_template_id", target.ID),
+		slog.String("on_difference", string(run.policy())),
+		slog.Int("considered", len(migration.Results)),
+		slog.Int("changed", tally.Changed),
+		slog.Int("unchanged", tally.Unchanged),
+		slog.Int("failed", tally.Failed),
+	)
 
 	return migration, nil
 }
@@ -300,11 +302,11 @@ func (s *licenseMigrationService) migrateOne(
 		}
 		return emitLicenseUpdated(txCtx, s.events, run.input.ProductID, organizationID)
 	}); txErr != nil {
-		s.logger.Warn().
-			Str("product_id", run.input.ProductID).
-			Str("organization_id", organizationID).
-			Err(txErr).
-			Msg("organization left behind by a license migration")
+		s.logger.WarnContext(ctx, "organization left behind by a license migration",
+			slog.String("product_id", run.input.ProductID),
+			slog.String("organization_id", organizationID),
+			log.Err(txErr),
+		)
 		return license.OrganizationMigrationResult{
 			OrganizationID: organizationID,
 			Outcome:        license.OutcomeFailed,

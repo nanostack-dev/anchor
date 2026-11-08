@@ -1,6 +1,8 @@
 package api
 
 import (
+	"log/slog"
+
 	accesssvc "anchor/internal/access/service"
 	emailsvc "anchor/internal/email/service"
 	invitationsvc "anchor/internal/invitation/service"
@@ -12,7 +14,6 @@ import (
 	"anchor/internal/service/config"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -49,7 +50,7 @@ type AnchorAPI struct {
 	AccessEvaluator               accesssvc.Evaluator
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
-	logger                        zerolog.Logger
+	logger                        *slog.Logger
 }
 
 type Params struct {
@@ -84,7 +85,7 @@ type Params struct {
 	AccessEvaluator               accesssvc.Evaluator
 	Queue                         *queue.Client
 	CoreConfig                    *config.CoreConfig
-	Logger                        zerolog.Logger
+	Logger                        *slog.Logger
 }
 
 func NewAPI(params Params) *AnchorAPI {
@@ -119,6 +120,6 @@ func NewAPI(params Params) *AnchorAPI {
 		AccessEvaluator:               params.AccessEvaluator,
 		Queue:                         params.Queue,
 		CoreConfig:                    params.CoreConfig,
-		logger:                        params.Logger.With().Str("component", "api_handler").Logger(),
+		logger:                        params.Logger.With(slog.String("component", "api_handler")),
 	}
 }

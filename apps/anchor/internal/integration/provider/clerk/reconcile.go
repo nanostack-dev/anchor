@@ -25,7 +25,7 @@ func (p *Provider) Reconcile(
 
 	apiKey := strings.TrimSpace(cfg.APIKey)
 	if apiKey == "" {
-		p.logger.Info().Msg("clerk api key not configured, reconciliation skipped")
+		p.logger.InfoContext(ctx, "clerk api key not configured, reconciliation skipped")
 		return nil, nil
 	}
 

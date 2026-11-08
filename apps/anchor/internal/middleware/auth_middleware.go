@@ -1,16 +1,18 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
+	"slices"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
-	"github.com/rs/zerolog"
-
+	"anchor/internal/applog"
 	"anchor/internal/domain/product"
 	"anchor/internal/repository"
+	"anchor/internal/security"
 	"anchor/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -25,7 +27,10 @@ type AuthMiddleware struct {
 	productAPIKeyKeyService service.ProductAPIKeyService
 	productService          service.ProductService
 	members                 repository.PlatformTenantUserRepository
-	logger                  zerolog.Logger
+	logger                  *slog.Logger
+	// identity is the service identity, added to the request scope with the
+	// caller once auth succeeds.
+	identity applog.Identity
 	// resolver reads each operation's security requirements from the OpenAPI
 	// document, replacing oapi-codegen's generated `<Scheme>Scopes` context
 	// keys, which flattened them and could not represent alternative or
@@ -36,15 +41,16 @@ type AuthMiddleware struct {
 // NewAuthMiddleware creates a new AuthMiddleware instance.
 func NewAuthMiddleware(
 	jwtHelper service.JWTHelper, productAPIKeyKeyService service.ProductAPIKeyService,
-	productService service.ProductService, members repository.PlatformTenantUserRepository, logger zerolog.Logger,
-	resolver *apisec.Resolver,
+	productService service.ProductService, members repository.PlatformTenantUserRepository, logger *slog.Logger,
+	identity applog.Identity, resolver *apisec.Resolver,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtHelper:               jwtHelper,
 		productAPIKeyKeyService: productAPIKeyKeyService,
 		productService:          productService,
 		members:                 members,
-		logger:                  logger.With().Str("component", "auth_middleware").Logger(),
+		logger:                  logger.With(slog.String("component", "auth_middleware")),
+		identity:                identity,
 		resolver:                resolver,
 	}
 }
@@ -59,10 +65,10 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 			// with an empty requirement set, which would read as "public".
 			requirements, resolved := auth.resolver.For(r)
 			if !resolved {
-				auth.logger.Warn().
-					Str("method", r.Method).
-					Str("path", r.URL.Path).
-					Msg("no OpenAPI operation matched; refusing the request")
+				auth.logger.WarnContext(r.Context(), "no OpenAPI operation matched; refusing the request",
+					slog.String("method", r.Method),
+					slog.String("path", r.URL.Path),
+				)
 				writeAPIError(w, fault.ErrUnauthorized)
 				return
 			}
@@ -83,11 +89,10 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 				return
 			}
 
-			// Rebuild the request logger now that the caller is resolved, so
-			// every line for this request carries the user and tenant. The
-			// fields come from the enrichers each package registers, not from
-			// a list maintained here.
-			authorized = log.Bind(authorized)
+			// Add the caller and the service identity to the request scope, so
+			// every later line of the request, the summary line included,
+			// carries them. A refused request and a public route get neither.
+			log.SetAttrs(authorized, append(slices.Clone(auth.identity), security.LogAttrs(authorized)...)...)
 
 			next.ServeHTTP(w, r.WithContext(authorized))
 		},
@@ -137,15 +142,19 @@ func (auth *AuthMiddleware) authorizeProductAccess(
 		},
 	)
 	if err != nil {
-		auth.logger.Warn().Err(err).Str("tenant_id", token.TenantID).Msgf(
-			"Failed to find product %s for tenant %s", productIDPath, token.TenantID,
+		auth.logger.WarnContext(r.Context(), "Failed to find product for tenant",
+			log.Err(err),
+			slog.String("tenant_id", token.TenantID),
+			slog.String("product_id", productIDPath),
 		)
 		return &schemeError{fault: fault.ErrUnexpected, reason: "product lookup failed"}
 	}
 
 	if find == nil {
-		auth.logger.Debug().Str("tenant_id", token.TenantID).Str("product_id", productIDPath).
-			Msg("Product not found for tenant")
+		auth.logger.DebugContext(r.Context(), "Product not found for tenant",
+			slog.String("tenant_id", token.TenantID),
+			slog.String("product_id", productIDPath),
+		)
 		return &schemeError{fault: product.ErrProductNotFound, reason: "product not found for tenant"}
 	}
 

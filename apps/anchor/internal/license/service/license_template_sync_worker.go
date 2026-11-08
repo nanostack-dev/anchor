@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
+
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -24,15 +26,15 @@ type LicenseTemplateSyncWorkerParams struct {
 	Lifecycle fx.Lifecycle
 	Sync      LicenseTemplateSyncService
 	Queue     *queue.Client
-	Logger    zerolog.Logger
+	Logger    *slog.Logger
 }
 
 func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
-	logger := p.Logger.With().Str("component", "license_template_sync_worker").Logger()
+	logger := p.Logger.With(slog.String("component", "license_template_sync_worker"))
 
 	registry := queue.NewHandlerRegistry()
 	if err := registry.Register(licenseTemplateSyncQueueName, p.Sync.ProcessQueueJob); err != nil {
-		logger.Error().Err(err).Msg("failed to register license template sync queue handler")
+		logger.Error("failed to register license template sync queue handler", log.Err(err))
 		return
 	}
 
@@ -45,24 +47,24 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 			BatchSizePerQueue: licenseTemplateSyncWorkerBatch,
 			BackoffBase:       licenseTemplateSyncBackoffBase,
 			BackoffMax:        licenseTemplateSyncBackoffMax,
-			OnJobFailed: func(_ context.Context, job queue.Job) {
-				logger.Error().
-					Int64("job_id", job.ID).
-					Str("queue", job.QueueName).
-					Int("attempts", job.Attempts).
-					Str("last_error", job.LastError.String).
-					Msg("license template sync job permanently failed")
+			OnJobFailed: func(ctx context.Context, job queue.Job) {
+				logger.ErrorContext(ctx, "license template sync job permanently failed",
+					slog.Int64("job_id", job.ID),
+					slog.String("queue", job.QueueName),
+					slog.Int("attempts", job.Attempts),
+					slog.String("last_error", job.LastError.String),
+				)
 			},
-			OnJobStuck: func(_ context.Context, result queue.ReapResult) {
-				logger.Warn().
-					Int64("requeued", result.Requeued).
-					Int64("failed", result.Failed).
-					Msg("license template sync jobs stuck in processing were reaped")
+			OnJobStuck: func(ctx context.Context, result queue.ReapResult) {
+				logger.WarnContext(ctx, "license template sync jobs stuck in processing were reaped",
+					slog.Int64("requeued", result.Requeued),
+					slog.Int64("failed", result.Failed),
+				)
 			},
 		},
 	)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize license template sync worker")
+		logger.Error("failed to initialize license template sync worker", log.Err(err))
 		return
 	}
 
@@ -70,25 +72,29 @@ func RegisterLicenseTemplateSyncWorker(p LicenseTemplateSyncWorkerParams) {
 
 	p.Lifecycle.Append(
 		fx.Hook{
-			OnStart: func(_ context.Context) error {
+			OnStart: func(ctx context.Context) error {
 				workerCtx, workerCancel := context.WithCancel(context.Background())
 				cancel = workerCancel
 
 				go func() {
 					defer workerCancel()
 					if runErr := worker.Run(workerCtx); runErr != nil {
-						logger.Error().Err(runErr).Msg("license template sync worker stopped with error")
+						logger.ErrorContext(
+							workerCtx,
+							"license template sync worker stopped with error",
+							log.Err(runErr),
+						)
 					}
 				}()
 
-				logger.Info().
-					Str("queue_name", licenseTemplateSyncQueueName).
-					Dur("poll_interval", licenseTemplateSyncPollInterval).
-					Msg("license template sync worker started")
+				logger.InfoContext(ctx, "license template sync worker started",
+					slog.String("queue_name", licenseTemplateSyncQueueName),
+					slog.Duration("poll_interval", licenseTemplateSyncPollInterval),
+				)
 				return nil
 			},
-			OnStop: func(_ context.Context) error {
-				logger.Info().Msg("stopping license template sync worker")
+			OnStop: func(ctx context.Context) error {
+				logger.InfoContext(ctx, "stopping license template sync worker")
 				if cancel != nil {
 					cancel()
 				}

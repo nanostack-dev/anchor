@@ -7,15 +7,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"golang.org/x/sync/singleflight"
 
 	accessservice "anchor/internal/access/service"
+	"anchor/internal/applog"
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/fga"
 	"anchor/internal/authz/fgasync"
@@ -58,10 +60,13 @@ type Checker struct {
 	// current holds when this process last made sure each Product's model is
 	// the one it compiles.
 	current sync.Map
+	// logger writes a failed model check with the request scope of its
+	// context.
+	logger *slog.Logger
 }
 
-func NewChecker(stores store.Stores, rebuilder Rebuilder) *Checker {
-	return &Checker{stores: stores, rebuilder: rebuilder}
+func NewChecker(stores store.Stores, rebuilder Rebuilder, logger applog.Scoped) *Checker {
+	return &Checker{stores: stores, rebuilder: rebuilder, logger: logger.Logger}
 }
 
 // Holds checks every action on the object. An unregistered resource is
@@ -170,7 +175,7 @@ func (c *Checker) currentModel(ctx context.Context, productID string, opened sto
 		defer cancel()
 		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
 			c.current.Store(productID, time.Now().Add(modelRetryDelay-modelCheckInterval))
-			log.Ctx(ctx).Warn().Err(err).Str("product_id", productID).Msg("authz model check failed")
+			c.logger.WarnContext(ctx, "authz model check failed", log.Err(err), slog.String("product_id", productID))
 			return nil, err
 		}
 		c.current.Store(productID, time.Now())

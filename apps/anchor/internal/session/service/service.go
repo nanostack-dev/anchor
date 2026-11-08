@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/session"
 	"anchor/internal/session/repository"
@@ -44,14 +44,14 @@ type Service interface {
 type sessionService struct {
 	repo       repository.Repository
 	transactor transactor.Transactor
-	logger     zerolog.Logger
+	logger     *slog.Logger
 }
 
-func NewService(repo repository.Repository, tx transactor.Transactor, logger zerolog.Logger) Service {
+func NewService(repo repository.Repository, tx transactor.Transactor, logger *slog.Logger) Service {
 	return &sessionService{
 		repo:       repo,
 		transactor: tx,
-		logger:     logger.With().Str("component", "session_service").Logger(),
+		logger:     logger.With(slog.String("component", "session_service")),
 	}
 }
 
@@ -94,9 +94,9 @@ func (s *sessionService) Rotate(ctx context.Context, input RotateInput) error {
 		return err
 	}
 	if replayed {
-		s.logger.Warn().
-			Str("session_id", input.Next.SessionID).
-			Msg("rotated refresh token presented again; session revoked")
+		s.logger.WarnContext(ctx, "rotated refresh token presented again; session revoked",
+			slog.String("session_id", input.Next.SessionID),
+		)
 		return ErrRefreshReplayed
 	}
 	return nil

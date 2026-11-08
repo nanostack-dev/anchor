@@ -1,17 +1,21 @@
 package service_test
 
 import (
+	"log/slog"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
+	"anchor/internal/domain/license"
 	"anchor/internal/license/service"
 )
 
 func TestTemplateSyncRejectsMalformedPayload(t *testing.T) {
-	sync := service.NewLicenseTemplateSyncService(nil, nil, nil, nil, nil, nil, nil, nil, zerolog.Nop())
+	sync := service.NewLicenseTemplateSyncService(
+		nil, nil, nil, nil, nil, nil, cache.Cache[license.OrganizationLicense]{}, nil, slog.New(slog.DiscardHandler),
+	)
 	for _, payload := range []string{
 		`{`, `{}`, `{"tenant_id":" ","product_id":"prd_1","template_id":"ltpl_1"}`,
 	} {

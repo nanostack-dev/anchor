@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"anchor/internal/access"
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
@@ -49,7 +50,14 @@ func startAnchor(target ...any) {
 	}
 
 	app := fx.New(
-		logging.Module,
+		applog.Module(),
+		// The deprecated framework fx modules below (tracing, config,
+		// postgres, cache, migrations, pglock) and modules/cache's cache.New
+		// still take a zerolog.Logger. These two constructors provide the one
+		// they had, without the pkg/log Binder: anchor's own code logs through
+		// log/slog (internal/applog). Delete them when the last of those
+		// modules moves to its nano replacement.
+		fx.Provide(logging.NewLoggingConfig, logging.NewZerologLogger),
 		tracing.Module,
 		config.Module,
 		postgres.Module,

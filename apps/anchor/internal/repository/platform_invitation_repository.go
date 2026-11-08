@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -13,7 +14,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -50,18 +50,18 @@ type InvitationRepository interface {
 type invitationRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.InvitationMapper // Use concrete type
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewPlatformInvitationRepository(
 	db *sql.DB,
 	mapper *mapper.InvitationMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) InvitationRepository {
 	return &invitationRepositoryImpl{
 		db:     db,
 		mapper: mapper,
-		logger: logger.With().Str("component", "invitation_repository").Logger(),
+		logger: logger.With(slog.String("component", "invitation_repository")),
 	}
 }
 

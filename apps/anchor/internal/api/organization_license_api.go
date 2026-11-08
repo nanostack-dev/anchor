@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"log/slog"
+
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
@@ -42,10 +45,10 @@ func (s *AnchorAPI) InstantiateOrganizationLicense(
 		},
 	)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to instantiate organization license")
+		applog.Error(ctx, s.logger, err, "failed to instantiate organization license",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 	return InstantiateOrganizationLicense201JSONResponse(
@@ -67,10 +70,10 @@ func (s *AnchorAPI) GetOrganizationLicense(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to get organization license")
+		applog.Error(ctx, s.logger, err, "failed to get organization license",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 	if organizationLicense == nil {
@@ -100,10 +103,10 @@ func (s *AnchorAPI) AdjustOrganizationLicense(
 		},
 	)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to adjust organization license")
+		applog.Error(ctx, s.logger, err, "failed to adjust organization license",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 	return AdjustOrganizationLicense200JSONResponse(
@@ -125,10 +128,10 @@ func (s *AnchorAPI) GetOrganizationLicenseDiff(
 		OrganizationID: request.OrganizationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to diff organization license against its template")
+		applog.Error(ctx, s.logger, err, "failed to diff organization license against its template",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 	return GetOrganizationLicenseDiff200JSONResponse(mapLicenseDiffToResponse(diff)), nil
@@ -154,10 +157,10 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 			}),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to get organization license history")
+		applog.Error(ctx, s.logger, err, "failed to get organization license history",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 
@@ -189,10 +192,10 @@ func (s *AnchorAPI) SearchOrganizationLicenseHistory(
 		Request:        mapToSearchLicenseChangesRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to search organization license history")
+		applog.Error(ctx, s.logger, err, "failed to search organization license history",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 

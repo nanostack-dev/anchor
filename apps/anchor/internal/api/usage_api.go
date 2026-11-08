@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -67,11 +70,11 @@ func (s *AnchorAPI) ReportOrganizationUsage(
 		To:             request.Body.To,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("key", request.Body.Key).
-			Msg("failed to report organization usage")
+		applog.Error(ctx, s.logger, err, "failed to report organization usage",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("key", request.Body.Key),
+		)
 		return nil, err
 	}
 	return ReportOrganizationUsage201JSONResponse(
@@ -99,11 +102,11 @@ func (s *AnchorAPI) GetOrganizationUsageSeries(
 		Pagination:     usageSeriesPagination(request.Params.Limit, request.Params.Offset),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("key", request.Params.Key).
-			Msg("failed to get organization usage series")
+		applog.Error(ctx, s.logger, err, "failed to get organization usage series",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("key", request.Params.Key),
+		)
 		return nil, err
 	}
 

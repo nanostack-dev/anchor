@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -17,7 +18,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ OrganizationRepository = (*organizationRepositoryImpl)(nil)
@@ -48,20 +48,18 @@ type OrganizationRepository interface {
 type organizationRepositoryImpl struct {
 	db                 *sql.DB
 	organizationMapper *mapper.OrganizationMapper
-	logger             zerolog.Logger
+	logger             *slog.Logger
 }
 
 func NewOrganizationRepository(
 	db *sql.DB,
 	organizationMapper *mapper.OrganizationMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationRepository {
 	return &organizationRepositoryImpl{
 		db:                 db,
 		organizationMapper: organizationMapper,
-		logger: logger.With().Str(
-			"component", "organization_repository",
-		).Logger(),
+		logger:             logger.With(slog.String("component", "organization_repository")),
 	}
 }
 

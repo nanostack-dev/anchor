@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	accessservice "anchor/internal/access/service"
+	"anchor/internal/applog"
 	"anchor/internal/authz/decision"
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/fga"
@@ -88,9 +89,10 @@ func TestAuthzDecisions(t *testing.T) {
 		require.NoError(t, TestDB.QueryRowContext(t.Context(),
 			`UPDATE authz_stores SET model_hash = 'previous release' WHERE product_id = $1 RETURNING model_id`,
 			w.productID).Scan(&before))
-		checker := decision.NewChecker(AuthzStores, AuthzSyncer)
+		checker := decision.NewChecker(AuthzStores, AuthzSyncer, applog.Scoped{Logger: TestLogger})
 		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
-			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger)
+			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger,
+			applog.Scoped{Logger: TestLogger})
 
 		decided, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
 
@@ -106,9 +108,13 @@ func TestAuthzDecisions(t *testing.T) {
 	t.Run("An engine that isn't ready answers 503", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		externalID, _ := givenMemberWithExternalID(t, w)
-		checker := decision.NewChecker(authzstore.New(TestDB, notReady{}, TestLogger), AuthzSyncer)
+		checker := decision.NewChecker(
+			authzstore.New(TestDB, notReady{}, TestLogger, applog.Scoped{Logger: TestLogger}), AuthzSyncer,
+			applog.Scoped{Logger: TestLogger},
+		)
 		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
-			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger)
+			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger,
+			applog.Scoped{Logger: TestLogger})
 
 		_, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
 

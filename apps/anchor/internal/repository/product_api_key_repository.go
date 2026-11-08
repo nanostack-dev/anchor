@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
@@ -19,7 +22,6 @@ import (
 	"anchor/internal/domain/product/apikey"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 type ProductAPIKeyRepository interface {
@@ -92,20 +94,18 @@ type productAPIKeyWithPermissions struct {
 
 type productAPIKeyRepository struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 	mapper *mapper.ProductAPIKeyMapper
 }
 
 func NewProductAPIKeyRepository(
 	db *sql.DB,
 	mapper *mapper.ProductAPIKeyMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ProductAPIKeyRepository {
 	return &productAPIKeyRepository{
-		db: db,
-		logger: logger.With().Str(
-			"component", "product_api_key_repository",
-		).Logger(),
+		db:     db,
+		logger: logger.With(slog.String("component", "product_api_key_repository")),
 		mapper: mapper,
 	}
 }
@@ -136,10 +136,11 @@ func (r *productAPIKeyRepository) Create(
 		return apikey.ProductAPIKey{}, err
 	}
 	if err != nil {
-		r.logger.Error().Err(err).
-			Str("api_key_id", apiKey.ID).
-			Str("product_id", apiKey.ProductID).
-			Msg("Failed to create product API key")
+		r.logger.ErrorContext(ctx, "Failed to create product API key",
+			log.Err(err),
+			slog.String("api_key_id", apiKey.ID),
+			slog.String("product_id", apiKey.ProductID),
+		)
 		return apikey.ProductAPIKey{}, err
 	}
 	var permissions []model.ProductAPIKeyPermissions
@@ -153,10 +154,11 @@ func (r *productAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			r.logger.Error().Err(err).
-				Str("api_key_id", apiKey.ID).
-				Str("product_id", apiKey.ProductID).
-				Msg("Failed to create product API key permissions")
+			r.logger.ErrorContext(ctx, "Failed to create product API key permissions",
+				log.Err(err),
+				slog.String("api_key_id", apiKey.ID),
+				slog.String("product_id", apiKey.ProductID),
+			)
 			return apikey.ProductAPIKey{}, err
 		}
 	}
@@ -311,9 +313,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		Value()
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			r.logger.Error().Err(err).Str(
-				"productID", input.ProductID,
-			).Msg("failed to search product API keys")
+			r.logger.ErrorContext(ctx, "failed to search product API keys",
+				log.Err(err),
+				slog.String("productID", input.ProductID),
+			)
 		}
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
@@ -338,9 +341,10 @@ func (r *productAPIKeyRepository) SearchByProductID(
 		ctx, input.ProductID, apiKeyIDs,
 	)
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", input.ProductID,
-		).Msg("failed to load product API key permissions")
+		r.logger.ErrorContext(ctx, "failed to load product API key permissions",
+			log.Err(err),
+			slog.String("productID", input.ProductID),
+		)
 		return search.Result[apikey.ProductAPIKey]{}, err
 	}
 

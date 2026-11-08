@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/role"
@@ -14,13 +17,12 @@ import (
 	assignments "anchor/internal/roleassignment/service"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 )
 
 // NewBodyProductUserNotFoundError answers a product_user_id supplied in a
@@ -86,7 +88,7 @@ type organizationMembershipService struct {
 	organizationRepo  repository.OrganizationRepository
 	transactor        transactor.Transactor
 	events            events.Emitter
-	logger            zerolog.Logger
+	logger            *slog.Logger
 }
 
 func NewOrganizationMembershipService(
@@ -98,7 +100,7 @@ func NewOrganizationMembershipService(
 	organizationRepo repository.OrganizationRepository,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationMembershipService {
 	return &organizationMembershipService{
 		orgMembershipRepo: orgMembershipRepo,
@@ -109,7 +111,7 @@ func NewOrganizationMembershipService(
 		organizationRepo:  organizationRepo,
 		transactor:        tx,
 		events:            eventEmitter,
-		logger:            logger.With().Str("component", "organization_membership_service").Logger(),
+		logger:            logger.With(slog.String("component", "organization_membership_service")),
 	}
 }
 
@@ -129,7 +131,7 @@ func (s *organizationMembershipService) emitMembership(
 func (s *organizationMembershipService) AddMember(
 	ctx context.Context, input organization.AddMemberInput,
 ) (organization.Membership, error) {
-	logger := s.logger.With().Str("operation", "AddMember").Logger()
+	logger := s.logger.With(slog.String("operation", "AddMember"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Membership{}, err
@@ -170,7 +172,7 @@ func (s *organizationMembershipService) AddMember(
 func (s *organizationMembershipService) UpdateMemberRole(
 	ctx context.Context, input organization.UpdateMemberRoleInput,
 ) (organization.Membership, error) {
-	logger := s.logger.With().Str("operation", "UpdateMemberRole").Logger()
+	logger := s.logger.With(slog.String("operation", "UpdateMemberRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Membership{}, err
@@ -204,17 +206,18 @@ func (s *organizationMembershipService) UpdateMemberRole(
 func (s *organizationMembershipService) checkMembershipAbsence(
 	ctx context.Context,
 	productID, organizationID, productUserID string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Str("product_user_id", productUserID).
-			Msg("failed to check existing membership")
+		logger.ErrorContext(ctx, "failed to check existing membership",
+			log.Err(err),
+			slog.String("product_id", productID),
+			slog.String("organization_id", organizationID),
+			slog.String("product_user_id", productUserID),
+		)
 		return err
 	}
 	if found.IsPresent() {
@@ -228,17 +231,18 @@ func (s *organizationMembershipService) checkMembershipAbsence(
 func (s *organizationMembershipService) checkMembershipPresence(
 	ctx context.Context,
 	productID, organizationID, productUserID string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	found, err := s.orgMembershipRepo.FindByOrgIDAndUserID(
 		ctx, productID, organizationID, productUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Str("product_user_id", productUserID).
-			Msg("failed to verify existing membership")
+		logger.ErrorContext(ctx, "failed to verify existing membership",
+			log.Err(err),
+			slog.String("product_id", productID),
+			slog.String("organization_id", organizationID),
+			slog.String("product_user_id", productUserID),
+		)
 		return err
 	}
 	if found.IsAbsent() {
@@ -257,7 +261,7 @@ func (s *organizationMembershipService) applyMembership(
 	eventType events.Type,
 	failMsg, successMsg string,
 	repoFn func(context.Context, string, string, string, *string) (organization.Membership, error),
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (organization.Membership, error) {
 	var membership organization.Membership
 	if txErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -274,21 +278,21 @@ func (s *organizationMembershipService) applyMembership(
 		if errors.Is(txErr, repository.ErrOrganizationMembershipRoleGone) {
 			return organization.Membership{}, NewBodyRoleNotFoundError(loggedRoleID(roleID))
 		}
-		log.Event(&logger, txErr).
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Str("product_user_id", productUserID).
-			Str("role_id", loggedRoleID(roleID)).
-			Msg(failMsg)
+		applog.Error(ctx, logger, txErr, failMsg,
+			slog.String("product_id", productID),
+			slog.String("organization_id", organizationID),
+			slog.String("product_user_id", productUserID),
+			slog.String("role_id", loggedRoleID(roleID)),
+		)
 		return organization.Membership{}, txErr
 	}
 
-	logger.Info().
-		Str("product_id", productID).
-		Str("organization_id", organizationID).
-		Str("product_user_id", productUserID).
-		Str("role_id", loggedRoleID(roleID)).
-		Msg(successMsg)
+	logger.InfoContext(ctx, successMsg,
+		slog.String("product_id", productID),
+		slog.String("organization_id", organizationID),
+		slog.String("product_user_id", productUserID),
+		slog.String("role_id", loggedRoleID(roleID)),
+	)
 
 	return membership, nil
 }
@@ -296,7 +300,7 @@ func (s *organizationMembershipService) applyMembership(
 func (s *organizationMembershipService) RemoveMember(
 	ctx context.Context, input organization.RemoveMemberInput,
 ) error {
-	logger := s.logger.With().Str("operation", "RemoveMember").Logger()
+	logger := s.logger.With(slog.String("operation", "RemoveMember"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -306,11 +310,12 @@ func (s *organizationMembershipService) RemoveMember(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, organization.WithoutRolePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("failed to verify membership before removal")
+		logger.ErrorContext(ctx, "failed to verify membership before removal",
+			log.Err(err),
+			slog.String("product_id", input.ProductID),
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("product_user_id", input.ProductUserID),
+		)
 		return err
 	}
 	if found.IsAbsent() {
@@ -332,19 +337,20 @@ func (s *organizationMembershipService) RemoveMember(
 			txCtx, events.MembershipDeleted, input.ProductID, input.OrganizationID, input.ProductUserID,
 		)
 	}); txErr != nil {
-		logger.Error().Err(txErr).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("failed to remove member from organization")
+		logger.ErrorContext(ctx, "failed to remove member from organization",
+			log.Err(txErr),
+			slog.String("product_id", input.ProductID),
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("product_user_id", input.ProductUserID),
+		)
 		return txErr
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("organization_id", input.OrganizationID).
-		Str("product_user_id", input.ProductUserID).
-		Msg("member removed from organization")
+	logger.InfoContext(ctx, "member removed from organization",
+		slog.String("product_id", input.ProductID),
+		slog.String("organization_id", input.OrganizationID),
+		slog.String("product_user_id", input.ProductUserID),
+	)
 
 	return nil
 }
@@ -352,7 +358,7 @@ func (s *organizationMembershipService) RemoveMember(
 func (s *organizationMembershipService) GetMember(
 	ctx context.Context, input organization.GetMemberInput,
 ) (organization.Membership, error) {
-	logger := s.logger.With().Str("operation", "GetMember").Logger()
+	logger := s.logger.With(slog.String("operation", "GetMember"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return organization.Membership{}, err
@@ -362,11 +368,12 @@ func (s *organizationMembershipService) GetMember(
 		ctx, input.ProductID, input.OrganizationID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Str("product_user_id", input.ProductUserID).
-			Msg("failed to get member")
+		logger.ErrorContext(ctx, "failed to get member",
+			log.Err(err),
+			slog.String("product_id", input.ProductID),
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("product_user_id", input.ProductUserID),
+		)
 		return organization.Membership{}, err
 	}
 
@@ -376,7 +383,7 @@ func (s *organizationMembershipService) GetMember(
 func (s *organizationMembershipService) ListMembers(
 	ctx context.Context, input organization.ListMembersInput,
 ) ([]organization.Membership, error) {
-	logger := s.logger.With().Str("operation", "ListMembers").Logger()
+	logger := s.logger.With(slog.String("operation", "ListMembers"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
@@ -386,10 +393,11 @@ func (s *organizationMembershipService) ListMembers(
 		ctx, input.ProductID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", input.ProductID).
-			Str("organization_id", input.OrganizationID).
-			Msg("failed to list members")
+		logger.ErrorContext(ctx, "failed to list members",
+			log.Err(err),
+			slog.String("product_id", input.ProductID),
+			slog.String("organization_id", input.OrganizationID),
+		)
 		return nil, err
 	}
 
@@ -399,7 +407,7 @@ func (s *organizationMembershipService) ListMembers(
 func (s *organizationMembershipService) SearchMembers(
 	ctx context.Context, input organization.SearchMembersInput,
 ) (search.Result[organization.Membership], error) {
-	logger := s.logger.With().Str("operation", "SearchMembers").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchMembers"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[organization.Membership]{}, err
@@ -410,10 +418,11 @@ func (s *organizationMembershipService) SearchMembers(
 	)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().Err(err).
-				Str("product_id", input.ProductID).
-				Str("organization_id", input.OrganizationID).
-				Msg("failed to search members")
+			logger.ErrorContext(ctx, "failed to search members",
+				log.Err(err),
+				slog.String("product_id", input.ProductID),
+				slog.String("organization_id", input.OrganizationID),
+			)
 		}
 		return search.Result[organization.Membership]{}, err
 	}
@@ -425,14 +434,15 @@ func (s *organizationMembershipService) validateProductUser(
 	ctx context.Context,
 	productID string,
 	productUserID string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	found, err := s.productUserRepo.FindByProductIDAndID(ctx, productID, productUserID)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("product_user_id", productUserID).
-			Msg("failed to verify product user exists")
+		logger.ErrorContext(ctx, "failed to verify product user exists",
+			log.Err(err),
+			slog.String("product_id", productID),
+			slog.String("product_user_id", productUserID),
+		)
 		return err
 	}
 	if found.IsAbsent() {
@@ -445,14 +455,15 @@ func (s *organizationMembershipService) validateProductUser(
 func (s *organizationMembershipService) validateRole(
 	ctx context.Context,
 	productID, organizationID string, roleID *string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	err := CheckAssignableRole(ctx, s.productRoleRepo, s.resourceTypes, productID, organizationID, roleID)
 	if _, isFault := fault.As(err); err != nil && !isFault {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("role_id", loggedRoleID(roleID)).
-			Msg("failed to verify role exists")
+		logger.ErrorContext(ctx, "failed to verify role exists",
+			log.Err(err),
+			slog.String("product_id", productID),
+			slog.String("role_id", loggedRoleID(roleID)),
+		)
 	}
 	return err
 }
@@ -508,14 +519,15 @@ func (s *organizationMembershipService) ensureOrganizationExists(
 	ctx context.Context,
 	productID string,
 	organizationID string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
 	if err != nil {
-		logger.Error().Err(err).
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Msg("failed to verify organization exists")
+		logger.ErrorContext(ctx, "failed to verify organization exists",
+			log.Err(err),
+			slog.String("product_id", productID),
+			slog.String("organization_id", organizationID),
+		)
 		return err
 	}
 	if found.IsAbsent() {

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -12,7 +13,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 )
 
 type EndpointRepository interface {
@@ -26,13 +26,13 @@ type EndpointRepository interface {
 
 type endpointRepository struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
-func NewEndpointRepository(db *sql.DB, logger zerolog.Logger) EndpointRepository {
+func NewEndpointRepository(db *sql.DB, logger *slog.Logger) EndpointRepository {
 	return &endpointRepository{
 		db:     db,
-		logger: logger.With().Str("component", "event_endpoint_repository").Logger(),
+		logger: logger.With(slog.String("component", "event_endpoint_repository")),
 	}
 }
 

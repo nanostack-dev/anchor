@@ -11,10 +11,12 @@
 package authz
 
 import (
-	"github.com/rs/zerolog"
+	"log/slog"
+
 	"go.uber.org/fx"
 
 	accessservice "anchor/internal/access/service"
+	"anchor/internal/applog"
 	"anchor/internal/authz/decision"
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/fgasync"
@@ -55,13 +57,13 @@ func newMarker(repo fgasync.Repository, sources fgasync.MarkerParams) (*fgasync.
 	return fgasync.NewMarker(repo, sources.Sources, source.ChangesModel)
 }
 
-func newSyncer(params fgasync.Params, logger zerolog.Logger) (*fgasync.Syncer, error) {
+func newSyncer(params fgasync.Params, logger *slog.Logger) (*fgasync.Syncer, error) {
 	return fgasync.New(fgasync.Deps{
 		Engines: params.Engines, Stores: params.Stores, Repository: params.Repository, Locker: params.Locker,
 		Models: params.Models, Sources: params.Sources, Logger: logger,
 	})
 }
 
-func newChecker(stores store.Stores, syncer *fgasync.Syncer) accessservice.PermissionChecker {
-	return decision.NewChecker(stores, syncer)
+func newChecker(stores store.Stores, syncer *fgasync.Syncer, logger applog.Scoped) accessservice.PermissionChecker {
+	return decision.NewChecker(stores, syncer, logger)
 }

@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -11,8 +14,6 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
 	"anchor/internal/security"
-
-	"github.com/rs/zerolog"
 )
 
 type PlatformUserService interface {
@@ -32,23 +33,23 @@ type PlatformUserService interface {
 
 type platformUserService struct {
 	platformUserRepo repository.PlatformTenantUserRepository
-	logger           zerolog.Logger
+	logger           *slog.Logger
 }
 
 func NewPlatformUserService(
 	platformUserRepo repository.PlatformTenantUserRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) PlatformUserService {
 	return &platformUserService{
 		platformUserRepo: platformUserRepo,
-		logger:           logger.With().Str("component", "platform_user_service").Logger(),
+		logger:           logger.With(slog.String("component", "platform_user_service")),
 	}
 }
 
 func (s *platformUserService) SearchPlatformUsers(
 	ctx context.Context, input platform.SearchPlatformUsersInput,
 ) (search.Result[platform.User], error) {
-	logger := s.logger.With().Str("operation", "SearchPlatformUsers").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchPlatformUsers"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[platform.User]{}, err
@@ -56,10 +57,10 @@ func (s *platformUserService) SearchPlatformUsers(
 	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().
-				Str("tenant_id", input.TenantID).
-				Err(err).
-				Msg("failed to search platform users")
+			logger.ErrorContext(ctx, "failed to search platform users",
+				slog.String("tenant_id", input.TenantID),
+				log.Err(err),
+			)
 		}
 		return search.Result[platform.User]{}, err
 	}
@@ -69,18 +70,18 @@ func (s *platformUserService) SearchPlatformUsers(
 func (s *platformUserService) GetPlatformUserByUserID(
 	ctx context.Context, input platform.GetPlatformUserByUserIDInput,
 ) (*platform.User, error) {
-	logger := s.logger.With().Str("operation", "GetPlatformUserByUserID").Logger()
+	logger := s.logger.With(slog.String("operation", "GetPlatformUserByUserID"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndUserID(ctx, input.TenantID, input.UserID)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("user_id", input.UserID).
-			Err(err).
-			Msg("failed to find platform user by user ID")
+		logger.ErrorContext(ctx, "failed to find platform user by user ID",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("user_id", input.UserID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -89,18 +90,18 @@ func (s *platformUserService) GetPlatformUserByUserID(
 func (s *platformUserService) GetPlatformUser(
 	ctx context.Context, input platform.GetPlatformUserInput,
 ) (*platform.User, error) {
-	logger := s.logger.With().Str("operation", "GetPlatformUser").Logger()
+	logger := s.logger.With(slog.String("operation", "GetPlatformUser"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
 	found, err := s.platformUserRepo.FindByTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("platform_user_id", input.PlatformUserID).
-			Err(err).
-			Msg("failed to find platform user")
+		logger.ErrorContext(ctx, "failed to find platform user",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("platform_user_id", input.PlatformUserID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -109,7 +110,7 @@ func (s *platformUserService) GetPlatformUser(
 func (s *platformUserService) DeletePlatformUser(
 	ctx context.Context, input platform.DeletePlatformUserInput,
 ) error {
-	logger := s.logger.With().Str("operation", "DeletePlatformUser").Logger()
+	logger := s.logger.With(slog.String("operation", "DeletePlatformUser"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -148,18 +149,18 @@ func (s *platformUserService) DeletePlatformUser(
 
 	err = s.platformUserRepo.DeleteByID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("platform_user_id", input.PlatformUserID).
-			Err(err).
-			Msg("failed to delete platform user")
+		logger.ErrorContext(ctx, "failed to delete platform user",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("platform_user_id", input.PlatformUserID),
+			log.Err(err),
+		)
 		return err
 	}
 
-	logger.Info().
-		Str("tenant_id", input.TenantID).
-		Str("platform_user_id", input.PlatformUserID).
-		Msg("platform user deleted")
+	logger.InfoContext(ctx, "platform user deleted",
+		slog.String("tenant_id", input.TenantID),
+		slog.String("platform_user_id", input.PlatformUserID),
+	)
 
 	return nil
 }

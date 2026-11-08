@@ -3,13 +3,18 @@ package service
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+	"maps"
+	"slices"
 	"time"
+
+	"anchor/internal/applog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 	"go.uber.org/fx"
-
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -25,14 +30,14 @@ func NewIntegrationLock(db *sql.DB) (*pglock.Client, error) {
 
 func NewIntegrationQueue(
 	db *sql.DB,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (*queue.Client, error) {
 	queueClient, err := queue.New(db)
 	if err != nil {
 		return nil, err
 	}
 
-	queueClient.SetLogger(zerologQueueAdapter{logger: logger.With().Str("component", "pgqueue").Logger()})
+	queueClient.SetLogger(slogQueueAdapter{logger: logger.With(slog.String("component", "pgqueue"))})
 
 	if schemaErr := queueClient.EnsureSchema(context.Background()); schemaErr != nil {
 		return nil, schemaErr
@@ -43,7 +48,7 @@ func NewIntegrationQueue(
 
 // RegisterQueueRetention deletes finished pgqueue jobs of every Anchor queue
 // once they are older than queueKeepDoneJobs or queueKeepFailedJobs.
-func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger zerolog.Logger) {
+func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger *slog.Logger) {
 	retentionCtx, stopRetention := context.WithCancel(context.Background())
 	stopped := make(chan struct{})
 	lc.Append(fx.Hook{
@@ -54,7 +59,7 @@ func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger z
 					KeepDone:   queueKeepDoneJobs,
 					KeepFailed: queueKeepFailedJobs,
 				}); err != nil {
-					logger.Error().Err(err).Msg("pgqueue retention stopped with error")
+					logger.Error("pgqueue retention stopped with error", log.Err(err))
 				}
 			}()
 			return nil
@@ -71,22 +76,33 @@ func RegisterQueueRetention(lc fx.Lifecycle, queueClient *queue.Client, logger z
 	})
 }
 
-type zerologQueueAdapter struct {
-	logger zerolog.Logger
+// slogQueueAdapter writes pgkit's queue lines through the component logger.
+type slogQueueAdapter struct {
+	logger *slog.Logger
 }
 
-func (z zerologQueueAdapter) Debug(_ context.Context, msg string, fields map[string]any) {
-	z.logger.Debug().Fields(fields).Msg(msg)
+func (a slogQueueAdapter) Debug(ctx context.Context, msg string, fields map[string]any) {
+	a.log(ctx, slog.LevelDebug, msg, fields)
 }
 
-func (z zerologQueueAdapter) Info(_ context.Context, msg string, fields map[string]any) {
-	z.logger.Info().Fields(fields).Msg(msg)
+func (a slogQueueAdapter) Info(ctx context.Context, msg string, fields map[string]any) {
+	a.log(ctx, slog.LevelInfo, msg, fields)
 }
 
-func (z zerologQueueAdapter) Warn(_ context.Context, msg string, fields map[string]any) {
-	z.logger.Warn().Fields(fields).Msg(msg)
+func (a slogQueueAdapter) Warn(ctx context.Context, msg string, fields map[string]any) {
+	a.log(ctx, slog.LevelWarn, msg, fields)
 }
 
-func (z zerologQueueAdapter) Error(_ context.Context, msg string, fields map[string]any) {
-	z.logger.Error().Fields(fields).Msg(msg)
+func (a slogQueueAdapter) Error(ctx context.Context, msg string, fields map[string]any) {
+	a.log(ctx, slog.LevelError, msg, fields)
+}
+
+// log writes fields as top-level attributes in key order, as zerolog's
+// Fields did, with pgkit's call site as the caller.
+func (a slogQueueAdapter) log(ctx context.Context, level slog.Level, msg string, fields map[string]any) {
+	attrs := make([]slog.Attr, 0, len(fields))
+	for _, key := range slices.Sorted(maps.Keys(fields)) {
+		attrs = append(attrs, slog.Any(key, fields[key]))
+	}
+	applog.Write(ctx, a.logger, 2, level, msg, attrs...) //nolint:mnd // log and the adapter method
 }

@@ -3,11 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
@@ -19,16 +19,16 @@ var _ UsageObservationRepository = (*usageObservationRepositoryImpl)(nil)
 type usageObservationRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.UsageObservationMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewUsageObservationRepository(
-	db *sql.DB, m *mapper.UsageObservationMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.UsageObservationMapper, logger *slog.Logger,
 ) UsageObservationRepository {
 	return &usageObservationRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "usage_observation_repository").Logger(),
+		logger: logger.With(slog.String("component", "usage_observation_repository")),
 	}
 }
 

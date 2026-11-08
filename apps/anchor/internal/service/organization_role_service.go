@@ -3,13 +3,15 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/organization"
 	role "anchor/internal/domain/product/role"
@@ -49,19 +51,19 @@ func NewOrganizationRoleService(
 	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationRoleService {
 	roles := newProductRoleService(
 		roleRepo, productResourcePermissionRepo, invitationRepo, resourceTypes, tx, eventEmitter, logger,
 	)
-	roles.logger = logger.With().Str("component", "organization_role_service").Logger()
+	roles.logger = logger.With(slog.String("component", "organization_role_service"))
 	return &organizationRoleService{productRoleService: roles, orgRepo: orgRepo}
 }
 
 func (s *organizationRoleService) SearchOrganizationRoles(
 	ctx context.Context, input role.SearchOrganizationRolesInput,
 ) (search.Result[role.ProductRole], error) {
-	logger := s.logger.With().Str("operation", "SearchOrganizationRoles").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchOrganizationRoles"))
 	if err := input.Validate(); err != nil {
 		return search.Result[role.ProductRole]{}, err
 	}
@@ -81,7 +83,7 @@ func (s *organizationRoleService) SearchOrganizationRoles(
 func (s *organizationRoleService) GetOrganizationRole(
 	ctx context.Context, input role.OrganizationRoleRef,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "GetOrganizationRole").Logger()
+	logger := s.logger.With(slog.String("operation", "GetOrganizationRole"))
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -103,7 +105,7 @@ func (s *organizationRoleService) GetOrganizationRole(
 func (s *organizationRoleService) CreateOrganizationRole(
 	ctx context.Context, input role.CreateOrganizationRoleInput,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "CreateOrganizationRole").Logger()
+	logger := s.logger.With(slog.String("operation", "CreateOrganizationRole"))
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -176,7 +178,7 @@ func (s *organizationRoleService) CreateOrganizationRole(
 func (s *organizationRoleService) UpdateOrganizationRole(
 	ctx context.Context, input role.UpdateOrganizationRoleInput,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "UpdateOrganizationRole").Logger()
+	logger := s.logger.With(slog.String("operation", "UpdateOrganizationRole"))
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
@@ -251,7 +253,7 @@ func (s *organizationRoleService) UpdateOrganizationRole(
 func (s *organizationRoleService) DeleteOrganizationRole(
 	ctx context.Context, input role.OrganizationRoleRef,
 ) error {
-	logger := s.logger.With().Str("operation", "DeleteOrganizationRole").Logger()
+	logger := s.logger.With(slog.String("operation", "DeleteOrganizationRole"))
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
@@ -350,7 +352,7 @@ func (s *organizationRoleService) emitOrganizationRole(
 
 // unexpected passes a domain error through and logs anything else.
 func (s *organizationRoleService) unexpected(
-	logger zerolog.Logger, err error, productID, message string,
+	logger *slog.Logger, err error, productID, message string,
 ) error {
 	if err == nil {
 		return nil
@@ -358,7 +360,7 @@ func (s *organizationRoleService) unexpected(
 	if _, isDomain := errors.AsType[*fault.Error](err); isDomain {
 		return err
 	}
-	logger.Error().Str("product_id", productID).Err(err).Msg(message)
+	logger.Error(message, slog.String("product_id", productID), log.Err(err))
 	return fault.ErrUnexpected
 }
 

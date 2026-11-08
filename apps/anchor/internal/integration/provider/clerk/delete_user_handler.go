@@ -3,12 +3,13 @@ package clerk
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/events"
 	"anchor/internal/integration/provider"
-
-	"github.com/rs/zerolog"
 )
 
 const clerkExternalIDKey = "external_id"
@@ -17,7 +18,7 @@ const clerkExternalIDKey = "external_id"
 // user via the product user repository.
 func (p *Provider) executeDeleteUser(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	data any,
 ) error {
@@ -72,17 +73,18 @@ func (p *Provider) executeDeleteUser(
 			}),
 		})
 
-		logger.Error().Err(delErr).
-			Str(clerkExternalIDKey, deleteData.ExternalID).
-			Str("product_id", instance.ProductID).
-			Msg("failed to delete product user")
+		logger.ErrorContext(ctx, "failed to delete product user",
+			log.Err(delErr),
+			slog.String(clerkExternalIDKey, deleteData.ExternalID),
+			slog.String("product_id", instance.ProductID),
+		)
 		return fmt.Errorf("failed to delete product user: %w", delErr)
 	}
 
-	logger.Info().
-		Str(clerkExternalIDKey, deleteData.ExternalID).
-		Str("product_id", instance.ProductID).
-		Msg("product user deleted via integration")
+	logger.InfoContext(ctx, "product user deleted via integration",
+		slog.String(clerkExternalIDKey, deleteData.ExternalID),
+		slog.String("product_id", instance.ProductID),
+	)
 
 	provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 		IntegrationInstanceID: instance.ID,

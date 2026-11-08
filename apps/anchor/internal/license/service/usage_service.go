@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -87,18 +87,18 @@ type UsageService interface {
 type usageService struct {
 	observations licenserepo.UsageObservationRepository
 	schemas      LicenseSchemaService
-	logger       zerolog.Logger
+	logger       *slog.Logger
 }
 
 func NewUsageService(
 	observations licenserepo.UsageObservationRepository,
 	schemas LicenseSchemaService,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) UsageService {
 	return &usageService{
 		observations: observations,
 		schemas:      schemas,
-		logger:       logger.With().Str("component", "usage_service").Logger(),
+		logger:       logger.With(slog.String("component", "usage_service")),
 	}
 }
 

@@ -3,9 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"slices"
 	"time"
+
+	"anchor/internal/applog"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
@@ -14,10 +17,9 @@ import (
 	assignmentrepository "anchor/internal/roleassignment/repository"
 	coresvc "anchor/internal/service"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 )
 
 // logBurst caps the lines each sampled warning logs a minute.
@@ -45,9 +47,12 @@ type evaluator struct {
 	resourceTypes rtservice.Service
 	resources     resourcerepository.Repository
 	assignments   assignmentrepository.Repository
-	logger        zerolog.Logger
-	driftSampler  zerolog.Sampler
-	parentSampler zerolog.Sampler
+	logger        *slog.Logger
+	// scoped writes the sampled drift, mismatch and explain lines with the
+	// request scope of their context.
+	scoped        *slog.Logger
+	driftSampler  *applog.BurstSampler
+	parentSampler *applog.BurstSampler
 }
 
 func NewEvaluator(
@@ -59,7 +64,8 @@ func NewEvaluator(
 	resourceTypes rtservice.Service,
 	resources resourcerepository.Repository,
 	assignments assignmentrepository.Repository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
+	scoped applog.Scoped,
 ) Evaluator {
 	return &evaluator{
 		productUsers:  productUsers,
@@ -70,9 +76,10 @@ func NewEvaluator(
 		resourceTypes: resourceTypes,
 		resources:     resources,
 		assignments:   assignments,
-		logger:        logger.With().Str("component", "access_evaluator").Logger(),
-		driftSampler:  &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
-		parentSampler: &zerolog.BurstSampler{Burst: logBurst, Period: time.Minute},
+		logger:        logger.With(slog.String("component", "access_evaluator")),
+		scoped:        scoped.Logger,
+		driftSampler:  &applog.BurstSampler{Burst: logBurst, Period: time.Minute},
+		parentSampler: &applog.BurstSampler{Burst: logBurst, Period: time.Minute},
 	}
 }
 
@@ -110,11 +117,14 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 	case errors.Is(err, context.Canceled):
 		return Decision{}, err
 	case errors.Is(err, ErrPermissionStoreUnavailable):
-		log.Ctx(ctx).Warn().Err(err).Str("product_id", request.ProductID).
-			Str("organization_id", identity.OrganizationID).Msg("access decisions unavailable")
+		e.scoped.WarnContext(ctx, "access decisions unavailable",
+			log.Err(err),
+			slog.String("product_id", request.ProductID),
+			slog.String("organization_id", identity.OrganizationID),
+		)
 		return Decision{}, ErrDecisionsUnavailable
 	case err != nil:
-		return Decision{}, e.unexpected(err, request, "permissions")
+		return Decision{}, e.unexpected(ctx, err, request, "permissions")
 	}
 	if target.object.Type == string(ResourceOrganization) {
 		e.reportDrift(ctx, request, identity, held)
@@ -132,22 +142,21 @@ func (e *evaluator) Evaluate(ctx context.Context, request Request) (Decision, er
 // Organization compares: roles held on a resource grant more than the
 // Organization's role lists.
 func (e *evaluator) reportDrift(ctx context.Context, request Request, identity *Identity, held map[string]bool) {
-	logger := log.Ctx(ctx).Sample(e.driftSampler)
 	for _, action := range request.Actions {
 		listed := slices.Contains(identity.Permissions, action)
-		if listed == held[action] {
+		if listed == held[action] || !e.driftSampler.Sample() {
 			continue
 		}
-		logger.Warn().
-			Str("event", "authz.decision_drift").
-			Str("product_id", request.ProductID).
-			Str("organization_id", identity.OrganizationID).
-			Str("product_user_id", identity.ProductUserID).
-			Str("api_key_id", identity.APIKeyID).
-			Str("permission", action).
-			Bool("tables", listed).
-			Bool("openfga", held[action]).
-			Msg("authz.decision_drift")
+		e.scoped.WarnContext(ctx, "authz.decision_drift",
+			slog.String("event", "authz.decision_drift"),
+			slog.String("product_id", request.ProductID),
+			slog.String("organization_id", identity.OrganizationID),
+			slog.String("product_user_id", identity.ProductUserID),
+			slog.String("api_key_id", identity.APIKeyID),
+			slog.String("permission", action),
+			slog.Bool("tables", listed),
+			slog.Bool("openfga", held[action]),
+		)
 	}
 }
 
@@ -169,7 +178,7 @@ func (e *evaluator) reachOrganization(ctx context.Context, request Request) (rea
 func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, error) {
 	found, err := e.productUsers.FindByExternalID(ctx, request.ProductID, request.Subject.ID)
 	if err != nil {
-		return reach{}, e.unexpected(err, request, "product user")
+		return reach{}, e.unexpected(ctx, err, request, "product user")
 	}
 	user, synced := found.Get()
 	if !synced {
@@ -178,7 +187,7 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 	membership, err := e.memberships.FindByProductUserIDAndOrgID(
 		ctx, request.ProductID, user.ID, request.Organization(), true)
 	if err != nil {
-		return reach{}, e.unexpected(err, request, "membership")
+		return reach{}, e.unexpected(ctx, err, request, "membership")
 	}
 	member, isMember := membership.Get()
 	if !isMember {
@@ -204,7 +213,7 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 func (e *evaluator) whyNotAMember(ctx context.Context, request Request) (reach, error) {
 	organization, err := e.organizations.FindByID(ctx, request.ProductID, request.Organization())
 	if err != nil {
-		return reach{}, e.unexpected(err, request, "organization")
+		return reach{}, e.unexpected(ctx, err, request, "organization")
 	}
 	if organization.IsAbsent() {
 		return stoppedBy(ReasonOrganizationNotFound), nil
@@ -235,8 +244,10 @@ func (e *evaluator) reachAsAPIKey(ctx context.Context, request Request) (reach, 
 	}), nil
 }
 
-func (e *evaluator) unexpected(err error, request Request, lookup string) error {
-	log.Event(&e.logger, err).Str("product_id", request.ProductID).Str("lookup", lookup).
-		Msg("access evaluation lookup failed")
+func (e *evaluator) unexpected(ctx context.Context, err error, request Request, lookup string) error {
+	applog.Error(ctx, e.logger, err, "access evaluation lookup failed",
+		slog.String("product_id", request.ProductID),
+		slog.String("lookup", lookup),
+	)
 	return fault.ErrUnexpected
 }

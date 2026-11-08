@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -16,7 +17,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ IntegrationAuditLogRepository = (*integrationAuditLogRepositoryImpl)(nil)
@@ -42,16 +42,16 @@ type IntegrationAuditLogRepository interface {
 type integrationAuditLogRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.IntegrationAuditLogMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewIntegrationAuditLogRepository(
-	db *sql.DB, m *mapper.IntegrationAuditLogMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.IntegrationAuditLogMapper, logger *slog.Logger,
 ) IntegrationAuditLogRepository {
 	return &integrationAuditLogRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "integration_audit_log_repository").Logger(),
+		logger: logger.With(slog.String("component", "integration_audit_log_repository")),
 	}
 }
 

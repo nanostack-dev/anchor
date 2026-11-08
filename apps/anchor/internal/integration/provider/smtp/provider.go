@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
@@ -14,7 +17,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -43,14 +45,14 @@ var errMissingEncryptionKey = errors.New("global encryption key is not configure
 type Provider struct {
 	configCipher    *secrets.VersionedCipher
 	configCipherErr error
-	logger          zerolog.Logger
+	logger          *slog.Logger
 }
 
 type NewProviderParams struct {
 	fx.In
 
 	EncryptionService *encryption.Service
-	Logger            zerolog.Logger
+	Logger            *slog.Logger
 }
 
 func NewProvider(p NewProviderParams) *Provider {
@@ -63,9 +65,9 @@ func NewProvider(p NewProviderParams) *Provider {
 	} else {
 		cipher, err = p.EncryptionService.NewCipher(smtpConfigCipherContext)
 	}
-	componentLogger := p.Logger.With().Str("component", "smtp_provider").Logger()
+	componentLogger := p.Logger.With(slog.String("component", "smtp_provider"))
 	if err != nil {
-		componentLogger.Error().Err(err).Msg("failed to initialize smtp config cipher")
+		componentLogger.Error("failed to initialize smtp config cipher", log.Err(err))
 	}
 
 	return &Provider{
@@ -264,16 +266,25 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 	// last_error is returned to the tenant, so it names the step, never the peer's reply or dial outcome.
 	client, err := dialSMTP(ctx, cfg)
 	if err != nil {
-		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification could not connect")
+		p.logger.DebugContext(ctx, "smtp verification could not connect",
+			log.Err(err),
+			slog.String("instance_id", instance.ID),
+		)
 		return errors.New("smtp: could not connect to the server")
 	}
 	defer func() { _ = client.Close() }()
 	if err = authenticate(client, cfg); err != nil {
-		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification was refused")
+		p.logger.DebugContext(ctx, "smtp verification was refused",
+			log.Err(err),
+			slog.String("instance_id", instance.ID),
+		)
 		return errors.New("smtp: the server refused the credentials")
 	}
 	if err = client.Quit(); err != nil {
-		p.logger.Debug().Err(err).Str("instance_id", instance.ID).Msg("smtp verification did not close cleanly")
+		p.logger.DebugContext(ctx, "smtp verification did not close cleanly",
+			log.Err(err),
+			slog.String("instance_id", instance.ID),
+		)
 		return errors.New("smtp: the server ended the session with an error")
 	}
 	return nil

@@ -3,13 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -28,16 +28,16 @@ func emailTemplateVersionsUpdatableColumns() postgres.ColumnList {
 type templateVersionRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.EmailTemplateVersionMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewTemplateVersionRepository(
-	db *sql.DB, m *mapper.EmailTemplateVersionMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.EmailTemplateVersionMapper, logger *slog.Logger,
 ) TemplateVersionRepository {
 	return &templateVersionRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "email_template_version_repository").Logger(),
+		logger: logger.With(slog.String("component", "email_template_version_repository")),
 	}
 }
 

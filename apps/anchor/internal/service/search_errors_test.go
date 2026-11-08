@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,7 +116,7 @@ func (presentOrganization) FindByID(
 func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 	t.Parallel()
 
-	logger := zerolog.Nop()
+	logger := slog.New(slog.DiscardHandler)
 	ctx := context.Background()
 
 	searches := map[string]func(err error) error{
@@ -159,7 +160,8 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 		},
 		"searchProductAPIKeys": func(err error) error {
 			svc := service.NewProductAPIKeyService(
-				nil, failingProductAPIKeys{failingSearches: failingSearches{err}}, nil, nil, logger,
+				nil, failingProductAPIKeys{failingSearches: failingSearches{err}}, nil,
+				cache.Cache[apikey.ProductAPIKey]{}, logger,
 			)
 			_, got := svc.Search(ctx, apikey.SearchProductAPIKeysInput{
 				ProductID: "product",

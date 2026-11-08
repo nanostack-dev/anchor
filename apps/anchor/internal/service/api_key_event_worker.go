@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
+
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -37,11 +39,11 @@ type APIKeyEventWorkerParams struct {
 	Lifecycle                      fx.Lifecycle
 	OrganizationAPIKeyEventService OrganizationAPIKeyEventService
 	Queue                          *queue.Client
-	Logger                         zerolog.Logger
+	Logger                         *slog.Logger
 }
 
 func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
-	logger := p.Logger.With().Str("component", "organization_api_key_event_worker").Logger()
+	logger := p.Logger.With(slog.String("component", "organization_api_key_event_worker"))
 
 	registry := queue.NewHandlerRegistry()
 	if err := registry.Register(
@@ -49,7 +51,7 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 			return p.OrganizationAPIKeyEventService.ProcessQueueJob(ctx, job)
 		},
 	); err != nil {
-		logger.Error().Err(err).Msg("failed to register organization api key event queue handler")
+		logger.Error("failed to register organization api key event queue handler", log.Err(err))
 		return
 	}
 
@@ -62,24 +64,25 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 			BatchSizePerQueue: organizationAPIKeyEventBatchSize,
 			BackoffBase:       organizationAPIKeyEventBackoffBase,
 			BackoffMax:        organizationAPIKeyEventBackoffMax,
-			OnJobFailed: func(_ context.Context, job queue.Job) {
-				logger.Error().
-					Int64("job_id", job.ID).
-					Str("queue", job.QueueName).
-					Int("attempts", job.Attempts).
-					Str("last_error", job.LastError.String).
-					Msg("organization api key event job permanently failed")
+			OnJobFailed: func(ctx context.Context, job queue.Job) {
+				logger.ErrorContext(ctx, "organization api key event job permanently failed",
+					slog.Int64("job_id", job.ID),
+					slog.String("queue", job.QueueName),
+					slog.Int("attempts", job.Attempts),
+					slog.String("last_error", job.LastError.String),
+				)
 			},
-			OnJobStuck: func(_ context.Context, result queue.ReapResult) {
-				logger.WithLevel(reapLogLevel(result)).
-					Int64("requeued", result.Requeued).
-					Int64("failed", result.Failed).
-					Msg("organization api key event jobs stuck in processing were reaped")
+			OnJobStuck: func(ctx context.Context, result queue.ReapResult) {
+				logger.LogAttrs(ctx, reapLogLevel(result),
+					"organization api key event jobs stuck in processing were reaped",
+					slog.Int64("requeued", result.Requeued),
+					slog.Int64("failed", result.Failed),
+				)
 			},
 		},
 	)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize organization api key event worker")
+		logger.Error("failed to initialize organization api key event worker", log.Err(err))
 		return
 	}
 
@@ -87,26 +90,30 @@ func RegisterAPIKeyEventWorker(p APIKeyEventWorkerParams) {
 
 	p.Lifecycle.Append(
 		fx.Hook{
-			OnStart: func(_ context.Context) error {
+			OnStart: func(ctx context.Context) error {
 				workerCtx, workerCancel := newOrganizationAPIKeyWorkerContext()
 				cancel = workerCancel
 
 				go func() {
 					if runErr := worker.Run(workerCtx); runErr != nil {
-						logger.Error().Err(runErr).Msg("organization api key event worker stopped with error")
+						logger.ErrorContext(
+							workerCtx,
+							"organization api key event worker stopped with error",
+							log.Err(runErr),
+						)
 					}
 				}()
 
-				logger.Info().
-					Str("queue_name", organizationAPIKeyEventQueueName).
-					Dur("poll_interval", organizationAPIKeyEventPollInterval).
-					Int("batch_size", organizationAPIKeyEventBatchSize).
-					Int("max_attempts", organizationAPIKeyEventMaxAttempts).
-					Msg("organization api key event worker started")
+				logger.InfoContext(ctx, "organization api key event worker started",
+					slog.String("queue_name", organizationAPIKeyEventQueueName),
+					slog.Duration("poll_interval", organizationAPIKeyEventPollInterval),
+					slog.Int("batch_size", organizationAPIKeyEventBatchSize),
+					slog.Int("max_attempts", organizationAPIKeyEventMaxAttempts),
+				)
 				return nil
 			},
-			OnStop: func(_ context.Context) error {
-				logger.Info().Msg("stopping organization api key event worker")
+			OnStop: func(ctx context.Context) error {
+				logger.InfoContext(ctx, "stopping organization api key event worker")
 				if cancel != nil {
 					cancel()
 				}

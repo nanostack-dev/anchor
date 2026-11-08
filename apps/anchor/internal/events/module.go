@@ -1,10 +1,11 @@
 package events
 
 import (
+	"log/slog"
+
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
 
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -26,7 +27,7 @@ func provideEndpointService(
 	catalog Catalog,
 	enc *encryption.Service,
 	core *serviceconfig.CoreConfig,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (EndpointService, error) {
 	return NewEndpointService(repo, catalog, enc, core.IsProduction(), logger)
 }

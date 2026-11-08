@@ -2,9 +2,8 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"slices"
-
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
@@ -38,7 +37,7 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 	organizationID := subject.identity.OrganizationID
 	tree, err := e.resourceTypes.Tree(ctx, request.ProductID)
 	if err != nil {
-		return reach{}, located{}, e.unexpected(err, request, "resource types")
+		return reach{}, located{}, e.unexpected(ctx, err, request, "resource types")
 	}
 	rt, declared := tree.BySlug(string(request.Resource.Type)).Get()
 	if !declared {
@@ -46,7 +45,7 @@ func (e *evaluator) reachResource(ctx context.Context, request Request, subject 
 	}
 	found, err := e.resources.Find(ctx, organizationID, rt.ID, request.Resource.ID)
 	if err != nil {
-		return reach{}, located{}, e.unexpected(err, request, "resource")
+		return reach{}, located{}, e.unexpected(ctx, err, request, "resource")
 	}
 	if registered, ok := found.Get(); ok {
 		e.reportParentMismatch(ctx, request, registered)
@@ -88,7 +87,7 @@ func (e *evaluator) reachParent(
 	}
 	found, err := e.resources.Find(ctx, organizationID, parentType.ID, parent.ID)
 	if err != nil {
-		return reach{}, located{}, e.unexpected(err, request, "parent")
+		return reach{}, located{}, e.unexpected(ctx, err, request, "parent")
 	}
 	registered, ok := found.Get()
 	if !ok {
@@ -109,7 +108,7 @@ func (e *evaluator) missingParent(
 	elsewhere, err := e.resources.RegisteredElsewhere(ctx, request.ProductID, organizationID, typeID, externalID)
 	switch {
 	case err != nil:
-		return "", e.unexpected(err, request, "parent elsewhere")
+		return "", e.unexpected(ctx, err, request, "parent elsewhere")
 	case elsewhere:
 		return ReasonResourceNotInOrganization, nil
 	default:
@@ -124,13 +123,15 @@ func (e *evaluator) reportParentMismatch(ctx context.Context, request Request, r
 	if named == nil || (resource.Ref{Type: named.Type, ID: named.ID}) == registered.Parent {
 		return
 	}
-	logger := log.Ctx(ctx).Sample(e.parentSampler)
-	logger.Warn().
-		Str("event", "access.parent_mismatch").
-		Str("product_id", request.ProductID).
-		Str("organization_id", registered.OrganizationID).
-		Str("resource", registered.Ref().String()).
-		Str("stored_parent", registered.Parent.String()).
-		Str("named_parent", resource.Ref{Type: named.Type, ID: named.ID}.String()).
-		Msg("access.parent_mismatch")
+	if !e.parentSampler.Sample() {
+		return
+	}
+	e.scoped.WarnContext(ctx, "access.parent_mismatch",
+		slog.String("event", "access.parent_mismatch"),
+		slog.String("product_id", request.ProductID),
+		slog.String("organization_id", registered.OrganizationID),
+		slog.String("resource", registered.Ref().String()),
+		slog.String("stored_parent", registered.Parent.String()),
+		slog.String("named_parent", resource.Ref{Type: named.Type, ID: named.ID}.String()),
+	)
 }

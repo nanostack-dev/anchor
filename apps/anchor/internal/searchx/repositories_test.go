@@ -2,11 +2,11 @@ package searchx_test
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,7 +52,7 @@ func TestSearchRepositoriesRefuseASortTheyDoNotMap(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	logger := zerolog.Nop()
+	logger := slog.New(slog.DiscardHandler)
 	tests := map[string]func() error{
 		"searchProducts": func() error {
 			_, err := repository.NewProductRepository(nil, nil, logger).SearchByTenantID(

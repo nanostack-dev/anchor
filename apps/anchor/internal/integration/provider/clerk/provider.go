@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/events"
@@ -21,7 +24,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"github.com/rs/zerolog"
 	svix "github.com/svix/svix-webhooks/go"
 	"go.uber.org/fx"
 )
@@ -61,7 +63,7 @@ type Provider struct {
 	baseURL         string
 	events          events.Emitter
 	transactor      transactor.Transactor
-	logger          zerolog.Logger
+	logger          *slog.Logger
 }
 
 type NewProviderParams struct {
@@ -73,7 +75,7 @@ type NewProviderParams struct {
 	EncryptionService *encryption.Service
 	Events            events.Emitter
 	Transactor        transactor.Transactor
-	Logger            zerolog.Logger
+	Logger            *slog.Logger
 }
 
 // NewProvider creates a new Clerk provider.
@@ -87,9 +89,9 @@ func NewProvider(p NewProviderParams) *Provider {
 	} else {
 		cipher, err = p.EncryptionService.NewCipher(clerkConfigCipherContext)
 	}
-	componentLogger := p.Logger.With().Str("component", "clerk_provider").Logger()
+	componentLogger := p.Logger.With(slog.String("component", "clerk_provider"))
 	if err != nil {
-		componentLogger.Error().Err(err).Msg("failed to initialize clerk config cipher")
+		componentLogger.Error("failed to initialize clerk config cipher", log.Err(err))
 	}
 
 	return &Provider{
@@ -291,7 +293,7 @@ func (p *Provider) ParseEvent(_ context.Context, _ string, payload []byte) (any,
 }
 
 func (p *Provider) ToStandardsCommands(
-	_ context.Context, _ string, event any,
+	ctx context.Context, _ string, event any,
 ) ([]provider.Command, error) {
 	clerkEvent, ok := event.(*clerkWebhookEvent)
 	if !ok {
@@ -304,9 +306,7 @@ func (p *Provider) ToStandardsCommands(
 	case "user.deleted":
 		return p.handleUserDeletedEvent(clerkEvent)
 	default:
-		p.logger.Debug().Str(
-			"event_type", clerkEvent.Type,
-		).Msg("unhandled clerk event type, skipping")
+		p.logger.DebugContext(ctx, "unhandled clerk event type, skipping", slog.String("event_type", clerkEvent.Type))
 		return nil, nil
 	}
 }
@@ -314,7 +314,7 @@ func (p *Provider) ToStandardsCommands(
 // ExecuteCommand executes a single canonical command produced by this provider.
 func (p *Provider) ExecuteCommand(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	cmd provider.Command,
 ) error {
@@ -334,9 +334,7 @@ func (p *Provider) ExecuteCommand(
 			}),
 		})
 
-		logger.Warn().
-			Str("command_type", string(cmd.Type)).
-			Msg("unknown command type, skipping")
+		logger.WarnContext(ctx, "unknown command type, skipping", slog.String("command_type", string(cmd.Type)))
 		return nil
 	}
 }

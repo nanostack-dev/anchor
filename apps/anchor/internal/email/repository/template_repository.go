@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -13,7 +14,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -32,16 +32,16 @@ func emailTemplatesUpdatableColumns() postgres.ColumnList {
 type templateRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.EmailTemplateMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewTemplateRepository(
-	db *sql.DB, m *mapper.EmailTemplateMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.EmailTemplateMapper, logger *slog.Logger,
 ) TemplateRepository {
 	return &templateRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "email_template_repository").Logger(),
+		logger: logger.With(slog.String("component", "email_template_repository")),
 	}
 }
 

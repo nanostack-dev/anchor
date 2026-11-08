@@ -3,10 +3,9 @@ package provider
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"anchor/internal/domain/integration"
-
-	"github.com/rs/zerolog"
 )
 
 // ErrMessageRejected marks a permanent rejection of an outbound message by the
@@ -101,7 +100,7 @@ type WebhookIngestor interface {
 	// provider. The provider owns the full execution logic for its commands.
 	ExecuteCommand(
 		ctx context.Context,
-		logger zerolog.Logger,
+		logger *slog.Logger,
 		instance *integration.Instance,
 		cmd Command,
 	) error

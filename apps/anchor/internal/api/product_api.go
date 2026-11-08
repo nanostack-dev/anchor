@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"slices"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/user"
@@ -107,7 +110,7 @@ func (s *AnchorAPI) SearchProducts(
 
 	result, err := s.ProductService.Search(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to search products")
+		applog.Error(ctx, s.logger, err, "failed to search products")
 		return nil, err
 	}
 
@@ -138,7 +141,7 @@ func (s *AnchorAPI) CreateProduct(
 
 	createdProduct, err := s.ProductService.Create(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("failed to create product")
+		applog.Error(ctx, s.logger, err, "failed to create product")
 		return nil, err
 	}
 
@@ -162,7 +165,7 @@ func (s *AnchorAPI) DeleteProduct(
 
 	err = s.ProductService.Delete(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to delete product")
+		applog.Error(ctx, s.logger, err, "failed to delete product", slog.String("product_id", productID))
 		return nil, err
 	}
 
@@ -186,7 +189,7 @@ func (s *AnchorAPI) GetProduct(
 
 	prod, err := s.ProductService.Get(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to get product")
+		applog.Error(ctx, s.logger, err, "failed to get product", slog.String("product_id", productID))
 		return nil, err
 	}
 
@@ -220,7 +223,7 @@ func (s *AnchorAPI) UpdateProduct(
 
 	updatedProduct, err := s.ProductService.Update(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", productID).Msg("failed to update product")
+		applog.Error(ctx, s.logger, err, "failed to update product", slog.String("product_id", productID))
 		return nil, err
 	}
 
@@ -319,9 +322,9 @@ func (s *AnchorAPI) CreateProductUser(
 
 	createdUser, err := s.ProductUserService.Create(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
-			"product_id", request.ProductId,
-		).Msg("failed to create product user")
+		applog.Error(ctx, s.logger, err, "failed to create product user",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -340,9 +343,9 @@ func (s *AnchorAPI) SearchProductUsers(
 
 	result, err := s.ProductUserService.Search(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
-			"product_id", request.ProductId,
-		).Msg("failed to search product users")
+		applog.Error(ctx, s.logger, err, "failed to search product users",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -367,10 +370,10 @@ func (s *AnchorAPI) GetProductUser(
 
 	user, err := s.ProductUserService.Find(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("product_user_id", productUserID).
-			Msg("failed to get product user")
+		applog.Error(ctx, s.logger, err, "failed to get product user",
+			slog.String("product_id", request.ProductId),
+			slog.String("product_user_id", productUserID),
+		)
 		return nil, err
 	}
 
@@ -389,10 +392,10 @@ func (s *AnchorAPI) DeleteProductUser(
 
 	err := s.ProductUserService.Delete(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("product_user_id", productUserID).
-			Msg("failed to delete product user")
+		applog.Error(ctx, s.logger, err, "failed to delete product user",
+			slog.String("product_id", request.ProductId),
+			slog.String("product_user_id", productUserID),
+		)
 		return nil, err
 	}
 
@@ -415,10 +418,10 @@ func (s *AnchorAPI) ListUserOrganizations(
 
 	memberships, err := s.ProductUserService.ListUserOrganizations(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("product_user_id", request.ProductUserId).
-			Msg("failed to list user organizations")
+		applog.Error(ctx, s.logger, err, "failed to list user organizations",
+			slog.String("product_id", request.ProductId),
+			slog.String("product_user_id", request.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -450,10 +453,10 @@ func (s *AnchorAPI) SearchUserOrganizations(
 		Request:            mapToSearchUserOrganizationsRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("product_user_id", request.ProductUserId).
-			Msg("failed to search user organizations")
+		applog.Error(ctx, s.logger, err, "failed to search user organizations",
+			slog.String("product_id", request.ProductId),
+			slog.String("product_user_id", request.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -504,11 +507,11 @@ func (s *AnchorAPI) GetUserOrganization(
 
 	membership, err := s.ProductUserService.GetUserOrganization(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("product_user_id", request.ProductUserId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to get user organization")
+		applog.Error(ctx, s.logger, err, "failed to get user organization",
+			slog.String("product_id", request.ProductId),
+			slog.String("product_user_id", request.ProductUserId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 

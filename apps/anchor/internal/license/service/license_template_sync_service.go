@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -14,7 +17,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/events"
@@ -90,7 +92,7 @@ type licenseTemplateSyncService struct {
 	queue        *queue.Client
 	licenses     *organizationLicenseCache
 	events       events.Emitter
-	logger       zerolog.Logger
+	logger       *slog.Logger
 }
 
 func NewLicenseTemplateSyncService(
@@ -100,9 +102,9 @@ func NewLicenseTemplateSyncService(
 	schemas LicenseSchemaService,
 	tx transactor.Transactor,
 	queueClient *queue.Client,
-	cacheStore cache.Store,
+	licenseEntries cache.Cache[license.OrganizationLicense],
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) LicenseTemplateSyncService {
 	return &licenseTemplateSyncService{
 		templateRepo: templateRepo,
@@ -111,9 +113,9 @@ func NewLicenseTemplateSyncService(
 		schemas:      schemas,
 		transactor:   tx,
 		queue:        queueClient,
-		licenses:     newOrganizationLicenseCache(cacheStore, logger),
+		licenses:     newOrganizationLicenseCache(licenseEntries, logger),
 		events:       eventEmitter,
-		logger:       logger.With().Str("component", "license_template_sync_service").Logger(),
+		logger:       logger.With(slog.String("component", "license_template_sync_service")),
 	}
 }
 
@@ -165,13 +167,13 @@ func (s *licenseTemplateSyncService) ProcessQueueJob(
 		}
 	}
 
-	s.logger.Info().
-		Str("product_id", payload.ProductID).
-		Str("license_template_id", payload.TemplateID).
-		Int("considered", len(organizationIDs)).
-		Int("synced", synced).
-		Int("refused", refused).
-		Msg("license template sync batch finished")
+	s.logger.InfoContext(ctx, "license template sync batch finished",
+		slog.String("product_id", payload.ProductID),
+		slog.String("license_template_id", payload.TemplateID),
+		slog.Int("considered", len(organizationIDs)),
+		slog.Int("synced", synced),
+		slog.Int("refused", refused),
+	)
 
 	if len(organizationIDs) < licenseTemplateSyncBatchSize {
 		return nil
@@ -247,12 +249,12 @@ func (s *licenseTemplateSyncService) syncOne(
 				return validateErr
 			}
 			outcome = syncOutcomeRefused
-			s.logger.Warn().
-				Str("product_id", payload.ProductID).
-				Str("organization_id", organizationID).
-				Str("license_template_id", template.ID).
-				Err(validateErr).
-				Msg("license refused a template sync: merged values no longer satisfy the schema")
+			s.logger.WarnContext(txCtx, "license refused a template sync: merged values no longer satisfy the schema",
+				slog.String("product_id", payload.ProductID),
+				slog.String("organization_id", organizationID),
+				slog.String("license_template_id", template.ID),
+				log.Err(validateErr),
+			)
 			return nil
 		}
 

@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"log/slog"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/searchx"
@@ -38,7 +41,9 @@ func (s *AnchorAPI) CreateLicenseTemplate(
 
 	template, err := s.LicenseTemplateService.CreateTemplate(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create license template")
+		applog.Error(ctx, s.logger, err, "failed to create license template",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 	return CreateLicenseTemplate201JSONResponse(mapLicenseTemplateToResponse(template)), nil
@@ -58,10 +63,10 @@ func (s *AnchorAPI) GetLicenseTemplate(
 		TemplateID: request.LicenseTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("license_template_id", request.LicenseTemplateId).
-			Msg("failed to get license template")
+		applog.Error(ctx, s.logger, err, "failed to get license template",
+			slog.String("product_id", request.ProductId),
+			slog.String("license_template_id", request.LicenseTemplateId),
+		)
 		return nil, err
 	}
 	if template == nil {
@@ -86,7 +91,9 @@ func (s *AnchorAPI) ListLicenseTemplates(
 		Status:    request.Params.Status,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list license templates")
+		applog.Error(ctx, s.logger, err, "failed to list license templates",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -116,7 +123,9 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 		Request:   mapToSearchLicenseTemplatesRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search license templates")
+		applog.Error(ctx, s.logger, err, "failed to search license templates",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -166,10 +175,10 @@ func (s *AnchorAPI) UpdateLicenseTemplate(
 		Values: request.Body.Values,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("license_template_id", request.LicenseTemplateId).
-			Msg("failed to update license template")
+		applog.Error(ctx, s.logger, err, "failed to update license template",
+			slog.String("product_id", request.ProductId),
+			slog.String("license_template_id", request.LicenseTemplateId),
+		)
 		return nil, err
 	}
 	return UpdateLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(template)), nil
@@ -188,10 +197,10 @@ func (s *AnchorAPI) DeleteLicenseTemplate(
 		ProductID:  request.ProductId,
 		TemplateID: request.LicenseTemplateId,
 	}); err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("license_template_id", request.LicenseTemplateId).
-			Msg("failed to delete license template")
+		applog.Error(ctx, s.logger, err, "failed to delete license template",
+			slog.String("product_id", request.ProductId),
+			slog.String("license_template_id", request.LicenseTemplateId),
+		)
 		return nil, err
 	}
 	return DeleteLicenseTemplate204Response{}, nil
@@ -211,10 +220,10 @@ func (s *AnchorAPI) ArchiveLicenseTemplate(
 		TemplateID: request.LicenseTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("license_template_id", request.LicenseTemplateId).
-			Msg("failed to archive license template")
+		applog.Error(ctx, s.logger, err, "failed to archive license template",
+			slog.String("product_id", request.ProductId),
+			slog.String("license_template_id", request.LicenseTemplateId),
+		)
 		return nil, err
 	}
 	return ArchiveLicenseTemplate200JSONResponse(mapLicenseTemplateToResponse(template)), nil
