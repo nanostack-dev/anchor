@@ -3,19 +3,20 @@ package clerk
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
 	"anchor/internal/integration/provider"
-
-	"github.com/rs/zerolog"
 )
 
 func (p *Provider) executeUpsertUser(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	data any,
 ) error {
@@ -84,27 +85,28 @@ func (p *Provider) executeUpsertUser(
 			}),
 		})
 
-		logger.Error().Err(upsertErr).
-			Str(clerkExternalIDKey, upsertData.ExternalID).
-			Str("product_id", instance.ProductID).
-			Msg("failed to upsert product user")
+		logger.ErrorContext(ctx, "failed to upsert product user",
+			log.Err(upsertErr),
+			slog.String(clerkExternalIDKey, upsertData.ExternalID),
+			slog.String("product_id", instance.ProductID),
+		)
 		return fmt.Errorf("failed to upsert product user: %w", upsertErr)
 	}
 
 	if unchanged {
-		logger.Debug().
-			Str(clerkExternalIDKey, upsertData.ExternalID).
-			Str("product_id", instance.ProductID).
-			Msg("product user unchanged, skipping event")
+		logger.DebugContext(ctx, "product user unchanged, skipping event",
+			slog.String(clerkExternalIDKey, upsertData.ExternalID),
+			slog.String("product_id", instance.ProductID),
+		)
 		return nil
 	}
 
 	if created {
-		logger.Info().
-			Str("user_id", upserted.ID).
-			Str(clerkExternalIDKey, upsertData.ExternalID).
-			Str("product_id", instance.ProductID).
-			Msg("product user created via integration")
+		logger.InfoContext(ctx, "product user created via integration",
+			slog.String("user_id", upserted.ID),
+			slog.String(clerkExternalIDKey, upsertData.ExternalID),
+			slog.String("product_id", instance.ProductID),
+		)
 
 		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
 			IntegrationInstanceID: instance.ID,
@@ -117,11 +119,11 @@ func (p *Provider) executeUpsertUser(
 			}),
 		})
 	} else {
-		logger.Debug().
-			Str("user_id", upserted.ID).
-			Str(clerkExternalIDKey, upsertData.ExternalID).
-			Str("product_id", instance.ProductID).
-			Msg("product user already exists, skipping audit log")
+		logger.DebugContext(ctx, "product user already exists, skipping audit log",
+			slog.String("user_id", upserted.ID),
+			slog.String(clerkExternalIDKey, upsertData.ExternalID),
+			slog.String("product_id", instance.ProductID),
+		)
 	}
 
 	return nil

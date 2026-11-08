@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	domainintegration "anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
@@ -15,7 +18,6 @@ import (
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
 
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -50,15 +52,13 @@ type IntegrationEventWorkerParams struct {
 	Lock               *pglock.Client
 	InstanceRepo       repository.IntegrationInstanceRepository
 	Registry           *provider.Registry
-	Logger             zerolog.Logger
+	Logger             *slog.Logger
 	CoreConfig         *serviceconfig.CoreConfig
 }
 
 // RegisterIntegrationEventWorker starts the pgkit queue worker runtime.
 func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
-	logger := p.Logger.With().
-		Str("component", "integration_event_worker").
-		Logger()
+	logger := p.Logger.With(slog.String("component", "integration_event_worker"))
 
 	scheduleInterval := parseScheduleInterval(logger, p.CoreConfig)
 
@@ -75,23 +75,23 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 		BatchSizePerQueue: integrationBatchSize,
 		BackoffBase:       integrationBackoffBase,
 		BackoffMax:        integrationBackoffMax,
-		OnJobFailed: func(_ context.Context, job queue.Job) {
-			logger.Error().
-				Int64("job_id", job.ID).
-				Str("queue", job.QueueName).
-				Int("attempts", job.Attempts).
-				Str("last_error", job.LastError.String).
-				Msg("queue job permanently failed")
+		OnJobFailed: func(ctx context.Context, job queue.Job) {
+			logger.ErrorContext(ctx, "queue job permanently failed",
+				slog.Int64("job_id", job.ID),
+				slog.String("queue", job.QueueName),
+				slog.Int("attempts", job.Attempts),
+				slog.String("last_error", job.LastError.String),
+			)
 		},
-		OnJobStuck: func(_ context.Context, result queue.ReapResult) {
-			logger.WithLevel(reapLogLevel(result)).
-				Int64("requeued", result.Requeued).
-				Int64("failed", result.Failed).
-				Msg("queue jobs stuck in processing were reaped")
+		OnJobStuck: func(ctx context.Context, result queue.ReapResult) {
+			logger.LogAttrs(ctx, reapLogLevel(result), "queue jobs stuck in processing were reaped",
+				slog.Int64("requeued", result.Requeued),
+				slog.Int64("failed", result.Failed),
+			)
 		},
 	})
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize integration event worker")
+		logger.Error("failed to initialize integration event worker", log.Err(err))
 		return
 	}
 
@@ -105,7 +105,7 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 
 			go func() {
 				if runErr := worker.Run(ctx); runErr != nil {
-					logger.Error().Err(runErr).Msg("integration queue worker stopped with error")
+					logger.ErrorContext(ctx, "integration queue worker stopped with error", log.Err(runErr))
 				}
 			}()
 
@@ -113,17 +113,17 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 			// that only one replica inserts the first job even in multi-instance deployments.
 			seedReconcileScheduler(ctx, p.Lock, p.Queue, p.InstanceRepo, p.Registry, scheduleInterval, logger)
 
-			logger.Info().
-				Str("queue_name", integrationQueueName).
-				Dur("poll_interval", integrationPollInterval).
-				Dur("reconcile_schedule_interval", scheduleInterval).
-				Int("batch_size", integrationBatchSize).
-				Int("max_attempts", integrationMaxAttempts).
-				Msg("integration queue worker started")
+			logger.InfoContext(ctx, "integration queue worker started",
+				slog.String("queue_name", integrationQueueName),
+				slog.Duration("poll_interval", integrationPollInterval),
+				slog.Duration("reconcile_schedule_interval", scheduleInterval),
+				slog.Int("batch_size", integrationBatchSize),
+				slog.Int("max_attempts", integrationMaxAttempts),
+			)
 			return nil
 		},
-		OnStop: func(_ context.Context) error {
-			logger.Info().Msg("stopping integration queue worker")
+		OnStop: func(ctx context.Context) error {
+			logger.InfoContext(ctx, "stopping integration queue worker")
 			if cancel != nil {
 				cancel()
 			}
@@ -137,19 +137,19 @@ func RegisterIntegrationEventWorker(p IntegrationEventWorkerParams) {
 func registerQueueHandlers(
 	registry *queue.HandlerRegistry,
 	svc IntegrationService,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	if err := registry.Register(integrationQueueName, func(ctx context.Context, job queue.Job) error {
 		return svc.ProcessQueueJob(ctx, job)
 	}); err != nil {
-		logger.Error().Err(err).Msg("failed to register integration queue handler")
+		logger.Error("failed to register integration queue handler", log.Err(err))
 		return err
 	}
 
 	if err := registry.Register(integrationReconcileQueueName, func(ctx context.Context, job queue.Job) error {
 		return svc.ProcessReconcileQueueJob(ctx, job)
 	}); err != nil {
-		logger.Error().Err(err).Msg("failed to register integration reconcile queue handler")
+		logger.Error("failed to register integration reconcile queue handler", log.Err(err))
 		return err
 	}
 
@@ -157,7 +157,7 @@ func registerQueueHandlers(
 }
 
 // parseScheduleInterval parses the configured reconcile scheduler interval or falls back to the default.
-func parseScheduleInterval(logger zerolog.Logger, cfg *serviceconfig.CoreConfig) time.Duration {
+func parseScheduleInterval(logger *slog.Logger, cfg *serviceconfig.CoreConfig) time.Duration {
 	if cfg == nil {
 		return defaultIntegrationReconcileScheduleEvery
 	}
@@ -169,10 +169,11 @@ func parseScheduleInterval(logger zerolog.Logger, cfg *serviceconfig.CoreConfig)
 
 	d, err := time.ParseDuration(raw)
 	if err != nil || d <= 0 {
-		logger.Warn().Err(err).
-			Str("interval", raw).
-			Dur("fallback_interval", defaultIntegrationReconcileScheduleEvery).
-			Msg("invalid integration reconcile scheduler interval, using default")
+		logger.Warn("invalid integration reconcile scheduler interval, using default",
+			log.Err(err),
+			slog.String("interval", raw),
+			slog.Duration("fallback_interval", defaultIntegrationReconcileScheduleEvery),
+		)
 		return defaultIntegrationReconcileScheduleEvery
 	}
 
@@ -212,11 +213,11 @@ func seedReconcileScheduler(
 	instanceRepo repository.IntegrationInstanceRepository,
 	registry *provider.Registry,
 	scheduleInterval time.Duration,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) {
 	// Only seed when the Clerk provider is registered.
 	if _, err := registry.GetProvider(string(domainintegration.ProviderTypeClerk)); err != nil {
-		logger.Debug().Msg("Clerk provider not registered; skipping reconcile scheduler seed")
+		logger.DebugContext(ctx, "Clerk provider not registered; skipping reconcile scheduler seed")
 		return
 	}
 
@@ -234,7 +235,7 @@ func seedReconcileScheduler(
 		})
 
 		if !hasKey {
-			logger.Debug().Msg("no Clerk instances with API key found; skipping reconcile scheduler seed")
+			logger.DebugContext(ctx, "no Clerk instances with API key found; skipping reconcile scheduler seed")
 			return nil
 		}
 
@@ -250,15 +251,15 @@ func seedReconcileScheduler(
 		return enqueueReconcileSchedulerJob(ctx, queueClient, nil)
 	})
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to seed initial reconcile scheduler job")
+		logger.ErrorContext(ctx, "failed to seed initial reconcile scheduler job", log.Err(err))
 		return
 	}
 	if !acquired {
-		logger.Debug().Msg("reconcile scheduler seed lock not acquired, another replica is seeding")
+		logger.DebugContext(ctx, "reconcile scheduler seed lock not acquired, another replica is seeding")
 		return
 	}
 
-	logger.Info().
-		Dur("schedule_interval", scheduleInterval).
-		Msg("seeded initial reconcile scheduler job")
+	logger.InfoContext(ctx, "seeded initial reconcile scheduler job",
+		slog.Duration("schedule_interval", scheduleInterval),
+	)
 }

@@ -5,6 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -15,8 +18,6 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
-
-	"github.com/rs/zerolog"
 )
 
 const invitationCodeLength = 16
@@ -36,17 +37,17 @@ type InvitationService interface {
 type invitationService struct {
 	invitationRepo   repository.InvitationRepository
 	platformUserRepo repository.PlatformTenantUserRepository
-	logger           zerolog.Logger
+	logger           *slog.Logger
 	mapper           *mapper.InvitationMapper
 }
 
 func NewInvitationService(
 	platformUserRepo repository.PlatformTenantUserRepository,
-	invitationRepo repository.InvitationRepository, logger zerolog.Logger,
+	invitationRepo repository.InvitationRepository, logger *slog.Logger,
 ) InvitationService {
 	return &invitationService{
 		invitationRepo:   invitationRepo,
-		logger:           logger.With().Str("component", "invitation_service").Logger(),
+		logger:           logger.With(slog.String("component", "invitation_service")),
 		mapper:           mapper.NewInvitationMapper(),
 		platformUserRepo: platformUserRepo,
 	}
@@ -55,7 +56,7 @@ func NewInvitationService(
 func (s *invitationService) CreateInvitation(
 	ctx context.Context, input invitation.CreateInvitationInput,
 ) (invitation.PlatformInvitation, error) {
-	logger := s.logger.With().Str("operation", "CreateInvitation").Logger()
+	logger := s.logger.With(slog.String("operation", "CreateInvitation"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
@@ -64,18 +65,18 @@ func (s *invitationService) CreateInvitation(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("email", input.Email).
-			Err(err).
-			Msg("failed to find user by email")
+		logger.ErrorContext(ctx, "failed to find user by email",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("email", input.Email),
+			log.Err(err),
+		)
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if foundPlatformUser.IsPresent() {
-		logger.Debug().
-			Str("tenant_id", input.TenantID).
-			Str("email", input.Email).
-			Msg("user already exists")
+		logger.DebugContext(ctx, "user already exists",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("email", input.Email),
+		)
 		return invitation.PlatformInvitation{}, fault.Conflict(
 			"INVITATION_USER_ALREADY_EXISTS",
 			"This email address already has a user account. "+
@@ -86,18 +87,18 @@ func (s *invitationService) CreateInvitation(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("email", input.Email).
-			Err(err).
-			Msg("failed to find invitation by email")
+		logger.ErrorContext(ctx, "failed to find invitation by email",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("email", input.Email),
+			log.Err(err),
+		)
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	if foundInvitation.IsPresent() {
-		logger.Debug().
-			Str("tenant_id", input.TenantID).
-			Str("email", input.Email).
-			Msg("invitation already exists")
+		logger.DebugContext(ctx, "invitation already exists",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("email", input.Email),
+		)
 		return invitation.PlatformInvitation{}, ErrInvitationAlreadyExists
 	}
 	if input.Role == platform.TenantRoleOwner {
@@ -105,7 +106,7 @@ func (s *invitationService) CreateInvitation(
 	}
 	code, err := generateSecureCode(invitationCodeLength)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to generate secure code")
+		logger.ErrorContext(ctx, "failed to generate secure code", log.Err(err))
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 	inv := invitation.PlatformInvitation{
@@ -122,25 +123,25 @@ func (s *invitationService) CreateInvitation(
 		// that as ErrInvitationExists, which is the same logical condition as the
 		// pre-check, so it gets the same client error rather than a 500.
 		if errors.Is(err, repository.ErrInvitationExists) {
-			logger.Debug().
-				Str("tenant_id", input.TenantID).
-				Str("email", input.Email).
-				Msg("invitation already exists (unique constraint)")
+			logger.DebugContext(ctx, "invitation already exists (unique constraint)",
+				slog.String("tenant_id", input.TenantID),
+				slog.String("email", input.Email),
+			)
 			return invitation.PlatformInvitation{}, ErrInvitationAlreadyExists
 		}
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("email", input.Email).
-			Err(err).
-			Msg("failed to create invitation")
+		logger.ErrorContext(ctx, "failed to create invitation",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("email", input.Email),
+			log.Err(err),
+		)
 		return invitation.PlatformInvitation{}, fault.ErrUnexpected
 	}
 
-	logger.Info().
-		Str("invitation_id", createdEntity.ID).
-		Str("tenant_id", input.TenantID).
-		Str("email", input.Email).
-		Msg("invitation created")
+	logger.InfoContext(ctx, "invitation created",
+		slog.String("invitation_id", createdEntity.ID),
+		slog.String("tenant_id", input.TenantID),
+		slog.String("email", input.Email),
+	)
 
 	return createdEntity, nil
 }
@@ -148,25 +149,25 @@ func (s *invitationService) CreateInvitation(
 func (s *invitationService) DeleteInvitation(
 	ctx context.Context, input invitation.DeleteInvitationInput,
 ) error {
-	logger := s.logger.With().Str("operation", "DeleteInvitation").Logger()
+	logger := s.logger.With(slog.String("operation", "DeleteInvitation"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
 	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", input.TenantID).
-			Str("invitation_id", input.InvitationID).
-			Err(err).
-			Msg("failed to delete invitation")
+		logger.ErrorContext(ctx, "failed to delete invitation",
+			slog.String("tenant_id", input.TenantID),
+			slog.String("invitation_id", input.InvitationID),
+			log.Err(err),
+		)
 		return err
 	}
 
-	logger.Info().
-		Str("tenant_id", input.TenantID).
-		Str("invitation_id", input.InvitationID).
-		Msg("invitation deleted")
+	logger.InfoContext(ctx, "invitation deleted",
+		slog.String("tenant_id", input.TenantID),
+		slog.String("invitation_id", input.InvitationID),
+	)
 
 	return nil
 }
@@ -174,7 +175,7 @@ func (s *invitationService) DeleteInvitation(
 func (s *invitationService) SearchInvitation(
 	ctx context.Context, input invitation.SearchInvitationInput,
 ) (search.Result[invitation.PlatformInvitation], error) {
-	logger := s.logger.With().Str("operation", "SearchInvitation").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchInvitation"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[invitation.PlatformInvitation]{}, err
@@ -182,10 +183,10 @@ func (s *invitationService) SearchInvitation(
 	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().
-				Str("tenant_id", input.TenantID).
-				Err(err).
-				Msg("failed to search invitations")
+			logger.ErrorContext(ctx, "failed to search invitations",
+				slog.String("tenant_id", input.TenantID),
+				log.Err(err),
+			)
 		}
 		return search.Result[invitation.PlatformInvitation]{}, err
 	}

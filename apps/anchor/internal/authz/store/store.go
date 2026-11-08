@@ -8,16 +8,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
-	"github.com/rs/zerolog"
 
+	"anchor/internal/applog"
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/fga"
 	"anchor/internal/db/gen/anchor/public/model"
@@ -54,7 +55,10 @@ type Opened struct {
 	// it may hold only the keys written since, and would deny the others.
 	Rebuilt bool
 	// refused samples the log of a contextual tuple the model refuses.
-	refused zerolog.Sampler
+	refused *applog.BurstSampler
+	// logger writes the refusal with the request scope of its context. Nil
+	// writes nothing.
+	logger *slog.Logger
 }
 
 // Holds answers, for each tuple in order, whether its user holds its relation
@@ -68,12 +72,13 @@ func (o Opened) Holds(ctx context.Context, tuples []fga.Tuple, contextual ...fga
 	held := make([]bool, len(tuples))
 	for _, t := range contextual {
 		if !o.Relations.Accepts(t) {
-			logger := log.Ctx(ctx).Sample(o.refused)
-			logger.Warn().
-				Str("event", "authz.contextual_tuple_refused").
-				Str("model_id", o.Store.ModelID()).
-				Stringer("tuple", t).
-				Msg("authz.contextual_tuple_refused")
+			if o.logger != nil && o.refused.Sample() {
+				o.logger.WarnContext(ctx, "authz.contextual_tuple_refused",
+					slog.String("event", "authz.contextual_tuple_refused"),
+					slog.String("model_id", o.Store.ModelID()),
+					slog.String("tuple", t.String()),
+				)
+			}
 			return held, nil
 		}
 	}
@@ -103,17 +108,19 @@ const refusedLogBurst = 20
 type stores struct {
 	db       *sql.DB
 	provider engine.Provider
-	logger   zerolog.Logger
-	refused  zerolog.Sampler
+	logger   *slog.Logger
+	scoped   *slog.Logger
+	refused  *applog.BurstSampler
 	// relations holds, per model ID, what the model defines: a model never
 	// changes once written.
 	relations sync.Map
 }
 
-func New(db *sql.DB, provider engine.Provider, logger zerolog.Logger) Stores {
+func New(db *sql.DB, provider engine.Provider, logger *slog.Logger, scoped applog.Scoped) Stores {
 	return &stores{
-		db: db, provider: provider, logger: logger.With().Str("component", "authz_store").Logger(),
-		refused: &zerolog.BurstSampler{Burst: refusedLogBurst, Period: time.Minute},
+		db: db, provider: provider, logger: logger.With(slog.String("component", "authz_store")),
+		scoped:  scoped.Logger,
+		refused: &applog.BurstSampler{Burst: refusedLogBurst, Period: time.Minute},
 	}
 }
 
@@ -182,6 +189,7 @@ func (s *stores) Open(ctx context.Context, productID string) (functional.Option[
 		Store:   fga.NewStore(openfga, recorded.StoreID, *recorded.ModelID),
 		Rebuilt: recorded.ReconciledAt != nil,
 		refused: s.refused,
+		logger:  s.scoped,
 	}
 	if cached, hit := s.relations.Load(opened.Store.ModelID()); hit {
 		if relations, isRelations := cached.(fga.Relations); isRelations {
@@ -212,6 +220,9 @@ func (s *stores) discard(ctx context.Context, openfga engine.Engine, storeID str
 		context.WithoutCancel(ctx),
 		&openfgav1.DeleteStoreRequest{StoreId: storeID},
 	); err != nil {
-		s.logger.Warn().Err(err).Str("store_id", storeID).Msg("failed to delete an unused openfga store")
+		s.logger.WarnContext(ctx, "failed to delete an unused openfga store",
+			log.Err(err),
+			slog.String("store_id", storeID),
+		)
 	}
 }

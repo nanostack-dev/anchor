@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -24,18 +24,18 @@ type LicenseHistoryService interface {
 type licenseHistoryService struct {
 	changes       licenserepo.OrganizationLicenseChangeRepository
 	organizations intrepo.OrganizationRepository
-	logger        zerolog.Logger
+	logger        *slog.Logger
 }
 
 func NewLicenseHistoryService(
 	changes licenserepo.OrganizationLicenseChangeRepository,
 	organizations intrepo.OrganizationRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) LicenseHistoryService {
 	return &licenseHistoryService{
 		changes:       changes,
 		organizations: organizations,
-		logger:        logger.With().Str("component", "license_history_service").Logger(),
+		logger:        logger.With(slog.String("component", "license_history_service")),
 	}
 }
 

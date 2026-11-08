@@ -2,8 +2,11 @@ package fgasync
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"go.uber.org/fx"
@@ -48,8 +51,12 @@ func (s *Syncer) Replay(ctx context.Context, marked []Scope) {
 	defer cancel()
 	for _, scope := range smallestCover(marked) {
 		if err := s.Sync(replayCtx, scope); err != nil {
-			s.logger.Warn().Err(err).Str("product_id", scope.ProductID).Str("source", scope.Source).
-				Str("key", scope.Key).Msg("authz replay after commit failed; the sweeper retries it")
+			s.logger.WarnContext(ctx, "authz replay after commit failed; the sweeper retries it",
+				log.Err(err),
+				slog.String("product_id", scope.ProductID),
+				slog.String("source", scope.Source),
+				slog.String("key", scope.Key),
+			)
 		}
 	}
 }
@@ -108,21 +115,26 @@ func (s *Syncer) sweepAlone(ctx context.Context) {
 		s.Sweep(lockCtx)
 		return nil
 	}); err != nil && ctx.Err() == nil {
-		s.logger.Warn().Err(err).Msg("authz sweep lock failed")
+		s.logger.WarnContext(ctx, "authz sweep lock failed", log.Err(err))
 	}
 }
 
 func (s *Syncer) syncOldestMarks(ctx context.Context) {
 	marks, err := s.repo.Oldest(ctx, sweepBatchSize)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("list authz sync marks")
+		s.logger.ErrorContext(ctx, "list authz sync marks", log.Err(err))
 		return
 	}
 	scopes := make([]Scope, 0, len(marks))
 	for _, mark := range marks {
 		if age := s.now().Sub(mark.MarkedAt); age > staleMarkAge {
-			s.logger.Warn().Str("event", "authz.mark_stale").Str("product_id", mark.ProductID).
-				Str("source", mark.Source).Str("key", mark.Key).Dur("age", age).Msg("authz.mark_stale")
+			s.logger.WarnContext(ctx, "authz.mark_stale",
+				slog.String("event", "authz.mark_stale"),
+				slog.String("product_id", mark.ProductID),
+				slog.String("source", mark.Source),
+				slog.String("key", mark.Key),
+				slog.Duration("age", age),
+			)
 		}
 		scopes = append(scopes, mark.Scope)
 	}
@@ -137,10 +149,16 @@ func (s *Syncer) postponeAfterFailure(ctx context.Context, productID, step strin
 	if err == nil || ctx.Err() != nil {
 		return
 	}
-	s.logger.Warn().Err(err).Str("product_id", productID).Str("step", step).
-		Msg("authz sync failed; it is retried after the other products")
+	s.logger.WarnContext(ctx, "authz sync failed; it is retried after the other products",
+		log.Err(err),
+		slog.String("product_id", productID),
+		slog.String("step", step),
+	)
 	if postponeErr := s.repo.Postpone(ctx, productID, s.now().Add(failureBackoff)); postponeErr != nil {
-		s.logger.Warn().Err(postponeErr).Str("product_id", productID).Msg("postpone authz marks")
+		s.logger.WarnContext(ctx, "postpone authz marks",
+			log.Err(postponeErr),
+			slog.String("product_id", productID),
+		)
 	}
 }
 
@@ -149,7 +167,7 @@ func (s *Syncer) postponeAfterFailure(ctx context.Context, productID, step strin
 func (s *Syncer) reconcileOverdue(ctx context.Context) bool {
 	due, err := s.repo.DueForReconcile(ctx, s.now().Add(-reconcileInterval))
 	if err != nil {
-		s.logger.Error().Err(err).Msg("find product due for authz reconcile")
+		s.logger.ErrorContext(ctx, "find product due for authz reconcile", log.Err(err))
 		return false
 	}
 	productID, ok := due.Get()
@@ -172,7 +190,7 @@ func (s *Syncer) removeOrphanStores(ctx context.Context) {
 		PageSize: wrapperspb.Int32(storesPage), ContinuationToken: s.storesToken,
 	})
 	if err != nil {
-		s.logger.Warn().Err(err).Msg("list openfga stores")
+		s.logger.WarnContext(ctx, "list openfga stores", log.Err(err))
 		return
 	}
 	s.storesToken = page.GetContinuationToken()
@@ -182,7 +200,10 @@ func (s *Syncer) removeOrphanStores(ctx context.Context) {
 			continue
 		}
 		if _, err = engine.DeleteStore(ctx, &openfgav1.DeleteStoreRequest{StoreId: found.GetId()}); err != nil {
-			s.logger.Warn().Err(err).Str("store_id", found.GetId()).Msg("delete an orphan openfga store")
+			s.logger.WarnContext(ctx, "delete an orphan openfga store",
+				log.Err(err),
+				slog.String("store_id", found.GetId()),
+			)
 		}
 	}
 }

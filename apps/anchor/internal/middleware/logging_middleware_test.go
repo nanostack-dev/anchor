@@ -2,15 +2,19 @@ package middleware_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"anchor/internal/applog"
 	"anchor/internal/middleware"
 
-	"github.com/rs/zerolog"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRequestLoggingKeepsRawKeysOutOfLogs(t *testing.T) {
@@ -28,7 +32,8 @@ func TestRequestLoggingKeepsRawKeysOutOfLogs(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buffer bytes.Buffer
-			logged := middleware.NewRequestLoggingMiddlewareWithBodies(zerolog.New(&buffer), true)(
+			logger := slog.New(slog.NewJSONHandler(&buffer, nil))
+			logged := middleware.NewRequestLoggingMiddlewareWithBodies(logger, true)(
 				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }),
 			)
 			request := httptest.NewRequest(http.MethodPost, tc.path,
@@ -40,4 +45,35 @@ func TestRequestLoggingKeepsRawKeysOutOfLogs(t *testing.T) {
 			assert.Equal(t, tc.logged, strings.Contains(buffer.String(), "anchor_org_apikey_secret"))
 		})
 	}
+}
+
+// The summary line keeps the zerolog request log's shape, which the alerts
+// and the golden suite read.
+func TestRequestLoggingWritesTheLegacySummaryLine(t *testing.T) {
+	var buffer bytes.Buffer
+	logger := applog.New(log.Config{Wire: log.WireLegacy, Output: &buffer}).Scoped.Logger
+	logged := middleware.NewRequestLoggingMiddlewareWithBodies(logger, true)(
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte("down"))
+		}),
+	)
+	request := httptest.NewRequest(http.MethodPost, "/v1/products?page=2", strings.NewReader(`{"name":"x"}`))
+	request.Header.Set("User-Agent", "probe/1")
+	request.Header.Set("X-Forwarded-For", "203.0.113.7, 10.0.0.1")
+
+	logged.ServeHTTP(httptest.NewRecorder(), request)
+
+	var line map[string]any
+	require.NoError(t, json.Unmarshal(buffer.Bytes(), &line))
+	assert.Regexp(t, `^POST /v1/products -> 502 \(.+\)$`, line["message"])
+	assert.Equal(t, "error", line["level"], "a 5xx summary is an error line")
+	assert.Regexp(t, `/logging_middleware\.go:\d+$`, line["caller"])
+	assert.InDelta(t, 502, line["status"], 0)
+	assert.InDelta(t, 4, line["bytes_out"], 0)
+	assert.Equal(t, "page=2", line["query"])
+	assert.Equal(t, "probe/1", line["user_agent"])
+	assert.Equal(t, "203.0.113.7", line["client_ip"], "the first X-Forwarded-For hop")
+	assert.JSONEq(t, `{"name":"x"}`, line["request_body"].(string))
+	assert.IsType(t, float64(0), line["duration"])
 }

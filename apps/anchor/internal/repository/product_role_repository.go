@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -21,7 +24,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ ProductRoleRepository = (*productRoleRepositoryImpl)(nil)
@@ -102,13 +104,13 @@ type ProductRoleRepository interface {
 type productRoleRepositoryImpl struct {
 	db                *sql.DB
 	productRoleMapper *mapper.ProductRoleMapper
-	logger            zerolog.Logger
+	logger            *slog.Logger
 }
 
 func NewProductRoleRepository(
 	db *sql.DB,
 	productRoleMapper *mapper.ProductRoleMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ProductRoleRepository {
 	return &productRoleRepositoryImpl{
 		db:                db,
@@ -289,10 +291,11 @@ func (r *productRoleRepositoryImpl) Create(
 			),
 		).MODELS(permissions)
 		if err = transactor.Exec(ctx, r.db, permStmt).Err(); err != nil {
-			r.logger.Error().Err(err).
-				Str("product_role_id", productRole.ID).
-				Str("product_id", productRole.ProductID).
-				Msg("Failed to create product role permissions")
+			r.logger.ErrorContext(ctx, "Failed to create product role permissions",
+				log.Err(err),
+				slog.String("product_role_id", productRole.ID),
+				slog.String("product_id", productRole.ProductID),
+			)
 			return role.ProductRole{}, err
 		}
 	}
@@ -563,9 +566,10 @@ func (r *productRoleRepositoryImpl) search(
 		Value()
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			r.logger.Error().Err(err).Str(
-				"productID", productID,
-			).Msg("failed to search product roles")
+			r.logger.ErrorContext(ctx, "failed to search product roles",
+				log.Err(err),
+				slog.String("productID", productID),
+			)
 		}
 		return search.Result[role.ProductRole]{}, err
 	}
@@ -589,9 +593,10 @@ func (r *productRoleRepositoryImpl) search(
 		),
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"productID", productID,
-		).Msg("failed to load product role permissions")
+		r.logger.ErrorContext(ctx, "failed to load product role permissions",
+			log.Err(err),
+			slog.String("productID", productID),
+		)
 		return search.Result[role.ProductRole]{}, err
 	}
 

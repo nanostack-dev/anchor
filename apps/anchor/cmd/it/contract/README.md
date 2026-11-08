@@ -8,8 +8,8 @@ alerts when this suite passes unchanged.
 It boots the real server in-process through the shared integration harness
 (`cmd/it/shared`): TimescaleDB and Redis in testcontainers, then the same fx
 graph as `cmd/main.go` (`app.StartAnchor`), so the router, the OpenAPI request
-validator, the auth middleware, the strict error handler and the zerolog
-logger are the production ones.
+validator, the auth middleware, the strict error hooks and the slog logger
+(`internal/applog`, legacy wire) are the production ones.
 
 ## Run
 

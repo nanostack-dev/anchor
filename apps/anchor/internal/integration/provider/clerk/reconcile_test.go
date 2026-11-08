@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -157,6 +157,6 @@ func newTestProvider(t *testing.T) *Provider {
 
 	return NewProvider(NewProviderParams{
 		EncryptionService: encService,
-		Logger:            zerolog.Nop(),
+		Logger:            slog.New(slog.DiscardHandler),
 	})
 }

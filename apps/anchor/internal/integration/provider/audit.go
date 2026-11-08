@@ -3,12 +3,13 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/repository"
-
-	"github.com/rs/zerolog"
 )
 
 // WriteAuditLog persists an integration audit log entry, filling in defaults
@@ -16,7 +17,7 @@ import (
 // all providers.
 func WriteAuditLog(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	repo repository.IntegrationAuditLogRepository,
 	auditLog integration.AuditLog,
 ) {
@@ -34,10 +35,11 @@ func WriteAuditLog(
 	}
 
 	if _, auditErr := repo.Create(ctx, auditLog); auditErr != nil {
-		logger.Error().Err(auditErr).
-			Str("integration_instance_id", auditLog.IntegrationInstanceID).
-			Str("action", auditLog.Action).
-			Msg("failed to create integration audit log")
+		logger.ErrorContext(ctx, "failed to create integration audit log",
+			log.Err(auditErr),
+			slog.String("integration_instance_id", auditLog.IntegrationInstanceID),
+			slog.String("action", auditLog.Action),
+		)
 	}
 }
 

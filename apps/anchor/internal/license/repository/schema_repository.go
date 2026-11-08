@@ -3,12 +3,12 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
@@ -26,16 +26,16 @@ func licenseSchemasUpdatableColumns() postgres.ColumnList {
 type schemaRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.LicenseSchemaMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewSchemaRepository(
-	db *sql.DB, m *mapper.LicenseSchemaMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.LicenseSchemaMapper, logger *slog.Logger,
 ) SchemaRepository {
 	return &schemaRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "license_schema_repository").Logger(),
+		logger: logger.With(slog.String("component", "license_schema_repository")),
 	}
 }
 

@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
@@ -18,8 +21,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-
-	"github.com/rs/zerolog"
 )
 
 type ProductUserService interface {
@@ -57,7 +58,7 @@ type productUserService struct {
 	roleAssignments   assignments.Service
 	transactor        transactor.Transactor
 	events            events.Emitter
-	logger            zerolog.Logger
+	logger            *slog.Logger
 }
 
 func NewProductUserService(
@@ -66,7 +67,7 @@ func NewProductUserService(
 	roleAssignments assignments.Service,
 	transactor transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ProductUserService {
 	return &productUserService{
 		productUserRepo:   productUserRepo,
@@ -74,14 +75,14 @@ func NewProductUserService(
 		roleAssignments:   roleAssignments,
 		transactor:        transactor,
 		events:            eventEmitter,
-		logger:            logger.With().Str("component", "product_user_service").Logger(),
+		logger:            logger.With(slog.String("component", "product_user_service")),
 	}
 }
 
 func (s *productUserService) Find(
 	ctx context.Context, input user.FindProductUserInput,
 ) (user.ProductUser, error) {
-	logger := s.logger.With().Str("operation", "Find").Logger()
+	logger := s.logger.With(slog.String("operation", "Find"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return user.ProductUser{}, err
@@ -91,11 +92,11 @@ func (s *productUserService) Find(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to find product user")
+		logger.ErrorContext(ctx, "failed to find product user",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return user.ProductUser{}, err
 	}
 
@@ -105,7 +106,7 @@ func (s *productUserService) Find(
 func (s *productUserService) Create(
 	ctx context.Context, input user.CreateProductUserInput,
 ) (user.ProductUser, error) {
-	logger := s.logger.With().Str("operation", "Create").Logger()
+	logger := s.logger.With(slog.String("operation", "Create"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return user.ProductUser{}, err
@@ -115,11 +116,11 @@ func (s *productUserService) Create(
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		existingUsers, err := s.productUserRepo.FindByProductID(txCtx, input.ProductID)
 		if err != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("email", input.Email).
-				Err(err).
-				Msg("failed to check for duplicate email")
+			logger.ErrorContext(txCtx, "failed to check for duplicate email",
+				slog.String("product_id", input.ProductID),
+				slog.String("email", input.Email),
+				log.Err(err),
+			)
 			return err
 		}
 
@@ -153,19 +154,19 @@ func (s *productUserService) Create(
 			return ErrProductUserExternalIDAlreadyExists
 		}
 		if err != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("email", input.Email).
-				Err(err).
-				Msg("failed to create product user")
+			logger.ErrorContext(txCtx, "failed to create product user",
+				slog.String("product_id", input.ProductID),
+				slog.String("email", input.Email),
+				log.Err(err),
+			)
 			return err
 		}
 
-		logger.Info().
-			Str("product_user_id", createdUser.ID).
-			Str("product_id", input.ProductID).
-			Str("email", input.Email).
-			Msg("product user created successfully")
+		logger.InfoContext(txCtx, "product user created successfully",
+			slog.String("product_user_id", createdUser.ID),
+			slog.String("product_id", input.ProductID),
+			slog.String("email", input.Email),
+		)
 
 		return s.events.Emit(txCtx, events.Event{
 			Type:      events.ProductUserCreated,
@@ -195,7 +196,7 @@ func (s *productUserService) ensureExternalIDIsFree(
 func (s *productUserService) Delete(
 	ctx context.Context, input user.DeleteProductUserInput,
 ) error {
-	logger := s.logger.With().Str("operation", "Delete").Logger()
+	logger := s.logger.With(slog.String("operation", "Delete"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -223,26 +224,26 @@ func (s *productUserService) Delete(
 		})
 	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to delete product user")
+		logger.ErrorContext(ctx, "failed to delete product user",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return err
 	}
 
 	if !deleted {
-		logger.Debug().
-			Str("product_user_id", input.ProductUserID).
-			Str("product_id", input.ProductID).
-			Msg("product user already absent, nothing deleted")
+		logger.DebugContext(ctx, "product user already absent, nothing deleted",
+			slog.String("product_user_id", input.ProductUserID),
+			slog.String("product_id", input.ProductID),
+		)
 		return nil
 	}
 
-	logger.Info().
-		Str("product_user_id", input.ProductUserID).
-		Str("product_id", input.ProductID).
-		Msg("product user deleted successfully")
+	logger.InfoContext(ctx, "product user deleted successfully",
+		slog.String("product_user_id", input.ProductUserID),
+		slog.String("product_id", input.ProductID),
+	)
 
 	return nil
 }
@@ -250,7 +251,7 @@ func (s *productUserService) Delete(
 func (s *productUserService) Search(
 	ctx context.Context, input user.SearchProductUserInput,
 ) (search.Result[user.ProductUser], error) {
-	logger := s.logger.With().Str("operation", "Search").Logger()
+	logger := s.logger.With(slog.String("operation", "Search"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[user.ProductUser]{}, err
@@ -259,18 +260,18 @@ func (s *productUserService) Search(
 	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Err(err).
-				Msg("failed to search product users")
+			logger.ErrorContext(ctx, "failed to search product users",
+				slog.String("product_id", input.ProductID),
+				log.Err(err),
+			)
 		}
 		return search.Result[user.ProductUser]{}, err
 	}
 
-	logger.Debug().
-		Str("product_id", input.ProductID).
-		Int("total_count", int(result.Total)).
-		Msg("product users search completed")
+	logger.DebugContext(ctx, "product users search completed",
+		slog.String("product_id", input.ProductID),
+		slog.Int("total_count", int(result.Total)),
+	)
 
 	return result, nil
 }
@@ -278,7 +279,7 @@ func (s *productUserService) Search(
 func (s *productUserService) FindByExternalID(
 	ctx context.Context, input user.FindProductUserByExternalIDInput,
 ) (*user.ProductUser, error) {
-	logger := s.logger.With().Str("operation", "FindByExternalID").Logger()
+	logger := s.logger.With(slog.String("operation", "FindByExternalID"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
@@ -288,11 +289,11 @@ func (s *productUserService) FindByExternalID(
 		ctx, input.ProductID, input.ExternalID,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("external_id", input.ExternalID).
-			Err(err).
-			Msg("failed to find product user by external ID")
+		logger.ErrorContext(ctx, "failed to find product user by external ID",
+			slog.String("product_id", input.ProductID),
+			slog.String("external_id", input.ExternalID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 
@@ -302,7 +303,7 @@ func (s *productUserService) FindByExternalID(
 func (s *productUserService) ListUserOrganizations(
 	ctx context.Context, input user.ListUserOrganizationsInput,
 ) ([]user.OrganizationMembership, error) {
-	logger := s.logger.With().Str("operation", "ListUserOrganizations").Logger()
+	logger := s.logger.With(slog.String("operation", "ListUserOrganizations"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
@@ -313,11 +314,11 @@ func (s *productUserService) ListUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to verify product user exists")
+		logger.ErrorContext(ctx, "failed to verify product user exists",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	if foundUser.IsAbsent() {
@@ -328,11 +329,11 @@ func (s *productUserService) ListUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to list user organizations")
+		logger.ErrorContext(ctx, "failed to list user organizations",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 
@@ -342,7 +343,7 @@ func (s *productUserService) ListUserOrganizations(
 func (s *productUserService) SearchUserOrganizations(
 	ctx context.Context, input user.SearchUserOrganizationsInput,
 ) (search.Result[user.OrganizationMembership], error) {
-	logger := s.logger.With().Str("operation", "SearchUserOrganizations").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchUserOrganizations"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[user.OrganizationMembership]{}, err
@@ -352,11 +353,11 @@ func (s *productUserService) SearchUserOrganizations(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to verify product user exists")
+		logger.ErrorContext(ctx, "failed to verify product user exists",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return search.Result[user.OrganizationMembership]{}, err
 	}
 	if foundUser.IsAbsent() {
@@ -368,11 +369,11 @@ func (s *productUserService) SearchUserOrganizations(
 	)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("product_user_id", input.ProductUserID).
-				Err(err).
-				Msg("failed to search user organizations")
+			logger.ErrorContext(ctx, "failed to search user organizations",
+				slog.String("product_id", input.ProductID),
+				slog.String("product_user_id", input.ProductUserID),
+				log.Err(err),
+			)
 		}
 		return search.Result[user.OrganizationMembership]{}, err
 	}
@@ -383,7 +384,7 @@ func (s *productUserService) SearchUserOrganizations(
 func (s *productUserService) GetUserOrganization(
 	ctx context.Context, input user.GetUserOrganizationInput,
 ) (user.OrganizationMembership, error) {
-	logger := s.logger.With().Str("operation", "GetUserOrganization").Logger()
+	logger := s.logger.With(slog.String("operation", "GetUserOrganization"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return user.OrganizationMembership{}, err
@@ -394,11 +395,11 @@ func (s *productUserService) GetUserOrganization(
 		ctx, input.ProductID, input.ProductUserID,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Err(err).
-			Msg("failed to verify product user exists")
+		logger.ErrorContext(ctx, "failed to verify product user exists",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			log.Err(err),
+		)
 		return user.OrganizationMembership{}, err
 	}
 	if foundUser.IsAbsent() {
@@ -409,12 +410,12 @@ func (s *productUserService) GetUserOrganization(
 		ctx, input.ProductID, input.ProductUserID, input.OrganizationID, input.IncludePermissions,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("product_user_id", input.ProductUserID).
-			Str("organization_id", input.OrganizationID).
-			Err(err).
-			Msg("failed to get user organization")
+		logger.ErrorContext(ctx, "failed to get user organization",
+			slog.String("product_id", input.ProductID),
+			slog.String("product_user_id", input.ProductUserID),
+			slog.String("organization_id", input.OrganizationID),
+			log.Err(err),
+		)
 		return user.OrganizationMembership{}, err
 	}
 

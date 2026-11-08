@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/organizationinvitation"
@@ -46,7 +46,7 @@ type organizationInvitationService struct {
 	membershipService anchorservice.OrganizationMembershipService
 	transactor        transactor.Transactor
 	events            events.Emitter
-	logger            zerolog.Logger
+	logger            *slog.Logger
 }
 
 func NewOrganizationInvitationService(
@@ -57,7 +57,7 @@ func NewOrganizationInvitationService(
 	membershipService anchorservice.OrganizationMembershipService,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationInvitationService {
 	return &organizationInvitationService{
 		invitationRepo:    invitationRepo,
@@ -67,7 +67,7 @@ func NewOrganizationInvitationService(
 		membershipService: membershipService,
 		transactor:        tx,
 		events:            eventEmitter,
-		logger:            logger.With().Str("component", "organization_invitation_service").Logger(),
+		logger:            logger.With(slog.String("component", "organization_invitation_service")),
 	}
 }
 

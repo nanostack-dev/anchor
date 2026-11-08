@@ -3,12 +3,12 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/view"
@@ -19,13 +19,13 @@ var _ UsageSeriesRepository = (*usageSeriesRepositoryImpl)(nil)
 
 type usageSeriesRepositoryImpl struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
-func NewUsageSeriesRepository(db *sql.DB, logger zerolog.Logger) UsageSeriesRepository {
+func NewUsageSeriesRepository(db *sql.DB, logger *slog.Logger) UsageSeriesRepository {
 	return &usageSeriesRepositoryImpl{
 		db:     db,
-		logger: logger.With().Str("component", "usage_series_repository").Logger(),
+		logger: logger.With(slog.String("component", "usage_series_repository")),
 	}
 }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
@@ -10,7 +11,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	licenserepo "anchor/internal/license/repository"
@@ -110,7 +110,7 @@ type licenseTemplateService struct {
 	schemas        LicenseSchemaService
 	sync           LicenseTemplateSyncEnqueuer
 	transactor     transactor.Transactor
-	logger         zerolog.Logger
+	logger         *slog.Logger
 }
 
 func NewLicenseTemplateService(
@@ -119,7 +119,7 @@ func NewLicenseTemplateService(
 	schemas LicenseSchemaService,
 	sync LicenseTemplateSyncEnqueuer,
 	tx transactor.Transactor,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) LicenseTemplateService {
 	return &licenseTemplateService{
 		templateRepo:   templateRepo,
@@ -127,7 +127,7 @@ func NewLicenseTemplateService(
 		schemas:        schemas,
 		sync:           sync,
 		transactor:     tx,
-		logger:         logger.With().Str("component", "license_template_service").Logger(),
+		logger:         logger.With(slog.String("component", "license_template_service")),
 	}
 }
 

@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -18,7 +21,6 @@ import (
 	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 type OrganizationAPIKeyRepository interface {
@@ -93,20 +95,18 @@ type organizationAPIKeyWithPermissions struct {
 
 type organizationAPIKeyRepository struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 	mapper *mapper.OrganizationAPIKeyMapper
 }
 
 func NewOrganizationAPIKeyRepository(
 	db *sql.DB,
 	mapper *mapper.OrganizationAPIKeyMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationAPIKeyRepository {
 	return &organizationAPIKeyRepository{
-		db: db,
-		logger: logger.With().Str(
-			"component", "organization_api_key_repository",
-		).Logger(),
+		db:     db,
+		logger: logger.With(slog.String("component", "organization_api_key_repository")),
 		mapper: mapper,
 	}
 }
@@ -139,10 +139,11 @@ func (r *organizationAPIKeyRepository) Create(
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 	if err != nil {
-		r.logger.Error().Err(err).
-			Str("api_key_id", apiKey.ID).
-			Str("organization_id", apiKey.OrganizationID).
-			Msg("Failed to create organization API key")
+		r.logger.ErrorContext(ctx, "Failed to create organization API key",
+			log.Err(err),
+			slog.String("api_key_id", apiKey.ID),
+			slog.String("organization_id", apiKey.OrganizationID),
+		)
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
@@ -157,10 +158,11 @@ func (r *organizationAPIKeyRepository) Create(
 
 		err = transactor.Exec(ctx, r.db, permStmt).Err()
 		if err != nil {
-			r.logger.Error().Err(err).
-				Str("api_key_id", apiKey.ID).
-				Str("organization_id", apiKey.OrganizationID).
-				Msg("Failed to create organization API key permissions")
+			r.logger.ErrorContext(ctx, "Failed to create organization API key permissions",
+				log.Err(err),
+				slog.String("api_key_id", apiKey.ID),
+				slog.String("organization_id", apiKey.OrganizationID),
+			)
 			return orgapikey.OrganizationAPIKey{}, err
 		}
 	}
@@ -320,9 +322,10 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		Value()
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			r.logger.Error().Err(err).Str(
-				"organization_id", input.OrganizationID,
-			).Msg("failed to search organization API keys")
+			r.logger.ErrorContext(ctx, "failed to search organization API keys",
+				log.Err(err),
+				slog.String("organization_id", input.OrganizationID),
+			)
 		}
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
@@ -341,9 +344,10 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		apiKeyIDs,
 	)
 	if err != nil {
-		r.logger.Error().Err(err).Str(
-			"organization_id", input.OrganizationID,
-		).Msg("failed to load organization API key permissions")
+		r.logger.ErrorContext(ctx, "failed to load organization API key permissions",
+			log.Err(err),
+			slog.String("organization_id", input.OrganizationID),
+		)
 		return search.Result[orgapikey.OrganizationAPIKey]{}, err
 	}
 

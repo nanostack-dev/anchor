@@ -3,14 +3,15 @@ package service_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	accesssvc "anchor/internal/access/service"
+	"anchor/internal/applog"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
@@ -85,8 +86,9 @@ func (r registry) Ancestors(
 }
 
 func evaluatorWith(resources resourcerepository.Repository) accesssvc.Evaluator {
+	discard := slog.New(slog.DiscardHandler)
 	return accesssvc.NewEvaluator(nil, nil, nil, keyService{}, holdsAll{}, documentTypes{}, resources, nil,
-		zerolog.Nop())
+		discard, applog.Scoped{Logger: discard})
 }
 
 func explained() accesssvc.Request {

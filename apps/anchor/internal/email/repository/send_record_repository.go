@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -11,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -30,16 +30,16 @@ func emailSendRecordsUpdatableColumns() postgres.ColumnList {
 type sendRecordRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.EmailSendRecordMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewSendRecordRepository(
-	db *sql.DB, m *mapper.EmailSendRecordMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.EmailSendRecordMapper, logger *slog.Logger,
 ) SendRecordRepository {
 	return &sendRecordRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "email_send_record_repository").Logger(),
+		logger: logger.With(slog.String("component", "email_send_record_repository")),
 	}
 }
 

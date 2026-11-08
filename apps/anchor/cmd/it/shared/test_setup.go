@@ -3,6 +3,7 @@ package itshared
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -23,14 +24,16 @@ import (
 	sessionservice "anchor/internal/session/service"
 
 	_ "github.com/lib/pq" // Required for PostgreSQL driver
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// TestLogger discards until SetupTest replaces it, so a package-level copy
+// taken before (cmd/it/service) is usable, as the zero zerolog.Logger was.
+var TestLogger = slog.New(slog.DiscardHandler) //nolint:gochecknoglobals // Required for test setup
+
 var (
-	TestLogger                   zerolog.Logger                              //nolint:gochecknoglobals // Required for test setup
 	ServerURL                    string                                      //nolint:gochecknoglobals // Required for test setup
 	APIKeyService                service.ProductAPIKeyService                //nolint:gochecknoglobals // Required for DSL/repo-backed tests
 	OrganizationAPIKeyService    service.OrganizationAPIKeyService           //nolint:gochecknoglobals // Required for org API key validation tests
@@ -90,22 +93,16 @@ type TestConfig struct {
 }
 
 func SetupTest(config TestConfig) func() {
-	logLevel := zerolog.InfoLevel
+	logLevel := slog.LevelInfo
 	if levelStr := os.Getenv("TEST_LOG_LEVEL"); levelStr != "" {
-		if lvl, err := zerolog.ParseLevel(levelStr); err == nil {
+		if lvl, err := log.ParseLevel(levelStr); err == nil {
 			logLevel = lvl
 		}
 	}
-	log := log.Logger.
-		Output(zerolog.ConsoleWriter{Out: os.Stderr}).
-		Level(logLevel).
-		With().
-		Str("service", "shared_test_setup").
-		Caller()
-	zerolog.SetGlobalLevel(logLevel)
-	TestLogger = log.Logger()
-	testLogger := log.Logger()
-	testLogger.Info().Msg("Setting up shared resources...")
+	TestLogger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{AddSource: true, Level: logLevel})).
+		With(slog.String("service", "shared_test_setup"))
+	testLogger := TestLogger
+	testLogger.Info("Setting up shared resources...")
 
 	configPath := filepath.Join(".", "application.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -122,7 +119,7 @@ func SetupTest(config TestConfig) func() {
 			panic(fmt.Sprintf("Failed to set APP_ENCRYPTION_KEY: %v", err))
 		}
 	}
-	testLogger.Info().Str("path", configPath).Msg("Set NANOSTACK_CONFIG_PATH for application")
+	testLogger.Info("Set NANOSTACK_CONFIG_PATH for application", slog.String("path", configPath))
 
 	ctx := context.Background()
 	var teardownFuncs []func()
@@ -131,9 +128,9 @@ func SetupTest(config TestConfig) func() {
 	teardownFuncs = append(
 		teardownFuncs, func() {
 			if err := postgresContainer.Terminate(ctx); err != nil {
-				testLogger.Error().Err(err).Msg("Failed to terminate postgres container")
+				testLogger.ErrorContext(ctx, "Failed to terminate postgres container", log.Err(err))
 			} else {
-				testLogger.Info().Msg("Postgres container terminated")
+				testLogger.InfoContext(ctx, "Postgres container terminated")
 			}
 		},
 	)
@@ -143,9 +140,9 @@ func SetupTest(config TestConfig) func() {
 		teardownFuncs = append(
 			teardownFuncs, func() {
 				if err := redisContainer.Terminate(ctx); err != nil {
-					testLogger.Error().Err(err).Msg("Failed to terminate redis container")
+					testLogger.ErrorContext(ctx, "Failed to terminate redis container", log.Err(err))
 				} else {
-					testLogger.Info().Msg("Redis container terminated")
+					testLogger.InfoContext(ctx, "Redis container terminated")
 				}
 			},
 		)
@@ -154,18 +151,18 @@ func SetupTest(config TestConfig) func() {
 	setupAppServer(testLogger, config)
 
 	teardown := func() {
-		testLogger.Info().Msg("Tearing down shared resources...")
+		testLogger.InfoContext(ctx, "Tearing down shared resources...")
 		for _, teardownFunc := range slices.Backward(teardownFuncs) {
 			teardownFunc()
 		}
-		testLogger.Info().Msg("Shared resources teardown complete")
+		testLogger.InfoContext(ctx, "Shared resources teardown complete")
 	}
 
-	testLogger.Info().Msg("Shared resources setup complete")
+	testLogger.InfoContext(ctx, "Shared resources setup complete")
 	return teardown
 }
 
-func setupPostgres(ctx context.Context, testLogger zerolog.Logger) testcontainers.Container {
+func setupPostgres(ctx context.Context, testLogger *slog.Logger) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:        "timescale/timescaledb:2.23.0-pg18",
 		ExposedPorts: []string{"5432/tcp"},
@@ -198,14 +195,14 @@ func setupPostgres(ctx context.Context, testLogger zerolog.Logger) testcontainer
 	host, err := container.Host(ctx)
 	if err != nil {
 		if termErr := container.Terminate(ctx); termErr != nil {
-			testLogger.Error().Err(termErr).Msg("Failed to terminate container after host error")
+			testLogger.ErrorContext(ctx, "Failed to terminate container after host error", log.Err(termErr))
 		}
 		panic(fmt.Sprintf("Failed to get container host: %v", err))
 	}
 	port, err := container.MappedPort(ctx, "5432")
 	if err != nil {
 		if termErr := container.Terminate(ctx); termErr != nil {
-			testLogger.Error().Err(termErr).Msg("Failed to terminate container after port error")
+			testLogger.ErrorContext(ctx, "Failed to terminate container after port error", log.Err(termErr))
 		}
 		panic(fmt.Sprintf("Failed to get container port: %v", err))
 	}
@@ -215,12 +212,15 @@ func setupPostgres(ctx context.Context, testLogger zerolog.Logger) testcontainer
 	if setenvErr := os.Setenv("POSTGRES_PORT", port.Port()); setenvErr != nil {
 		panic(fmt.Sprintf("Failed to set POSTGRES_PORT: %v", setenvErr))
 	}
-	testLogger.Info().Str("host", host).Str("port", port.Port()).Msg("PostgreSQL container started")
+	testLogger.InfoContext(ctx, "PostgreSQL container started",
+		slog.String("host", host),
+		slog.String("port", port.Port()),
+	)
 
 	return container
 }
 
-func setupRedis(ctx context.Context, testLogger zerolog.Logger) testcontainers.Container {
+func setupRedis(ctx context.Context, testLogger *slog.Logger) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:        "redis:7-alpine",
 		ExposedPorts: []string{"6379/tcp"},
@@ -240,14 +240,14 @@ func setupRedis(ctx context.Context, testLogger zerolog.Logger) testcontainers.C
 	host, err := container.Host(ctx)
 	if err != nil {
 		if termErr := container.Terminate(ctx); termErr != nil {
-			testLogger.Error().Err(termErr).Msg("Failed to terminate redis container after host error")
+			testLogger.ErrorContext(ctx, "Failed to terminate redis container after host error", log.Err(termErr))
 		}
 		panic(fmt.Sprintf("Failed to get redis container host: %v", err))
 	}
 	port, err := container.MappedPort(ctx, "6379")
 	if err != nil {
 		if termErr := container.Terminate(ctx); termErr != nil {
-			testLogger.Error().Err(termErr).Msg("Failed to terminate redis container after port error")
+			testLogger.ErrorContext(ctx, "Failed to terminate redis container after port error", log.Err(termErr))
 		}
 		panic(fmt.Sprintf("Failed to get redis container port: %v", err))
 	}
@@ -262,7 +262,10 @@ func setupRedis(ctx context.Context, testLogger zerolog.Logger) testcontainers.C
 	if setenvErr := os.Setenv("REDIS_DB", "0"); setenvErr != nil {
 		panic(fmt.Sprintf("Failed to set REDIS_DB: %v", setenvErr))
 	}
-	testLogger.Info().Str("host", host).Str("port", port.Port()).Msg("Redis container started")
+	testLogger.InfoContext(ctx, "Redis container started",
+		slog.String("host", host),
+		slog.String("port", port.Port()),
+	)
 
 	return container
 }
@@ -314,21 +317,21 @@ func startApp(config TestConfig) {
 	}
 }
 
-func setupAppServer(testLogger zerolog.Logger, config TestConfig) {
+func setupAppServer(testLogger *slog.Logger, config TestConfig) {
 	randomAppPort := strconv.Itoa(mustAllocateFreePort())
 	if err := os.Setenv("SERVER_PORT", randomAppPort); err != nil {
 		panic(fmt.Sprintf("Failed to set SERVER_PORT: %v", err))
 	}
-	testLogger.Info().Str("port", randomAppPort).Msg("Assigned app server port")
+	testLogger.Info("Assigned app server port", slog.String("port", randomAppPort))
 
 	go func() {
-		testLogger.Info().Msg("Starting Anchor application...")
+		testLogger.Info("Starting Anchor application...")
 		startApp(config)
-		testLogger.Info().Msg("Anchor application goroutine finished")
+		testLogger.Info("Anchor application goroutine finished")
 	}()
 
 	ServerURL = "http://localhost:" + os.Getenv("SERVER_PORT")
-	testLogger.Info().Str("url", ServerURL).Msg("Waiting for server health check...")
+	testLogger.Info("Waiting for server health check...", slog.String("url", ServerURL))
 
 	ok := false
 	for range 120 {
@@ -336,7 +339,7 @@ func setupAppServer(testLogger zerolog.Logger, config TestConfig) {
 			context.Background(), http.MethodGet, ServerURL+"/health", nil,
 		)
 		if reqErr != nil {
-			testLogger.Debug().Err(reqErr).Msg("Health check request error")
+			testLogger.Debug("Health check request error", log.Err(reqErr))
 			time.Sleep(time.Second)
 			continue
 		}
@@ -344,17 +347,17 @@ func setupAppServer(testLogger zerolog.Logger, config TestConfig) {
 		if err == nil && resp.StatusCode == http.StatusOK {
 			ok = true
 			if closeErr := resp.Body.Close(); closeErr != nil {
-				testLogger.Error().Err(closeErr).Msg("Failed to close response body")
+				testLogger.Error("Failed to close response body", log.Err(closeErr))
 			}
 			break
 		}
 		if resp != nil {
-			testLogger.Debug().Int("status", resp.StatusCode).Msg("Health check failed")
+			testLogger.Debug("Health check failed", slog.Int("status", resp.StatusCode))
 			if closeErr := resp.Body.Close(); closeErr != nil {
-				testLogger.Error().Err(closeErr).Msg("Failed to close response body")
+				testLogger.Error("Failed to close response body", log.Err(closeErr))
 			}
 		} else if err != nil {
-			testLogger.Debug().Err(err).Msg("Health check connection error")
+			testLogger.Debug("Health check connection error", log.Err(err))
 		}
 		time.Sleep(time.Second)
 	}
@@ -362,7 +365,7 @@ func setupAppServer(testLogger zerolog.Logger, config TestConfig) {
 		panic("Server did not become healthy in time")
 	}
 
-	testLogger.Info().Msg("Server health check successful")
+	testLogger.Info("Server health check successful")
 }
 
 func mustAllocateFreePort() int {

@@ -3,13 +3,14 @@ package ct_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	"anchor/internal/domain/license"
@@ -33,7 +34,8 @@ func TestTemplateSyncValidationFailure(t *testing.T) {
 		t.Run("Template synchronization classifies retry behavior for "+test.name, func(t *testing.T) {
 			sync := service.NewLicenseTemplateSyncService(
 				syncTemplateRepository{}, syncLicenseRepository{}, nil,
-				syncSchemaFailure{err: test.err}, transactor.New(testDB), nil, nil, nil, zerolog.Nop(),
+				syncSchemaFailure{err: test.err}, transactor.New(testDB), nil,
+				cache.Cache[license.OrganizationLicense]{}, nil, slog.New(slog.DiscardHandler),
 			)
 			err := sync.ProcessQueueJob(t.Context(), queue.Job{Payload: []byte(
 				`{"tenant_id":"tenant_1","product_id":"prd_1","template_id":"ltpl_1"}`,

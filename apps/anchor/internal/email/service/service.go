@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/email"
 	domainintegration "anchor/internal/domain/integration"
@@ -20,10 +23,8 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 )
 
 const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
@@ -97,10 +98,10 @@ var (
 // and surfaces as a 422 EMAIL_DELIVERY_REJECTED; every other transport failure
 // is a modelled 500 EMAIL_DELIVERY_FAILED. A cancelled context means the caller
 // (or shutdown) went away mid-send, not a delivery fault, so it is returned
-// unchanged to keep the context-cancellation logging policy (pkg/log) from
-// surfacing it on error dashboards and alerts.
+// unchanged to keep the context-cancellation logging policy (applog.LevelFor)
+// from surfacing it on error dashboards and alerts.
 func classifyDispatchError(err error) error {
-	if log.IsContextError(err) {
+	if applog.IsContextError(err) {
 		return err
 	}
 	if errors.Is(err, provider.ErrMessageRejected) {
@@ -155,7 +156,7 @@ type emailService struct {
 	registry     *provider.Registry
 	renderer     *renderer.Renderer
 	rateLimits   []email.RateLimitWindow
-	logger       zerolog.Logger
+	logger       *slog.Logger
 }
 
 // NewEmailService constructs the email orchestration service. The rate-limit
@@ -169,7 +170,7 @@ func NewEmailService(
 	instanceRepo intrepo.IntegrationInstanceRepository,
 	registry *provider.Registry,
 	r *renderer.Renderer,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) EmailService {
 	return &emailService{
 		transactor:   transactor,
@@ -180,7 +181,7 @@ func NewEmailService(
 		registry:     registry,
 		renderer:     r,
 		rateLimits:   email.DefaultRateLimits,
-		logger:       logger.With().Str("component", "email_service").Logger(),
+		logger:       logger.With(slog.String("component", "email_service")),
 	}
 }
 
@@ -796,7 +797,7 @@ func (s *emailService) Send(
 		if updErr := s.sendRepo.UpdateStatus(
 			persistCtx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
-			log.Event(&s.logger, updErr).Str("send_id", persisted.ID).Msg("update FAILED status")
+			applog.Error(ctx, s.logger, updErr, "update FAILED status", slog.String("send_id", persisted.ID))
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
@@ -807,7 +808,7 @@ func (s *emailService) Send(
 	if err = s.sendRepo.UpdateStatus(
 		persistCtx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
-		log.Event(&s.logger, err).Str("send_id", persisted.ID).Msg("update SENT status")
+		applog.Error(ctx, s.logger, err, "update SENT status", slog.String("send_id", persisted.ID))
 	}
 	persisted.Status = email.SendStatusSent
 	persisted.SentAt = &now

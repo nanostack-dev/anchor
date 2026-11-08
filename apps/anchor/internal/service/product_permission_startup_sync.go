@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 
 	"anchor/internal/domain/permission"
@@ -23,11 +25,11 @@ type productPermissionStartupSyncParams struct {
 	Lock                  *pglock.Client
 	ProductRepo           repository.ProductRepository
 	ProductPermissionRepo repository.ProductPermissionRepository
-	Logger                zerolog.Logger
+	Logger                *slog.Logger
 }
 
 func RegisterProductPermissionStartupSync(p productPermissionStartupSyncParams) {
-	logger := p.Logger.With().Str("component", "product_permission_startup_sync").Logger()
+	logger := p.Logger.With(slog.String("component", "product_permission_startup_sync"))
 
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -56,11 +58,11 @@ func RegisterProductPermissionStartupSync(p productPermissionStartupSyncParams) 
 				},
 			)
 			if err != nil {
-				logger.Error().Err(err).Msg("startup product permission sync failed")
+				logger.ErrorContext(ctx, "startup product permission sync failed", log.Err(err))
 				return nil
 			}
 			if !acquired {
-				logger.Debug().Msg("startup product permission sync skipped: lock not acquired")
+				logger.DebugContext(ctx, "startup product permission sync skipped: lock not acquired")
 			}
 
 			return nil
@@ -72,7 +74,7 @@ func syncProductPermissions(
 	ctx context.Context,
 	prod product.Product,
 	permRepo repository.ProductPermissionRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	desired := functional.Slice(GeneratePermissions()).
 		Map(func(perm permission.ProductPermission) permission.ProductPermission {
@@ -98,10 +100,10 @@ func syncProductPermissions(
 		if createErr != nil {
 			return createErr
 		}
-		logger.Info().
-			Str("product_id", prod.ID).
-			Str("permission", name).
-			Msg("product permission inserted during startup sync")
+		logger.InfoContext(ctx, "product permission inserted during startup sync",
+			slog.String("product_id", prod.ID),
+			slog.String("permission", name),
+		)
 	}
 
 	for name := range existingByName {
@@ -112,10 +114,10 @@ func syncProductPermissions(
 		if deleteErr != nil {
 			return deleteErr
 		}
-		logger.Info().
-			Str("product_id", prod.ID).
-			Str("permission", name).
-			Msg("product permission deleted during startup sync")
+		logger.InfoContext(ctx, "product permission deleted during startup sync",
+			slog.String("product_id", prod.ID),
+			slog.String("permission", name),
+		)
 	}
 
 	return nil

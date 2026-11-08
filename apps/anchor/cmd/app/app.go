@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"anchor/internal/access"
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 	"github.com/nanostack-dev/nanostack-framework/modules/config"
-	"github.com/nanostack-dev/nanostack-framework/modules/logging"
 	"github.com/nanostack-dev/nanostack-framework/modules/migrations"
 	"github.com/nanostack-dev/nanostack-framework/modules/pglock"
 	"github.com/nanostack-dev/nanostack-framework/modules/postgres"
@@ -49,7 +49,8 @@ func startAnchor(target ...any) {
 	}
 
 	app := fx.New(
-		logging.Module,
+		applog.Module(),
+		applog.LegacyZerolog(),
 		tracing.Module,
 		config.Module,
 		postgres.Module,

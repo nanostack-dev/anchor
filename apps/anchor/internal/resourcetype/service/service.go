@@ -5,13 +5,15 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
@@ -43,17 +45,17 @@ type service struct {
 	repo       repository.Repository
 	transactor transactor.Transactor
 	events     events.Emitter
-	logger     zerolog.Logger
+	logger     *slog.Logger
 }
 
 func NewService(
-	repo repository.Repository, tx transactor.Transactor, emitter events.Emitter, logger zerolog.Logger,
+	repo repository.Repository, tx transactor.Transactor, emitter events.Emitter, logger *slog.Logger,
 ) Service {
 	return &service{
 		repo:       repo,
 		transactor: tx,
 		events:     emitter,
-		logger:     logger.With().Str("component", "resource_type_service").Logger(),
+		logger:     logger.With(slog.String("component", "resource_type_service")),
 	}
 }
 
@@ -636,7 +638,10 @@ func (s *service) unexpected(err error, productID, operation string) error {
 	if _, isFault := fault.As(err); isFault {
 		return err
 	}
-	s.logger.Error().Err(err).Str("product_id", productID).Str("operation", operation).
-		Msg("resource type operation failed")
+	s.logger.Error("resource type operation failed",
+		log.Err(err),
+		slog.String("product_id", productID),
+		slog.String("operation", operation),
+	)
 	return fault.ErrUnexpected
 }

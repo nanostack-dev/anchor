@@ -3,6 +3,9 @@ package mapper
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/domain/integration"
@@ -10,7 +13,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
-	"github.com/rs/zerolog"
 )
 
 // webhookSecretCipherContext isolates the Svix signing secrets from the other secret classes.
@@ -20,11 +22,11 @@ const webhookSecretCipherContext = "integration-webhook-secret"
 // holds plaintext, which ToDomain still reads; the next write of that instance encrypts it.
 type IntegrationInstanceMapper struct {
 	cipher *secrets.VersionedCipher
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewIntegrationInstanceMapper(
-	encryptionService *encryption.Service, logger zerolog.Logger,
+	encryptionService *encryption.Service, logger *slog.Logger,
 ) (*IntegrationInstanceMapper, error) {
 	cipher, err := encryptionService.NewCipher(webhookSecretCipherContext)
 	if err != nil {
@@ -39,7 +41,7 @@ func (m *IntegrationInstanceMapper) ToDomain(entity model.IntegrationInstances) 
 		decrypted, err := m.cipher.DecryptString(*webhookSecret)
 		if err != nil {
 			// Without the secret every signature check fails closed.
-			m.logger.Error().Err(err).Str("instance_id", entity.ID).Msg("decrypt webhook secret")
+			m.logger.Error("decrypt webhook secret", log.Err(err), slog.String("instance_id", entity.ID))
 			decrypted = ""
 		}
 		webhookSecret = &decrypted
@@ -68,7 +70,7 @@ func (m *IntegrationInstanceMapper) ToEntity(domain integration.Instance) model.
 		encrypted, err := m.cipher.EncryptString(*webhookSecret)
 		if err != nil {
 			// Never store the plaintext when encryption fails; the instance then needs its secret again.
-			m.logger.Error().Err(err).Str("instance_id", domain.ID).Msg("encrypt webhook secret")
+			m.logger.Error("encrypt webhook secret", log.Err(err), slog.String("instance_id", domain.ID))
 			encrypted = ""
 		}
 		webhookSecret = &encrypted

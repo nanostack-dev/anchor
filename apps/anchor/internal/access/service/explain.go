@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/roleassignment"
@@ -22,14 +23,15 @@ func (e *evaluator) explainOrSkip(
 	if err == nil {
 		return
 	}
-	log.Ctx(ctx).Warn().Err(err).
-		Str("event", "access.explain_failed").
-		Str("product_id", request.ProductID).
-		Str("organization_id", identity.OrganizationID).
-		Str("product_user_id", identity.ProductUserID).
-		Str("api_key_id", identity.APIKeyID).
-		Str("resource_type", string(request.Resource.Type)).
-		Msg("access.explain_failed")
+	e.scoped.WarnContext(ctx, "access.explain_failed",
+		log.Err(err),
+		slog.String("event", "access.explain_failed"),
+		slog.String("product_id", request.ProductID),
+		slog.String("organization_id", identity.OrganizationID),
+		slog.String("product_user_id", identity.ProductUserID),
+		slog.String("api_key_id", identity.APIKeyID),
+		slog.String("resource_type", string(request.Resource.Type)),
+	)
 }
 
 // explain fills what granted each allowed item from Anchor's tables, once

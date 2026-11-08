@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -15,7 +16,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ IntegrationEventRepository = (*integrationEventRepositoryImpl)(nil)
@@ -60,16 +60,16 @@ type IntegrationEventRepository interface {
 type integrationEventRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.IntegrationEventMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewIntegrationEventRepository(
-	db *sql.DB, m *mapper.IntegrationEventMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.IntegrationEventMapper, logger *slog.Logger,
 ) IntegrationEventRepository {
 	return &integrationEventRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "integration_event_repository").Logger(),
+		logger: logger.With(slog.String("component", "integration_event_repository")),
 	}
 }
 

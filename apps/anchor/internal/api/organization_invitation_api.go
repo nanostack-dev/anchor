@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"log/slog"
+
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -26,10 +29,10 @@ func (s *AnchorAPI) CreateOrganizationInvitation(
 		ExpiresAt:      request.Body.ExpiresAt,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to create organization invitation")
+		applog.Error(ctx, s.logger, err, "failed to create organization invitation",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 
@@ -49,10 +52,10 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 		Request:        mapSearchOrganizationInvitationsRequestToInput(*request.Body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to search organization invitations")
+		applog.Error(ctx, s.logger, err, "failed to search organization invitations",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 
@@ -73,11 +76,11 @@ func (s *AnchorAPI) GetOrganizationInvitation(
 		InvitationID:   request.InvitationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("invitation_id", request.InvitationId).
-			Msg("failed to get organization invitation")
+		applog.Error(ctx, s.logger, err, "failed to get organization invitation",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("invitation_id", request.InvitationId),
+		)
 		return nil, err
 	}
 
@@ -104,11 +107,11 @@ func (s *AnchorAPI) UpdateOrganizationInvitation(
 		ExpiresAt:      request.Body.ExpiresAt,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("invitation_id", request.InvitationId).
-			Msg("failed to update organization invitation")
+		applog.Error(ctx, s.logger, err, "failed to update organization invitation",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("invitation_id", request.InvitationId),
+		)
 		return nil, err
 	}
 
@@ -124,11 +127,11 @@ func (s *AnchorAPI) DeleteOrganizationInvitation(
 		InvitationID:   request.InvitationId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("invitation_id", request.InvitationId).
-			Msg("failed to delete organization invitation")
+		applog.Error(ctx, s.logger, err, "failed to delete organization invitation",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("invitation_id", request.InvitationId),
+		)
 		return nil, err
 	}
 
@@ -147,9 +150,9 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 		Request:   mapSearchOrganizationInvitationsRequestToInput(*request.Body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Msg("failed to search product organization invitations")
+		applog.Error(ctx, s.logger, err, "failed to search product organization invitations",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -175,12 +178,12 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 		ProductUserID:  request.Body.ProductUserId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("invitation_id", request.InvitationId).
-			Str("product_user_id", request.Body.ProductUserId).
-			Msg("failed to accept organization invitation")
+		applog.Error(ctx, s.logger, err, "failed to accept organization invitation",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("invitation_id", request.InvitationId),
+			slog.String("product_user_id", request.Body.ProductUserId),
+		)
 		return nil, err
 	}
 

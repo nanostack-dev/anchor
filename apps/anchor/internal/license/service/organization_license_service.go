@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
@@ -11,7 +12,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -90,7 +90,7 @@ type organizationLicenseService struct {
 	transactor  transactor.Transactor
 	licenses    *organizationLicenseCache
 	events      events.Emitter
-	logger      zerolog.Logger
+	logger      *slog.Logger
 }
 
 func NewOrganizationLicenseService(
@@ -100,9 +100,9 @@ func NewOrganizationLicenseService(
 	usage licenserepo.UsageObservationRepository,
 	changes licenserepo.OrganizationLicenseChangeRepository,
 	tx transactor.Transactor,
-	cacheStore cache.Store,
+	licenseEntries cache.Cache[license.OrganizationLicense],
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationLicenseService {
 	return &organizationLicenseService{
 		licenseRepo: licenseRepo,
@@ -111,9 +111,9 @@ func NewOrganizationLicenseService(
 		usage:       usage,
 		changes:     changes,
 		transactor:  tx,
-		licenses:    newOrganizationLicenseCache(cacheStore, logger),
+		licenses:    newOrganizationLicenseCache(licenseEntries, logger),
 		events:      eventEmitter,
-		logger:      logger.With().Str("component", "organization_license_service").Logger(),
+		logger:      logger.With(slog.String("component", "organization_license_service")),
 	}
 }
 

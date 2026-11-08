@@ -2,6 +2,9 @@ package api
 
 import (
 	"context"
+	"log/slog"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/email"
 	"anchor/internal/searchx"
@@ -53,7 +56,9 @@ func (s *AnchorAPI) CreateEmailTemplate(
 
 	tpl, err := s.EmailService.CreateTemplate(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to create email template")
+		applog.Error(ctx, s.logger, err, "failed to create email template",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 	return CreateEmailTemplate201JSONResponse(mapTemplateToResponse(tpl)), nil
@@ -78,7 +83,9 @@ func (s *AnchorAPI) ListEmailTemplates(
 			})
 		})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email templates")
+		applog.Error(ctx, s.logger, err, "failed to list email templates",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -105,7 +112,9 @@ func (s *AnchorAPI) SearchEmailTemplates(
 		Request:   mapToSearchEmailTemplatesRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search email templates")
+		applog.Error(ctx, s.logger, err, "failed to search email templates",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 
@@ -150,10 +159,10 @@ func (s *AnchorAPI) GetEmailTemplate(
 		ID:        request.EmailTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to get email template")
+		applog.Error(ctx, s.logger, err, "failed to get email template",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	if tpl == nil {
@@ -181,10 +190,10 @@ func (s *AnchorAPI) UpdateEmailTemplate(
 		IsActive:    request.Body.IsActive,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to update email template")
+		applog.Error(ctx, s.logger, err, "failed to update email template",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	return UpdateEmailTemplate200JSONResponse(mapTemplateToResponse(tpl)), nil
@@ -204,10 +213,10 @@ func (s *AnchorAPI) DeleteEmailTemplate(
 		ID:        request.EmailTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to delete email template")
+		applog.Error(ctx, s.logger, err, "failed to delete email template",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	return DeleteEmailTemplate204Response{}, nil
@@ -227,10 +236,10 @@ func (s *AnchorAPI) GetEmailTemplateDraft(
 		TemplateID: request.EmailTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to get email template draft")
+		applog.Error(ctx, s.logger, err, "failed to get email template draft",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	if version == nil {
@@ -265,10 +274,10 @@ func (s *AnchorAPI) UpdateEmailTemplateDraft(
 
 	version, err := s.EmailService.UpdateTemplateDraft(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to update email template draft")
+		applog.Error(ctx, s.logger, err, "failed to update email template draft",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	return UpdateEmailTemplateDraft200JSONResponse(mapTemplateVersionToResponse(version)), nil
@@ -288,10 +297,10 @@ func (s *AnchorAPI) PublishEmailTemplate(
 		TemplateID: request.EmailTemplateId,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to publish email template")
+		applog.Error(ctx, s.logger, err, "failed to publish email template",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	return PublishEmailTemplate200JSONResponse(mapTemplateVersionToResponse(version)), nil
@@ -316,10 +325,10 @@ func (s *AnchorAPI) PreviewEmailTemplate(
 
 	result, err := s.EmailService.Preview(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to preview email template")
+		applog.Error(ctx, s.logger, err, "failed to preview email template",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	warnings := result.Warnings
@@ -374,10 +383,10 @@ func (s *AnchorAPI) SaveEmailTemplateExamples(
 		Examples:   examples,
 	})
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("email_template_id", request.EmailTemplateId).
-			Msg("failed to save template examples")
+		applog.Error(ctx, s.logger, err, "failed to save template examples",
+			slog.String("product_id", request.ProductId),
+			slog.String("email_template_id", request.EmailTemplateId),
+		)
 		return nil, err
 	}
 	return SaveEmailTemplateExamples200JSONResponse(mapExamplesToResponse(saved)), nil
@@ -414,7 +423,7 @@ func (s *AnchorAPI) SendEmail(
 
 	record, err := s.EmailService.Send(ctx, in)
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to send email")
+		applog.Error(ctx, s.logger, err, "failed to send email", slog.String("product_id", request.ProductId))
 		return nil, err
 	}
 	return SendEmail201JSONResponse(mapSendRecordToResponse(record)), nil
@@ -448,7 +457,7 @@ func (s *AnchorAPI) ListEmailSends(
 			})
 		})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to list email sends")
+		applog.Error(ctx, s.logger, err, "failed to list email sends", slog.String("product_id", request.ProductId))
 		return nil, err
 	}
 
@@ -475,7 +484,9 @@ func (s *AnchorAPI) SearchEmailSends(
 		Request:   mapToSearchEmailSendsRequest(body),
 	})
 	if err != nil {
-		logAPIError(s.logger, err).Str("product_id", request.ProductId).Msg("failed to search email sends")
+		applog.Error(ctx, s.logger, err, "failed to search email sends",
+			slog.String("product_id", request.ProductId),
+		)
 		return nil, err
 	}
 

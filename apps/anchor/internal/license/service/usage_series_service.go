@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -33,18 +33,18 @@ type UsageSeriesService interface {
 type usageSeriesService struct {
 	series        licenserepo.UsageSeriesRepository
 	organizations intrepo.OrganizationRepository
-	logger        zerolog.Logger
+	logger        *slog.Logger
 }
 
 func NewUsageSeriesService(
 	series licenserepo.UsageSeriesRepository,
 	organizations intrepo.OrganizationRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) UsageSeriesService {
 	return &usageSeriesService{
 		series:        series,
 		organizations: organizations,
-		logger:        logger.With().Str("component", "usage_series_service").Logger(),
+		logger:        logger.With(slog.String("component", "usage_series_service")),
 	}
 }
 

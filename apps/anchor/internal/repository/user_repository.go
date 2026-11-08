@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -12,7 +13,6 @@ import (
 	"anchor/internal/domain/auth"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/mapper"
 )
@@ -40,7 +40,7 @@ type userRepositoryImpl struct {
 	userMapper       *mapper.UserMapper
 	tenantMapper     *mapper.TenantMapper
 	invitationMapper *mapper.InvitationMapper
-	logger           zerolog.Logger
+	logger           *slog.Logger
 }
 
 func (u *userRepositoryImpl) FindByEmail(
@@ -90,15 +90,13 @@ func NewUserRepository(
 	userMapper *mapper.UserMapper,
 	tenantMapper *mapper.TenantMapper,
 	invitationMapper *mapper.InvitationMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) UserRepository {
 	return &userRepositoryImpl{
 		db:               db,
 		userMapper:       userMapper,
 		tenantMapper:     tenantMapper,
 		invitationMapper: invitationMapper,
-		logger: logger.With().Str(
-			"component", "user_repository",
-		).Logger(),
+		logger:           logger.With(slog.String("component", "user_repository")),
 	}
 }

@@ -23,7 +23,9 @@ func NewModule() fx.Option {
 			NewPlatformUserService,
 
 			// Business services
+			NewProductCache,
 			NewProductService,
+			NewProductAPIKeyCache,
 			NewProductAPIKeyService,
 			NewProductRoleService,
 			NewOrganizationRoleService,

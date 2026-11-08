@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/modules/cache"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/rs/zerolog"
+
+	"github.com/nanostack-dev/nanostack-framework/modules/cache"
 
 	"anchor/internal/domain/license"
 )
@@ -29,18 +32,23 @@ const (
 // bulk migration go through it, so neither can acquire its own key layout.
 type organizationLicenseCache struct {
 	entries cache.Cache[license.OrganizationLicense]
-	logger  zerolog.Logger
+	logger  *slog.Logger
+}
+
+// NewOrganizationLicenseEntries builds the cache of Organization licenses
+// that the licence services share. modules/cache still takes a
+// zerolog.Logger, the one the deprecated framework fx modules share; it goes
+// with the move of the cache to redis/nanocache.
+func NewOrganizationLicenseEntries(store cache.Store, logger zerolog.Logger) cache.Cache[license.OrganizationLicense] {
+	return cache.New[license.OrganizationLicense](
+		store, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
+	)
 }
 
 func newOrganizationLicenseCache(
-	store cache.Store, logger zerolog.Logger,
+	entries cache.Cache[license.OrganizationLicense], logger *slog.Logger,
 ) *organizationLicenseCache {
-	return &organizationLicenseCache{
-		entries: cache.New[license.OrganizationLicense](
-			store, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
-		),
-		logger: logger,
-	}
+	return &organizationLicenseCache{entries: entries, logger: logger}
 }
 
 // key addresses one Organization's cached license. Product and Organization
@@ -57,10 +65,10 @@ func (c *organizationLicenseCache) key(
 // degrade the next read.
 func (c *organizationLicenseCache) evict(ctx context.Context, productID, organizationID string) {
 	if err := c.key(productID, organizationID).Evict(ctx); err != nil {
-		c.logger.Error().
-			Str("product_id", productID).
-			Str("organization_id", organizationID).
-			Err(err).
-			Msg("failed to evict organization license from cache")
+		c.logger.ErrorContext(ctx, "failed to evict organization license from cache",
+			slog.String("product_id", productID),
+			slog.String("organization_id", organizationID),
+			log.Err(err),
+		)
 	}
 }

@@ -2,8 +2,11 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/platform"
@@ -23,7 +26,7 @@ func (s *AnchorAPI) setRefreshTokenCookie(token string, expiresAt time.Time) *st
 	isDev := s.CoreConfig.IsDevelopment()
 
 	if isDev {
-		s.logger.Warn().Msg("Running in development mode - using insecure cookie settings")
+		s.logger.Warn("Running in development mode - using insecure cookie settings")
 	}
 
 	//nolint:gosec // Local development needs a non-Secure refresh cookie on localhost.
@@ -112,7 +115,7 @@ func (s *AnchorAPI) RefreshToken(
 	}
 	refreshResponse, err := s.AuthService.RefreshToken(ctx, refreshInput)
 	if err != nil {
-		logAPIError(s.logger, err).Msg("Error refreshing token")
+		applog.Error(ctx, s.logger, err, "Error refreshing token")
 		return RefreshToken401Response{
 			Headers: RefreshToken401ResponseHeaders{
 				SetCookie: s.clearRefreshTokenCookie(),
@@ -154,9 +157,9 @@ func (s *AnchorAPI) Register(
 	}
 	loginResponse, err := s.AuthService.Login(ctx, loginInput)
 	if err != nil {
-		logAPIError(s.logger, err).Str(
-			"email", registerInput.Email,
-		).Msg("Error logging in user immediately after registration")
+		applog.Error(ctx, s.logger, err, "Error logging in user immediately after registration",
+			slog.String("email", registerInput.Email),
+		)
 		return nil, err
 	}
 

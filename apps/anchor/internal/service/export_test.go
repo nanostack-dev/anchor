@@ -2,8 +2,7 @@ package service
 
 import (
 	"context"
-
-	"github.com/rs/zerolog"
+	"log/slog"
 
 	role "anchor/internal/domain/product/role"
 	"anchor/internal/repository"
@@ -25,5 +24,5 @@ func ResolveRolePermissions(
 	catalog repository.ProductResourcePermissionRepository,
 ) ([]role.ProductRolePermission, error) {
 	s := productRoleService{productResourcePermissionRepo: catalog}
-	return s.resolveRolePermissions(ctx, productID, input, zerolog.Nop())
+	return s.resolveRolePermissions(ctx, productID, input, slog.New(slog.DiscardHandler))
 }

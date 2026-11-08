@@ -3,16 +3,19 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
@@ -23,8 +26,6 @@ import (
 	rtservice "anchor/internal/resourcetype/service"
 
 	"github.com/nanostack-dev/nanostack-framework/modules/cache"
-
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -56,7 +57,7 @@ type productService struct {
 	eventEndpoints        events.EndpointService
 	resourceTypes         rtservice.Service
 	products              cache.Cache[product.Product]
-	logger                zerolog.Logger
+	logger                *slog.Logger
 	transactor            transactor.Transactor
 }
 
@@ -65,15 +66,15 @@ func NewProductService(
 	productPermissionRepo repository.ProductPermissionRepository,
 	eventEndpoints events.EndpointService,
 	resourceTypes rtservice.Service,
-	cacheStore cache.Store, transactor transactor.Transactor, logger zerolog.Logger,
+	products cache.Cache[product.Product], transactor transactor.Transactor, logger *slog.Logger,
 ) ProductService {
 	return &productService{
 		productRepo:           productRepo,
 		productPermissionRepo: productPermissionRepo,
 		resourceTypes:         resourceTypes,
 		eventEndpoints:        eventEndpoints,
-		products:              cache.New[product.Product](cacheStore, productCachePrefix, productCacheTTL, logger),
-		logger:                logger.With().Str("component", "product_service").Logger(),
+		products:              products,
+		logger:                logger.With(slog.String("component", "product_service")),
 		transactor:            transactor,
 	}
 }
@@ -81,14 +82,14 @@ func NewProductService(
 func (s *productService) Get(
 	ctx context.Context, input product.GetProductInput,
 ) (product.Product, error) {
-	logger := s.logger.With().Str("operation", "Get").Logger()
+	logger := s.logger.With(slog.String("operation", "Get"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return product.Product{}, err
 	}
 	found, err := s.productRepo.FindByID(ctx, input.TenantID, input.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to find product")
+		logger.ErrorContext(ctx, "failed to find product", slog.String("product_id", input.ProductID), log.Err(err))
 		return product.Product{}, err
 	}
 	if found.IsAbsent() {
@@ -102,11 +103,11 @@ func (s *productService) Get(
 func (s *productService) GetInternal(
 	ctx context.Context, productID string,
 ) (*product.Product, error) {
-	logger := s.logger.With().Str("operation", "GetInternal").Logger()
+	logger := s.logger.With(slog.String("operation", "GetInternal"))
 
 	found, err := s.productRepo.FindByIDInternal(ctx, productID)
 	if err != nil {
-		log.Event(&logger, err).Str("product_id", productID).Msg("failed to find product internally")
+		applog.Error(ctx, logger, err, "failed to find product internally", slog.String("product_id", productID))
 		return nil, err
 	}
 
@@ -116,7 +117,7 @@ func (s *productService) GetInternal(
 func (s *productService) GetWithCache(
 	ctx context.Context, input product.GetProductInput,
 ) (*product.Product, error) {
-	logger := s.logger.With().Str("operation", "GetWithCache").Logger()
+	logger := s.logger.With(slog.String("operation", "GetWithCache"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
@@ -131,7 +132,10 @@ func (s *productService) GetWithCache(
 		},
 	)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to get product with cache")
+		logger.ErrorContext(ctx, "failed to get product with cache",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	return cachedProduct, nil
@@ -140,7 +144,7 @@ func (s *productService) GetWithCache(
 func (s *productService) Create(
 	ctx context.Context, input product.CreateProductInput,
 ) (product.Product, error) {
-	logger := s.logger.With().Str("operation", "Create").Logger()
+	logger := s.logger.With(slog.String("operation", "Create"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return product.Product{}, err
@@ -152,11 +156,14 @@ func (s *productService) Create(
 
 	existingProduct, err := s.productRepo.FindByTenantIDAndName(ctx, input.TenantID, input.Name)
 	if err != nil {
-		logger.Error().Str("name", input.Name).Err(err).Msg("failed to look up existing product")
+		logger.ErrorContext(ctx, "failed to look up existing product",
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return product.Product{}, err
 	}
 	if existingProduct.IsPresent() {
-		logger.Debug().Str("name", input.Name).Msg("product already exists")
+		logger.DebugContext(ctx, "product already exists", slog.String("name", input.Name))
 		return product.Product{}, ErrProductAlreadyExists
 	}
 
@@ -182,10 +189,15 @@ func (s *productService) Create(
 			// the same logical condition as the pre-check, so surface the same
 			// client error instead of leaking the raw DB error as a 500.
 			if errors.Is(createErr, repository.ErrProductExists) {
-				logger.Debug().Str("name", prod.Name).Msg("product already exists (unique constraint)")
+				logger.DebugContext(txCtx, "product already exists (unique constraint)",
+					slog.String("name", prod.Name),
+				)
 				return ErrProductAlreadyExists
 			}
-			logger.Error().Str("name", prod.Name).Err(createErr).Msg("failed to create product")
+			logger.ErrorContext(txCtx, "failed to create product",
+				slog.String("name", prod.Name),
+				log.Err(createErr),
+			)
 			return createErr
 		}
 		if upsertConfigErr := s.productRepo.UpsertOrganizationAPIKeyConfig(
@@ -193,10 +205,10 @@ func (s *productService) Create(
 			productCreated.ID,
 			config.OrganizationAPIKeys,
 		); upsertConfigErr != nil {
-			logger.Error().
-				Str("product_id", productCreated.ID).
-				Err(upsertConfigErr).
-				Msg("failed to create product organization API key config")
+			logger.ErrorContext(txCtx, "failed to create product organization API key config",
+				slog.String("product_id", productCreated.ID),
+				log.Err(upsertConfigErr),
+			)
 			return upsertConfigErr
 		}
 		if eventsErr := s.persistEventsConfig(
@@ -209,19 +221,25 @@ func (s *productService) Create(
 		}
 		productCreated.Config = config
 		s.attachEventsConfig(txCtx, input.TenantID, &productCreated)
-		logger.Info().Str("product_id", productCreated.ID).Str("name", prod.Name).Msg("product created")
+		logger.InfoContext(txCtx, "product created",
+			slog.String("product_id", productCreated.ID),
+			slog.String("name", prod.Name),
+		)
 		for _, perm := range defaultPermissions {
 			perm.ProductID = productCreated.ID
 			_, permErr := s.productPermissionRepo.Create(txCtx, perm)
 			if permErr != nil {
-				logger.Error().Str("permission", perm.Name).Err(permErr).Msg("failed to create default permission")
+				logger.ErrorContext(txCtx, "failed to create default permission",
+					slog.String("permission", perm.Name),
+					log.Err(permErr),
+				)
 				return permErr
 			}
 		}
-		logger.Info().
-			Str("product_id", prod.ID).
-			Int("permission_count", len(defaultPermissions)).
-			Msg("created default permissions")
+		logger.InfoContext(txCtx, "created default permissions",
+			slog.String("product_id", prod.ID),
+			slog.Int("permission_count", len(defaultPermissions)),
+		)
 		return s.resourceTypes.SeedOrganization(txCtx, productCreated.ID)
 	})
 	return productCreated, err
@@ -230,7 +248,7 @@ func (s *productService) Create(
 func (s *productService) Update(
 	ctx context.Context, input product.UpdateProductInput,
 ) (product.Product, error) {
-	logger := s.logger.With().Str("operation", "Update").Logger()
+	logger := s.logger.With(slog.String("operation", "Update"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return product.Product{}, err
@@ -245,7 +263,7 @@ func (s *productService) Update(
 }
 
 func (s *productService) updateProductInTransaction(
-	ctx context.Context, input product.UpdateProductInput, logger zerolog.Logger,
+	ctx context.Context, input product.UpdateProductInput, logger *slog.Logger,
 ) (product.Product, error) {
 	existingProduct, err := s.findProductForUpdate(ctx, input.TenantID, input.ProductID, logger)
 	if err != nil {
@@ -262,7 +280,10 @@ func (s *productService) updateProductInTransaction(
 		return product.Product{}, ErrProductAlreadyExists
 	}
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to update product")
+		logger.ErrorContext(ctx, "failed to update product",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return result, err
 	}
 	if input.Config != nil {
@@ -271,10 +292,10 @@ func (s *productService) updateProductInTransaction(
 			input.ProductID,
 			updatedProduct.Config.OrganizationAPIKeys,
 		); configErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Err(configErr).
-				Msg("failed to update product organization API key config")
+			logger.ErrorContext(ctx, "failed to update product organization API key config",
+				slog.String("product_id", input.ProductID),
+				log.Err(configErr),
+			)
 			return product.Product{}, configErr
 		}
 		result.Config = updatedProduct.Config
@@ -290,30 +311,30 @@ func (s *productService) updateProductInTransaction(
 
 	s.attachEventsConfig(ctx, input.TenantID, &result)
 	s.evictProductFromCache(ctx, input.TenantID, input.ProductID, logger)
-	logger.Info().Str("product_id", input.ProductID).Msg("product updated")
+	logger.InfoContext(ctx, "product updated", slog.String("product_id", input.ProductID))
 	return result, nil
 }
 
 func (s *productService) findProductForUpdate(
-	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
+	ctx context.Context, tenantID, productID string, logger *slog.Logger,
 ) (*product.Product, error) {
 	if err := s.productRepo.LockByID(ctx, tenantID, productID); err != nil {
 		return nil, err
 	}
 	found, err := s.productRepo.FindByID(ctx, tenantID, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to find product")
+		logger.ErrorContext(ctx, "failed to find product", slog.String("product_id", productID), log.Err(err))
 		return nil, err
 	}
 	if found.IsAbsent() {
-		logger.Debug().Str("product_id", productID).Msg("product not found for update")
+		logger.DebugContext(ctx, "product not found for update", slog.String("product_id", productID))
 		return nil, product.ErrProductNotFound
 	}
 	return found.ToPtr(), nil
 }
 
 func (s *productService) updateProductFields(
-	ctx context.Context, input product.UpdateProductInput, prod *product.Product, logger zerolog.Logger,
+	ctx context.Context, input product.UpdateProductInput, prod *product.Product, logger *slog.Logger,
 ) error {
 	if input.Name != nil && *input.Name != prod.Name {
 		if err := s.validateNameUniqueness(ctx, input.TenantID, input.ProductID, *input.Name, logger); err != nil {
@@ -353,15 +374,18 @@ func (s *productService) normalizeConfig(config product.Config) (product.Config,
 }
 
 func (s *productService) validateNameUniqueness(
-	ctx context.Context, tenantID, productID, name string, logger zerolog.Logger,
+	ctx context.Context, tenantID, productID, name string, logger *slog.Logger,
 ) error {
 	found, err := s.productRepo.FindByTenantIDAndName(ctx, tenantID, name)
 	if err != nil {
-		logger.Error().Str("name", name).Err(err).Msg("failed to look up product")
+		logger.ErrorContext(ctx, "failed to look up product", slog.String("name", name), log.Err(err))
 		return err
 	}
 	if found.IsPresent() && found.Value().ID != productID {
-		logger.Debug().Str("name", name).Str("tenant_id", tenantID).Msg("product already exists")
+		logger.DebugContext(ctx, "product already exists",
+			slog.String("name", name),
+			slog.String("tenant_id", tenantID),
+		)
 		return ErrProductAlreadyExists
 	}
 	return nil
@@ -426,15 +450,15 @@ func (s *productService) EventsCatalog(_ context.Context) []events.Definition {
 }
 
 func (s *productService) evictProductFromCache(
-	ctx context.Context, tenantID, productID string, logger zerolog.Logger,
+	ctx context.Context, tenantID, productID string, logger *slog.Logger,
 ) {
 	if evictErr := s.products.Key(tenantID, productID).Evict(ctx); evictErr != nil {
-		logger.Warn().Err(evictErr).Msg("failed to evict product from cache")
+		logger.WarnContext(ctx, "failed to evict product from cache", log.Err(evictErr))
 	}
 }
 
 func (s *productService) Delete(ctx context.Context, input product.DeleteProductInput) error {
-	logger := s.logger.With().Str("operation", "Delete").Logger()
+	logger := s.logger.With(slog.String("operation", "Delete"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -452,11 +476,11 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 	})
 	if err == nil {
 		if evictErr := s.products.Key(input.TenantID, input.ProductID).Evict(ctx); evictErr != nil {
-			logger.Warn().Err(evictErr).Msg("failed to evict product from cache after delete")
+			logger.WarnContext(ctx, "failed to evict product from cache after delete", log.Err(evictErr))
 		}
-		logger.Info().Str("product_id", input.ProductID).Msg("product deleted")
+		logger.InfoContext(ctx, "product deleted", slog.String("product_id", input.ProductID))
 	} else {
-		log.Event(&logger, err).Str("product_id", input.ProductID).Msg("failed to delete product")
+		applog.Error(ctx, logger, err, "failed to delete product", slog.String("product_id", input.ProductID))
 	}
 	return err
 }
@@ -464,7 +488,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 func (s *productService) Search(
 	ctx context.Context, input product.SearchProductInput,
 ) (search.Result[product.Product], error) {
-	logger := s.logger.With().Str("operation", "Search").Logger()
+	logger := s.logger.With(slog.String("operation", "Search"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[product.Product]{}, err
@@ -473,7 +497,10 @@ func (s *productService) Search(
 	result, err := s.productRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
 	if err != nil {
 		if !searchx.IsClientError(err) {
-			logger.Error().Str("tenant_id", input.TenantID).Err(err).Msg("failed to search products")
+			logger.ErrorContext(ctx, "failed to search products",
+				slog.String("tenant_id", input.TenantID),
+				log.Err(err),
+			)
 		}
 		return search.Result[product.Product]{}, err
 	}

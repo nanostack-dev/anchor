@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
@@ -57,7 +59,7 @@ func checkPermissionScopes(
 // scopedSearch runs a role or permission search: it resolves the filter's
 // resource_types against the product's tree, then names each item's scope.
 func scopedSearch[F any, S ~string, T any](
-	ctx context.Context, types rtservice.Service, logger zerolog.Logger, productID string,
+	ctx context.Context, types rtservice.Service, logger *slog.Logger, productID string,
 	request search.Request[F, S],
 	resolve func(F, resourcetype.Tree) F,
 	run func(context.Context, string, search.Request[F, S]) (search.Result[T], error),
@@ -65,7 +67,10 @@ func scopedSearch[F any, S ~string, T any](
 ) (search.Result[T], error) {
 	tree, err := types.Tree(ctx, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to read resource types")
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", productID),
+			log.Err(err),
+		)
 		return search.Result[T]{}, fault.ErrUnexpected
 	}
 	if request.Filter != nil {
@@ -77,7 +82,7 @@ func scopedSearch[F any, S ~string, T any](
 		if searchx.IsClientError(err) {
 			return search.Result[T]{}, err
 		}
-		logger.Error().Str("product_id", productID).Err(err).Msg("search failed")
+		logger.ErrorContext(ctx, "search failed", slog.String("product_id", productID), log.Err(err))
 		return search.Result[T]{}, fault.ErrUnexpected
 	}
 	result.Items = functional.Slice(result.Items).Map(withScope(tree))

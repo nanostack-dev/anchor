@@ -14,12 +14,15 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	frameworkconfig "github.com/nanostack-dev/nanostack-framework/modules/config"
 	frameworkpostgres "github.com/nanostack-dev/nanostack-framework/modules/postgres"
@@ -30,7 +33,6 @@ import (
 	"github.com/openfga/openfga/pkg/storage/migrate"
 	"github.com/openfga/openfga/pkg/storage/postgres"
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 
 	"anchor/internal/authz/model"
@@ -69,13 +71,13 @@ type Params struct {
 	Lifecycle fx.Lifecycle
 	Loader    frameworkconfig.Loader
 	DB        *sql.DB
-	Logger    zerolog.Logger
+	Logger    *slog.Logger
 }
 
 type provider struct {
 	db     *sql.DB
 	uri    string
-	logger zerolog.Logger
+	logger *slog.Logger
 	ready  atomic.Pointer[running]
 }
 
@@ -102,7 +104,7 @@ func New(params Params) (Provider, error) {
 	}
 	p := &provider{
 		db: params.DB, uri: datastoreURI(pg),
-		logger: params.Logger.With().Str("component", "openfga").Logger(),
+		logger: params.Logger.With(slog.String("component", "openfga")),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -135,10 +137,10 @@ func (p *provider) startWithRetry(ctx context.Context) {
 	for {
 		err := p.start(ctx)
 		if err == nil {
-			p.logger.Info().Str("schema", schema).Msg("openfga started in-process")
+			p.logger.InfoContext(ctx, "openfga started in-process", slog.String("schema", schema))
 			return
 		}
-		p.logger.Error().Err(err).Dur("retry_in", backoff).Msg("openfga failed to start")
+		p.logger.ErrorContext(ctx, "openfga failed to start", log.Err(err), slog.Duration("retry_in", backoff))
 		select {
 		case <-ctx.Done():
 			return
@@ -266,7 +268,7 @@ func (p *provider) repairInvalidIndexes(ctx context.Context) error {
 		return err
 	}
 	for _, name := range invalid {
-		p.logger.Warn().Str("index", name).Msg("rebuilding an invalid openfga index")
+		p.logger.WarnContext(ctx, "rebuilding an invalid openfga index", slog.String("index", name))
 		if _, err = p.db.ExecContext(ctx, "REINDEX INDEX CONCURRENTLY "+schema+"."+quoteIdentifier(name)); err != nil {
 			return fmt.Errorf("reindex %s: %w", name, err)
 		}

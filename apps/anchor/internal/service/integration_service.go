@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
@@ -17,7 +20,7 @@ import (
 	"anchor/internal/searchx"
 	serviceconfig "anchor/internal/service/config"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
@@ -27,7 +30,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -153,7 +155,7 @@ type integrationService struct {
 	lock                      *pglock.Client
 	db                        *sql.DB
 	transactor                transactor.Transactor
-	logger                    zerolog.Logger
+	logger                    *slog.Logger
 	reconcileScheduleInterval time.Duration
 	verificationMu            sync.Mutex
 	verificationRuns          map[string]*verificationRun
@@ -168,7 +170,7 @@ func NewIntegrationService(
 	lock *pglock.Client,
 	db *sql.DB,
 	transactor transactor.Transactor,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	coreCfg *serviceconfig.CoreConfig,
 ) IntegrationService {
 	return &integrationService{
@@ -182,8 +184,7 @@ func NewIntegrationService(
 		transactor:                transactor,
 		reconcileScheduleInterval: parseScheduleInterval(logger, coreCfg),
 		verificationRuns:          map[string]*verificationRun{},
-		logger: logger.With().
-			Str("component", "integration_service").Logger(),
+		logger:                    logger.With(slog.String("component", "integration_service")),
 	}
 }
 
@@ -195,7 +196,7 @@ func (s *integrationService) CreateInstance(
 	ctx context.Context,
 	input integration.CreateInstanceInput,
 ) (integration.Instance, error) {
-	logger := s.logger.With().Str("operation", "CreateInstance").Logger()
+	logger := s.logger.With(slog.String("operation", "CreateInstance"))
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
@@ -203,9 +204,9 @@ func (s *integrationService) CreateInstance(
 
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
-		logger.Warn().
-			Str(fieldProviderTypeKey, string(input.ProviderType)).
-			Msg("provider not registered")
+		logger.WarnContext(ctx, "provider not registered",
+			slog.String(fieldProviderTypeKey, string(input.ProviderType)),
+		)
 		return integration.Instance{}, fmt.Errorf("create instance: %w", provErr)
 	}
 
@@ -249,7 +250,7 @@ func (s *integrationService) CreateInstance(
 
 func (s *integrationService) createInstanceTx(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	input integration.CreateInstanceInput,
 	prov provider.Provider,
 	configJSON json.RawMessage,
@@ -262,8 +263,7 @@ func (s *integrationService) createInstanceTx(
 		string(input.ProviderType),
 	)
 	if findErr != nil {
-		logger.Error().Err(findErr).
-			Msg("failed to check for existing instance")
+		logger.ErrorContext(ctx, "failed to check for existing instance", log.Err(findErr))
 		return integration.Instance{}, findErr
 	}
 	if existing.IsPresent() {
@@ -292,8 +292,7 @@ func (s *integrationService) createInstanceTx(
 		return integration.Instance{}, ErrIntegrationInstanceAlreadyExists
 	}
 	if createErr != nil {
-		logger.Error().Err(createErr).
-			Msg("failed to create integration instance")
+		logger.ErrorContext(ctx, "failed to create integration instance", log.Err(createErr))
 		return integration.Instance{}, createErr
 	}
 
@@ -305,11 +304,11 @@ func (s *integrationService) createInstanceTx(
 		return integration.Instance{}, enqueueErr
 	}
 
-	logger.Info().
-		Str("instance_id", created.ID).
-		Str(fieldProductIDKey, input.ProductID).
-		Str(fieldProviderTypeKey, string(input.ProviderType)).
-		Msg("integration instance created")
+	logger.InfoContext(ctx, "integration instance created",
+		slog.String("instance_id", created.ID),
+		slog.String(fieldProductIDKey, input.ProductID),
+		slog.String(fieldProviderTypeKey, string(input.ProviderType)),
+	)
 
 	s.writeAuditLog(ctx, logger, integration.AuditLog{
 		IntegrationInstanceID: created.ID,
@@ -330,7 +329,7 @@ func (s *integrationService) GetInstance(
 	ctx context.Context,
 	input integration.GetInstanceInput,
 ) (*integration.Instance, error) {
-	logger := s.logger.With().Str("operation", "GetInstance").Logger()
+	logger := s.logger.With(slog.String("operation", "GetInstance"))
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return nil, valErr
@@ -340,9 +339,7 @@ func (s *integrationService) GetInstance(
 		ctx, input.TenantID, input.ID,
 	)
 	if findErr != nil {
-		logger.Error().Err(findErr).
-			Str("instance_id", input.ID).
-			Msg("failed to find instance")
+		logger.ErrorContext(ctx, "failed to find instance", log.Err(findErr), slog.String("instance_id", input.ID))
 		return nil, findErr
 	}
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
@@ -357,7 +354,7 @@ func (s *integrationService) UpdateInstance(
 	ctx context.Context,
 	input integration.UpdateInstanceInput,
 ) (integration.Instance, error) {
-	logger := s.logger.With().Str("operation", "UpdateInstance").Logger()
+	logger := s.logger.With(slog.String("operation", "UpdateInstance"))
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return integration.Instance{}, valErr
@@ -372,9 +369,10 @@ func (s *integrationService) UpdateInstance(
 			txCtx, input.TenantID, input.ID,
 		)
 		if findErr != nil {
-			logger.Error().Err(findErr).
-				Str("instance_id", input.ID).
-				Msg("failed to find instance for update")
+			logger.ErrorContext(txCtx, "failed to find instance for update",
+				log.Err(findErr),
+				slog.String("instance_id", input.ID),
+			)
 			return findErr
 		}
 		if found.IsAbsent() || found.Value().ProductID != input.ProductID {
@@ -398,9 +396,10 @@ func (s *integrationService) UpdateInstance(
 			txCtx, input.TenantID, *existing,
 		)
 		if updateErr != nil {
-			logger.Error().Err(updateErr).
-				Str("instance_id", input.ID).
-				Msg("failed to update instance")
+			logger.ErrorContext(txCtx, "failed to update instance",
+				log.Err(updateErr),
+				slog.String("instance_id", input.ID),
+			)
 			return updateErr
 		}
 
@@ -421,9 +420,7 @@ func (s *integrationService) UpdateInstance(
 			return enqueueErr
 		}
 
-		logger.Info().
-			Str("instance_id", result.ID).
-			Msg("integration instance updated")
+		logger.InfoContext(txCtx, "integration instance updated", slog.String("instance_id", result.ID))
 
 		s.writeAuditLog(
 			txCtx,
@@ -468,7 +465,7 @@ func (s *integrationService) UpdateInstance(
 // Clerk API key changes. Must be called after the update transaction commits.
 func (s *integrationService) manageReconcileSchedulerOnUpdate(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	updated integration.Instance,
 	hadKey, hasKeyNow bool,
 	configJSON json.RawMessage,
@@ -585,7 +582,7 @@ func (s *integrationService) DeleteInstance(
 	ctx context.Context,
 	input integration.DeleteInstanceInput,
 ) error {
-	logger := s.logger.With().Str("operation", "DeleteInstance").Logger()
+	logger := s.logger.With(slog.String("operation", "DeleteInstance"))
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return valErr
@@ -596,9 +593,10 @@ func (s *integrationService) DeleteInstance(
 		ctx, input.TenantID, input.ID,
 	)
 	if findErr != nil {
-		logger.Error().Err(findErr).
-			Str("instance_id", input.ID).
-			Msg("failed to find instance for deletion")
+		logger.ErrorContext(ctx, "failed to find instance for deletion",
+			log.Err(findErr),
+			slog.String("instance_id", input.ID),
+		)
 		return findErr
 	}
 	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
@@ -630,16 +628,14 @@ func (s *integrationService) DeleteInstance(
 		)
 	})
 	if delErr != nil {
-		logger.Error().Err(delErr).
-			Str("instance_id", input.ID).
-			Msg("failed to delete instance")
+		logger.ErrorContext(ctx, "failed to delete instance", log.Err(delErr), slog.String("instance_id", input.ID))
 		return delErr
 	}
 
-	logger.Info().
-		Str("instance_id", input.ID).
-		Str(fieldProductIDKey, input.ProductID).
-		Msg("integration instance deleted")
+	logger.InfoContext(ctx, "integration instance deleted",
+		slog.String("instance_id", input.ID),
+		slog.String(fieldProductIDKey, input.ProductID),
+	)
 
 	// If the deleted instance had a Clerk API key, check whether the scheduler
 	// needs to be cancelled (no remaining instances with keys).
@@ -654,7 +650,7 @@ func (s *integrationService) ListInstances(
 	ctx context.Context,
 	input integration.ListInstancesInput,
 ) ([]integration.Instance, error) {
-	logger := s.logger.With().Str("operation", "ListInstances").Logger()
+	logger := s.logger.With(slog.String("operation", "ListInstances"))
 
 	if valErr := validate.ValidateStruct(input); valErr != nil {
 		return nil, valErr
@@ -664,9 +660,10 @@ func (s *integrationService) ListInstances(
 		ctx, input.TenantID, input.ProductID,
 	)
 	if listErr != nil {
-		logger.Error().Err(listErr).
-			Str(fieldProductIDKey, input.ProductID).
-			Msg("failed to list instances")
+		logger.ErrorContext(ctx, "failed to list instances",
+			log.Err(listErr),
+			slog.String(fieldProductIDKey, input.ProductID),
+		)
 		return nil, listErr
 	}
 
@@ -677,7 +674,7 @@ func (s *integrationService) SearchAuditLogs(
 	ctx context.Context,
 	input integration.SearchAuditLogsInput,
 ) (search.Result[integration.AuditLog], error) {
-	logger := s.logger.With().Str("operation", "SearchAuditLogs").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchAuditLogs"))
 
 	if valErr := input.Validate(); valErr != nil {
 		return search.Result[integration.AuditLog]{}, valErr
@@ -687,9 +684,10 @@ func (s *integrationService) SearchAuditLogs(
 		ctx, input.TenantID, input.IntegrationInstanceID,
 	)
 	if findErr != nil {
-		logger.Error().Err(findErr).
-			Str("integration_instance_id", input.IntegrationInstanceID).
-			Msg("failed to find integration instance for audit logs")
+		logger.ErrorContext(ctx, "failed to find integration instance for audit logs",
+			log.Err(findErr),
+			slog.String("integration_instance_id", input.IntegrationInstanceID),
+		)
 		return search.Result[integration.AuditLog]{}, findErr
 	}
 
@@ -700,9 +698,10 @@ func (s *integrationService) SearchAuditLogs(
 	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, input)
 	if searchErr != nil {
 		if !searchx.IsClientError(searchErr) {
-			logger.Error().Err(searchErr).
-				Str("integration_instance_id", input.IntegrationInstanceID).
-				Msg("failed to search integration audit logs")
+			logger.ErrorContext(ctx, "failed to search integration audit logs",
+				log.Err(searchErr),
+				slog.String("integration_instance_id", input.IntegrationInstanceID),
+			)
 		}
 		return search.Result[integration.AuditLog]{}, searchErr
 	}
@@ -718,11 +717,11 @@ func (s *integrationService) IngestWebhook(
 	ctx context.Context,
 	input integration.IngestWebhookInput,
 ) (integration.Event, error) {
-	logger := s.logger.With().
-		Str("operation", "IngestWebhook").
-		Str(fieldProviderTypeKey, string(input.ProviderType)).
-		Str(fieldProductIDKey, input.ProductID).
-		Logger()
+	logger := s.logger.With(
+		slog.String("operation", "IngestWebhook"),
+		slog.String(fieldProviderTypeKey, string(input.ProviderType)),
+		slog.String(fieldProductIDKey, input.ProductID),
+	)
 
 	// 1-4: Resolve provider, instance, validate webhook signature.
 	prov, instance, resolveErr := s.resolveWebhookTarget(ctx, logger, input)
@@ -745,7 +744,7 @@ func (s *integrationService) IngestWebhook(
 // persistPendingEvent stores the event as PENDING, handling idempotency.
 func (s *integrationService) persistPendingEvent(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	event integration.Event,
 ) (integration.Event, error) {
@@ -765,13 +764,13 @@ func (s *integrationService) persistPendingEvent(
 			return createErr
 		}
 		if createErr != nil {
-			logger.Error().Err(createErr).Msg("failed to store integration event")
+			logger.ErrorContext(txCtx, "failed to store integration event", log.Err(createErr))
 			return createErr
 		}
 
 		payload, payloadErr := json.Marshal(integrationQueuePayload{EventID: created.ID})
 		if payloadErr != nil {
-			logger.Error().Err(payloadErr).Msg("failed to marshal queue payload")
+			logger.ErrorContext(txCtx, "failed to marshal queue payload", log.Err(payloadErr))
 			return payloadErr
 		}
 
@@ -781,7 +780,7 @@ func (s *integrationService) persistPendingEvent(
 			MaxAttempts: integrationMaxAttempts,
 		})
 		if enqueueErr != nil {
-			logger.Error().Err(enqueueErr).Msg("failed to enqueue integration event")
+			logger.ErrorContext(txCtx, "failed to enqueue integration event", log.Err(enqueueErr))
 			return enqueueErr
 		}
 
@@ -803,10 +802,10 @@ func (s *integrationService) persistPendingEvent(
 			},
 		)
 
-		logger.Info().
-			Str(fieldEventIDKey, created.ID).
-			Str(fieldEventTypeKey, created.EventType).
-			Msg("webhook ingested and queued as PENDING")
+		logger.InfoContext(txCtx, "webhook ingested and queued as PENDING",
+			slog.String(fieldEventIDKey, created.ID),
+			slog.String(fieldEventTypeKey, created.EventType),
+		)
 
 		return nil
 	})
@@ -822,7 +821,7 @@ func (s *integrationService) persistPendingEvent(
 // the same idempotent success a sequential duplicate gets.
 func (s *integrationService) concurrentDuplicateEvent(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	event integration.Event,
 ) (integration.Event, error) {
@@ -845,7 +844,7 @@ func (s *integrationService) concurrentDuplicateEvent(
 
 // ProcessQueueJob processes a claimed pgkit queue job.
 func (s *integrationService) ProcessQueueJob(ctx context.Context, job queue.Job) error {
-	logger := s.logger.With().Str("operation", "ProcessQueueJob").Logger()
+	logger := s.logger.With(slog.String("operation", "ProcessQueueJob"))
 	return s.processOneEvent(ctx, logger, &job)
 }
 
@@ -859,7 +858,7 @@ func (s *integrationService) ProcessQueueJob(ctx context.Context, job queue.Job)
 // When IsScheduler=false (or unset) the job reconciles a single instance identified
 // by IntegrationInstanceID.
 func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job queue.Job) error {
-	logger := s.logger.With().Str("operation", "ProcessReconcileQueueJob").Logger()
+	logger := s.logger.With(slog.String("operation", "ProcessReconcileQueueJob"))
 
 	var payload integrationReconcileQueuePayload
 	if err := json.Unmarshal(job.Payload, &payload); err != nil {
@@ -880,7 +879,7 @@ func (s *integrationService) ProcessReconcileQueueJob(ctx context.Context, job q
 // runReconcileScheduler lists all Clerk instances that have an API key, enqueues a
 // per-instance reconcile job for each, then re-schedules the next scheduler job via
 // the queue so the cycle continues without an in-process goroutine.
-func (s *integrationService) runReconcileScheduler(ctx context.Context, logger zerolog.Logger) error {
+func (s *integrationService) runReconcileScheduler(ctx context.Context, logger *slog.Logger) error {
 	instances, err := s.instanceRepo.ListByProviderInternal(
 		ctx,
 		string(integration.ProviderTypeClerk),
@@ -909,9 +908,10 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 			Payload:     payload,
 			MaxAttempts: integrationMaxAttempts,
 		}); enqueueErr != nil {
-			logger.Error().Err(enqueueErr).
-				Str("integration_instance_id", instance.ID).
-				Msg("failed to enqueue instance reconcile job during scheduler; continuing")
+			logger.ErrorContext(ctx, "failed to enqueue instance reconcile job during scheduler; continuing",
+				log.Err(enqueueErr),
+				slog.String("integration_instance_id", instance.ID),
+			)
 			if firstErr == nil {
 				firstErr = enqueueErr
 			}
@@ -921,18 +921,19 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 		enqueued++
 	}
 
-	logger.Info().
-		Int("instances_total", len(instances)).
-		Int("jobs_enqueued", enqueued).
-		Msg("reconcile scheduler completed")
+	logger.InfoContext(ctx, "reconcile scheduler completed",
+		slog.Int("instances_total", len(instances)),
+		slog.Int("jobs_enqueued", enqueued),
+	)
 
 	// Re-schedule the next scheduler job. This makes the scheduler self-sustaining via
 	// the queue without any in-process goroutine or external cron.
 	nextAt := time.Now().Add(s.reconcileScheduleInterval)
 	if reEnqueueErr := enqueueReconcileSchedulerJob(ctx, s.queue, &nextAt); reEnqueueErr != nil {
-		logger.Error().Err(reEnqueueErr).
-			Time("next_at", nextAt).
-			Msg("failed to re-schedule reconcile scheduler job")
+		logger.ErrorContext(ctx, "failed to re-schedule reconcile scheduler job",
+			log.Err(reEnqueueErr),
+			slog.Time("next_at", nextAt),
+		)
 		// Return the re-schedule error so the queue worker can retry the scheduler job itself.
 		return reEnqueueErr
 	}
@@ -940,7 +941,9 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 	s.collapseDuplicateSchedulerJobs(ctx, logger)
 
 	if firstErr != nil {
-		logger.Warn().Err(firstErr).Msg("scheduler completed with some enqueue errors (swallowed to avoid fork bomb)")
+		logger.WarnContext(ctx, "scheduler completed with some enqueue errors (swallowed to avoid fork bomb)",
+			log.Err(firstErr),
+		)
 	}
 
 	return nil
@@ -949,7 +952,7 @@ func (s *integrationService) runReconcileScheduler(ctx context.Context, logger z
 // collapseDuplicateSchedulerJobs keeps only the oldest pending scheduler job. Every
 // replica that runs it keeps the same lowest id, so concurrent runs converge on one
 // chain and the oldest job always survives.
-func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context, logger zerolog.Logger) {
+func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context, logger *slog.Logger) {
 	const maxSchedulerJobsToInspect = 1000
 	jobs, err := s.queue.ListJobs(ctx, queue.ListJobsParams{
 		QueueName: integrationReconcileQueueName,
@@ -958,7 +961,7 @@ func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context,
 		Limit:     maxSchedulerJobsToInspect,
 	})
 	if err != nil {
-		logger.Warn().Err(err).Msg("failed to list pending scheduler jobs for deduplication")
+		logger.WarnContext(ctx, "failed to list pending scheduler jobs for deduplication", log.Err(err))
 		return
 	}
 
@@ -969,14 +972,17 @@ func (s *integrationService) collapseDuplicateSchedulerJobs(ctx context.Context,
 
 	duplicates.ForEach(func(job queue.Job) {
 		if delErr := s.queue.DeleteJob(ctx, job.ID); delErr != nil {
-			logger.Debug().Err(delErr).Int64("job_id", job.ID).Msg("duplicate scheduler job already gone")
+			logger.DebugContext(ctx, "duplicate scheduler job already gone",
+				log.Err(delErr),
+				slog.Int64("job_id", job.ID),
+			)
 		}
 	})
 
 	if !duplicates.IsEmpty() {
-		logger.Warn().
-			Int("scheduler_jobs_removed", duplicates.Count()).
-			Msg("removed duplicate reconcile scheduler jobs")
+		logger.WarnContext(ctx, "removed duplicate reconcile scheduler jobs",
+			slog.Int("scheduler_jobs_removed", duplicates.Count()),
+		)
 	}
 }
 
@@ -990,7 +996,7 @@ func isSchedulerJob(job queue.Job) bool {
 // instance: two concurrent runs would insert the same new users and one would fail.
 func (s *integrationService) runInstanceReconcile(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instanceID string,
 ) error {
 	acquired, err := s.lock.TryWithLock(
@@ -1004,16 +1010,16 @@ func (s *integrationService) runInstanceReconcile(
 		return err
 	}
 	if !acquired {
-		logger.Info().
-			Str("integration_instance_id", instanceID).
-			Msg("instance reconcile already running on another worker, skipping")
+		logger.InfoContext(ctx, "instance reconcile already running on another worker, skipping",
+			slog.String("integration_instance_id", instanceID),
+		)
 	}
 	return nil
 }
 
 func (s *integrationService) reconcileInstance(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instanceID string,
 ) error {
 	found, findErr := s.instanceRepo.FindByIDInternal(ctx, instanceID)
@@ -1027,8 +1033,9 @@ func (s *integrationService) reconcileInstance(
 	}
 	instance := found.ToPtr()
 	if !instance.IsEnabled {
-		logger.Info().Str("integration_instance_id", instance.ID).
-			Msg("integration reconcile skipped: the instance is disabled")
+		logger.InfoContext(ctx, "integration reconcile skipped: the instance is disabled",
+			slog.String("integration_instance_id", instance.ID),
+		)
 		return nil
 	}
 
@@ -1059,9 +1066,9 @@ func (s *integrationService) reconcileInstance(
 		return recErr
 	}
 	if len(commands) == 0 {
-		logger.Info().
-			Str("integration_instance_id", instance.ID).
-			Msg("integration reconcile produced no commands")
+		logger.InfoContext(ctx, "integration reconcile produced no commands",
+			slog.String("integration_instance_id", instance.ID),
+		)
 		return nil
 	}
 
@@ -1143,7 +1150,7 @@ func (s *integrationService) hasSchedulerJob(ctx context.Context) (bool, error) 
 // maybeStartReconcileScheduler seeds a reconcile scheduler job if this is the very first Clerk
 // instance with an API key. It uses a distributed advisory lock so that concurrent
 // requests and multi-replica deployments do not duplicate the scheduler seed.
-func (s *integrationService) maybeStartReconcileScheduler(ctx context.Context, logger zerolog.Logger) {
+func (s *integrationService) maybeStartReconcileScheduler(ctx context.Context, logger *slog.Logger) {
 	acquired, err := s.lock.TryWithLock(ctx, lockKeyReconcileSchedulerSeed, func(ctx context.Context, _ *sql.Tx) error {
 		n, countErr := s.countClerkInstancesWithKey(ctx)
 		if countErr != nil {
@@ -1165,24 +1172,26 @@ func (s *integrationService) maybeStartReconcileScheduler(ctx context.Context, l
 		return enqueueReconcileSchedulerJob(ctx, s.queue, nil)
 	})
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to start reconcile scheduler after first key added")
+		logger.ErrorContext(ctx, "failed to start reconcile scheduler after first key added", log.Err(err))
 		return
 	}
 	if !acquired {
-		logger.Debug().Msg("reconcile scheduler start lock not acquired; another replica is handling it")
+		logger.DebugContext(ctx, "reconcile scheduler start lock not acquired; another replica is handling it")
 		return
 	}
 
-	logger.Info().Msg("reconcile scheduler started after first Clerk API key was added")
+	logger.InfoContext(ctx, "reconcile scheduler started after first Clerk API key was added")
 }
 
 // maybeCancelReconcileScheduler deletes all pending scheduler jobs from the queue when no Clerk
 // instance has an API key any more. It is called after a key is removed or an
 // instance with a key is deleted.
-func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, logger zerolog.Logger) {
+func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, logger *slog.Logger) {
 	n, err := s.countClerkInstancesWithKey(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to count Clerk instances with key when checking scheduler cancellation")
+		logger.ErrorContext(ctx, "failed to count Clerk instances with key when checking scheduler cancellation",
+			log.Err(err),
+		)
 		return
 	}
 	if n > 0 {
@@ -1198,7 +1207,7 @@ func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, 
 		Limit:     maxSchedulerJobsToDelete,
 	})
 	if listErr != nil {
-		logger.Error().Err(listErr).Msg("failed to list pending scheduler jobs for cancellation")
+		logger.ErrorContext(ctx, "failed to list pending scheduler jobs for cancellation", log.Err(listErr))
 		return
 	}
 
@@ -1210,18 +1219,19 @@ func (s *integrationService) maybeCancelReconcileScheduler(ctx context.Context, 
 		}
 
 		if delErr := s.queue.DeleteJob(ctx, job.ID); delErr != nil {
-			logger.Error().Err(delErr).
-				Int64("job_id", job.ID).
-				Msg("failed to delete pending scheduler job")
+			logger.ErrorContext(ctx, "failed to delete pending scheduler job",
+				log.Err(delErr),
+				slog.Int64("job_id", job.ID),
+			)
 			continue
 		}
 
 		deleted++
 	}
 
-	logger.Info().
-		Int("scheduler_jobs_deleted", deleted).
-		Msg("reconcile scheduler cancelled after last Clerk API key was removed")
+	logger.InfoContext(ctx, "reconcile scheduler cancelled after last Clerk API key was removed",
+		slog.Int("scheduler_jobs_deleted", deleted),
+	)
 }
 
 // enqueueReconcileSchedulerJob enqueues a scheduler job into the reconcile queue.
@@ -1253,7 +1263,7 @@ func enqueueReconcileSchedulerJob(ctx context.Context, queueClient *queue.Client
 //     of the command tx.
 func (s *integrationService) processOneEvent(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	job *queue.Job,
 ) error {
 	var payload integrationQueuePayload
@@ -1273,13 +1283,13 @@ func (s *integrationService) processOneEvent(
 	}
 	event := foundEvent.ToPtr()
 
-	eventLogger := logger.With().
-		Str(fieldEventIDKey, event.ID).
-		Str(fieldEventTypeKey, event.EventType).
-		Int(fieldQueueAttemptKey, job.Attempts).
-		Int(fieldQueueMaxAttemptsKey, job.MaxAttempts).
-		Int64("queue_job_id", job.ID).
-		Logger()
+	eventLogger := logger.With(
+		slog.String(fieldEventIDKey, event.ID),
+		slog.String(fieldEventTypeKey, event.EventType),
+		slog.Int(fieldQueueAttemptKey, job.Attempts),
+		slog.Int(fieldQueueMaxAttemptsKey, job.MaxAttempts),
+		slog.Int64("queue_job_id", job.ID),
+	)
 
 	// Phase 1: attempt command execution in a single transaction.
 	// Capture the resolved instance for use in phase 2 failure recording.
@@ -1308,7 +1318,7 @@ func (s *integrationService) processOneEvent(
 // Returns the resolved instance (even on error) so the caller can use it for failure recording.
 func (s *integrationService) executeEventTransaction(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	event *integration.Event,
 	job *queue.Job,
 ) (*integration.Instance, error) {
@@ -1384,9 +1394,7 @@ func (s *integrationService) executeEventTransaction(
 		}),
 	})
 
-	logger.Info().
-		Int("commands", len(commands)).
-		Msg("event processed successfully")
+	logger.InfoContext(ctx, "event processed successfully", slog.Int("commands", len(commands)))
 
 	return instance, nil
 }
@@ -1396,7 +1404,7 @@ func (s *integrationService) executeEventTransaction(
 // though the command-execution transaction was rolled back.
 func (s *integrationService) handleEventFailure(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	event *integration.Event,
 	job *queue.Job,
 	instance *integration.Instance,
@@ -1426,16 +1434,16 @@ func (s *integrationService) handleEventFailure(
 			})
 		}
 
-		logger.Warn().
-			Int(fieldQueueAttemptKey, job.Attempts).
-			Int(fieldQueueMaxAttemptsKey, job.MaxAttempts).
-			Msg("event permanently failed after max retries")
+		logger.WarnContext(txCtx, "event permanently failed after max retries",
+			slog.Int(fieldQueueAttemptKey, job.Attempts),
+			slog.Int(fieldQueueMaxAttemptsKey, job.MaxAttempts),
+		)
 
 		return nil
 	})
 
 	if failErr != nil {
-		logger.Error().Err(failErr).Msg("failed to persist event failure state")
+		logger.ErrorContext(ctx, "failed to persist event failure state", log.Err(failErr))
 	}
 
 	// Tell the queue worker whether this job should be retried or not.
@@ -1449,7 +1457,7 @@ func (s *integrationService) handleEventFailure(
 // It runs inside the failure transaction so the status update is committed.
 func (s *integrationService) scheduleRetry(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	event *integration.Event,
 	job *queue.Job,
 	instance *integration.Instance,
@@ -1468,7 +1476,7 @@ func (s *integrationService) scheduleRetry(
 		integration.EventStatusPending,
 		&errMsg,
 	); retryErr != nil {
-		logger.Error().Err(retryErr).Msg("failed to schedule retry")
+		logger.ErrorContext(ctx, "failed to schedule retry", log.Err(retryErr))
 		return retryErr
 	}
 
@@ -1489,10 +1497,10 @@ func (s *integrationService) scheduleRetry(
 		})
 	}
 
-	logger.Info().
-		Int(fieldQueueAttemptKey, job.Attempts).
-		Dur("backoff", backoff).
-		Msg("event scheduled for retry")
+	logger.InfoContext(ctx, "event scheduled for retry",
+		slog.Int(fieldQueueAttemptKey, job.Attempts),
+		slog.Duration("backoff", backoff),
+	)
 
 	return nil
 }
@@ -1506,20 +1514,20 @@ func (s *integrationService) scheduleRetry(
 // that do not implement that capability are rejected.
 func (s *integrationService) resolveWebhookTarget(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	input integration.IngestWebhookInput,
 ) (provider.WebhookIngestor, *integration.Instance, error) {
 	prov, provErr := s.registry.GetProvider(string(input.ProviderType))
 	if provErr != nil {
-		logger.Warn().Msg("provider not registered")
+		logger.WarnContext(ctx, "provider not registered")
 		return nil, nil, fmt.Errorf("ingest webhook: %w", provErr)
 	}
 
 	webhookProv, ok := prov.(provider.WebhookIngestor)
 	if !ok {
-		logger.Warn().
-			Str(fieldProviderTypeKey, string(input.ProviderType)).
-			Msg("provider is not a webhook ingestor")
+		logger.WarnContext(ctx, "provider is not a webhook ingestor",
+			slog.String(fieldProviderTypeKey, string(input.ProviderType)),
+		)
 		return nil, nil, ErrIntegrationProviderNotWebhookIngestor
 	}
 
@@ -1531,8 +1539,7 @@ func (s *integrationService) resolveWebhookTarget(
 		string(input.ProviderType),
 	)
 	if findErr != nil {
-		logger.Error().Err(findErr).
-			Msg("failed to find integration instance")
+		logger.ErrorContext(ctx, "failed to find integration instance", log.Err(findErr))
 		return nil, nil, findErr
 	}
 	if found.IsAbsent() {
@@ -1560,12 +1567,12 @@ func (s *integrationService) resolveWebhookTarget(
 			},
 		)
 
-		logger.Warn().
-			Str("instance_id", instance.ID).
-			Str(fieldStatusKey, string(instance.Status)).
-			Bool("is_enabled", instance.IsEnabled).
-			Str("reason", blockReason).
-			Msg("instance not ready for ingestion, rejecting webhook")
+		logger.WarnContext(ctx, "instance not ready for ingestion, rejecting webhook",
+			slog.String("instance_id", instance.ID),
+			slog.String(fieldStatusKey, string(instance.Status)),
+			slog.Bool("is_enabled", instance.IsEnabled),
+			slog.String("reason", blockReason),
+		)
 
 		if !instance.IsEnabled {
 			return nil, nil, ErrIntegrationInstanceDisabled
@@ -1600,9 +1607,10 @@ func (s *integrationService) resolveWebhookTarget(
 				},
 			)
 
-			logger.Warn().Err(sigErr).
-				Str("instance_id", instance.ID).
-				Msg("webhook validation failed")
+			logger.WarnContext(ctx, "webhook validation failed",
+				log.Err(sigErr),
+				slog.String("instance_id", instance.ID),
+			)
 			return nil, nil, ErrIntegrationWebhookValidationFailed
 		}
 	}
@@ -1613,7 +1621,7 @@ func (s *integrationService) resolveWebhookTarget(
 // buildWebhookEvent parses the payload and constructs the event domain object.
 func (s *integrationService) buildWebhookEvent(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	prov provider.WebhookIngestor,
 	instance *integration.Instance,
 	input integration.IngestWebhookInput,
@@ -1636,9 +1644,10 @@ func (s *integrationService) buildWebhookEvent(
 			},
 		)
 
-		logger.Error().Err(parseErr).
-			Str("instance_id", instance.ID).
-			Msg("failed to parse webhook event")
+		logger.ErrorContext(ctx, "failed to parse webhook event",
+			log.Err(parseErr),
+			slog.String("instance_id", instance.ID),
+		)
 		return integration.Event{}, nil,
 			fault.BadRequest(
 				"INTEGRATION_EVENT_PARSE_FAILED",
@@ -1672,10 +1681,11 @@ func (s *integrationService) buildWebhookEvent(
 			},
 		)
 
-		logger.Warn().Err(eventIDErr).
-			Str("instance_id", instance.ID).
-			Str(fieldProviderTypeKey, string(instance.ProviderType)).
-			Msg("webhook missing required event id")
+		logger.WarnContext(ctx, "webhook missing required event id",
+			log.Err(eventIDErr),
+			slog.String("instance_id", instance.ID),
+			slog.String(fieldProviderTypeKey, string(instance.ProviderType)),
+		)
 
 		return integration.Event{}, nil, ErrIntegrationWebhookEventIDMissing
 	}
@@ -1703,7 +1713,7 @@ func (s *integrationService) buildWebhookEvent(
 // ---------------------------------------------------------------------------
 
 func (s *integrationService) startVerifyAndActivate(
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	inst integration.Instance,
 	prov provider.Provider,
 ) {
@@ -1746,7 +1756,7 @@ func (s *integrationService) finishVerificationRun(instanceID string, run *verif
 // wins per instance so repeated saves do not pile up stale verification writes.
 func (s *integrationService) verifyAndActivate(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	inst integration.Instance,
 	prov provider.Provider,
 	run *verificationRun,
@@ -1763,8 +1773,9 @@ func (s *integrationService) verifyAndActivate(
 
 	verifyErr := verifier.VerifyConnection(ctx, &inst)
 	if !s.isCurrentVerificationRun(inst.ID, run) {
-		logger.Debug().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: skipped superseded verification result")
+		logger.DebugContext(ctx, "verifyAndActivate: skipped superseded verification result",
+			slog.String("instance_id", inst.ID),
+		)
 		return
 	}
 
@@ -1777,21 +1788,24 @@ func (s *integrationService) verifyAndActivate(
 		// Context deadline/cancellation here is a benign timeout, not a fault;
 		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
 		// and everything else stays at Error.
-		log.Event(&logger, findErr).Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: failed to re-fetch instance after verification")
+		applog.Error(ctx, logger, findErr, "verifyAndActivate: failed to re-fetch instance after verification",
+			slog.String("instance_id", inst.ID),
+		)
 		return
 	}
 	if foundLive.IsAbsent() {
 		// The instance was removed between the save and this verification run
 		// (e.g. deleted by the tenant). This is an expected race, not an error.
-		logger.Warn().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
+		logger.WarnContext(ctx, "verifyAndActivate: instance no longer exists, skipping verification update",
+			slog.String("instance_id", inst.ID),
+		)
 		return
 	}
 	live := foundLive.ToPtr()
 	if !s.isCurrentVerificationRun(inst.ID, run) {
-		logger.Debug().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: skipped superseded verification update")
+		logger.DebugContext(ctx, "verifyAndActivate: skipped superseded verification update",
+			slog.String("instance_id", inst.ID),
+		)
 		return
 	}
 
@@ -1807,8 +1821,9 @@ func (s *integrationService) verifyAndActivate(
 	result, updateErr := s.instanceRepo.UpdateOptional(persistCtx, live.PlatformTenantID, *live)
 	if updateErr != nil {
 		// As above: a persist-context timeout is benign and downgraded to Warn.
-		log.Event(&logger, updateErr).Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: failed to persist verification result")
+		applog.Error(ctx, logger, updateErr, "verifyAndActivate: failed to persist verification result",
+			slog.String("instance_id", inst.ID),
+		)
 		return
 	}
 	if result.IsAbsent() {
@@ -1816,8 +1831,9 @@ func (s *integrationService) verifyAndActivate(
 		// update — the same expected tenant-delete race as the live == nil
 		// branch. The UPDATE ... RETURNING matched no rows, so there is
 		// nothing to persist and nothing is wrong.
-		logger.Warn().Str("instance_id", inst.ID).
-			Msg("verifyAndActivate: instance no longer exists, skipping verification update")
+		logger.WarnContext(ctx, "verifyAndActivate: instance no longer exists, skipping verification update",
+			slog.String("instance_id", inst.ID),
+		)
 	}
 }
 
@@ -1859,7 +1875,7 @@ func (s *integrationService) prepareConfigForUpdatedStorage(
 
 func (s *integrationService) enqueueReconcileJobIfRequired(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance integration.Instance,
 	shouldEnqueue bool,
 	tx *sql.Tx,
@@ -1883,16 +1899,17 @@ func (s *integrationService) enqueueReconcileJobIfRequired(
 		Payload:     payload,
 		MaxAttempts: integrationMaxAttempts,
 	}); enqueueErr != nil {
-		logger.Error().Err(enqueueErr).
-			Str("integration_instance_id", instance.ID).
-			Msg("failed to enqueue integration reconcile job")
+		logger.ErrorContext(ctx, "failed to enqueue integration reconcile job",
+			log.Err(enqueueErr),
+			slog.String("integration_instance_id", instance.ID),
+		)
 		return enqueueErr
 	}
 
-	logger.Info().
-		Str("integration_instance_id", instance.ID).
-		Str(fieldProviderTypeKey, string(instance.ProviderType)).
-		Msg("integration reconcile job enqueued")
+	logger.InfoContext(ctx, "integration reconcile job enqueued",
+		slog.String("integration_instance_id", instance.ID),
+		slog.String(fieldProviderTypeKey, string(instance.ProviderType)),
+	)
 
 	return nil
 }
@@ -1924,7 +1941,7 @@ func (s *integrationService) markEventFailed(
 
 func (s *integrationService) findDuplicateEvent(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	instance *integration.Instance,
 	event integration.Event,
 ) (*integration.Event, error) {
@@ -1934,13 +1951,13 @@ func (s *integrationService) findDuplicateEvent(
 		event.ExternalEventID,
 	)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to check for duplicate event")
+		logger.ErrorContext(ctx, "failed to check for duplicate event", log.Err(err))
 		return nil, err
 	}
 	if found.IsPresent() {
-		logger.Debug().
-			Str("external_event_id", event.ExternalEventID).
-			Msg("duplicate event, skipping")
+		logger.DebugContext(ctx, "duplicate event, skipping",
+			slog.String("external_event_id", event.ExternalEventID),
+		)
 	}
 
 	return found.ToPtr(), nil
@@ -1948,7 +1965,7 @@ func (s *integrationService) findDuplicateEvent(
 
 func (s *integrationService) writeAuditLog(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	auditLog integration.AuditLog,
 ) {
 	if auditLog.ID == "" {
@@ -1965,10 +1982,11 @@ func (s *integrationService) writeAuditLog(
 	}
 
 	if _, auditErr := s.auditLogRepo.Create(ctx, auditLog); auditErr != nil {
-		logger.Error().Err(auditErr).
-			Str("integration_instance_id", auditLog.IntegrationInstanceID).
-			Str("action", auditLog.Action).
-			Msg("failed to create integration audit log")
+		logger.ErrorContext(ctx, "failed to create integration audit log",
+			log.Err(auditErr),
+			slog.String("integration_instance_id", auditLog.IntegrationInstanceID),
+			slog.String("action", auditLog.Action),
+		)
 	}
 }
 
@@ -1976,7 +1994,7 @@ func (s *integrationService) writeAuditLog(
 // execution. The provider is responsible for dispatching unknown command types.
 func (s *integrationService) executeCommands(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	prov provider.WebhookIngestor,
 	instance *integration.Instance,
 	commands []provider.Command,
@@ -1991,7 +2009,7 @@ func (s *integrationService) executeCommands(
 
 func (s *integrationService) executeCommandsInBatches(
 	ctx context.Context,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	prov provider.WebhookIngestor,
 	instance *integration.Instance,
 	commands []provider.Command,
@@ -2036,12 +2054,12 @@ func (s *integrationService) executeCommandsInBatches(
 		}
 
 		batchesProcessed++
-		logger.Info().
-			Str("integration_instance_id", instance.ID).
-			Int("batch_index", batchIndex).
-			Int("batch_size", len(batchCommands)).
-			Int("commands_total", len(commands)).
-			Msg("integration reconciliation batch committed")
+		logger.InfoContext(ctx, "integration reconciliation batch committed",
+			slog.String("integration_instance_id", instance.ID),
+			slog.Int("batch_index", batchIndex),
+			slog.Int("batch_size", len(batchCommands)),
+			slog.Int("commands_total", len(commands)),
+		)
 	}
 
 	return batchesProcessed, nil

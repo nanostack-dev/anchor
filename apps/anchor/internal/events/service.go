@@ -2,13 +2,13 @@ package events
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 
 	"anchor/internal/security/encryption"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/rs/zerolog"
 )
 
 const cipherContext = "product-event-endpoint"
@@ -36,7 +36,7 @@ type endpointService struct {
 	catalog    Catalog
 	cipher     *secrets.VersionedCipher
 	production bool
-	logger     zerolog.Logger
+	logger     *slog.Logger
 }
 
 func NewEndpointService(
@@ -44,7 +44,7 @@ func NewEndpointService(
 	catalog Catalog,
 	enc *encryption.Service,
 	production bool,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (EndpointService, error) {
 	cipher, err := enc.NewCipher(cipherContext)
 	if err != nil {
@@ -55,7 +55,7 @@ func NewEndpointService(
 		catalog:    catalog,
 		cipher:     cipher,
 		production: production,
-		logger:     logger.With().Str("component", "event_endpoint_service").Logger(),
+		logger:     logger.With(slog.String("component", "event_endpoint_service")),
 	}, nil
 }
 
@@ -106,7 +106,7 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 	if upsertErr := s.repo.Upsert(ctx, endpoint); upsertErr != nil {
 		return Endpoint{}, upsertErr
 	}
-	s.logger.Info().Str("product_id", input.ProductID).Msg("event endpoint upserted")
+	s.logger.InfoContext(ctx, "event endpoint upserted", slog.String("product_id", input.ProductID))
 	return endpoint, nil
 }
 

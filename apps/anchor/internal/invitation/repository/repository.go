@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -79,13 +79,13 @@ type Repository interface {
 
 type repositoryImpl struct {
 	db     *sql.DB
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
-func NewRepository(db *sql.DB, logger zerolog.Logger) Repository {
+func NewRepository(db *sql.DB, logger *slog.Logger) Repository {
 	return &repositoryImpl{
 		db:     db,
-		logger: logger.With().Str("component", "organization_invitation_repository").Logger(),
+		logger: logger.With(slog.String("component", "organization_invitation_repository")),
 	}
 }
 

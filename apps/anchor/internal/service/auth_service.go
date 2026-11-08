@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -20,8 +23,6 @@ import (
 	"anchor/internal/repository"
 	"anchor/internal/service/config"
 	sessionservice "anchor/internal/session/service"
-
-	"github.com/rs/zerolog"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -48,7 +49,7 @@ type authService struct {
 	platformUserMapper     *mapper.PlatformUserMapper
 	authCfg                config.AuthConfig
 	jwt                    JWTHelper
-	logger                 zerolog.Logger
+	logger                 *slog.Logger
 	absentUserHash         func() []byte
 }
 
@@ -61,7 +62,7 @@ func NewAuthService(
 	sessions sessionservice.Service,
 	authCfg config.AuthConfig,
 	jwtHelper JWTHelper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) AuthService {
 	return &authService{
 		transactor:             transactor,
@@ -73,7 +74,7 @@ func NewAuthService(
 		platformUserMapper:     mapper.NewPlatformUserMapper(),
 		authCfg:                authCfg,
 		jwt:                    jwtHelper,
-		logger:                 logger.With().Str("component", "auth_service").Logger(),
+		logger:                 logger.With(slog.String("component", "auth_service")),
 		absentUserHash: sync.OnceValue(func() []byte {
 			hash, _ := bcrypt.GenerateFromPassword([]byte("anchor-absent-user"), bcrypt.DefaultCost)
 			return hash
@@ -84,15 +85,15 @@ func NewAuthService(
 func (s *authService) GetUserByTenantIDAndID(
 	ctx context.Context, tenantID, userID string,
 ) (*platform.User, error) {
-	logger := s.logger.With().Str("operation", "GetUserByTenantIDAndID").Logger()
+	logger := s.logger.With(slog.String("operation", "GetUserByTenantIDAndID"))
 
 	found, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
 	if err != nil {
-		logger.Error().
-			Str("tenant_id", tenantID).
-			Str("user_id", userID).
-			Err(err).
-			Msg("failed to find user by tenant and user ID")
+		logger.ErrorContext(ctx, "failed to find user by tenant and user ID",
+			slog.String("tenant_id", tenantID),
+			slog.String("user_id", userID),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	return found.ToPtr(), nil
@@ -101,11 +102,11 @@ func (s *authService) GetUserByTenantIDAndID(
 func (s *authService) Register(
 	ctx context.Context, input auth.RegisterInput,
 ) (platform.User, error) {
-	logger := s.logger.With().Str("operation", "Register").Logger()
+	logger := s.logger.With(slog.String("operation", "Register"))
 
-	logger.Info().Str("email", input.Email).Msg("registering platform user")
+	logger.InfoContext(ctx, "registering platform user", slog.String("email", input.Email))
 	if validationErr := validate.ValidateStruct(input); validationErr != nil {
-		logServiceError(logger, validationErr).Msg("registration input validation failed")
+		logServiceError(ctx, logger, validationErr, "registration input validation failed")
 		return platform.User{}, validationErr
 	}
 
@@ -128,15 +129,15 @@ func (s *authService) Register(
 
 		foundUserByEmail, err := s.userRepo.FindByEmail(txCtx, input.Email)
 		if err != nil {
-			logger.Error().
-				Str("email", input.Email).
-				Err(err).
-				Msg("failed to find user by email")
+			logger.ErrorContext(txCtx, "failed to find user by email",
+				slog.String("email", input.Email),
+				log.Err(err),
+			)
 			return fmt.Errorf("failed during user lookup: %w", err)
 		}
 
 		if foundUserByEmail.IsPresent() {
-			logger.Debug().Str("email", input.Email).Msg("user already exists")
+			logger.DebugContext(txCtx, "user already exists", slog.String("email", input.Email))
 			return ErrUserAlreadyExists
 		}
 
@@ -144,7 +145,7 @@ func (s *authService) Register(
 			[]byte(input.Password), bcrypt.DefaultCost,
 		)
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to hash password")
+			logger.ErrorContext(txCtx, "failed to hash password", log.Err(err))
 			return fmt.Errorf("failed to hash password: %w", err)
 		}
 
@@ -159,7 +160,7 @@ func (s *authService) Register(
 			return ErrUserAlreadyExists
 		}
 		if err != nil {
-			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create user")
+			logger.ErrorContext(txCtx, "failed to create user", slog.String("email", input.Email), log.Err(err))
 			return fmt.Errorf("failed to create user: %w", err)
 		}
 
@@ -180,16 +181,19 @@ func (s *authService) Register(
 		// Use the repository Create method to persist the platform user
 		resUser, err := s.platformTenantUserRepo.Create(txCtx, platformUser)
 		if err != nil {
-			logger.Error().Str("email", input.Email).Err(err).Msg("failed to create platform user")
+			logger.ErrorContext(txCtx, "failed to create platform user",
+				slog.String("email", input.Email),
+				log.Err(err),
+			)
 			return fmt.Errorf("failed to create platform user: %w", err)
 		}
 
 		createdPlatformUser = resUser
-		logger.Info().
-			Str("user_id", createdPlatformUser.UserID).
-			Str("platform_user_id", createdPlatformUser.ID).
-			Str("email", input.Email).
-			Msg("platform user registered successfully")
+		logger.InfoContext(txCtx, "platform user registered successfully",
+			slog.String("user_id", createdPlatformUser.UserID),
+			slog.String("platform_user_id", createdPlatformUser.ID),
+			slog.String("email", input.Email),
+		)
 
 		return nil
 	})
@@ -198,19 +202,19 @@ func (s *authService) Register(
 }
 
 func (s *authService) handleInvitation(
-	ctx context.Context, email string, code string, logger zerolog.Logger,
+	ctx context.Context, email string, code string, logger *slog.Logger,
 ) (invitation.PlatformInvitation, error) {
 	if code == "" {
-		logger.Debug().Msg("invitation code is empty")
+		logger.DebugContext(ctx, "invitation code is empty")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
 	foundInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
 	if err != nil {
-		logger.Error().Str("email", email).Err(err).Msg("failed to find invitation")
+		logger.ErrorContext(ctx, "failed to find invitation", slog.String("email", email), log.Err(err))
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
 	}
 	if foundInvitation.IsAbsent() {
-		logger.Debug().Str("email", email).Msg("invitation not found")
+		logger.DebugContext(ctx, "invitation not found", slog.String("email", email))
 		return invitation.PlatformInvitation{}, ErrInvitationCodeIsInvalid
 	}
 	optInvitation := foundInvitation.Value()
@@ -218,11 +222,11 @@ func (s *authService) handleInvitation(
 	if err = s.invitationRepo.DeleteByTenantIDAndID(
 		ctx, optInvitation.PlatformTenantID, optInvitation.ID,
 	); err != nil {
-		logger.Error().
-			Str("invitation_id", optInvitation.ID).
-			Str("tenant_id", optInvitation.PlatformTenantID).
-			Err(err).
-			Msg("failed to delete invitation")
+		logger.ErrorContext(ctx, "failed to delete invitation",
+			slog.String("invitation_id", optInvitation.ID),
+			slog.String("tenant_id", optInvitation.PlatformTenantID),
+			log.Err(err),
+		)
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to delete invitation: %w", err)
 	}
 	return optInvitation, nil
@@ -231,7 +235,7 @@ func (s *authService) handleInvitation(
 func (s *authService) Login(
 	ctx context.Context, input auth.LoginInput,
 ) (auth.LoginOutput, error) {
-	logger := s.logger.With().Str("operation", "Login").Logger()
+	logger := s.logger.With(slog.String("operation", "Login"))
 
 	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
@@ -239,7 +243,7 @@ func (s *authService) Login(
 
 	foundUser, err := s.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
-		logger.Error().Str("email", input.Email).Err(err).Msg("failed to find user by email")
+		logger.ErrorContext(ctx, "failed to find user by email", slog.String("email", input.Email), log.Err(err))
 		return auth.LoginOutput{}, fmt.Errorf("failed during user lookup: %w", err)
 	}
 	if foundUser.IsAbsent() {
@@ -254,7 +258,7 @@ func (s *authService) Login(
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return auth.LoginOutput{}, ErrInvalidCredentials
 		}
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to compare password hash")
+		logger.ErrorContext(ctx, "failed to compare password hash", slog.String("user_id", user.ID), log.Err(err))
 		return auth.LoginOutput{}, fmt.Errorf("failed during password comparison: %w", err)
 	}
 
@@ -265,7 +269,7 @@ func (s *authService) Login(
 	// Get the first tenant (for now assuming single tenant setup)
 	tenants, err := s.tenantRepo.FindAll(ctx)
 	if err != nil || len(tenants) == 0 {
-		logger.Error().Err(err).Msg("no tenants found")
+		logger.ErrorContext(ctx, "no tenants found", log.Err(err))
 		return auth.LoginOutput{}, errors.New("no tenant configuration found")
 	}
 
@@ -285,18 +289,18 @@ func (s *authService) Login(
 		// visible (the user exists but is not provisioned) without the false
 		// server-error alarm, and mirroring the other branches avoids leaking
 		// whether an address is provisioned.
-		logger.Warn().Str("user_id", user.ID).Msg("platform user not found for authenticated user")
+		logger.WarnContext(ctx, "platform user not found for authenticated user", slog.String("user_id", user.ID))
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
 	platformUser := foundPlatformUser.Value()
 
 	output, err := s.startSession(ctx, platformUser)
 	if err != nil {
-		logger.Error().Str("user_id", user.ID).Err(err).Msg("failed to start session")
+		logger.ErrorContext(ctx, "failed to start session", slog.String("user_id", user.ID), log.Err(err))
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
-	logger.Info().Str("user_id", user.ID).Msg("user logged in successfully")
+	logger.InfoContext(ctx, "user logged in successfully", slog.String("user_id", user.ID))
 	return output, nil
 }
 
@@ -359,7 +363,7 @@ func authTimeOf(claims *AuthClaims) (time.Time, bool) {
 func (s *authService) RefreshToken(
 	ctx context.Context, input auth.RefreshTokenInput,
 ) (auth.LoginOutput, error) {
-	logger := s.logger.With().Str("operation", "RefreshToken").Logger()
+	logger := s.logger.With(slog.String("operation", "RefreshToken"))
 
 	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		return auth.LoginOutput{}, validationErr
@@ -367,18 +371,21 @@ func (s *authService) RefreshToken(
 
 	claims, err := s.jwt.ValidateRefreshToken(input.RefreshToken)
 	if err != nil {
-		logger.Debug().Err(err).Msg("refresh token validation failed")
+		logger.DebugContext(ctx, "refresh token validation failed", log.Err(err))
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 	authTime, hasAuthTime := authTimeOf(claims)
 	if claims.SessionID == "" || claims.ID == "" || !hasAuthTime {
-		logger.Debug().Str("user_id", claims.UserID).Msg("refresh token predates sessions")
+		logger.DebugContext(ctx, "refresh token predates sessions", slog.String("user_id", claims.UserID))
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 
 	output, next, err := s.issueTokens(claims.UserID, claims.TenantID, claims.SessionID, authTime)
 	if err != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to generate tokens during refresh")
+		logger.ErrorContext(ctx, "failed to generate tokens during refresh",
+			slog.String("user_id", claims.UserID),
+			log.Err(err),
+		)
 		return auth.LoginOutput{}, fault.ErrUnexpected
 	}
 
@@ -387,16 +394,19 @@ func (s *authService) RefreshToken(
 		return auth.LoginOutput{}, ErrTokenRefreshFailed
 	}
 	if err != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(err).Msg("failed to rotate refresh token")
+		logger.ErrorContext(ctx, "failed to rotate refresh token",
+			slog.String("user_id", claims.UserID),
+			log.Err(err),
+		)
 		return auth.LoginOutput{}, err
 	}
 
-	logger.Debug().Str("user_id", claims.UserID).Msg("token refreshed successfully")
+	logger.DebugContext(ctx, "token refreshed successfully", slog.String("user_id", claims.UserID))
 	return output, nil
 }
 
 func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error {
-	logger := s.logger.With().Str("operation", "Logout").Logger()
+	logger := s.logger.With(slog.String("operation", "Logout"))
 
 	if validationErr := validate.ValidateStruct(input); validationErr != nil {
 		return validationErr
@@ -407,7 +417,7 @@ func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error 
 
 	claims, err := s.jwt.ValidateAccessTokenIgnoringExpiry(input.AccessToken)
 	if err != nil {
-		logger.Debug().Err(err).Msg("logout access token rejected; nothing to revoke")
+		logger.DebugContext(ctx, "logout access token rejected; nothing to revoke", log.Err(err))
 		return nil
 	}
 	if claims.SessionID == "" {
@@ -415,20 +425,26 @@ func (s *authService) Logout(ctx context.Context, input auth.LogoutInput) error 
 	}
 
 	if revokeErr := s.sessions.Revoke(ctx, sessionservice.RevokeInput{SessionID: claims.SessionID}); revokeErr != nil {
-		logger.Error().Str("user_id", claims.UserID).Err(revokeErr).Msg("failed to revoke session")
+		logger.ErrorContext(ctx, "failed to revoke session",
+			slog.String("user_id", claims.UserID),
+			log.Err(revokeErr),
+		)
 		return revokeErr
 	}
-	logger.Info().Str("user_id", claims.UserID).Str("session_id", claims.SessionID).Msg("session revoked")
+	logger.InfoContext(ctx, "session revoked",
+		slog.String("user_id", claims.UserID),
+		slog.String("session_id", claims.SessionID),
+	)
 	return nil
 }
 
 func (s *authService) setupTenantForRegistration(
 	ctx context.Context, invitationCode *string, email string, tenantName *string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (string, platform.TenantRole, error) {
 	count, err := s.tenantRepo.Count(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to count tenants")
+		logger.ErrorContext(ctx, "failed to count tenants", log.Err(err))
 		return "", "", fmt.Errorf("failed to count tenants: %w", err)
 	}
 
@@ -438,7 +454,7 @@ func (s *authService) setupTenantForRegistration(
 	}
 
 	if count == 0 {
-		logger.Warn().Msg("no tenants found, creating one")
+		logger.WarnContext(ctx, "no tenants found, creating one")
 
 		// Use provided tenant name or default to "Default"
 		tenantNameToUse := "Default"
@@ -453,22 +469,28 @@ func (s *authService) setupTenantForRegistration(
 		t.GenerateID()
 		currentTenant, createErr := s.tenantRepo.Create(ctx, t)
 		if createErr != nil {
-			logger.Error().Str("tenant_name", tenantNameToUse).Err(createErr).Msg("failed to create tenant")
+			logger.ErrorContext(ctx, "failed to create tenant",
+				slog.String("tenant_name", tenantNameToUse),
+				log.Err(createErr),
+			)
 			return "", "", fmt.Errorf("failed to create tenant: %w", createErr)
 		}
-		logger.Info().Str("tenant_id", currentTenant.ID).Str("tenant_name", tenantNameToUse).Msg("tenant created")
+		logger.InfoContext(ctx, "tenant created",
+			slog.String("tenant_id", currentTenant.ID),
+			slog.String("tenant_name", tenantNameToUse),
+		)
 		return currentTenant.ID, role, nil
 	}
 
 	if invitationCode == nil {
-		logger.Debug().Msg("invitation code is required for existing tenants")
+		logger.DebugContext(ctx, "invitation code is required for existing tenants")
 		return "", "", ErrInvitationCodeNotProvided
 	}
 
-	logger.Info().Msg("using invitation code for registration")
+	logger.InfoContext(ctx, "using invitation code for registration")
 	userInvitation, inviteErr := s.handleInvitation(ctx, email, *invitationCode, logger)
 	if inviteErr != nil {
-		logServiceError(logger, inviteErr).Msg("failed to handle invitation")
+		logServiceError(ctx, logger, inviteErr, "failed to handle invitation")
 		return "", "", fmt.Errorf("failed to handle invitation: %w", inviteErr)
 	}
 	return userInvitation.PlatformTenantID, role, nil

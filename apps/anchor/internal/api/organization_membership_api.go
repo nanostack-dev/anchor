@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"slices"
+
+	"anchor/internal/applog"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -30,11 +33,11 @@ func (s *AnchorAPI) AddOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.AddMember(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("product_user_id", request.Body.ProductUserId).
-			Msg("failed to add organization member")
+		applog.Error(ctx, s.logger, err, "failed to add organization member",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("product_user_id", request.Body.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -60,11 +63,11 @@ func (s *AnchorAPI) GetOrganizationMember(
 
 	membership, err := s.OrganizationMembershipService.GetMember(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("product_user_id", request.ProductUserId).
-			Msg("failed to get organization member")
+		applog.Error(ctx, s.logger, err, "failed to get organization member",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("product_user_id", request.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -94,11 +97,11 @@ func (s *AnchorAPI) UpdateOrganizationMemberRole(
 
 	membership, err := s.OrganizationMembershipService.UpdateMemberRole(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("product_user_id", request.ProductUserId).
-			Msg("failed to update organization member role")
+		applog.Error(ctx, s.logger, err, "failed to update organization member role",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("product_user_id", request.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -119,11 +122,11 @@ func (s *AnchorAPI) RemoveOrganizationMember(
 
 	err := s.OrganizationMembershipService.RemoveMember(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Str("product_user_id", request.ProductUserId).
-			Msg("failed to remove organization member")
+		applog.Error(ctx, s.logger, err, "failed to remove organization member",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+			slog.String("product_user_id", request.ProductUserId),
+		)
 		return nil, err
 	}
 
@@ -187,10 +190,10 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 
 	res, err := s.OrganizationMembershipService.SearchMembers(ctx, input)
 	if err != nil {
-		logAPIError(s.logger, err).
-			Str("product_id", request.ProductId).
-			Str("organization_id", request.OrganizationId).
-			Msg("failed to search organization members")
+		applog.Error(ctx, s.logger, err, "failed to search organization members",
+			slog.String("product_id", request.ProductId),
+			slog.String("organization_id", request.OrganizationId),
+		)
 		return nil, err
 	}
 

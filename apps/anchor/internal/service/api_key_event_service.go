@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/repository"
 
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 )
 
 type OrganizationAPIKeyEventService interface {
@@ -16,16 +16,16 @@ type OrganizationAPIKeyEventService interface {
 
 type organizationAPIKeyEventService struct {
 	organizationAPIKeyRepo repository.OrganizationAPIKeyRepository
-	logger                 zerolog.Logger
+	logger                 *slog.Logger
 }
 
 func NewOrganizationAPIKeyEventService(
 	organizationAPIKeyRepo repository.OrganizationAPIKeyRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationAPIKeyEventService {
 	return &organizationAPIKeyEventService{
 		organizationAPIKeyRepo: organizationAPIKeyRepo,
-		logger:                 logger.With().Str("component", "api_key_event_service").Logger(),
+		logger:                 logger.With(slog.String("component", "api_key_event_service")),
 	}
 }
 

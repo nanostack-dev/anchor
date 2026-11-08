@@ -6,13 +6,15 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-	"github.com/rs/zerolog"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/role"
@@ -63,7 +65,7 @@ type service struct {
 	roles         orgrepository.ProductRoleRepository
 	transactor    transactor.Transactor
 	events        events.Emitter
-	logger        zerolog.Logger
+	logger        *slog.Logger
 }
 
 func NewService(
@@ -74,7 +76,7 @@ func NewService(
 	roles orgrepository.ProductRoleRepository,
 	tx transactor.Transactor,
 	emitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) Service {
 	return &service{
 		repo:          repo,
@@ -84,7 +86,7 @@ func NewService(
 		roles:         roles,
 		transactor:    tx,
 		events:        emitter,
-		logger:        logger.With().Str("component", "role_assignment_service").Logger(),
+		logger:        logger.With(slog.String("component", "role_assignment_service")),
 	}
 }
 
@@ -497,7 +499,10 @@ func (s *service) unexpected(err error, productID, operation string) error {
 	if _, isFault := fault.As(err); isFault {
 		return err
 	}
-	s.logger.Error().Err(err).Str("product_id", productID).Str("operation", operation).
-		Msg("role assignment operation failed")
+	s.logger.Error("role assignment operation failed",
+		log.Err(err),
+		slog.String("product_id", productID),
+		slog.String("operation", operation),
+	)
 	return fault.ErrUnexpected
 }

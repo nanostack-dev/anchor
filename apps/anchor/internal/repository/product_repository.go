@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -18,7 +19,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ ProductRepository = (*productRepositoryImpl)(nil)
@@ -71,16 +71,14 @@ type ProductRepository interface {
 type productRepositoryImpl struct {
 	db            *sql.DB
 	productMapper *mapper.ProductMapper
-	logger        zerolog.Logger
+	logger        *slog.Logger
 }
 
-func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logger zerolog.Logger) ProductRepository {
+func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logger *slog.Logger) ProductRepository {
 	return &productRepositoryImpl{
 		db:            db,
 		productMapper: productMapper,
-		logger: logger.With().Str(
-			"component", "product_repository",
-		).Logger(),
+		logger:        logger.With(slog.String("component", "product_repository")),
 	}
 }
 

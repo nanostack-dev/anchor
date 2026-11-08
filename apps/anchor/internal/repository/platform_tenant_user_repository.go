@@ -3,8 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
@@ -18,7 +21,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 // Remove global variable, use a function instead.
@@ -53,7 +55,7 @@ type PlatformTenantUserRepository interface {
 type platformTenantUserRepositoryImpl struct {
 	db                 *sql.DB
 	platformUserMapper *mapper.PlatformUserMapper
-	logger             zerolog.Logger
+	logger             *slog.Logger
 }
 
 func (r *platformTenantUserRepositoryImpl) Create(
@@ -73,10 +75,11 @@ func (r *platformTenantUserRepositoryImpl) Create(
 		},
 	).Value()
 	if err != nil {
-		r.logger.Error().Err(err).
-			Str("platform_user_id", platformUser.ID).
-			Str("platform_tenant_id", platformUser.PlatformTenantID).
-			Msg("Failed to create platform user")
+		r.logger.ErrorContext(ctx, "Failed to create platform user",
+			log.Err(err),
+			slog.String("platform_user_id", platformUser.ID),
+			slog.String("platform_tenant_id", platformUser.PlatformTenantID),
+		)
 		return platform.User{}, err
 	}
 
@@ -216,13 +219,11 @@ func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
 func NewPlatformTenantUserRepository(
 	db *sql.DB,
 	platformUserMapper *mapper.PlatformUserMapper,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) PlatformTenantUserRepository {
 	return &platformTenantUserRepositoryImpl{
 		db:                 db,
 		platformUserMapper: platformUserMapper,
-		logger: logger.With().Str(
-			"component", "platform_tenant_user_repository",
-		).Logger(),
+		logger:             logger.With(slog.String("component", "platform_tenant_user_repository")),
 	}
 }

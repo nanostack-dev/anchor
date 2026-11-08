@@ -3,6 +3,7 @@ package fgasync_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"sync"
 	"testing"
@@ -10,7 +11,6 @@ import (
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/openfga/language/pkg/go/transformer"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -147,7 +147,7 @@ func givenWorld(t *testing.T) world {
 	w.repo.AddProduct(productID)
 	m, err := fgasync.New(fgasync.Deps{
 		Engines: fgasynctest.Engines{Engine: engine}, Stores: w.stores, Repository: w.repo, Locker: w.locker,
-		Models: w.models, Sources: []fgasync.Source{docOwners{docs: w.docs}}, Logger: zerolog.Nop(),
+		Models: w.models, Sources: []fgasync.Source{docOwners{docs: w.docs}}, Logger: slog.New(slog.DiscardHandler),
 	})
 	require.NoError(t, err)
 	w.syncer = m

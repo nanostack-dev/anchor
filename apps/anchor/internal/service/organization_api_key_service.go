@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
+
+	"anchor/internal/applog"
 
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -23,8 +26,6 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/events"
 	"anchor/internal/repository"
-
-	"github.com/rs/zerolog"
 )
 
 type OrganizationAPIKeyService interface {
@@ -66,7 +67,7 @@ type organizationAPIKeyService struct {
 	productRepo      repository.ProductRepository
 	permissionRepo   repository.ProductResourcePermissionRepository
 	events           events.Emitter
-	logger           zerolog.Logger
+	logger           *slog.Logger
 }
 
 func NewOrganizationAPIKeyService(
@@ -77,7 +78,7 @@ func NewOrganizationAPIKeyService(
 	productRepo repository.ProductRepository,
 	permissionRepo repository.ProductResourcePermissionRepository,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) OrganizationAPIKeyService {
 	return &organizationAPIKeyService{
 		transactor:       transactor,
@@ -87,9 +88,7 @@ func NewOrganizationAPIKeyService(
 		productRepo:      productRepo,
 		permissionRepo:   permissionRepo,
 		events:           eventEmitter,
-		logger: logger.With().Str(
-			"component", "organization_api_key_service",
-		).Logger(),
+		logger:           logger.With(slog.String("component", "organization_api_key_service")),
 	}
 }
 
@@ -110,7 +109,7 @@ func (s *organizationAPIKeyService) Create(
 	ctx context.Context,
 	input orgapikey.CreateOrganizationAPIKeyInput,
 ) (orgapikey.OrganizationAPIKey, string, error) {
-	logger := s.logger.With().Str("operation", "Create").Logger()
+	logger := s.logger.With(slog.String("operation", "Create"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", err
@@ -130,10 +129,10 @@ func (s *organizationAPIKeyService) Create(
 	org := foundOrg.Value()
 	foundProd, err := s.productRepo.FindByIDInternal(ctx, org.ProductID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", org.ProductID).
-			Err(err).
-			Msg("failed to find product for organization API key config")
+		logger.ErrorContext(ctx, "failed to find product for organization API key config",
+			slog.String("product_id", org.ProductID),
+			log.Err(err),
+		)
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 	if foundProd.IsAbsent() {
@@ -154,7 +153,7 @@ func (s *organizationAPIKeyService) Create(
 	organizationAPIKeyPrefix := prod.Config.WithDefaults().OrganizationAPIKeys.Prefix
 	clearAPIKey, err := security.GenerateOrganizationAPIKey(organizationAPIKeyPrefix)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to generate organization API key")
+		logger.ErrorContext(ctx, "failed to generate organization API key", log.Err(err))
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
@@ -216,11 +215,11 @@ func (s *organizationAPIKeyService) Create(
 			NewOrganizationAPIKeyNameExistsError(input.Name, input.OrganizationID)
 	}
 	if err != nil {
-		logger.Error().
-			Str("organization_api_key_id", organizationAPIKey.ID).
-			Str("organization_id", input.OrganizationID).
-			Err(err).
-			Msg("failed to create organization API key")
+		logger.ErrorContext(ctx, "failed to create organization API key",
+			slog.String("organization_api_key_id", organizationAPIKey.ID),
+			slog.String("organization_id", input.OrganizationID),
+			log.Err(err),
+		)
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
 
@@ -231,7 +230,7 @@ func (s *organizationAPIKeyService) GetByID(
 	ctx context.Context,
 	input orgapikey.GetOrganizationAPIKeyInput,
 ) (orgapikey.OrganizationAPIKey, error) {
-	logger := s.logger.With().Str("operation", "GetByID").Logger()
+	logger := s.logger.With(slog.String("operation", "GetByID"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
@@ -242,11 +241,11 @@ func (s *organizationAPIKeyService) GetByID(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("organization_id", input.OrganizationID).
-			Str("api_key_id", input.ID).
-			Err(err).
-			Msg("failed to get organization API key")
+		logger.ErrorContext(ctx, "failed to get organization API key",
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("api_key_id", input.ID),
+			log.Err(err),
+		)
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
@@ -257,7 +256,7 @@ func (s *organizationAPIKeyService) Update(
 	ctx context.Context,
 	input orgapikey.UpdateOrganizationAPIKeyInput,
 ) (orgapikey.OrganizationAPIKey, error) {
-	logger := s.logger.With().Str("operation", "Update").Logger()
+	logger := s.logger.With(slog.String("operation", "Update"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.OrganizationAPIKey{}, err
@@ -268,11 +267,11 @@ func (s *organizationAPIKeyService) Update(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("organization_id", input.OrganizationID).
-			Str("api_key_id", input.ID).
-			Err(err).
-			Msg("failed to get organization API key for update")
+		logger.ErrorContext(ctx, "failed to get organization API key for update",
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("api_key_id", input.ID),
+			log.Err(err),
+		)
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
@@ -320,11 +319,11 @@ func (s *organizationAPIKeyService) Update(
 			NewOrganizationAPIKeyNameExistsError(updatedAPIKey.Name, input.OrganizationID)
 	}
 	if err != nil {
-		logger.Error().
-			Str("organization_id", input.OrganizationID).
-			Str("api_key_id", input.ID).
-			Err(err).
-			Msg("failed to update organization API key")
+		logger.ErrorContext(ctx, "failed to update organization API key",
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("api_key_id", input.ID),
+			log.Err(err),
+		)
 		return orgapikey.OrganizationAPIKey{}, fault.ErrUnexpected
 	}
 
@@ -335,7 +334,7 @@ func (s *organizationAPIKeyService) Search(
 	ctx context.Context,
 	input orgapikey.SearchOrganizationAPIKeysInput,
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
-	logger := s.logger.With().Str("operation", "Search").Logger()
+	logger := s.logger.With(slog.String("operation", "Search"))
 
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -349,10 +348,10 @@ func (s *organizationAPIKeyService) Search(
 		if searchx.IsClientError(err) {
 			return nil, err
 		}
-		logger.Error().
-			Str("organization_id", input.OrganizationID).
-			Err(err).
-			Msg("failed to search organization API keys")
+		logger.ErrorContext(ctx, "failed to search organization API keys",
+			slog.String("organization_id", input.OrganizationID),
+			log.Err(err),
+		)
 		return nil, fault.ErrUnexpected
 	}
 
@@ -363,7 +362,7 @@ func (s *organizationAPIKeyService) Delete(
 	ctx context.Context,
 	input orgapikey.DeleteOrganizationAPIKeyInput,
 ) error {
-	logger := s.logger.With().Str("operation", "Delete").Logger()
+	logger := s.logger.With(slog.String("operation", "Delete"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -374,11 +373,11 @@ func (s *organizationAPIKeyService) Delete(
 
 	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("organization_id", input.OrganizationID).
-			Str("api_key_id", input.ID).
-			Err(err).
-			Msg("failed to get organization API key for deletion")
+		logger.ErrorContext(ctx, "failed to get organization API key for deletion",
+			slog.String("organization_id", input.OrganizationID),
+			slog.String("api_key_id", input.ID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 
@@ -389,11 +388,11 @@ func (s *organizationAPIKeyService) Delete(
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
-			logger.Error().
-				Str("organization_id", input.OrganizationID).
-				Str("api_key_id", input.ID).
-				Err(deleteErr).
-				Msg("failed to delete organization API key")
+			logger.ErrorContext(txCtx, "failed to delete organization API key",
+				slog.String("organization_id", input.OrganizationID),
+				slog.String("api_key_id", input.ID),
+				log.Err(deleteErr),
+			)
 			return fault.ErrUnexpected
 		}
 
@@ -413,10 +412,10 @@ func (s *organizationAPIKeyService) Delete(
 			Limit:     organizationAPIKeyEventListLimit,
 		})
 		if listErr != nil {
-			logger.Error().
-				Str("api_key_id", input.ID).
-				Err(listErr).
-				Msg("failed to list pending queue jobs for api key deletion")
+			logger.ErrorContext(txCtx, "failed to list pending queue jobs for api key deletion",
+				slog.String("api_key_id", input.ID),
+				log.Err(listErr),
+			)
 			return fault.ErrUnexpected
 		}
 
@@ -429,11 +428,11 @@ func (s *organizationAPIKeyService) Delete(
 				continue
 			}
 			if cancelErr := s.queue.DeleteJob(txCtx, job.ID); cancelErr != nil {
-				logger.Error().
-					Str("api_key_id", input.ID).
-					Int64("job_id", job.ID).
-					Err(cancelErr).
-					Msg("failed to cancel queue job for deleted api key")
+				logger.ErrorContext(txCtx, "failed to cancel queue job for deleted api key",
+					slog.String("api_key_id", input.ID),
+					slog.Int64("job_id", job.ID),
+					log.Err(cancelErr),
+				)
 				return fault.ErrUnexpected
 			}
 		}
@@ -446,7 +445,7 @@ func (s *organizationAPIKeyService) ValidateAPIKeyAndScopes(
 	ctx context.Context,
 	input orgapikey.ValidateOrganizationAPIKeyScopesInput,
 ) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error) {
-	logger := s.logger.With().Str("operation", "ValidateAPIKeyAndScopes").Logger()
+	logger := s.logger.With(slog.String("operation", "ValidateAPIKeyAndScopes"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
@@ -471,7 +470,7 @@ func (s *organizationAPIKeyService) IntrospectAPIKey(
 	ctx context.Context,
 	input orgapikey.IntrospectOrganizationAPIKeyInput,
 ) (orgapikey.ValidateOrganizationAPIKeyScopesOutput, error) {
-	logger := s.logger.With().Str("operation", "IntrospectAPIKey").Logger()
+	logger := s.logger.With(slog.String("operation", "IntrospectAPIKey"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return orgapikey.ValidateOrganizationAPIKeyScopesOutput{}, err
@@ -491,7 +490,7 @@ func (s *organizationAPIKeyService) buildScopesOutput(
 	validAPIKey orgapikey.OrganizationAPIKey,
 	inactive bool,
 	requiredScopes []string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) orgapikey.ValidateOrganizationAPIKeyScopesOutput {
 	permissionMap := make(map[string]bool, len(validAPIKey.Permissions))
 	currentScopes := make([]string, 0, len(validAPIKey.Permissions))
@@ -516,18 +515,18 @@ func (s *organizationAPIKeyService) buildScopesOutput(
 	}
 
 	if inactive {
-		logger.Debug().
-			Str("organization_id", validAPIKey.OrganizationID).
-			Str("api_key_id", validAPIKey.ID).
-			Msg("organization API key is inactive")
+		logger.Debug("organization API key is inactive",
+			slog.String("organization_id", validAPIKey.OrganizationID),
+			slog.String("api_key_id", validAPIKey.ID),
+		)
 		return output
 	}
 
 	if len(missingScopes) > 0 {
-		logger.Debug().
-			Str("organization_id", validAPIKey.OrganizationID).
-			Strs("missing_scopes", missingScopes).
-			Msg("organization API key does not have required scopes")
+		logger.Debug("organization API key does not have required scopes",
+			slog.String("organization_id", validAPIKey.OrganizationID),
+			slog.Any("missing_scopes", missingScopes),
+		)
 	}
 
 	return output
@@ -539,7 +538,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	ctx context.Context,
 	organizationID string,
 	apiKey string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (orgapikey.OrganizationAPIKey, bool, error) {
 	if apiKey == "" {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
@@ -548,7 +547,9 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
-		log.Event(&logger, err).Str("organization_id", organizationID).Msg("failed to validate organization API key")
+		applog.Error(ctx, logger, err, "failed to validate organization API key",
+			slog.String("organization_id", organizationID),
+		)
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -566,7 +567,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	ctx context.Context,
 	productID string,
 	apiKey string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (orgapikey.OrganizationAPIKey, bool, error) {
 	if apiKey == "" {
 		return orgapikey.OrganizationAPIKey{}, false, ErrInvalidAPIKey
@@ -575,7 +576,9 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
 	if err != nil {
-		log.Event(&logger, err).Str("product_id", productID).Msg("failed to introspect organization API key")
+		applog.Error(ctx, logger, err, "failed to introspect organization API key",
+			slog.String("product_id", productID),
+		)
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -591,17 +594,17 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 func (s *organizationAPIKeyService) evaluateAPIKey(
 	ctx context.Context,
 	foundAPIKey *orgapikey.OrganizationAPIKey,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) (orgapikey.OrganizationAPIKey, bool, error) {
 	now := nowUTC()
 	if foundAPIKey.IsExpiredAt(now) {
 		if foundAPIKey.Status == orgapikey.StatusActive {
 			if updateErr := s.expireAPIKey(ctx, foundAPIKey); updateErr != nil {
-				logger.Error().
-					Str("organization_id", foundAPIKey.OrganizationID).
-					Str("api_key_id", foundAPIKey.ID).
-					Err(updateErr).
-					Msg("failed to update expired organization API key status")
+				logger.ErrorContext(ctx, "failed to update expired organization API key status",
+					slog.String("organization_id", foundAPIKey.OrganizationID),
+					slog.String("api_key_id", foundAPIKey.ID),
+					log.Err(updateErr),
+				)
 			}
 		}
 		return *foundAPIKey, true, nil
@@ -613,11 +616,11 @@ func (s *organizationAPIKeyService) evaluateAPIKey(
 	shouldTouch := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
 	if shouldTouch {
 		if updateErr := s.touchAPIKeyLastUsed(ctx, foundAPIKey, now); updateErr != nil {
-			logger.Error().
-				Str("organization_id", foundAPIKey.OrganizationID).
-				Str("api_key_id", foundAPIKey.ID).
-				Err(updateErr).
-				Msg("failed to update organization API key last used timestamp")
+			logger.ErrorContext(ctx, "failed to update organization API key last used timestamp",
+				slog.String("organization_id", foundAPIKey.OrganizationID),
+				slog.String("api_key_id", foundAPIKey.ID),
+				log.Err(updateErr),
+			)
 		}
 	}
 
@@ -686,15 +689,15 @@ func (s *organizationAPIKeyService) enqueueExpirationEvent(
 func (s *organizationAPIKeyService) nameUniqueValidation(
 	ctx context.Context,
 	organizationID, name, ownKeyID string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) error {
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
 	if err != nil {
-		logger.Error().
-			Str("organization_id", organizationID).
-			Str("name", name).
-			Err(err).
-			Msg("failed to search for organization API keys by name")
+		logger.ErrorContext(ctx, "failed to search for organization API keys by name",
+			slog.String("organization_id", organizationID),
+			slog.String("name", name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if found.Exists(func(holder orgapikey.OrganizationAPIKey) bool { return holder.ID != ownKeyID }) {
@@ -721,17 +724,17 @@ func (s *organizationAPIKeyService) permissionsValidation(
 	ctx context.Context,
 	productID string,
 	permissionNames []string,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ([]string, error) {
 	permsFound, err := s.permissionRepo.FindByProductIDAndPermissionNames(
 		ctx, productID, permissionNames,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Int("permission_count", len(permissionNames)).
-			Err(err).
-			Msg("failed to find permissions by names")
+		logger.ErrorContext(ctx, "failed to find permissions by names",
+			slog.String("product_id", productID),
+			slog.Int("permission_count", len(permissionNames)),
+			log.Err(err),
+		)
 		return nil, err
 	}
 	foundNames := resourcePermissionsToNames(permsFound)

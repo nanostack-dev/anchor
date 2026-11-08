@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -12,8 +15,6 @@ import (
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
 	"anchor/internal/searchx"
-
-	"github.com/rs/zerolog"
 )
 
 type PermissionService interface {
@@ -39,25 +40,23 @@ type PermissionService interface {
 
 type permissionService struct {
 	permissionRepo repository.ProductPermissionRepository
-	logger         zerolog.Logger
+	logger         *slog.Logger
 }
 
 func NewPermissionService(
 	permissionRepo repository.ProductPermissionRepository,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) PermissionService {
 	return &permissionService{
 		permissionRepo: permissionRepo,
-		logger: logger.With().Str(
-			"component", "permission_service",
-		).Logger(),
+		logger:         logger.With(slog.String("component", "permission_service")),
 	}
 }
 
 func (s *permissionService) Create(
 	ctx context.Context, input permission.CreateProductPermissionInput,
 ) (permission.ProductPermission, error) {
-	logger := s.logger.With().Str("operation", "Create").Logger()
+	logger := s.logger.With(slog.String("operation", "Create"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
@@ -67,11 +66,11 @@ func (s *permissionService) Create(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to check permission uniqueness")
+		logger.ErrorContext(ctx, "failed to check permission uniqueness",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
@@ -97,18 +96,18 @@ func (s *permissionService) Create(
 		)
 	}
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to create permission")
+		logger.ErrorContext(ctx, "failed to create permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", createdPerm.Name).
-		Msg("permission created")
+	logger.InfoContext(ctx, "permission created",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", createdPerm.Name),
+	)
 
 	return createdPerm, nil
 }
@@ -116,7 +115,7 @@ func (s *permissionService) Create(
 func (s *permissionService) Update(
 	ctx context.Context, input permission.UpdateProductPermissionInput,
 ) (permission.ProductPermission, error) {
-	logger := s.logger.With().Str("operation", "Update").Logger()
+	logger := s.logger.With(slog.String("operation", "Update"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
@@ -126,11 +125,11 @@ func (s *permissionService) Update(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to find permission for update")
+		logger.ErrorContext(ctx, "failed to find permission for update",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
@@ -144,18 +143,18 @@ func (s *permissionService) Update(
 
 	result, err := s.permissionRepo.Update(ctx, updated)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to update permission")
+		logger.ErrorContext(ctx, "failed to update permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("permission updated")
+	logger.InfoContext(ctx, "permission updated",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	return result, nil
 }
@@ -163,7 +162,7 @@ func (s *permissionService) Update(
 func (s *permissionService) Delete(
 	ctx context.Context, input permission.DeleteProductPermissionInput,
 ) error {
-	logger := s.logger.With().Str("operation", "Delete").Logger()
+	logger := s.logger.With(slog.String("operation", "Delete"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -173,11 +172,11 @@ func (s *permissionService) Delete(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to check permission existence")
+		logger.ErrorContext(ctx, "failed to check permission existence",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 
@@ -188,11 +187,11 @@ func (s *permissionService) Delete(
 
 	roleCount, err := s.permissionRepo.CountAPIKeyAssignments(ctx, input.ProductID, exists.Name)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to count role assignments for permission")
+		logger.ErrorContext(ctx, "failed to count role assignments for permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 
@@ -204,18 +203,18 @@ func (s *permissionService) Delete(
 
 	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, exists.Name)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to delete permission")
+		logger.ErrorContext(ctx, "failed to delete permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("permission deleted")
+	logger.InfoContext(ctx, "permission deleted",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	return nil
 }
@@ -223,7 +222,7 @@ func (s *permissionService) Delete(
 func (s *permissionService) FindByProductAndPermissionName(
 	ctx context.Context, input permission.FindProductPermissionInput,
 ) (permission.ProductPermission, error) {
-	logger := s.logger.With().Str("operation", "FindByProductAndPermissionName").Logger()
+	logger := s.logger.With(slog.String("operation", "FindByProductAndPermissionName"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return permission.ProductPermission{}, err
@@ -233,11 +232,11 @@ func (s *permissionService) FindByProductAndPermissionName(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to find permission")
+		logger.ErrorContext(ctx, "failed to find permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return permission.ProductPermission{}, fault.ErrUnexpected
 	}
 
@@ -247,7 +246,7 @@ func (s *permissionService) FindByProductAndPermissionName(
 func (s *permissionService) SearchByProductID(
 	ctx context.Context, input permission.SearchProductPermissionInput,
 ) (search.Result[permission.ProductPermission], error) {
-	logger := s.logger.With().Str("operation", "SearchByProductID").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchByProductID"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[permission.ProductPermission]{}, err
@@ -258,10 +257,10 @@ func (s *permissionService) SearchByProductID(
 		if searchx.IsClientError(err) {
 			return search.Result[permission.ProductPermission]{}, err
 		}
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Err(err).
-			Msg("failed to search permissions")
+		logger.ErrorContext(ctx, "failed to search permissions",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return search.Result[permission.ProductPermission]{}, fault.ErrUnexpected
 	}
 
@@ -271,7 +270,7 @@ func (s *permissionService) SearchByProductID(
 func (s *permissionService) CheckPermissionExists(
 	ctx context.Context, productID string, permissions []string,
 ) (bool, error) {
-	logger := s.logger.With().Str("operation", "CheckPermissionExists").Logger()
+	logger := s.logger.With(slog.String("operation", "CheckPermissionExists"))
 
 	if len(permissions) == 0 {
 		return false, nil
@@ -280,11 +279,11 @@ func (s *permissionService) CheckPermissionExists(
 		ctx, productID, permissions,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Int("permission_count", len(permissions)).
-			Err(err).
-			Msg("failed to check permissions existence")
+		logger.ErrorContext(ctx, "failed to check permissions existence",
+			slog.String("product_id", productID),
+			slog.Int("permission_count", len(permissions)),
+			log.Err(err),
+		)
 		return false, fault.ErrUnexpected
 	}
 	return len(perms) == len(permissions), nil

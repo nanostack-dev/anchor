@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -16,8 +19,6 @@ import (
 	"anchor/internal/events"
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
-
-	"github.com/rs/zerolog"
 )
 
 type ResourcePermissionService interface {
@@ -51,7 +52,7 @@ type resourcePermissionService struct {
 	resourceTypes          rtservice.Service
 	transactor             transactor.Transactor
 	events                 events.Emitter
-	logger                 zerolog.Logger
+	logger                 *slog.Logger
 }
 
 func NewResourcePermissionService(
@@ -60,7 +61,7 @@ func NewResourcePermissionService(
 	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ResourcePermissionService {
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
@@ -68,9 +69,7 @@ func NewResourcePermissionService(
 		resourceTypes:          resourceTypes,
 		transactor:             tx,
 		events:                 eventEmitter,
-		logger: logger.With().Str(
-			"component", "resource_permission_service",
-		).Logger(),
+		logger:                 logger.With(slog.String("component", "resource_permission_service")),
 	}
 }
 
@@ -87,7 +86,7 @@ func (s *resourcePermissionService) emitResourcePermission(
 func (s *resourcePermissionService) Create(
 	ctx context.Context, input resourcepermission.CreateProductResourcePermissionInput,
 ) (resourcepermission.ProductResourcePermission, error) {
-	logger := s.logger.With().Str("operation", "Create").Logger()
+	logger := s.logger.With(slog.String("operation", "Create"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
@@ -107,11 +106,11 @@ func (s *resourcePermissionService) Create(
 	}
 	permByName, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to check existing resource permission")
+		logger.ErrorContext(ctx, "failed to check existing resource permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 	if permByName.IsPresent() {
@@ -138,11 +137,11 @@ func (s *resourcePermissionService) Create(
 			return NewResourcePermissionAlreadyExistsError(input.Name)
 		}
 		if createErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("name", input.Name).
-				Err(createErr).
-				Msg("failed to create resource permission")
+			logger.ErrorContext(txCtx, "failed to create resource permission",
+				slog.String("product_id", input.ProductID),
+				slog.String("name", input.Name),
+				log.Err(createErr),
+			)
 			return fault.ErrUnexpected
 		}
 		created.ResourceType = scope.Slug
@@ -154,10 +153,10 @@ func (s *resourcePermissionService) Create(
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", created.Name).
-		Msg("resource permission created")
+	logger.InfoContext(ctx, "resource permission created",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", created.Name),
+	)
 
 	return created, nil
 }
@@ -165,7 +164,7 @@ func (s *resourcePermissionService) Create(
 func (s *resourcePermissionService) GetByID(
 	ctx context.Context, input resourcepermission.GetProductResourcePermissionInput,
 ) (resourcepermission.ProductResourcePermission, error) {
-	logger := s.logger.With().Str("operation", "GetByID").Logger()
+	logger := s.logger.With(slog.String("operation", "GetByID"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
@@ -175,11 +174,11 @@ func (s *resourcePermissionService) GetByID(
 		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("permission_name", input.PermissionName).
-			Err(err).
-			Msg("failed to get resource permission")
+		logger.ErrorContext(ctx, "failed to get resource permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("permission_name", input.PermissionName),
+			log.Err(err),
+		)
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
@@ -188,7 +187,10 @@ func (s *resourcePermissionService) GetByID(
 	}
 	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 	return withPermissionScope(tree)(found.Value()), nil
@@ -197,7 +199,7 @@ func (s *resourcePermissionService) GetByID(
 func (s *resourcePermissionService) Update(
 	ctx context.Context, input resourcepermission.UpdateProductResourcePermissionInput,
 ) (resourcepermission.ProductResourcePermission, error) {
-	logger := s.logger.With().Str("operation", "Update").Logger()
+	logger := s.logger.With(slog.String("operation", "Update"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return resourcepermission.ProductResourcePermission{}, err
@@ -206,11 +208,11 @@ func (s *resourcePermissionService) Update(
 	// Get existing resource permission
 	found, err := s.resourcePermissionRepo.FindByName(ctx, input.ProductID, input.Name)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to find existing resource permission")
+		logger.ErrorContext(ctx, "failed to find existing resource permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 
@@ -220,7 +222,10 @@ func (s *resourcePermissionService) Update(
 
 	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return resourcepermission.ProductResourcePermission{}, fault.ErrUnexpected
 	}
 	updated := withPermissionScope(tree)(found.Value())
@@ -235,11 +240,11 @@ func (s *resourcePermissionService) Update(
 		var updateErr error
 		result, updateErr = s.resourcePermissionRepo.Update(txCtx, updated)
 		if updateErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("name", input.Name).
-				Err(updateErr).
-				Msg("failed to update resource permission")
+			logger.ErrorContext(txCtx, "failed to update resource permission",
+				slog.String("product_id", input.ProductID),
+				slog.String("name", input.Name),
+				log.Err(updateErr),
+			)
 			return fault.ErrUnexpected
 		}
 		result = withPermissionScope(tree)(result)
@@ -251,10 +256,10 @@ func (s *resourcePermissionService) Update(
 		return resourcepermission.ProductResourcePermission{}, err
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("resource permission updated")
+	logger.InfoContext(ctx, "resource permission updated",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	return result, nil
 }
@@ -262,7 +267,7 @@ func (s *resourcePermissionService) Update(
 func (s *resourcePermissionService) Delete(
 	ctx context.Context, input resourcepermission.DeleteProductResourcePermissionInput,
 ) error {
-	logger := s.logger.With().Str("operation", "Delete").Logger()
+	logger := s.logger.With(slog.String("operation", "Delete"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -272,18 +277,18 @@ func (s *resourcePermissionService) Delete(
 		ctx, input.ProductID, input.Name,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to find resource permission by name")
+		logger.ErrorContext(ctx, "failed to find resource permission by name",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
-		logger.Debug().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Msg("resource permission not found for deletion")
+		logger.DebugContext(ctx, "resource permission not found for deletion",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+		)
 		return resourcepermission.ErrResourcePermissionNotFound
 	}
 	name := found.Value()
@@ -333,18 +338,18 @@ func (s *resourcePermissionService) Delete(
 		return nil
 	})
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("name", input.Name).
-			Err(err).
-			Msg("failed to delete resource permission with cascading cleanup")
+		logger.ErrorContext(ctx, "failed to delete resource permission with cascading cleanup",
+			slog.String("product_id", input.ProductID),
+			slog.String("name", input.Name),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 
-	logger.Info().
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("resource permission deleted")
+	logger.InfoContext(ctx, "resource permission deleted",
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	return nil
 }
@@ -352,7 +357,7 @@ func (s *resourcePermissionService) Delete(
 func (s *resourcePermissionService) SearchByProduct(
 	ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
-	logger := s.logger.With().Str("operation", "SearchByProduct").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchByProduct"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[resourcepermission.ProductResourcePermission]{}, err
@@ -366,7 +371,7 @@ func (s *resourcePermissionService) SearchByProduct(
 func (s *resourcePermissionService) GetByRole(
 	ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
 ) ([]resourcepermission.ProductResourcePermission, error) {
-	logger := s.logger.With().Str("operation", "GetByRole").Logger()
+	logger := s.logger.With(slog.String("operation", "GetByRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
@@ -374,15 +379,18 @@ func (s *resourcePermissionService) GetByRole(
 
 	permissions, err := s.resourcePermissionRepo.GetByRole(ctx, input.ProductRoleID)
 	if err != nil {
-		logger.Error().
-			Str("product_role_id", input.ProductRoleID).
-			Err(err).
-			Msg("failed to get resource permissions by role")
+		logger.ErrorContext(ctx, "failed to get resource permissions by role",
+			slog.String("product_role_id", input.ProductRoleID),
+			log.Err(err),
+		)
 		return nil, fault.ErrUnexpected
 	}
 	tree, err := s.resourceTypes.Tree(ctx, input.ProductID)
 	if err != nil {
-		logger.Error().Str("product_id", input.ProductID).Err(err).Msg("failed to read resource types")
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", input.ProductID),
+			log.Err(err),
+		)
 		return nil, fault.ErrUnexpected
 	}
 

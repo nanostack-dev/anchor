@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
@@ -14,7 +15,6 @@ import (
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
-	"github.com/rs/zerolog"
 )
 
 var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
@@ -76,16 +76,16 @@ type IntegrationInstanceRepository interface {
 type integrationInstanceRepositoryImpl struct {
 	db     *sql.DB
 	mapper *mapper.IntegrationInstanceMapper
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func NewIntegrationInstanceRepository(
-	db *sql.DB, m *mapper.IntegrationInstanceMapper, logger zerolog.Logger,
+	db *sql.DB, m *mapper.IntegrationInstanceMapper, logger *slog.Logger,
 ) IntegrationInstanceRepository {
 	return &integrationInstanceRepositoryImpl{
 		db:     db,
 		mapper: m,
-		logger: logger.With().Str("component", "integration_instance_repository").Logger(),
+		logger: logger.With(slog.String("component", "integration_instance_repository")),
 	}
 }
 

@@ -3,6 +3,8 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,12 +16,13 @@ import (
 	"anchor/internal/authz/fgasync"
 
 	"anchor/internal/api"
+	"anchor/internal/applog"
 	"anchor/internal/buildinfo"
 	"anchor/internal/middleware"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
-	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog"
 	"github.com/nanostack-dev/nanostack-framework/pkg/tracing"
 	"github.com/nanostack-dev/pgkit/adminui"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -29,7 +32,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors" // Import the cors middleware
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
-	"github.com/rs/zerolog"
 	"go.uber.org/fx"
 )
 
@@ -46,7 +48,8 @@ type ServerParams struct {
 	fx.In
 
 	Lifecycle      fx.Lifecycle
-	Logger         zerolog.Logger
+	Logger         *slog.Logger
+	ScopedLogger   applog.Scoped
 	API            *api.AnchorAPI
 	Queue          *queue.Client
 	AuthMiddleware *middleware.AuthMiddleware
@@ -59,22 +62,22 @@ func RegisterServer(params ServerParams) {
 
 	params.Lifecycle.Append(
 		fx.Hook{
-			OnStart: func(_ context.Context) error {
-				if err := startHTTPServer(params); err != nil {
+			OnStart: func(ctx context.Context) error {
+				if err := startHTTPServer(ctx, params); err != nil {
 					return err
 				}
 
 				var dashErr error
-				dashboard, dashErr = startQueueDashboard(params)
+				dashboard, dashErr = startQueueDashboard(ctx, params)
 				return dashErr
 			},
-			OnStop: func(_ context.Context) error {
-				params.Logger.Info().Msg("Stopping HTTP server")
+			OnStop: func(ctx context.Context) error {
+				params.Logger.InfoContext(ctx, "Stopping HTTP server")
 				if dashboard != nil {
-					shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
+					shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout*time.Second)
 					defer cancel()
 					if err := dashboard.Shutdown(shutdownCtx); err != nil {
-						params.Logger.Error().Err(err).Msg("pgkit admin UI shutdown failed")
+						params.Logger.ErrorContext(ctx, "pgkit admin UI shutdown failed", log.Err(err))
 					}
 				}
 				return nil
@@ -86,8 +89,8 @@ func RegisterServer(params ServerParams) {
 // startQueueDashboard boots pgkit's embedded admin UI. Anchor registers no
 // pgkit workflows, so the workflow module is nil and the UI serves queue views
 // only.
-func startQueueDashboard(params ServerParams) (*adminui.UI, error) {
-	logger := params.Logger.With().Str("component", "pgkit_adminui").Logger()
+func startQueueDashboard(ctx context.Context, params ServerParams) (*adminui.UI, error) {
+	logger := params.Logger.With(slog.String(log.KeyComponent, "pgkit_adminui"))
 	addr := os.Getenv("PGKIT_DASHBOARD_ADDR")
 	if addr == "" {
 		return nil, nil
@@ -98,39 +101,40 @@ func startQueueDashboard(params ServerParams) (*adminui.UI, error) {
 
 	dashboard, err := adminui.NewFromEnv(params.Queue, nil)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to initialize pgkit admin UI")
+		logger.ErrorContext(ctx, "failed to initialize pgkit admin UI", log.Err(err))
 		return nil, err
 	}
 
 	go func() {
 		if serveErr := dashboard.ListenAndServe(addr); serveErr != nil {
-			logger.Error().Err(serveErr).Msg("pgkit admin UI server failed")
+			logger.ErrorContext(ctx, "pgkit admin UI server failed", log.Err(serveErr))
 		}
 	}()
 
-	logger.Info().
-		Str("addr", addr).
-		Msg("pgkit admin UI started")
+	logger.InfoContext(ctx, "pgkit admin UI started", slog.String("addr", addr))
 
 	return dashboard, nil
 }
 
-func startHTTPServer(params ServerParams) error {
-	params.Logger.Info().Msgf(
-		"Starting HTTP server on port %d with allowed origin %s",
-		params.ServerConfig.Port, params.ServerConfig.AllowedOrigin,
+func startHTTPServer(ctx context.Context, params ServerParams) error {
+	params.Logger.InfoContext(ctx, "Starting HTTP server",
+		slog.Int("port", params.ServerConfig.Port),
+		slog.String("allowed_origin", params.ServerConfig.AllowedOrigin),
 	)
 
-	router := setupRouter(params)
+	router, err := setupRouter(params)
+	if err != nil {
+		return err
+	}
 	server := createHTTPServer(params, router)
 
-	logRoutes(router, params.Logger)
-	startServerGoroutines(params, server)
+	logRoutes(ctx, router, params.Logger)
+	startServerGoroutines(ctx, params, server)
 
 	return nil
 }
 
-func setupRouter(params ServerParams) *chi.Mux {
+func setupRouter(params ServerParams) (*chi.Mux, error) {
 	router := chi.NewRouter()
 	// Names the server span after the matched chi route; it must be the first
 	// router middleware so it reads the final pattern after serving.
@@ -164,15 +168,20 @@ func setupRouter(params ServerParams) *chi.Mux {
 	router.Use(corsMiddleware.Handler)
 	router.Use(api.WebhookPayloadMiddleware)
 
-	// Establishes the per-request correlation id and the request-scoped logger
-	// every later stage builds on. It has to run before the access log and
-	// before auth binds the caller onto the logger.
-	router.Use(requestlog.Contextualize(params.Logger))
+	// Establishes the per-request correlation id (echoed in X-Request-Id) and
+	// the log scope (request_id, method, path) every later stage builds on. It
+	// has to run before the request summary and before auth adds the caller
+	// to the scope. Anchor writes its own summary line inside auth
+	// (middleware.NewRequestLoggingMiddleware), so this one writes none; it
+	// still logs a handler panic.
+	router.Use(log.HTTPMiddleware(log.HTTPOptions{
+		Logger:      params.ScopedLogger.Logger,
+		SkipSummary: func(*http.Request) bool { return true },
+	}))
 
 	swagger, err := openapi3.NewLoader().LoadFromData(OpenAPI)
 	if err != nil {
-		params.Logger.Fatal().Err(err).Msg("Failed to load OpenAPI specification")
-		return nil
+		return nil, fmt.Errorf("load OpenAPI specification: %w", err)
 	}
 
 	apiValidator := nethttpmiddleware.OapiRequestValidatorWithOptions(
@@ -229,7 +238,7 @@ func setupRouter(params ServerParams) *chi.Mux {
 		}).ServeHTTP(w, r)
 	})
 
-	return router
+	return router, nil
 }
 
 // parseAllowedOrigins splits a comma-separated origin list, trimming blanks.
@@ -247,7 +256,7 @@ func parseAllowedOrigins(value string) []string {
 
 func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 	authMiddleware := params.AuthMiddleware
-	errorMiddleware := middleware.NewErrorMiddleware(params.Logger)
+	errorMiddleware := middleware.NewErrorMiddleware(params.ScopedLogger)
 
 	return &http.Server{
 		Addr: ":" + strconv.Itoa(params.ServerConfig.Port),
@@ -255,7 +264,7 @@ func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 		// traceparent, so the request logger and DB queries join it.
 		Handler: tracing.Middleware()(createHandler(
 			router, params.API, errorMiddleware, params.AuthzReplayer, []api.MiddlewareFunc{
-				middleware.NewRequestLoggingMiddleware(params.Logger),
+				middleware.NewRequestLoggingMiddleware(params.ScopedLogger),
 				authMiddleware.Create,
 			},
 		)),
@@ -266,28 +275,33 @@ func createHTTPServer(params ServerParams, router *chi.Mux) *http.Server {
 	}
 }
 
-func logRoutes(router *chi.Mux, logger zerolog.Logger) {
+func logRoutes(ctx context.Context, router *chi.Mux, logger *slog.Logger) {
 	walkFunc := func(
 		method, route string, _ http.Handler,
 		_ ...func(http.Handler) http.Handler,
 	) error {
-		logger.Info().Msgf("[%s] %s", method, route)
+		logger.InfoContext(ctx, fmt.Sprintf("[%s] %s", method, route))
 		return nil
 	}
 	if err := chi.Walk(router, walkFunc); err != nil {
-		logger.Error().Err(err).Msg("Failed to walk routes")
+		logger.ErrorContext(ctx, "Failed to walk routes", log.Err(err))
 	}
 }
 
-func startServerGoroutines(params ServerParams, server *http.Server) {
+func startServerGoroutines(ctx context.Context, params ServerParams, server *http.Server) {
 	port := params.ServerConfig.Port
+	// The goroutines outlive the OnStart hook whose context ctx is.
+	ctx = context.WithoutCancel(ctx)
 
 	go func() {
-		params.Logger.Info().Msgf("Server running on port %d", port)
+		params.Logger.InfoContext(ctx, "Server running", slog.Int("port", port))
 		if err := server.ListenAndServe(); err != nil && !errors.Is(
 			err, http.ErrServerClosed,
 		) {
-			params.Logger.Fatal().Err(err).Msg("HTTP server encountered an error")
+			// slog has no fatal level: log at Error and exit, as zerolog's
+			// Fatal did.
+			params.Logger.ErrorContext(ctx, "HTTP server encountered an error", log.Err(err))
+			os.Exit(1)
 		}
 	}()
 
@@ -296,17 +310,15 @@ func startServerGoroutines(params ServerParams, server *http.Server) {
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 		<-quit
 
-		params.Logger.Info().Msg("Shutting down server...")
-		ctxShutdown, cancel := context.WithTimeout(
-			context.Background(), shutdownTimeout*time.Second,
-		)
+		params.Logger.InfoContext(ctx, "Shutting down server...")
+		ctxShutdown, cancel := context.WithTimeout(ctx, shutdownTimeout*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctxShutdown); err != nil {
-			params.Logger.Error().Err(err).Msg("Forced shutdown")
+			params.Logger.ErrorContext(ctx, "Forced shutdown", log.Err(err))
 		}
 
-		params.Logger.Info().Msg("Server exited cleanly")
+		params.Logger.InfoContext(ctx, "Server exited cleanly")
 	}()
 }
 

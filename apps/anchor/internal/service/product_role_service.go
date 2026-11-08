@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -18,8 +21,6 @@ import (
 	invitationrepository "anchor/internal/invitation/repository"
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
-
-	"github.com/rs/zerolog"
 )
 
 // NewProductRoleResourcePermissionNotFoundError reports a resource
@@ -67,7 +68,7 @@ type productRoleService struct {
 	resourceTypes                 rtservice.Service
 	transactor                    transactor.Transactor
 	events                        events.Emitter
-	logger                        zerolog.Logger
+	logger                        *slog.Logger
 }
 
 func NewProductRoleService(
@@ -77,7 +78,7 @@ func NewProductRoleService(
 	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) ProductRoleService {
 	return newProductRoleService(
 		roleRepo, productResourcePermissionRepo, invitationRepo, resourceTypes, tx, eventEmitter, logger,
@@ -91,7 +92,7 @@ func newProductRoleService(
 	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 ) *productRoleService {
 	return &productRoleService{
 		roleRepo:                      roleRepo,
@@ -100,9 +101,7 @@ func newProductRoleService(
 		resourceTypes:                 resourceTypes,
 		transactor:                    tx,
 		events:                        eventEmitter,
-		logger: logger.With().Str(
-			"component", "product_role_permission_service",
-		).Logger(),
+		logger:                        logger.With(slog.String("component", "product_role_permission_service")),
 	}
 }
 
@@ -119,7 +118,7 @@ func (s *productRoleService) emitRole(
 func (s *productRoleService) CreateProductRole(
 	ctx context.Context, input role.CreateProductRoleInput,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "CreateProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "CreateProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
@@ -131,11 +130,11 @@ func (s *productRoleService) CreateProductRole(
 		return role.ProductRole{}, err
 	}
 	productRole := role.NewManaged(input.ProductID, input.Name, input.Description)
-	logger.Info().
-		Str("product_role_id", productRole.ID).
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("creating product role")
+	logger.InfoContext(ctx, "creating product role",
+		slog.String("product_role_id", productRole.ID),
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	productRolePermission := functional.Slice(
 		input.Permissions).Map(
@@ -183,11 +182,11 @@ func (s *productRoleService) CreateProductRole(
 			return NewRoleWithAlreadyExistingNameError(input.Name, input.ProductID)
 		}
 		if createErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("name", input.Name).
-				Err(createErr).
-				Msg("failed to create product role")
+			logger.ErrorContext(txCtx, "failed to create product role",
+				slog.String("product_id", input.ProductID),
+				slog.String("name", input.Name),
+				log.Err(createErr),
+			)
 			return fault.ErrUnexpected
 		}
 		created.ResourceType = scope.Slug
@@ -197,11 +196,11 @@ func (s *productRoleService) CreateProductRole(
 		return role.ProductRole{}, err
 	}
 
-	logger.Info().
-		Str("product_role_id", created.ID).
-		Str("product_id", input.ProductID).
-		Str("name", input.Name).
-		Msg("product role created")
+	logger.InfoContext(ctx, "product role created",
+		slog.String("product_role_id", created.ID),
+		slog.String("product_id", input.ProductID),
+		slog.String("name", input.Name),
+	)
 
 	return created, nil
 }
@@ -209,7 +208,7 @@ func (s *productRoleService) CreateProductRole(
 func (s *productRoleService) SearchProductRoles(
 	ctx context.Context, input role.SearchProductRolesInput,
 ) (search.Result[role.ProductRole], error) {
-	logger := s.logger.With().Str("operation", "SearchProductRoles").Logger()
+	logger := s.logger.With(slog.String("operation", "SearchProductRoles"))
 
 	if err := input.Validate(); err != nil {
 		return search.Result[role.ProductRole]{}, err
@@ -222,7 +221,7 @@ func (s *productRoleService) SearchProductRoles(
 func (s *productRoleService) GetProductRole(
 	ctx context.Context, input role.GetProductRoleInput,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "GetProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "GetProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
@@ -230,11 +229,11 @@ func (s *productRoleService) GetProductRole(
 
 	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to get product role")
+		logger.ErrorContext(ctx, "failed to get product role",
+			slog.String("product_id", input.ProductID),
+			slog.String("role_id", input.ID),
+			log.Err(err),
+		)
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if found.IsAbsent() {
@@ -246,24 +245,24 @@ func (s *productRoleService) GetProductRole(
 func (s *productRoleService) UpdateProductRole(
 	ctx context.Context, input role.UpdateProductRoleInput,
 ) (role.ProductRole, error) {
-	logger := s.logger.With().Str("operation", "UpdateProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "UpdateProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return role.ProductRole{}, err
 	}
 
-	logger.Info().
-		Str("product_role_id", input.ID).
-		Str("product_id", input.ProductID).
-		Msg("updating product role")
+	logger.InfoContext(ctx, "updating product role",
+		slog.String("product_role_id", input.ID),
+		slog.String("product_id", input.ProductID),
+	)
 
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to find product role for update")
+		logger.ErrorContext(ctx, "failed to find product role for update",
+			slog.String("product_id", input.ProductID),
+			slog.String("role_id", input.ID),
+			log.Err(err),
+		)
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
@@ -306,11 +305,11 @@ func (s *productRoleService) UpdateProductRole(
 			return NewRoleWithAlreadyExistingNameError(updatedRole.Name, input.ProductID)
 		}
 		if updateErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("role_id", input.ID).
-				Err(updateErr).
-				Msg("failed to update product role")
+			logger.ErrorContext(txCtx, "failed to update product role",
+				slog.String("product_id", input.ProductID),
+				slog.String("role_id", input.ID),
+				log.Err(updateErr),
+			)
 			return fault.ErrUnexpected
 		}
 		if input.Permissions != nil {
@@ -338,32 +337,32 @@ func (s *productRoleService) UpdateProductRole(
 		return role.ProductRole{}, err
 	}
 
-	logger.Info().
-		Str("product_role_id", input.ID).
-		Str("product_id", input.ProductID).
-		Msg("product role updated")
+	logger.InfoContext(ctx, "product role updated",
+		slog.String("product_role_id", input.ID),
+		slog.String("product_id", input.ProductID),
+	)
 
 	return updated, nil
 }
 
 func (s *productRoleService) replacePermissions(
-	ctx context.Context, input role.UpdateProductRoleInput, logger zerolog.Logger,
+	ctx context.Context, input role.UpdateProductRoleInput, logger *slog.Logger,
 ) (role.ProductRole, error) {
 	if err := s.roleRepo.ReplacePermissions(ctx, input.ProductID, input.ID, input.Permissions); err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to replace product role permissions")
+		logger.ErrorContext(ctx, "failed to replace product role permissions",
+			slog.String("product_id", input.ProductID),
+			slog.String("role_id", input.ID),
+			log.Err(err),
+		)
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	found, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to reload product role after replacing permissions")
+		logger.ErrorContext(ctx, "failed to reload product role after replacing permissions",
+			slog.String("product_id", input.ProductID),
+			slog.String("role_id", input.ID),
+			log.Err(err),
+		)
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	return found.ToResult(role.ErrProductRoleNotFound).Value()
@@ -372,7 +371,7 @@ func (s *productRoleService) replacePermissions(
 func (s *productRoleService) DeleteProductRole(
 	ctx context.Context, input role.DeleteProductRoleInput,
 ) error {
-	logger := s.logger.With().Str("operation", "DeleteProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "DeleteProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
@@ -380,11 +379,11 @@ func (s *productRoleService) DeleteProductRole(
 
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, input.ProductID, input.ID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("role_id", input.ID).
-			Err(err).
-			Msg("failed to find product role for deletion")
+		logger.ErrorContext(ctx, "failed to find product role for deletion",
+			slog.String("product_id", input.ProductID),
+			slog.String("role_id", input.ID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
@@ -404,11 +403,11 @@ func (s *productRoleService) DeleteProductRole(
 		}
 		assignmentCount, countErr := s.roleRepo.CountMembershipAssignments(txCtx, input.ID)
 		if countErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("role_id", input.ID).
-				Err(countErr).
-				Msg("failed to count role membership assignments")
+			logger.ErrorContext(txCtx, "failed to count role membership assignments",
+				slog.String("product_id", input.ProductID),
+				slog.String("role_id", input.ID),
+				log.Err(countErr),
+			)
 			return fault.ErrUnexpected
 		}
 		if assignmentCount > 0 {
@@ -420,11 +419,11 @@ func (s *productRoleService) DeleteProductRole(
 		if deleteErr := s.roleRepo.DeleteByProductIDAndRoleID(
 			txCtx, input.ProductID, input.ID,
 		); deleteErr != nil {
-			logger.Error().
-				Str("product_id", input.ProductID).
-				Str("role_id", input.ID).
-				Err(deleteErr).
-				Msg("failed to delete product role")
+			logger.ErrorContext(txCtx, "failed to delete product role",
+				slog.String("product_id", input.ProductID),
+				slog.String("role_id", input.ID),
+				log.Err(deleteErr),
+			)
 			return fault.ErrUnexpected
 		}
 		return s.emitRole(txCtx, events.ProductRoleDeleted, input.ProductID, input.ID)
@@ -433,10 +432,10 @@ func (s *productRoleService) DeleteProductRole(
 		return err
 	}
 
-	logger.Info().
-		Str("product_role_id", input.ID).
-		Str("product_id", input.ProductID).
-		Msg("product role deleted")
+	logger.InfoContext(ctx, "product role deleted",
+		slog.String("product_role_id", input.ID),
+		slog.String("product_id", input.ProductID),
+	)
 
 	return nil
 }
@@ -445,15 +444,15 @@ func (s *productRoleService) DeleteProductRole(
 // then deletes the accepted and expired invitations that name the role, each
 // with its deleted event, so the foreign key cascade never removes one silently.
 func (s *productRoleService) releaseInvitations(
-	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+	ctx context.Context, productID, roleID string, logger *slog.Logger,
 ) error {
 	pending, err := s.invitationRepo.ExistsPendingForRole(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Str("role_id", roleID).
-			Err(err).
-			Msg("failed to check pending invitations of the role")
+		logger.ErrorContext(ctx, "failed to check pending invitations of the role",
+			slog.String("product_id", productID),
+			slog.String("role_id", roleID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if pending {
@@ -462,11 +461,11 @@ func (s *productRoleService) releaseInvitations(
 
 	deleted, err := s.invitationRepo.DeleteNonPendingForRole(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Str("role_id", roleID).
-			Err(err).
-			Msg("failed to delete the settled invitations of the role")
+		logger.ErrorContext(ctx, "failed to delete the settled invitations of the role",
+			slog.String("product_id", productID),
+			slog.String("role_id", roleID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	for _, invitation := range deleted {
@@ -484,16 +483,16 @@ func (s *productRoleService) releaseInvitations(
 func (s *productRoleService) AssignPermissionToProductRole(
 	ctx context.Context, input role.AssignPermissionToProductRoleInput,
 ) error {
-	logger := s.logger.With().Str("operation", "AssignPermissionToProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "AssignPermissionToProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
-	logger.Info().
-		Str("product_role_id", input.ProductRoleID).
-		Str("permission_name", input.PermissionName).
-		Str("product_id", input.ProductID).
-		Msg("assigning permission to product role")
+	logger.InfoContext(ctx, "assigning permission to product role",
+		slog.String("product_role_id", input.ProductRoleID),
+		slog.String("permission_name", input.PermissionName),
+		slog.String("product_id", input.ProductID),
+	)
 
 	if err := s.requireRole(ctx, input.ProductID, input.ProductRoleID, logger); err != nil {
 		return err
@@ -537,24 +536,24 @@ func (s *productRoleService) AssignPermissionToProductRole(
 		}
 		added, addErr := s.roleRepo.AddPermission(txCtx, newPermission)
 		if addErr != nil {
-			logger.Error().
-				Str("product_role_id", input.ProductRoleID).
-				Str("permission_name", newPermission.PermissionName).
-				Err(addErr).
-				Msg("failed to add permission to role")
+			logger.ErrorContext(txCtx, "failed to add permission to role",
+				slog.String("product_role_id", input.ProductRoleID),
+				slog.String("permission_name", newPermission.PermissionName),
+				log.Err(addErr),
+			)
 			return fault.ErrUnexpected
 		}
 		if !added {
-			logger.Debug().
-				Str("permission_name", newPermission.PermissionName).
-				Str("product_role_id", input.ProductRoleID).
-				Msg("permission already assigned to role")
+			logger.DebugContext(txCtx, "permission already assigned to role",
+				slog.String("permission_name", newPermission.PermissionName),
+				slog.String("product_role_id", input.ProductRoleID),
+			)
 			return nil
 		}
-		logger.Info().
-			Str("product_role_id", input.ProductRoleID).
-			Str("permission_name", newPermission.PermissionName).
-			Msg("permission assigned to product role")
+		logger.InfoContext(txCtx, "permission assigned to product role",
+			slog.String("product_role_id", input.ProductRoleID),
+			slog.String("permission_name", newPermission.PermissionName),
+		)
 		return s.markRoleUpdated(txCtx, input.ProductID, input.ProductRoleID, logger)
 	})
 }
@@ -562,16 +561,16 @@ func (s *productRoleService) AssignPermissionToProductRole(
 func (s *productRoleService) UnassignPermissionFromProductRole(
 	ctx context.Context, input role.UnassignPermissionFromProductRoleInput,
 ) error {
-	logger := s.logger.With().Str("operation", "UnassignPermissionFromProductRole").Logger()
+	logger := s.logger.With(slog.String("operation", "UnassignPermissionFromProductRole"))
 
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
-	logger.Info().
-		Str("product_role_id", input.ProductRoleID).
-		Str("permission_name", input.PermissionName).
-		Str("product_id", input.ProductID).
-		Msg("unassigning permission from product role")
+	logger.InfoContext(ctx, "unassigning permission from product role",
+		slog.String("product_role_id", input.ProductRoleID),
+		slog.String("permission_name", input.PermissionName),
+		slog.String("product_id", input.ProductID),
+	)
 
 	if err := s.requireRole(ctx, input.ProductID, input.ProductRoleID, logger); err != nil {
 		return err
@@ -581,11 +580,11 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 		ctx, input.ProductID, input.PermissionName,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", input.ProductID).
-			Str("permission_name", input.PermissionName).
-			Err(err).
-			Msg("failed to find permission")
+		logger.ErrorContext(ctx, "failed to find permission",
+			slog.String("product_id", input.ProductID),
+			slog.String("permission_name", input.PermissionName),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if foundPermission.IsAbsent() {
@@ -600,38 +599,38 @@ func (s *productRoleService) UnassignPermissionFromProductRole(
 			txCtx, input.ProductID, input.ProductRoleID, permissionName,
 		)
 		if removeErr != nil {
-			logger.Error().
-				Str("product_role_id", input.ProductRoleID).
-				Str("permission_name", permissionName).
-				Err(removeErr).
-				Msg("failed to remove permission from role")
+			logger.ErrorContext(txCtx, "failed to remove permission from role",
+				slog.String("product_role_id", input.ProductRoleID),
+				slog.String("permission_name", permissionName),
+				log.Err(removeErr),
+			)
 			return fault.ErrUnexpected
 		}
 		if !removed {
-			logger.Debug().
-				Str("permission_name", permissionName).
-				Str("product_role_id", input.ProductRoleID).
-				Msg("permission not found in role")
+			logger.DebugContext(txCtx, "permission not found in role",
+				slog.String("permission_name", permissionName),
+				slog.String("product_role_id", input.ProductRoleID),
+			)
 			return nil
 		}
-		logger.Info().
-			Str("product_role_id", input.ProductRoleID).
-			Str("permission_name", permissionName).
-			Msg("permission unassigned from product role")
+		logger.InfoContext(txCtx, "permission unassigned from product role",
+			slog.String("product_role_id", input.ProductRoleID),
+			slog.String("permission_name", permissionName),
+		)
 		return s.markRoleUpdated(txCtx, input.ProductID, input.ProductRoleID, logger)
 	})
 }
 
 func (s *productRoleService) requireRole(
-	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+	ctx context.Context, productID, roleID string, logger *slog.Logger,
 ) error {
 	foundRole, err := s.roleRepo.FindByProductIDAndRoleID(ctx, productID, roleID)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Str("role_id", roleID).
-			Err(err).
-			Msg("failed to find role")
+		logger.ErrorContext(ctx, "failed to find role",
+			slog.String("product_id", productID),
+			slog.String("role_id", roleID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if foundRole.IsAbsent() {
@@ -641,31 +640,31 @@ func (s *productRoleService) requireRole(
 }
 
 func (s *productRoleService) markRoleUpdated(
-	ctx context.Context, productID, roleID string, logger zerolog.Logger,
+	ctx context.Context, productID, roleID string, logger *slog.Logger,
 ) error {
 	if err := s.roleRepo.TouchUpdatedAt(ctx, productID, roleID); err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Str("role_id", roleID).
-			Err(err).
-			Msg("failed to touch role updated_at")
+		logger.ErrorContext(ctx, "failed to touch role updated_at",
+			slog.String("product_id", productID),
+			slog.String("role_id", roleID),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	return s.emitRole(ctx, events.ProductRoleUpdated, productID, roleID)
 }
 
 func (s *productRoleService) nameDuplicationValidation(
-	ctx context.Context, productID, roleName, currentRoleID string, logger zerolog.Logger,
+	ctx context.Context, productID, roleName, currentRoleID string, logger *slog.Logger,
 ) error {
 	// Exact-name lookup. It runs as its own query rather than through the
 	// search, which returns a page for a filter the check only tests.
 	found, err := s.roleRepo.GetByProductIDAndName(ctx, productID, roleName)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Str("role_name", roleName).
-			Err(err).
-			Msg("failed to look up product role by name")
+		logger.ErrorContext(ctx, "failed to look up product role by name",
+			slog.String("product_id", productID),
+			slog.String("role_name", roleName),
+			log.Err(err),
+		)
 		return fault.ErrUnexpected
 	}
 	if found.IsPresent() && found.Value().ID != currentRoleID {
@@ -677,7 +676,7 @@ func (s *productRoleService) nameDuplicationValidation(
 }
 
 func (s *productRoleService) resolveRolePermissions(
-	ctx context.Context, productID string, input []role.ProductRolePermission, logger zerolog.Logger,
+	ctx context.Context, productID string, input []role.ProductRolePermission, logger *slog.Logger,
 ) ([]role.ProductRolePermission, error) {
 	if len(input) == 0 {
 		return input, nil
@@ -693,7 +692,7 @@ func (s *productRoleService) resolveRolePermissions(
 		Permissions: permissionNames,
 	}
 	if err := validate.ValidateStruct(inputValidator); err != nil {
-		logger.Debug().Err(err).Msg("too many permissions requested")
+		logger.DebugContext(ctx, "too many permissions requested", log.Err(err))
 		return nil, err
 	}
 
@@ -709,10 +708,10 @@ func (s *productRoleService) resolveRolePermissions(
 		ctx, productID, searchReq,
 	)
 	if err != nil {
-		logger.Error().
-			Str("product_id", productID).
-			Err(err).
-			Msg("failed to search resource permissions")
+		logger.ErrorContext(ctx, "failed to search resource permissions",
+			slog.String("product_id", productID),
+			log.Err(err),
+		)
 		return nil, fault.ErrUnexpected
 	}
 
@@ -732,11 +731,14 @@ func (s *productRoleService) resolveRolePermissions(
 }
 
 func (s *productRoleService) withScope(
-	ctx context.Context, productID string, found role.ProductRole, logger zerolog.Logger,
+	ctx context.Context, productID string, found role.ProductRole, logger *slog.Logger,
 ) (role.ProductRole, error) {
 	tree, err := s.resourceTypes.Tree(ctx, productID)
 	if err != nil {
-		logger.Error().Str("product_id", productID).Err(err).Msg("failed to read resource types")
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", productID),
+			log.Err(err),
+		)
 		return role.ProductRole{}, fault.ErrUnexpected
 	}
 	return withRoleScope(tree)(found), nil

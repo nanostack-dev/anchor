@@ -1,8 +1,9 @@
 package service
 
 import (
+	"log/slog"
+
 	"github.com/nanostack-dev/pgkit/queue"
-	"github.com/rs/zerolog"
 )
 
 // reapLogLevel selects the severity for a stuck-job reap result.
@@ -14,9 +15,9 @@ import (
 // Jobs counted in Failed exhausted their attempts during the reap and were
 // dead-lettered. That path does not fire the worker's OnJobFailed hook, so it
 // must stay loud at error level to remain visible.
-func reapLogLevel(result queue.ReapResult) zerolog.Level {
+func reapLogLevel(result queue.ReapResult) slog.Level {
 	if result.Failed > 0 {
-		return zerolog.ErrorLevel
+		return slog.LevelError
 	}
-	return zerolog.WarnLevel
+	return slog.LevelWarn
 }

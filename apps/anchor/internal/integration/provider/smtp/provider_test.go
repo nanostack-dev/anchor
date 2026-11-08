@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log/slog"
 	"testing"
 
 	"anchor/internal/security/encryption"
 	serviceconfig "anchor/internal/service/config"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,7 +122,7 @@ func newTestProvider(t *testing.T) *Provider {
 
 	return NewProvider(NewProviderParams{
 		EncryptionService: encryptionService,
-		Logger:            zerolog.Nop(),
+		Logger:            slog.New(slog.DiscardHandler),
 	})
 }
 
