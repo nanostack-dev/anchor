@@ -296,7 +296,7 @@ func (s *service) Delete(
 		); err != nil {
 			return err
 		}
-		if err = s.repo.Delete(txCtx, organizationID, target.RowID); err != nil {
+		if err = s.repo.DeleteByOrganizationIDAndID(txCtx, organizationID, target.RowID); err != nil {
 			return err
 		}
 		for _, node := range subtree {

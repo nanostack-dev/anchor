@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -21,6 +22,12 @@ import (
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/searchx"
 )
+
+// The base returns model rows: a resource reads its type and parent through
+// joins, so no find derives. Only the delete derives.
+func _() {
+	nanorepo.Implement[Repository, repositoryImpl](table.Resources, nanorepo.NoMapper[model.Resources])
+}
 
 // Node is one resource of a chain or a subtree, with its distance from the
 // resource the walk started at.
@@ -56,9 +63,9 @@ type Repository interface {
 	// SubtreeHeight is how many levels sit below the resource: 0 for a leaf.
 	SubtreeHeight(ctx context.Context, organizationID, rowID string) (int, error)
 	CountChildren(ctx context.Context, organizationID, rowID string) (int, error)
-	// Delete removes the resource; its descendants go with it through the
-	// parent foreign key.
-	Delete(ctx context.Context, organizationID, rowID string) error
+	// DeleteByOrganizationIDAndID removes the resource; its descendants go
+	// with it through the parent foreign key.
+	DeleteByOrganizationIDAndID(ctx context.Context, organizationID, id string) error
 	Search(
 		ctx context.Context, productID, organizationID string,
 		request search.Request[resource.Filter, resource.SortField],
@@ -66,11 +73,11 @@ type Repository interface {
 }
 
 type repositoryImpl struct {
-	db *sql.DB
+	resourcesBase
 }
 
 func NewRepository(db *sql.DB) Repository {
-	return &repositoryImpl{db: db}
+	return &repositoryImpl{resourcesBase: newResourcesBase(db)}
 }
 
 // resourceRow is a resource with the slug of its type and the reference of
@@ -303,13 +310,6 @@ func (r *repositoryImpl) CountChildren(ctx context.Context, organizationID, rowI
 		),
 	).Value()
 	return int(count), err
-}
-
-func (r *repositoryImpl) Delete(ctx context.Context, organizationID, rowID string) error {
-	return transactor.Exec(ctx, r.db, table.Resources.DELETE().WHERE(
-		table.Resources.ID.EQ(postgres.String(rowID)).
-			AND(table.Resources.OrganizationID.EQ(postgres.String(organizationID))),
-	)).Err()
 }
 
 func (r *repositoryImpl) Search(
