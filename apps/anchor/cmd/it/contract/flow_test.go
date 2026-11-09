@@ -143,6 +143,7 @@ func loadFlow(path string) (*flowFile, error) {
 func newFlowRun(t *testing.T, flow *flowFile, slug string) *flowRun {
 	t.Helper()
 	dyn := newDynamicVars()
+	registerShortExpiries(slug, dyn)
 	norm := &normalizer{}
 	norm.register(dyn.runID, "{{$runId}}")
 	inbox := hooks.inbox(slug + "-" + dyn.runID)
@@ -183,6 +184,9 @@ func (r *flowRun) run(def flowDef) {
 	for {
 		progressed := false
 		for i := range def.Nodes {
+			if backendDown() != "" {
+				return // checkBackend failed the node that found it; cleanup cannot run either
+			}
 			node := &def.Nodes[i]
 			if r.states[node.ID] != statePending || !r.predsFinished(preds[node.ID]) {
 				continue
@@ -234,12 +238,7 @@ func (r *flowRun) execute(node *flowNode, cleanup bool) nodeState {
 	case "module":
 		return r.executeModule(node)
 	case "delay":
-		var data struct {
-			Duration int `json:"duration"`
-		}
-		_ = json.Unmarshal(node.Data, &data)
-		time.Sleep(time.Duration(data.Duration) * time.Millisecond)
-		return statePassed
+		return r.executeDelay(node, delayDuration(*node))
 	case "set_variable":
 		var data struct {
 			Variables map[string]any `json:"variables"`
@@ -294,14 +293,20 @@ func (r *flowRun) executeRequest(node *flowNode, cleanup bool) nodeState {
 	}
 	resp, err := rawDo(r.ctx, method, url, headers, body, requestID)
 	if err != nil {
+		if reason, down := checkBackend(requestID, nil, nil, err); down {
+			return r.fail(node, reason)
+		}
 		return r.fail(node, "request: "+err.Error())
 	}
-	r.extractOutputs(node, resp)
-	failed := r.checkAssertions(node.Assertions, resp)
 	// Every response is pinned, successes included: a framework change to
 	// JSON encoding, headers or log fields on a 2xx is as much a wire change
 	// as one on a refusal.
 	lines, logErr := suite.logs.linesFor(requestID)
+	if reason, down := checkBackend(requestID, resp, lines, nil); down {
+		return r.fail(node, reason)
+	}
+	r.extractOutputs(node, resp)
+	failed := r.checkAssertions(node.Assertions, resp)
 	if logErr != nil {
 		failed = append(failed, logErr.Error())
 	}
@@ -704,6 +709,10 @@ type dynamicVars struct {
 	runID   string
 	started time.Time
 	counter int
+	// shortExpiries holds the {{$isoTimestamp:<offset>}} arguments this flow
+	// resolves to a short expiry (gateShortWaits), with the instant each one
+	// resolved to (zero until first use).
+	shortExpiries map[string]time.Time
 }
 
 func newDynamicVars() *dynamicVars {
@@ -715,7 +724,24 @@ func newDynamicVars() *dynamicVars {
 	// would then leak into the goldens (about one flow run in 280).
 	const letterNibbles = 6
 	buf[0] = (0xa+buf[0]>>4%letterNibbles)<<4 | buf[0]&0x0f
-	return &dynamicVars{runID: hex.EncodeToString(buf), started: time.Now().UTC()}
+	return &dynamicVars{
+		runID:         hex.EncodeToString(buf),
+		started:       time.Now().UTC(),
+		shortExpiries: map[string]time.Time{},
+	}
+}
+
+// shortExpiry returns the instant {{$isoTimestamp:<arg>}} stands for in a flow
+// that waits it out: shortExpiryLead after its first use, in whole seconds as
+// RFC 3339 renders it, and the same instant on every later use (the flow
+// asserts it back).
+func (d *dynamicVars) shortExpiry(arg string) time.Time {
+	at := d.shortExpiries[arg]
+	if at.IsZero() {
+		at = time.Now().UTC().Truncate(time.Second).Add(shortExpiryLead)
+		d.shortExpiries[arg] = at
+	}
+	return at
 }
 
 var (
@@ -742,6 +768,9 @@ func (d *dynamicVars) resolve(expr string, norm *normalizer) (string, error) {
 				return "", err
 			}
 			at = at.Add(offset)
+		}
+		if _, short := d.shortExpiries[arg]; short {
+			at = d.shortExpiry(arg)
 		}
 		value := at.Format(time.RFC3339)
 		norm.register(value, "{{$isoTimestamp:"+arg+"}}")

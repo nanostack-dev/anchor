@@ -18,6 +18,7 @@ import (
 	"time"
 
 	itshared "anchor/cmd/it/shared"
+	"anchor/internal/domain/session"
 )
 
 // update regenerates the golden files instead of comparing with them.
@@ -44,6 +45,8 @@ func TestMain(m *testing.M) {
 	// server serialises (licence migrated_at, the log time field) carries the
 	// developer's zone offset, and the goldens would depend on the machine.
 	time.Local = time.UTC //nolint:reassign // pin the server's zone to production's
+	// The auth flow waits out the refresh-token reuse grace (waits_test.go).
+	session.SetReuseGraceForContract(contractReuseGrace)
 
 	// The framework logger writes to os.Stdout, captured when the App is built.
 	// Point os.Stdout at a pipe until the app is up so every log line the

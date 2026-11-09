@@ -208,10 +208,14 @@ func TestGateFlows(t *testing.T) {
 	for _, path := range gateFlowPaths(t) {
 		slug := strings.TrimSuffix(filepath.Base(path), ".json")
 		t.Run(slug, func(t *testing.T) {
+			if reason := backendDown(); reason != "" {
+				t.Fatal("not run: " + reason)
+			}
 			flow, err := loadFlow(path)
 			if err != nil {
 				t.Fatal(err)
 			}
+			checkShortWaits(t, slug, flow)
 			run := newFlowRun(t, flow, slug)
 			if raw, _ := os.ReadFile(path); strings.Contains(string(raw), "nanostackProductId") {
 				inputs, envErr := echopointInputs(t)
