@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,8 +41,7 @@ type failingPermissions struct {
 }
 
 func (f failingPermissions) SearchByProduct(
-	context.Context, string,
-	search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission],
+	context.Context, repository.ProductPermissionSearch,
 ) (search.Result[permission.ProductPermission], error) {
 	return search.Result[permission.ProductPermission]{}, f.err
 }
@@ -53,9 +52,7 @@ type failingResourcePermissions struct {
 }
 
 func (f failingResourcePermissions) SearchByProduct(
-	context.Context, string,
-	search.Request[resourcepermission.SearchProductResourcePermissionFilter,
-		resourcepermission.SortFieldProductResourcePermission],
+	context.Context, repository.ProductResourcePermissionSearch,
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	return search.Result[resourcepermission.ProductResourcePermission]{}, f.err
 }
@@ -87,7 +84,7 @@ type failingProductAPIKeys struct {
 }
 
 func (f failingProductAPIKeys) SearchByProductID(
-	context.Context, apikey.SearchProductAPIKeysInput,
+	context.Context, repository.ProductAPIKeySearch,
 ) (search.Result[apikey.ProductAPIKey], error) {
 	return search.Result[apikey.ProductAPIKey]{}, f.err
 }
@@ -98,7 +95,7 @@ type failingOrganizationAPIKeys struct {
 }
 
 func (f failingOrganizationAPIKeys) SearchByOrganizationID(
-	context.Context, orgapikey.SearchOrganizationAPIKeysInput,
+	context.Context, repository.OrganizationAPIKeySearch,
 ) (search.Result[orgapikey.OrganizationAPIKey], error) {
 	return search.Result[orgapikey.OrganizationAPIKey]{}, f.err
 }
@@ -122,10 +119,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 	searches := map[string]func(err error) error{
 		"searchProductPermissions": func(err error) error {
 			svc := service.NewPermissionService(failingPermissions{failingSearches: failingSearches{err}}, logger)
-			_, got := svc.SearchByProductID(ctx, permission.SearchProductPermissionInput{
-				ProductID: "product",
-				Request:   search.NewRequest[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission](),
-			})
+			_, got := svc.SearchByProductID(ctx, repository.NewProductPermissionSearch("product"))
 			return got
 		},
 		"searchProductResourcePermissions": func(err error) error {
@@ -139,13 +133,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 				nil,
 				logger,
 			)
-			_, got := svc.SearchByProduct(ctx, resourcepermission.SearchProductResourcePermissionInput{
-				ProductID: "product",
-				Request: search.NewRequest[
-					resourcepermission.SearchProductResourcePermissionFilter,
-					resourcepermission.SortFieldProductResourcePermission,
-				](),
-			})
+			_, got := svc.SearchByProduct(ctx, repository.NewProductResourcePermissionSearch("product"), nil)
 			return got
 		},
 		"searchProductRoles": func(err error) error {
@@ -163,10 +151,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 				nil, failingProductAPIKeys{failingSearches: failingSearches{err}}, nil,
 				nanocache.Cache[apikey.ProductAPIKey]{}, logger,
 			)
-			_, got := svc.Search(ctx, apikey.SearchProductAPIKeysInput{
-				ProductID: "product",
-				Request:   search.NewRequest[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey](),
-			})
+			_, got := svc.Search(ctx, repository.NewProductAPIKeySearch("product"))
 			return got
 		},
 		"searchOrganizationAPIKeys": func(err error) error {
@@ -174,13 +159,7 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 				nil, nil, failingOrganizationAPIKeys{failingSearches: failingSearches{err}},
 				presentOrganization{}, nil, nil, nil, logger,
 			)
-			_, got := svc.Search(ctx, orgapikey.SearchOrganizationAPIKeysInput{
-				ProductID:      "product",
-				OrganizationID: "organization",
-				Request: search.NewRequest[
-					orgapikey.SearchOrganizationAPIKeyFilter, orgapikey.SortFieldOrganizationAPIKey,
-				](),
-			})
+			_, got := svc.Search(ctx, "product", repository.NewOrganizationAPIKeySearch("organization"))
 			return got
 		},
 	}

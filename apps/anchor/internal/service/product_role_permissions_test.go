@@ -23,10 +23,9 @@ type rolePermissionCatalog struct {
 
 func (c *rolePermissionCatalog) SearchByProduct(
 	_ context.Context,
-	productID string,
-	_ search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
+	q repository.ProductResourcePermissionSearch,
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
-	c.productID = productID
+	c.productID = q.Scope()
 	items := make([]resourcepermission.ProductResourcePermission, 0, len(c.names))
 	for _, name := range c.names {
 		items = append(items, resourcepermission.ProductResourcePermission{Name: name})
