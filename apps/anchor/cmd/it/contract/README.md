@@ -17,7 +17,7 @@ the production ones.
 From `apps/anchor` (Docker must be running):
 
 ```sh
-go test -tags contract -count=1 ./cmd/it/contract/                      # compare with the goldens (~3.5 min)
+go test -tags contract -count=1 ./cmd/it/contract/                      # compare with the goldens (~1.5 min)
 go test -tags contract -count=1 ./cmd/it/contract/ -update              # rewrite the goldens and the table below
 go test -tags contract -count=1 ./cmd/it/contract/ -run TestFrameworkSeams   # seams only (~15 s)
 go test -tags contract -count=1 ./cmd/it/contract/ -run 'TestGateFlows/^auth$'
@@ -62,10 +62,10 @@ same, and so do the goldens: `{{$isoTimestamp:+60s}}` renders as its template.
 run in full.
 
 The suite stops at the first request that fails because the database is
-starting or stopping (SQLSTATE `57P01`-`57P03`) or a connection is refused:
-that node fails without writing its golden (so `-update` rewrites nothing),
-and every later flow and seam test fails at once with the same reason instead
-of waiting out its 30 s webhook timeout. The harness also stops polling
+starting or stopping (SQLSTATE `57P01`-`57P03`) or a connection is refused,
+in the transport error or in the 5xx response and its log lines: that node
+fails without writing its golden, and every later flow and seam test fails at
+once with the same reason instead of waiting out its 30 s webhook timeout. The harness also stops polling
 `/health` as soon as the server exits during boot.
 
 - Every gate assertion must hold, except the skipped nodes listed below.

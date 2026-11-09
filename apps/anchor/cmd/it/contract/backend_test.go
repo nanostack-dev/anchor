@@ -16,8 +16,7 @@ import (
 // The suite stops at the first request that fails because the server or its
 // database is not reachable: every later request would fail the same way, and
 // each flow would then wait out its webhook_wait timeout (30 s plus a 3 s
-// settle) before failing. It also keeps such a response out of the goldens,
-// so a -update run against a dying database rewrites nothing.
+// settle) before failing. The request that finds it writes no golden either.
 
 // backendUnavailable matches a database that is starting, stopping or gone
 // (SQLSTATE class 57P0: admin_shutdown, crash_shutdown, cannot_connect_now)
