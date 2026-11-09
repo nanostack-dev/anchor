@@ -53,7 +53,11 @@ fixtures and evidence; keep verified Anchor troubleshooting in this guide.
 - `test:e2e:ui`: loopback Playwright UI for selection, inspection and reruns.
   Worker fixtures bootstrap lazily when UI mode omits dependency projects.
 
-The local suite boots one backend and builds one frontend per run. Fresh browser
+The local suite boots one backend and builds one frontend per run. The
+`webServer` timeout in `playwright.app.config.ts` covers both phases in series;
+size it from the slowest observed backend start plus the frontend build, and read
+the `Anchor backend ready in … ms` line before raising it
+([postmortem](../../../docs/postmortems/2026-11-09-e2e-app-startup-budget.md)). Fresh browser
 contexts isolate cookies and UI state; unique fixture IDs isolate server state.
 Keep external requests out of ordinary local tests. Mailpit verifies SMTP
 delivery; Clerk webhook processing uses a local product integration and signed

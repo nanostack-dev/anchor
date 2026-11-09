@@ -64,7 +64,10 @@ export default defineConfig({
 	webServer: {
 		command: "node scripts/serve-e2e-full.mjs",
 		url: "http://127.0.0.1:3015/__e2e/ready",
-		timeout: 180_000,
+		// Covers two serial phases: the backend (Postgres + `go build ./cmd`, 33-165 s on
+		// GitHub runners depending on the Go build cache) and `vite build`. 180 s timed out
+		// on 4 branches (docs/postmortems/2026-11-09-e2e-app-startup-budget.md).
+		timeout: 420_000,
 		gracefulShutdown: { signal: "SIGTERM", timeout: 30_000 },
 		reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
 		env: {
