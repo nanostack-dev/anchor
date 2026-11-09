@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -33,7 +32,7 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 		Request:   mapToSearchOrganizationLicensesRequest(body),
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to search organization licenses",
+		log.ErrorTo(ctx, s.logger, err, "failed to search organization licenses",
 			slog.String("product_id", request.ProductId),
 		)
 		return nil, err

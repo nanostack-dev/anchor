@@ -20,6 +20,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	sharedhealth "github.com/nanostack-dev/nanostack-framework/pkg/health"
+	"github.com/nanostack-dev/nanostack-framework/pkg/httputil/errorenvelope"
 	"github.com/nanostack-dev/nanostack-framework/pkg/tracing"
 	"github.com/nanostack-dev/pgkit/adminui"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -75,11 +76,11 @@ func NewHandler(
 	}
 	logRoutes(ctx, router, logger)
 
-	errorMiddleware := middleware.NewErrorMiddleware(scopedLogger)
+	errorEnvelope := middleware.NewErrorEnvelope(scopedLogger)
 	// The server span wraps everything, continuing an incoming W3C
 	// traceparent, so the request logger and DB queries join it.
 	return tracing.Middleware()(createHandler(
-		router, anchorAPI, errorMiddleware, replayer, []api.MiddlewareFunc{
+		router, anchorAPI, errorEnvelope, replayer, []api.MiddlewareFunc{
 			middleware.NewRequestLoggingMiddleware(scopedLogger),
 			auth.Create,
 		},
@@ -274,7 +275,7 @@ func logRoutes(ctx context.Context, router *chi.Mux, logger *slog.Logger) {
 
 func createHandler(
 	router *chi.Mux, anchorAPI *api.AnchorAPI,
-	errorMiddleware *middleware.ErrorMiddleware, replayer api.AuthzReplayer,
+	errorEnvelope *errorenvelope.Writer, replayer api.AuthzReplayer,
 	middlewares []api.MiddlewareFunc,
 ) http.Handler {
 	return api.HandlerWithOptions(
@@ -285,8 +286,8 @@ func createHandler(
 				api.NewAuthzReplayMiddleware(replayer),
 			},
 			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  errorMiddleware.HandleRequestError,
-				ResponseErrorHandlerFunc: errorMiddleware.HandleResponseError,
+				RequestErrorHandlerFunc:  errorEnvelope.RequestError,
+				ResponseErrorHandlerFunc: errorEnvelope.ResponseError,
 			},
 		),
 		api.ChiServerOptions{

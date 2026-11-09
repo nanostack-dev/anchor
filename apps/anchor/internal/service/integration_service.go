@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
@@ -1788,7 +1786,7 @@ func (s *integrationService) verifyAndActivate(
 		// Context deadline/cancellation here is a benign timeout, not a fault;
 		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
 		// and everything else stays at Error.
-		applog.Error(ctx, logger, findErr, "verifyAndActivate: failed to re-fetch instance after verification",
+		log.ErrorTo(ctx, logger, findErr, "verifyAndActivate: failed to re-fetch instance after verification",
 			slog.String("instance_id", inst.ID),
 		)
 		return
@@ -1821,7 +1819,7 @@ func (s *integrationService) verifyAndActivate(
 	result, updateErr := s.instanceRepo.UpdateOptional(persistCtx, live.PlatformTenantID, *live)
 	if updateErr != nil {
 		// As above: a persist-context timeout is benign and downgraded to Warn.
-		applog.Error(ctx, logger, updateErr, "verifyAndActivate: failed to persist verification result",
+		log.ErrorTo(ctx, logger, updateErr, "verifyAndActivate: failed to persist verification result",
 			slog.String("instance_id", inst.ID),
 		)
 		return

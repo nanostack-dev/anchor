@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
@@ -547,7 +545,7 @@ func (s *organizationAPIKeyService) validateAPIKey(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByOrganizationIDAndHashedValue(ctx, organizationID, hashedKey)
 	if err != nil {
-		applog.Error(ctx, logger, err, "failed to validate organization API key",
+		log.ErrorTo(ctx, logger, err, "failed to validate organization API key",
 			slog.String("organization_id", organizationID),
 		)
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected
@@ -576,7 +574,7 @@ func (s *organizationAPIKeyService) resolveAPIKeyByProduct(
 	hashedKey := security.HashSecret(apiKey)
 	found, err := s.apiKeyRepo.GetByProductIDAndHashedValueInternal(ctx, productID, hashedKey)
 	if err != nil {
-		applog.Error(ctx, logger, err, "failed to introspect organization API key",
+		log.ErrorTo(ctx, logger, err, "failed to introspect organization API key",
 			slog.String("product_id", productID),
 		)
 		return orgapikey.OrganizationAPIKey{}, false, fault.ErrUnexpected

@@ -3,8 +3,7 @@ package api
 import (
 	"context"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
@@ -87,7 +86,7 @@ func (s *AnchorAPI) DeletePlatformInvitation(
 		},
 	)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to delete invitation")
+		log.ErrorTo(ctx, s.logger, err, "failed to delete invitation")
 		return nil, err
 	}
 	return DeletePlatformInvitation204Response{}, nil

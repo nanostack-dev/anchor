@@ -6,8 +6,8 @@
 //	go generate ./cmd/app
 package app
 
-//go:generate go run github.com/nanostack-dev/nanostack-framework/cmd/nano gen config -dir . -env ../../.env.example
-//go:generate go run github.com/nanostack-dev/nanostack-framework/cmd/nano gen wire -dir . -out .
+//go:generate go tool nano gen config -dir . -env ../../.env.example
+//go:generate go tool nano gen wire -dir . -out .
 
 import (
 	_ "embed"

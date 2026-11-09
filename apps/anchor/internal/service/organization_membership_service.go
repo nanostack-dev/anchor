@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
@@ -278,7 +276,7 @@ func (s *organizationMembershipService) applyMembership(
 		if errors.Is(txErr, repository.ErrOrganizationMembershipRoleGone) {
 			return organization.Membership{}, NewBodyRoleNotFoundError(loggedRoleID(roleID))
 		}
-		applog.Error(ctx, logger, txErr, failMsg,
+		log.ErrorTo(ctx, logger, txErr, failMsg,
 			slog.String("product_id", productID),
 			slog.String("organization_id", organizationID),
 			slog.String("product_user_id", productUserID),

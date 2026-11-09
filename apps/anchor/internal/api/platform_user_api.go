@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -36,7 +35,7 @@ func (s *AnchorAPI) SearchPlatformUsers(
 
 	result, err := s.PlatformUserService.SearchPlatformUsers(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to search platform users")
+		log.ErrorTo(ctx, s.logger, err, "failed to search platform users")
 		return nil, err
 	}
 
@@ -63,7 +62,7 @@ func (s *AnchorAPI) DeletePlatformUser(
 
 	err = s.PlatformUserService.DeletePlatformUser(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to delete platform user")
+		log.ErrorTo(ctx, s.logger, err, "failed to delete platform user")
 		return nil, err
 	}
 
@@ -85,7 +84,7 @@ func (s *AnchorAPI) GetPlatformUser(
 
 	user, err := s.PlatformUserService.GetPlatformUser(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to get platform user",
+		log.ErrorTo(ctx, s.logger, err, "failed to get platform user",
 			slog.String("platformUserId", request.PlatformUserId),
 		)
 		return nil, err
@@ -121,7 +120,7 @@ func (s *AnchorAPI) GetCurrentUser(
 
 	user, err := s.PlatformUserService.GetPlatformUserByUserID(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to get current user",
+		log.ErrorTo(ctx, s.logger, err, "failed to get current user",
 			slog.String("userID", userID),
 			slog.String("tenantID", tenantID),
 		)

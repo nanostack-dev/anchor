@@ -6,8 +6,7 @@ import (
 	"errors"
 	"log/slog"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
@@ -176,7 +175,7 @@ func (s *AnchorAPI) CreateIntegrationInstance(
 
 	created, err := s.IntegrationService.CreateInstance(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to create integration instance",
+		log.ErrorTo(ctx, s.logger, err, "failed to create integration instance",
 			slog.String("product_id", request.ProductId),
 		)
 		return nil, err
@@ -200,7 +199,7 @@ func (s *AnchorAPI) ListIntegrationInstances(
 
 	instances, err := s.IntegrationService.ListInstances(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to list integration instances",
+		log.ErrorTo(ctx, s.logger, err, "failed to list integration instances",
 			slog.String("product_id", request.ProductId),
 		)
 		return nil, err
@@ -233,7 +232,7 @@ func (s *AnchorAPI) GetIntegrationInstance(
 
 	instance, err := s.IntegrationService.GetInstance(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to get integration instance",
+		log.ErrorTo(ctx, s.logger, err, "failed to get integration instance",
 			slog.String("product_id", request.ProductId),
 			slog.String("integration_instance_id", request.IntegrationInstanceId),
 		)
@@ -276,7 +275,7 @@ func (s *AnchorAPI) UpdateIntegrationInstance(
 
 	updated, err := s.IntegrationService.UpdateInstance(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to update integration instance",
+		log.ErrorTo(ctx, s.logger, err, "failed to update integration instance",
 			slog.String("product_id", request.ProductId),
 			slog.String("integration_instance_id", request.IntegrationInstanceId),
 		)
@@ -302,7 +301,7 @@ func (s *AnchorAPI) DeleteIntegrationInstance(
 
 	err = s.IntegrationService.DeleteInstance(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to delete integration instance",
+		log.ErrorTo(ctx, s.logger, err, "failed to delete integration instance",
 			slog.String("product_id", request.ProductId),
 			slog.String("integration_instance_id", request.IntegrationInstanceId),
 		)
@@ -329,7 +328,7 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 			WithPagination(&search.Pagination{Limit: legacyAuditLogListLimit}),
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to list integration audit logs",
+		log.ErrorTo(ctx, s.logger, err, "failed to list integration audit logs",
 			slog.String("product_id", request.ProductId),
 			slog.String("integration_instance_id", request.IntegrationInstanceId),
 		)
@@ -367,7 +366,7 @@ func (s *AnchorAPI) SearchIntegrationAuditLogs(
 		Request:               mapToSearchIntegrationAuditLogsRequest(body),
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to search integration audit logs",
+		log.ErrorTo(ctx, s.logger, err, "failed to search integration audit logs",
 			slog.String("product_id", request.ProductId),
 			slog.String("integration_instance_id", request.IntegrationInstanceId),
 		)
@@ -432,7 +431,7 @@ func (s *AnchorAPI) IngestWebhook(
 
 	event, err := s.IntegrationService.IngestWebhook(ctx, input)
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to ingest webhook",
+		log.ErrorTo(ctx, s.logger, err, "failed to ingest webhook",
 			slog.String("product_id", request.ProductId),
 			slog.String("provider_type", string(request.ProviderType)),
 		)

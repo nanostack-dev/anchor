@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
@@ -107,7 +105,7 @@ func (s *productService) GetInternal(
 
 	found, err := s.productRepo.FindByIDInternal(ctx, productID)
 	if err != nil {
-		applog.Error(ctx, logger, err, "failed to find product internally", slog.String("product_id", productID))
+		log.ErrorTo(ctx, logger, err, "failed to find product internally", slog.String("product_id", productID))
 		return nil, err
 	}
 
@@ -480,7 +478,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		}
 		logger.InfoContext(ctx, "product deleted", slog.String("product_id", input.ProductID))
 	} else {
-		applog.Error(ctx, logger, err, "failed to delete product", slog.String("product_id", input.ProductID))
+		log.ErrorTo(ctx, logger, err, "failed to delete product", slog.String("product_id", input.ProductID))
 	}
 	return err
 }

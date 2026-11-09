@@ -296,7 +296,7 @@ func populate(config TestConfig, c *app.Components) {
 		set(config.UserRepository, c.UserRepository)
 		set(config.PlatformUserRepository, c.PlatformTenantUserRepository)
 		set(config.JWTHelper, c.JWTHelper)
-		set(config.SessionService, c.ServiceService4)
+		set(config.SessionService, c.SessionServiceService)
 	}
 	if config.Populate != nil {
 		config.Populate(c)

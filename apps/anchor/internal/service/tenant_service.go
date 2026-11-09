@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"anchor/internal/applog"
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/repository"
 )
@@ -33,7 +33,7 @@ func (t *tenantService) IsTenantInit(ctx context.Context) (bool, error) {
 
 	count, err := t.tenantRepo.Count(ctx)
 	if err != nil {
-		applog.Error(ctx, logger, err, "failed to count tenants")
+		log.ErrorTo(ctx, logger, err, "failed to count tenants")
 		return false, err
 	}
 	return count > 0, nil

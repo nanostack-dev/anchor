@@ -15,13 +15,14 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/moby/moby/api v1.56.1
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
-	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.1
+	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.2
 	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.1
+	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.2
 	github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1
 	github.com/nanostack-dev/pgkit v0.0.46
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/nullable v1.1.0
-	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
+	github.com/oapi-codegen/oapi-codegen/v2 v2.8.2
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/openfga/api/proto v0.0.0-20260319214821-f153694bfc20
 	github.com/openfga/language/pkg/go v0.3.2
@@ -177,3 +178,5 @@ require (
 )
 
 replace github.com/nanostack-dev/anchor/clients/go => ../../clients/go
+
+tool github.com/nanostack-dev/nanostack-framework/gen/cmd/nano
