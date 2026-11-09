@@ -26,8 +26,6 @@ import (
 )
 
 // platformUserToDomain is the stateless mapper that the generated base calls.
-//
-// platformUserToDomain is the stateless mapper that the generated base calls.
 func platformUserToDomain(row model.PlatformUsers) platform.User {
 	return (&mapper.PlatformUserMapper{}).ToDomain(row)
 }
@@ -49,17 +47,20 @@ type PlatformTenantUserRepository interface {
 	Create(
 		ctx context.Context, platformUser platform.User,
 	) (platform.User, error)
-	FindByTenantIDAndUserID(
-		ctx context.Context, tenantID string, userID string,
+	// FindByPlatformTenantIDAndUserID returns the oldest platform user of the
+	// tenant for the user. (platform_tenant_id, user_id) is not unique, so the
+	// method orders by created_at and id to pick one row in a fixed way.
+	FindByPlatformTenantIDAndUserID(
+		ctx context.Context, platformTenantID string, userID string,
 	) (functional.Option[platform.User], error)
-	FindByTenantIDAndID(
-		ctx context.Context, tenantID string, userID string,
+	FindByPlatformTenantIDAndID(
+		ctx context.Context, platformTenantID string, id string,
 	) (functional.Option[platform.User], error)
-	FindByTenantIDAndEmail(
-		ctx context.Context, tenantID string, email string,
+	FindByPlatformTenantIDAndEmail(
+		ctx context.Context, platformTenantID string, email string,
 	) (functional.Option[platform.User], error)
-	DeleteByID(
-		ctx context.Context, tenantID string, userID string,
+	DeleteByPlatformTenantIDAndID(
+		ctx context.Context, platformTenantID string, id string,
 	) error
 	SearchByTenantID(
 		ctx context.Context, tenantID string,
@@ -103,73 +104,13 @@ func (r *platformTenantUserRepositoryImpl) Create(
 	return result, nil
 }
 
-func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndUserID(
-	ctx context.Context, tenantID string, userID string,
+func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(
+	ctx context.Context, platformTenantID string, userID string,
 ) (functional.Option[platform.User], error) {
-	stmt := table.PlatformUsers.SELECT(
-		table.PlatformUsers.AllColumns,
-	).WHERE(
-		table.PlatformUsers.UserID.EQ(postgres.String(userID)).AND(
-			table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		func(entity model.PlatformUsers) platform.User {
-			return r.platformUserMapper.ToDomain(entity)
-		},
+	return r.first(ctx,
+		r.where.PlatformTenantID(platformTenantID).AND(r.where.UserID(userID)),
+		r.t.CreatedAt.ASC(), r.t.ID.ASC(),
 	)
-}
-
-func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndID(
-	ctx context.Context, tenantID string, userID string,
-) (functional.Option[platform.User], error) {
-	stmt := table.PlatformUsers.SELECT(
-		table.PlatformUsers.AllColumns,
-	).WHERE(
-		table.PlatformUsers.ID.EQ(postgres.String(userID)).AND(
-			table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		func(entity model.PlatformUsers) platform.User {
-			return r.platformUserMapper.ToDomain(entity)
-		},
-	)
-}
-
-func (r *platformTenantUserRepositoryImpl) FindByTenantIDAndEmail(
-	ctx context.Context, tenantID string, email string,
-) (functional.Option[platform.User], error) {
-	stmt := table.PlatformUsers.SELECT(
-		table.PlatformUsers.AllColumns,
-	).WHERE(
-		table.PlatformUsers.Email.EQ(postgres.String(email)).AND(
-			table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		func(entity model.PlatformUsers) platform.User {
-			return r.platformUserMapper.ToDomain(entity)
-		},
-	)
-}
-
-func (r *platformTenantUserRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, userID string,
-) error {
-	stmt := table.PlatformUsers.DELETE().WHERE(
-		table.PlatformUsers.ID.EQ(postgres.String(userID)).AND(
-			table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *platformTenantUserRepositoryImpl) SearchByTenantID(

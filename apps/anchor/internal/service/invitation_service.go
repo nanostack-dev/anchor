@@ -61,7 +61,7 @@ func (s *invitationService) CreateInvitation(
 	if err := validate.ValidateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
-	foundPlatformUser, err := s.platformUserRepo.FindByTenantIDAndEmail(
+	foundPlatformUser, err := s.platformUserRepo.FindByPlatformTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *invitationService) CreateInvitation(
 				"Check if the person is already a member, or invite a different email address.",
 		)
 	}
-	foundInvitation, err := s.invitationRepo.FindByTenantIDAndEmail(
+	foundInvitation, err := s.invitationRepo.FindByPlatformTenantIDAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {

@@ -2,12 +2,23 @@
 
 package repository
 
-// UserRepository on *userRepositoryImpl: 0 derived methods on table users; the other methods are
+import (
+	"anchor/internal/domain/auth"
+	"context"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
+
+// UserRepository on *userRepositoryImpl: 1 derived method on table users; the other methods are
 // hand-written (nano gen repo -explain lists each one).
-//
-// Hand-written although the name derives (deleting the method switches it
-// to the derived query): FindByEmail, Count.
 //
 // A compile error on the next line means UserRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ UserRepository = (*userRepositoryImpl)(nil)
+
+// FindByEmail is derived from its name:
+//
+//	SELECT * FROM users WHERE email = $1 LIMIT 2 -- at most one row: users_email_key (email); a second row is ErrMoreThanOneRow
+func (r *userRepositoryImpl) FindByEmail(ctx context.Context, email string) (functional.Option[auth.User], error) {
+	return r.findOne(ctx, r.where.Email(email))
+}
