@@ -2,9 +2,32 @@
 
 package repository
 
-// InvitationRepository on *invitationRepositoryImpl: 0 derived methods on table platform_invitations; the other methods are
+import (
+	"anchor/internal/domain/invitation"
+	"context"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
+
+// InvitationRepository on *invitationRepositoryImpl: 2 derived methods on table platform_invitations; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means InvitationRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ InvitationRepository = (*invitationRepositoryImpl)(nil)
+
+// FindByPlatformTenantIDAndEmail is derived from its name:
+//
+//	SELECT * FROM platform_invitations WHERE platform_tenant_id = $1 AND email = $2 LIMIT 2 -- at most one row: idx_platform_tenant_email (platform_tenant_id, email); a second row is ErrMoreThanOneRow
+func (r *invitationRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[invitation.PlatformInvitation], error) {
+	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.Email(email)))
+}
+
+// FindByCodeAndEmailInternal is derived from its name:
+//
+//	SELECT * FROM platform_invitations WHERE code = $1 AND email = $2 LIMIT 2 -- at most one row: platform_invitations_code_key (code); a second row is ErrMoreThanOneRow
+//
+// UNSCOPED: the name ends in Internal, so it does not filter on platform_tenant_id.
+func (r *invitationRepositoryImpl) FindByCodeAndEmailInternal(ctx context.Context, code string, email string) (functional.Option[invitation.PlatformInvitation], error) {
+	return r.findOne(ctx, r.where.Code(code).AND(r.where.Email(email)))
+}

@@ -6,7 +6,7 @@ package repository
 // hand-written (nano gen repo -explain lists each one).
 //
 // Hand-written although the name derives (deleting the method switches it
-// to the derived query): FindByID, DeleteByID, Count, FindAll.
+// to the derived query): Count, FindAll.
 //
 // A compile error on the next line means TenantRepository gained or lost a method since
 // the last run: run nano gen repo.

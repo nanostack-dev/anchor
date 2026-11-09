@@ -27,8 +27,6 @@ func usersUpdatableColumns() postgres.ColumnList {
 }
 
 // userToDomain is the stateless mapper that the generated base calls.
-//
-// userToDomain is the stateless mapper that the generated base calls.
 func userToDomain(row model.Users) auth.User {
 	return (&mapper.UserMapper{}).ToDomain(row)
 }
@@ -41,7 +39,6 @@ func _() {
 
 type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (functional.Option[auth.User], error)
-	Count(ctx context.Context) (int64, error)
 	Create(
 		ctx context.Context,
 		user auth.User,
@@ -56,29 +53,6 @@ type userRepositoryImpl struct {
 	tenantMapper     *mapper.TenantMapper
 	invitationMapper *mapper.InvitationMapper
 	logger           *slog.Logger
-}
-
-func (u *userRepositoryImpl) FindByEmail(
-	ctx context.Context, email string,
-) (functional.Option[auth.User], error) {
-	stmt := table.Users.SELECT(
-		table.Users.AllColumns,
-	).FROM(
-		table.Users,
-	).WHERE(
-		table.Users.Email.EQ(postgres.String(email)),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, u.db, stmt,
-		u.userMapper.ToDomain,
-	)
-}
-
-func (u *userRepositoryImpl) Count(ctx context.Context) (
-	int64, error,
-) {
-	return transactor.QueryCount(ctx, u.db, table.Users.SELECT(postgres.COUNT(postgres.STAR))).Value()
 }
 
 const userEmailUniqueConstraint = "users_email_key"

@@ -13,11 +13,8 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-// tenantToDomain is the stateless mapper that the generated base calls.
-//
 // tenantToDomain is the stateless mapper that the generated base calls.
 func tenantToDomain(row model.PlatformTenants) tenant.PlatformTenant {
 	return (&mapper.TenantMapper{}).ToDomain(row)
@@ -37,10 +34,10 @@ func platformTenantsUpdatableColumns() postgres.ColumnList {
 }
 
 type TenantRepository interface {
-	FindByID(ctx context.Context, id string) (functional.Option[tenant.PlatformTenant], error)
 	Create(ctx context.Context, tenant tenant.PlatformTenant) (tenant.PlatformTenant, error)
-	DeleteByID(ctx context.Context, id string) error
 	Count(ctx context.Context) (int64, error)
+	// FindAll is hand-written: it orders by created_at and id, and login
+	// uses the first tenant.
 	FindAll(ctx context.Context) ([]tenant.PlatformTenant, error)
 }
 
@@ -63,22 +60,6 @@ func NewTenantRepository(
 	}
 }
 
-func (r *tenantRepositoryImpl) FindByID(
-	ctx context.Context, id string,
-) (functional.Option[tenant.PlatformTenant], error) {
-	stmt := table.PlatformTenants.SELECT(
-		table.PlatformTenants.AllColumns,
-	).FROM(
-		table.PlatformTenants,
-	).WHERE(
-		table.PlatformTenants.ID.EQ(postgres.String(id)),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.tenantMapper.ToDomain,
-	)
-}
-
 func (r *tenantRepositoryImpl) Create(
 	ctx context.Context, t tenant.PlatformTenant,
 ) (tenant.PlatformTenant, error) {
@@ -93,16 +74,11 @@ func (r *tenantRepositoryImpl) Create(
 	).Value()
 }
 
-func (r *tenantRepositoryImpl) DeleteByID(
-	ctx context.Context, id string,
-) error {
-	stmt := table.PlatformTenants.DELETE().WHERE(table.PlatformTenants.ID.EQ(postgres.String(id)))
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
+// Count is hand-written on the base: when Count is the only derived method of
+// the file, nano gen repo v0.23.0-beta.3 writes a file that does not compile.
+// The body gives the derived SQL, SELECT COUNT(*) FROM platform_tenants.
 func (r *tenantRepositoryImpl) Count(ctx context.Context) (int64, error) {
-	return transactor.QueryCount(ctx, r.db, table.PlatformTenants.SELECT(postgres.COUNT(postgres.STAR))).Value()
+	return r.count(ctx, nil)
 }
 
 func (r *tenantRepositoryImpl) FindAll(

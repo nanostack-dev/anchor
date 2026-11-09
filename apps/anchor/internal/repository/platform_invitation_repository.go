@@ -24,8 +24,6 @@ import (
 )
 
 // invitationToDomain is the stateless mapper that the generated base calls.
-//
-// invitationToDomain is the stateless mapper that the generated base calls.
 func invitationToDomain(row model.PlatformInvitations) invitation.PlatformInvitation {
 	return (&mapper.InvitationMapper{}).ToDomain(row)
 }
@@ -47,10 +45,12 @@ type InvitationRepository interface {
 	Create(
 		ctx context.Context, inv invitation.PlatformInvitation,
 	) (invitation.PlatformInvitation, error)
-	FindByTenantIDAndEmail(
-		ctx context.Context, tenantID string, email string,
+	FindByPlatformTenantIDAndEmail(
+		ctx context.Context, platformTenantID string, email string,
 	) (functional.Option[invitation.PlatformInvitation], error)
-	FindByCodeAndEmail(
+	// FindByCodeAndEmailInternal reads across tenants: a user accepts an
+	// invitation before anchor knows the tenant.
+	FindByCodeAndEmailInternal(
 		ctx context.Context, code string, email string,
 	) (functional.Option[invitation.PlatformInvitation], error)
 	DeleteByTenantIDAndID(
@@ -169,36 +169,6 @@ func (r *invitationRepositoryImpl) Create(
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).
 		OnUnique(ErrInvitationExists, invitationTenantEmailUniqueIndex).
 		Value()
-}
-
-func (r *invitationRepositoryImpl) FindByCodeAndEmail(
-	ctx context.Context, code string, email string,
-) (functional.Option[invitation.PlatformInvitation], error) {
-	stmt := table.PlatformInvitations.SELECT(
-		table.PlatformInvitations.AllColumns,
-	).WHERE(
-		table.PlatformInvitations.Code.EQ(postgres.String(code)).
-			AND(table.PlatformInvitations.Email.EQ(postgres.String(email))),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *invitationRepositoryImpl) FindByTenantIDAndEmail(
-	ctx context.Context, tenantID string, email string,
-) (functional.Option[invitation.PlatformInvitation], error) {
-	stmt := table.PlatformInvitations.SELECT(
-		table.PlatformInvitations.AllColumns,
-	).WHERE(
-		table.PlatformInvitations.Email.EQ(postgres.String(email)).
-			AND(table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
 }
 
 func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
