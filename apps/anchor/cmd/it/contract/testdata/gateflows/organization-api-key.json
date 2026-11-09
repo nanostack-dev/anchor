@@ -5,7 +5,7 @@
   "anchor"
  ],
  "description": "Copy of \"anchor: organization-api-key\" that sends resource_type when it creates a role or permission. It replaces the original once ADR-0022 PR 1 is deployed. Organization API keys: create, read, search, rename, deactivate, expire, validate and introspect (scopes, inactive, expired, deleted, unknown), the 400/401/404/409 cases, no key value echoed on any read, then one final webhook wait proving every create, update and delete emitted its event and nothing else did.",
- "updated_at": "2026-10-26T04:02:00.324143Z",
+ "updated_at": "2026-11-09T15:35:00.34516Z",
  "flow_definition": {
   "edges": [
    {
@@ -1758,6 +1758,16 @@
       "operator_type": "not_contains",
       "extractor_data": {},
       "extractor_type": "body"
+     },
+     {
+      "operator_data": {
+       "value": "organization.created"
+      },
+      "operator_type": "not_equals",
+      "extractor_data": {
+       "path": "$.type"
+      },
+      "extractor_type": "json_path"
      }
     ],
     "display_name": "Anchor Emitted Every Org Key Event"

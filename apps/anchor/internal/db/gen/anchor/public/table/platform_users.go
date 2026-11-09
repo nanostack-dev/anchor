@@ -108,6 +108,7 @@ func (PlatformUsersTable) UniqueKeys() map[string][]string {
 	return map[string][]string{
 		"platform_users_pkey":             {"id"},
 		"idx_platform_users_tenant_email": {"platform_tenant_id", "email"},
+		"idx_platform_users_tenant_user":  {"platform_tenant_id", "user_id"},
 		"platform_users_external_id_key":  {"external_id"},
 	}
 }

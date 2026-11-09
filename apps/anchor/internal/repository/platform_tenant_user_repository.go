@@ -59,9 +59,6 @@ type PlatformTenantUserRepository interface {
 	Create(
 		ctx context.Context, platformUser platform.User,
 	) (platform.User, error)
-	// FindByPlatformTenantIDAndUserID returns the oldest platform user of the
-	// tenant for the user. (platform_tenant_id, user_id) is not unique, so the
-	// method orders by created_at and id to pick one row in a fixed way.
 	FindByPlatformTenantIDAndUserID(
 		ctx context.Context, platformTenantID string, userID string,
 	) (functional.Option[platform.User], error)
@@ -111,15 +108,6 @@ func (r *platformTenantUserRepositoryImpl) Create(
 	}
 
 	return result, nil
-}
-
-func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(
-	ctx context.Context, platformTenantID string, userID string,
-) (functional.Option[platform.User], error) {
-	return r.first(ctx,
-		r.where.PlatformTenantID(platformTenantID).AND(r.where.UserID(userID)),
-		r.t.CreatedAt.ASC(), r.t.ID.ASC(),
-	)
 }
 
 func NewPlatformTenantUserRepository(

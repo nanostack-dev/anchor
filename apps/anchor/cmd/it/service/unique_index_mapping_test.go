@@ -22,6 +22,8 @@ import (
 var uniqueGuardsWithoutMapping = map[string]string{
 	"idx_platform_users_tenant_email": "registration inserts users first in the same transaction, " +
 		"so a second registration of an email stops on users_email_key",
+	"idx_platform_users_tenant_user": "registration inserts a new users row in the same transaction, " +
+		"so the platform user's user_id is always new",
 	"platform_users_external_id_key": "registration copies users.external_id, which nothing writes",
 	"users_external_id_key":          "nothing writes users.external_id",
 	"platform_invitations_code_key":  "the code is 32 random bytes",
