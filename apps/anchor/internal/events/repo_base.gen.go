@@ -8,11 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
@@ -187,8 +187,11 @@ func (b productEventEndpointConfigsBase) queryRows(ctx context.Context, stmt pos
 }
 
 // productEventEndpointConfigsWhere builds predicates on the columns of product_event_endpoint_configs. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on events_json: compare on b.t.
 type productEventEndpointConfigsWhere struct{}
 
 // ProductID is product_id = v.
@@ -244,7 +247,7 @@ func (productEventEndpointConfigsWhere) EndpointURLIn(vs ...string) postgres.Boo
 
 // EndpointURLContains matches endpoint_url that contain term, ignoring case.
 func (productEventEndpointConfigsWhere) EndpointURLContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductEventEndpointConfigs.EndpointURL).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductEventEndpointConfigs.EndpointURL)
 }
 
 // EndpointURLEqualsIgnoreCase is lower(endpoint_url) = lower(v).
@@ -271,7 +274,7 @@ func (productEventEndpointConfigsWhere) SigningSecretIn(vs ...string) postgres.B
 
 // SigningSecretContains matches signing_secret that contain term, ignoring case.
 func (productEventEndpointConfigsWhere) SigningSecretContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductEventEndpointConfigs.SigningSecret).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductEventEndpointConfigs.SigningSecret)
 }
 
 // SigningSecretEqualsIgnoreCase is lower(signing_secret) = lower(v).
@@ -333,33 +336,6 @@ func (productEventEndpointConfigsWhere) UpdatedAtBefore(v time.Time) postgres.Bo
 	return table.ProductEventEndpointConfigs.UpdatedAt.LT(postgres.TimestampzT(v))
 }
 
-// EventsJSON is events_json = v.
-func (productEventEndpointConfigsWhere) EventsJSON(v string) postgres.BoolExpression {
-	return table.ProductEventEndpointConfigs.EventsJSON.EQ(postgres.String(v))
-}
-
-// EventsJSONIn is events_json IN (vs...); no value matches no row.
-func (productEventEndpointConfigsWhere) EventsJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.ProductEventEndpointConfigs.EventsJSON.IN(exprs...)
-}
-
-// EventsJSONContains matches events_json that contain term, ignoring case.
-func (productEventEndpointConfigsWhere) EventsJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductEventEndpointConfigs.EventsJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// EventsJSONEqualsIgnoreCase is lower(events_json) = lower(v).
-func (productEventEndpointConfigsWhere) EventsJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductEventEndpointConfigs.EventsJSON).EQ(postgres.LOWER(postgres.String(v)))
-}
-
 // DeliveryStatus is delivery_status = v.
 func (productEventEndpointConfigsWhere) DeliveryStatus(v string) postgres.BoolExpression {
 	return table.ProductEventEndpointConfigs.DeliveryStatus.EQ(postgres.String(v))
@@ -379,7 +355,7 @@ func (productEventEndpointConfigsWhere) DeliveryStatusIn(vs ...string) postgres.
 
 // DeliveryStatusContains matches delivery_status that contain term, ignoring case.
 func (productEventEndpointConfigsWhere) DeliveryStatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductEventEndpointConfigs.DeliveryStatus).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductEventEndpointConfigs.DeliveryStatus)
 }
 
 // DeliveryStatusEqualsIgnoreCase is lower(delivery_status) = lower(v).
@@ -412,10 +388,4 @@ func (productEventEndpointConfigsWhere) ConsecutiveFailedCallsAfter(v int32) pos
 // ConsecutiveFailedCallsBefore is consecutive_failed_calls < v.
 func (productEventEndpointConfigsWhere) ConsecutiveFailedCallsBefore(v int32) postgres.BoolExpression {
 	return table.ProductEventEndpointConfigs.ConsecutiveFailedCalls.LT(postgres.Int32(v))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }

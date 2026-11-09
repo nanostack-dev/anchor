@@ -17,11 +17,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
@@ -196,8 +196,11 @@ func (b integrationEventsBase) queryRows(ctx context.Context, stmt postgres.Stat
 }
 
 // integrationEventsWhere builds predicates on the columns of integration_events. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on payload_json, headers_json: compare on b.t.
 type integrationEventsWhere struct{}
 
 // ID is id = v.
@@ -270,66 +273,12 @@ func (integrationEventsWhere) EventTypeIn(vs ...string) postgres.BoolExpression 
 
 // EventTypeContains matches event_type that contain term, ignoring case.
 func (integrationEventsWhere) EventTypeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.EventType).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.EventType)
 }
 
 // EventTypeEqualsIgnoreCase is lower(event_type) = lower(v).
 func (integrationEventsWhere) EventTypeEqualsIgnoreCase(v string) postgres.BoolExpression {
 	return postgres.LOWER(table.IntegrationEvents.EventType).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// PayloadJSON is payload_json = v.
-func (integrationEventsWhere) PayloadJSON(v string) postgres.BoolExpression {
-	return table.IntegrationEvents.PayloadJSON.EQ(postgres.String(v))
-}
-
-// PayloadJSONIn is payload_json IN (vs...); no value matches no row.
-func (integrationEventsWhere) PayloadJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationEvents.PayloadJSON.IN(exprs...)
-}
-
-// PayloadJSONContains matches payload_json that contain term, ignoring case.
-func (integrationEventsWhere) PayloadJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.PayloadJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// PayloadJSONEqualsIgnoreCase is lower(payload_json) = lower(v).
-func (integrationEventsWhere) PayloadJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.PayloadJSON).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// HeadersJSON is headers_json = v.
-func (integrationEventsWhere) HeadersJSON(v string) postgres.BoolExpression {
-	return table.IntegrationEvents.HeadersJSON.EQ(postgres.String(v))
-}
-
-// HeadersJSONIn is headers_json IN (vs...); no value matches no row.
-func (integrationEventsWhere) HeadersJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationEvents.HeadersJSON.IN(exprs...)
-}
-
-// HeadersJSONContains matches headers_json that contain term, ignoring case.
-func (integrationEventsWhere) HeadersJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.HeadersJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// HeadersJSONEqualsIgnoreCase is lower(headers_json) = lower(v).
-func (integrationEventsWhere) HeadersJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.HeadersJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // Status is status = v.
@@ -351,7 +300,7 @@ func (integrationEventsWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (integrationEventsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -378,7 +327,7 @@ func (integrationEventsWhere) ErrorIn(vs ...string) postgres.BoolExpression {
 
 // ErrorContains matches error that contain term, ignoring case.
 func (integrationEventsWhere) ErrorContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.Error).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.Error)
 }
 
 // ErrorEqualsIgnoreCase is lower(error) = lower(v).
@@ -647,8 +596,11 @@ func (b integrationInstancesBase) queryRows(ctx context.Context, stmt postgres.S
 }
 
 // integrationInstancesWhere builds predicates on the columns of integration_instances. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on config_json: compare on b.t.
 type integrationInstancesWhere struct{}
 
 // ID is id = v.
@@ -721,7 +673,7 @@ func (integrationInstancesWhere) ProviderTypeIn(vs ...string) postgres.BoolExpre
 
 // ProviderTypeContains matches provider_type that contain term, ignoring case.
 func (integrationInstancesWhere) ProviderTypeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ProviderType).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.ProviderType)
 }
 
 // ProviderTypeEqualsIgnoreCase is lower(provider_type) = lower(v).
@@ -748,7 +700,7 @@ func (integrationInstancesWhere) WebhookSecretIn(vs ...string) postgres.BoolExpr
 
 // WebhookSecretContains matches webhook_secret that contain term, ignoring case.
 func (integrationInstancesWhere) WebhookSecretContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.WebhookSecret).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.WebhookSecret)
 }
 
 // WebhookSecretEqualsIgnoreCase is lower(webhook_secret) = lower(v).
@@ -759,33 +711,6 @@ func (integrationInstancesWhere) WebhookSecretEqualsIgnoreCase(v string) postgre
 // WebhookSecretIsNull is webhook_secret IS NULL.
 func (integrationInstancesWhere) WebhookSecretIsNull() postgres.BoolExpression {
 	return table.IntegrationInstances.WebhookSecret.IS_NULL()
-}
-
-// ConfigJSON is config_json = v.
-func (integrationInstancesWhere) ConfigJSON(v string) postgres.BoolExpression {
-	return table.IntegrationInstances.ConfigJSON.EQ(postgres.String(v))
-}
-
-// ConfigJSONIn is config_json IN (vs...); no value matches no row.
-func (integrationInstancesWhere) ConfigJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationInstances.ConfigJSON.IN(exprs...)
-}
-
-// ConfigJSONContains matches config_json that contain term, ignoring case.
-func (integrationInstancesWhere) ConfigJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ConfigJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// ConfigJSONEqualsIgnoreCase is lower(config_json) = lower(v).
-func (integrationInstancesWhere) ConfigJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ConfigJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // ConfigVersion is config_version = v.
@@ -834,7 +759,7 @@ func (integrationInstancesWhere) StatusIn(vs ...string) postgres.BoolExpression 
 
 // StatusContains matches status that contain term, ignoring case.
 func (integrationInstancesWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -932,7 +857,7 @@ func (integrationInstancesWhere) LastErrorIn(vs ...string) postgres.BoolExpressi
 
 // LastErrorContains matches last_error that contain term, ignoring case.
 func (integrationInstancesWhere) LastErrorContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.LastError).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.LastError)
 }
 
 // LastErrorEqualsIgnoreCase is lower(last_error) = lower(v).
@@ -1115,8 +1040,9 @@ func (b organizationAPIKeysBase) queryRows(ctx context.Context, stmt postgres.St
 }
 
 // organizationAPIKeysWhere builds predicates on the columns of organization_api_keys. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type organizationAPIKeysWhere struct{}
 
 // ID is id = v.
@@ -1172,7 +1098,7 @@ func (organizationAPIKeysWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (organizationAPIKeysWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -1199,7 +1125,7 @@ func (organizationAPIKeysWhere) DescriptionIn(vs ...string) postgres.BoolExpress
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (organizationAPIKeysWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -1231,7 +1157,7 @@ func (organizationAPIKeysWhere) HashedValueIn(vs ...string) postgres.BoolExpress
 
 // HashedValueContains matches hashed_value that contain term, ignoring case.
 func (organizationAPIKeysWhere) HashedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.HashedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.HashedValue)
 }
 
 // HashedValueEqualsIgnoreCase is lower(hashed_value) = lower(v).
@@ -1258,7 +1184,7 @@ func (organizationAPIKeysWhere) ObfuscatedValueIn(vs ...string) postgres.BoolExp
 
 // ObfuscatedValueContains matches obfuscated_value that contain term, ignoring case.
 func (organizationAPIKeysWhere) ObfuscatedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.ObfuscatedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.ObfuscatedValue)
 }
 
 // ObfuscatedValueEqualsIgnoreCase is lower(obfuscated_value) = lower(v).
@@ -1285,7 +1211,7 @@ func (organizationAPIKeysWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (organizationAPIKeysWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -1581,8 +1507,9 @@ func (b organizationMembershipsBase) queryRows(ctx context.Context, stmt postgre
 }
 
 // organizationMembershipsWhere builds predicates on the columns of organization_memberships. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type organizationMembershipsWhere struct{}
 
 // OrganizationID is organization_id = v.
@@ -1865,8 +1792,11 @@ func (b organizationsBase) queryRows(ctx context.Context, stmt postgres.Statemen
 }
 
 // organizationsWhere builds predicates on the columns of organizations. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on metadata_json: compare on b.t.
 type organizationsWhere struct{}
 
 // ID is id = v.
@@ -1922,7 +1852,7 @@ func (organizationsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (organizationsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Organizations.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -1949,7 +1879,7 @@ func (organizationsWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (organizationsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Organizations.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -2014,33 +1944,6 @@ func (organizationsWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (organizationsWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.Organizations.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// MetadataJSON is metadata_json = v.
-func (organizationsWhere) MetadataJSON(v string) postgres.BoolExpression {
-	return table.Organizations.MetadataJSON.EQ(postgres.String(v))
-}
-
-// MetadataJSONIn is metadata_json IN (vs...); no value matches no row.
-func (organizationsWhere) MetadataJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.Organizations.MetadataJSON.IN(exprs...)
-}
-
-// MetadataJSONContains matches metadata_json that contain term, ignoring case.
-func (organizationsWhere) MetadataJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.MetadataJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// MetadataJSONEqualsIgnoreCase is lower(metadata_json) = lower(v).
-func (organizationsWhere) MetadataJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.MetadataJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // MetadataJSONIsNull is metadata_json IS NULL.
@@ -2218,8 +2121,9 @@ func (b platformInvitationsBase) queryRows(ctx context.Context, stmt postgres.St
 }
 
 // platformInvitationsWhere builds predicates on the columns of platform_invitations. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformInvitationsWhere struct{}
 
 // ID is id = v.
@@ -2258,7 +2162,7 @@ func (platformInvitationsWhere) CodeIn(vs ...string) postgres.BoolExpression {
 
 // CodeContains matches code that contain term, ignoring case.
 func (platformInvitationsWhere) CodeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformInvitations.Code).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformInvitations.Code)
 }
 
 // CodeEqualsIgnoreCase is lower(code) = lower(v).
@@ -2285,7 +2189,7 @@ func (platformInvitationsWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (platformInvitationsWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformInvitations.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformInvitations.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -2534,8 +2438,9 @@ func (b platformTenantsBase) queryRows(ctx context.Context, stmt postgres.Statem
 }
 
 // platformTenantsWhere builds predicates on the columns of platform_tenants. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformTenantsWhere struct{}
 
 // ID is id = v.
@@ -2574,7 +2479,7 @@ func (platformTenantsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (platformTenantsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformTenants.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformTenants.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -2601,7 +2506,7 @@ func (platformTenantsWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (platformTenantsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformTenants.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformTenants.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -2833,8 +2738,9 @@ func (b platformUsersBase) queryRows(ctx context.Context, stmt postgres.Statemen
 }
 
 // platformUsersWhere builds predicates on the columns of platform_users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformUsersWhere struct{}
 
 // ID is id = v.
@@ -2895,7 +2801,7 @@ func (platformUsersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (platformUsersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -2922,7 +2828,7 @@ func (platformUsersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (platformUsersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -2954,7 +2860,7 @@ func (platformUsersWhere) HashedPasswordIn(vs ...string) postgres.BoolExpression
 
 // HashedPasswordContains matches hashed_password that contain term, ignoring case.
 func (platformUsersWhere) HashedPasswordContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.HashedPassword).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.HashedPassword)
 }
 
 // HashedPasswordEqualsIgnoreCase is lower(hashed_password) = lower(v).
@@ -3015,7 +2921,7 @@ func (platformUsersWhere) RoleIn(vs ...string) postgres.BoolExpression {
 
 // RoleContains matches role that contain term, ignoring case.
 func (platformUsersWhere) RoleContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Role).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Role)
 }
 
 // RoleEqualsIgnoreCase is lower(role) = lower(v).
@@ -3247,8 +3153,9 @@ func (b productAPIKeysBase) queryRows(ctx context.Context, stmt postgres.Stateme
 }
 
 // productAPIKeysWhere builds predicates on the columns of product_api_keys. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productAPIKeysWhere struct{}
 
 // ID is id = v.
@@ -3304,7 +3211,7 @@ func (productAPIKeysWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productAPIKeysWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -3331,7 +3238,7 @@ func (productAPIKeysWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productAPIKeysWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -3363,7 +3270,7 @@ func (productAPIKeysWhere) HashedValueIn(vs ...string) postgres.BoolExpression {
 
 // HashedValueContains matches hashed_value that contain term, ignoring case.
 func (productAPIKeysWhere) HashedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.HashedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.HashedValue)
 }
 
 // HashedValueEqualsIgnoreCase is lower(hashed_value) = lower(v).
@@ -3390,7 +3297,7 @@ func (productAPIKeysWhere) ObfuscatedValueIn(vs ...string) postgres.BoolExpressi
 
 // ObfuscatedValueContains matches obfuscated_value that contain term, ignoring case.
 func (productAPIKeysWhere) ObfuscatedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.ObfuscatedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.ObfuscatedValue)
 }
 
 // ObfuscatedValueEqualsIgnoreCase is lower(obfuscated_value) = lower(v).
@@ -3417,7 +3324,7 @@ func (productAPIKeysWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (productAPIKeysWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -3698,8 +3605,9 @@ func (b productPermissionsBase) queryRows(ctx context.Context, stmt postgres.Sta
 }
 
 // productPermissionsWhere builds predicates on the columns of product_permissions. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productPermissionsWhere struct{}
 
 // ProductID is product_id = v.
@@ -3755,7 +3663,7 @@ func (productPermissionsWhere) DescriptionIn(vs ...string) postgres.BoolExpressi
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productPermissionsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductPermissions.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductPermissions.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -3992,8 +3900,9 @@ func (b productUsersBase) queryRows(ctx context.Context, stmt postgres.Statement
 }
 
 // productUsersWhere builds predicates on the columns of product_users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productUsersWhere struct{}
 
 // ID is id = v.
@@ -4049,7 +3958,7 @@ func (productUsersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (productUsersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -4076,7 +3985,7 @@ func (productUsersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productUsersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4108,7 +4017,7 @@ func (productUsersWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (productUsersWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -4362,8 +4271,9 @@ func (b productsBase) queryRows(ctx context.Context, stmt postgres.Statement) tr
 }
 
 // productsWhere builds predicates on the columns of products. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productsWhere struct{}
 
 // ID is id = v.
@@ -4419,7 +4329,7 @@ func (productsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Products.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Products.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4446,7 +4356,7 @@ func (productsWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Products.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Products.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -4700,8 +4610,9 @@ func (b usersBase) queryRows(ctx context.Context, stmt postgres.Statement) trans
 }
 
 // usersWhere builds predicates on the columns of users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type usersWhere struct{}
 
 // ID is id = v.
@@ -4758,7 +4669,7 @@ func (usersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (usersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -4785,7 +4696,7 @@ func (usersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (usersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4815,7 +4726,7 @@ func (usersWhere) HashedPasswordIn(vs ...string) postgres.BoolExpression {
 
 // HashedPasswordContains matches hashed_password that contain term, ignoring case.
 func (usersWhere) HashedPasswordContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.HashedPassword).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.HashedPassword)
 }
 
 // HashedPasswordEqualsIgnoreCase is lower(hashed_password) = lower(v).
@@ -4842,7 +4753,7 @@ func (usersWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (usersWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -4902,10 +4813,4 @@ func (usersWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (usersWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.Users.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }

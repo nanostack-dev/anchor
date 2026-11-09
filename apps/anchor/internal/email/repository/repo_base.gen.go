@@ -8,11 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
@@ -187,8 +187,11 @@ func (b emailSendRecordsBase) queryRows(ctx context.Context, stmt postgres.State
 }
 
 // emailSendRecordsWhere builds predicates on the columns of email_send_records. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on variables_json: compare on b.t.
 type emailSendRecordsWhere struct{}
 
 // ID is id = v.
@@ -327,7 +330,7 @@ func (emailSendRecordsWhere) DedupeKeyIn(vs ...string) postgres.BoolExpression {
 
 // DedupeKeyContains matches dedupe_key that contain term, ignoring case.
 func (emailSendRecordsWhere) DedupeKeyContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.DedupeKey).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.DedupeKey)
 }
 
 // DedupeKeyEqualsIgnoreCase is lower(dedupe_key) = lower(v).
@@ -359,7 +362,7 @@ func (emailSendRecordsWhere) ToAddressIn(vs ...string) postgres.BoolExpression {
 
 // ToAddressContains matches to_address that contain term, ignoring case.
 func (emailSendRecordsWhere) ToAddressContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.ToAddress).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.ToAddress)
 }
 
 // ToAddressEqualsIgnoreCase is lower(to_address) = lower(v).
@@ -386,7 +389,7 @@ func (emailSendRecordsWhere) ToNameIn(vs ...string) postgres.BoolExpression {
 
 // ToNameContains matches to_name that contain term, ignoring case.
 func (emailSendRecordsWhere) ToNameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.ToName).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.ToName)
 }
 
 // ToNameEqualsIgnoreCase is lower(to_name) = lower(v).
@@ -413,7 +416,7 @@ func (emailSendRecordsWhere) FromAddressIn(vs ...string) postgres.BoolExpression
 
 // FromAddressContains matches from_address that contain term, ignoring case.
 func (emailSendRecordsWhere) FromAddressContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.FromAddress).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.FromAddress)
 }
 
 // FromAddressEqualsIgnoreCase is lower(from_address) = lower(v).
@@ -440,7 +443,7 @@ func (emailSendRecordsWhere) FromNameIn(vs ...string) postgres.BoolExpression {
 
 // FromNameContains matches from_name that contain term, ignoring case.
 func (emailSendRecordsWhere) FromNameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.FromName).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.FromName)
 }
 
 // FromNameEqualsIgnoreCase is lower(from_name) = lower(v).
@@ -467,7 +470,7 @@ func (emailSendRecordsWhere) SubjectIn(vs ...string) postgres.BoolExpression {
 
 // SubjectContains matches subject that contain term, ignoring case.
 func (emailSendRecordsWhere) SubjectContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.Subject).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.Subject)
 }
 
 // SubjectEqualsIgnoreCase is lower(subject) = lower(v).
@@ -494,7 +497,7 @@ func (emailSendRecordsWhere) BodyHTMLIn(vs ...string) postgres.BoolExpression {
 
 // BodyHTMLContains matches body_html that contain term, ignoring case.
 func (emailSendRecordsWhere) BodyHTMLContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.BodyHTML).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.BodyHTML)
 }
 
 // BodyHTMLEqualsIgnoreCase is lower(body_html) = lower(v).
@@ -521,39 +524,12 @@ func (emailSendRecordsWhere) BodyTextIn(vs ...string) postgres.BoolExpression {
 
 // BodyTextContains matches body_text that contain term, ignoring case.
 func (emailSendRecordsWhere) BodyTextContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.BodyText).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.BodyText)
 }
 
 // BodyTextEqualsIgnoreCase is lower(body_text) = lower(v).
 func (emailSendRecordsWhere) BodyTextEqualsIgnoreCase(v string) postgres.BoolExpression {
 	return postgres.LOWER(table.EmailSendRecords.BodyText).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// VariablesJSON is variables_json = v.
-func (emailSendRecordsWhere) VariablesJSON(v string) postgres.BoolExpression {
-	return table.EmailSendRecords.VariablesJSON.EQ(postgres.String(v))
-}
-
-// VariablesJSONIn is variables_json IN (vs...); no value matches no row.
-func (emailSendRecordsWhere) VariablesJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.EmailSendRecords.VariablesJSON.IN(exprs...)
-}
-
-// VariablesJSONContains matches variables_json that contain term, ignoring case.
-func (emailSendRecordsWhere) VariablesJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.VariablesJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// VariablesJSONEqualsIgnoreCase is lower(variables_json) = lower(v).
-func (emailSendRecordsWhere) VariablesJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.VariablesJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // MessageID is message_id = v.
@@ -592,7 +568,7 @@ func (emailSendRecordsWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (emailSendRecordsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -619,7 +595,7 @@ func (emailSendRecordsWhere) LastErrorIn(vs ...string) postgres.BoolExpression {
 
 // LastErrorContains matches last_error that contain term, ignoring case.
 func (emailSendRecordsWhere) LastErrorContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailSendRecords.LastError).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailSendRecords.LastError)
 }
 
 // LastErrorEqualsIgnoreCase is lower(last_error) = lower(v).
@@ -888,8 +864,11 @@ func (b emailTemplateVersionsBase) queryRows(ctx context.Context, stmt postgres.
 }
 
 // emailTemplateVersionsWhere builds predicates on the columns of email_template_versions. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on variables_json: compare on b.t.
 type emailTemplateVersionsWhere struct{}
 
 // ID is id = v.
@@ -972,7 +951,7 @@ func (emailTemplateVersionsWhere) SubjectIn(vs ...string) postgres.BoolExpressio
 
 // SubjectContains matches subject that contain term, ignoring case.
 func (emailTemplateVersionsWhere) SubjectContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.Subject).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplateVersions.Subject)
 }
 
 // SubjectEqualsIgnoreCase is lower(subject) = lower(v).
@@ -999,7 +978,7 @@ func (emailTemplateVersionsWhere) BodyHTMLIn(vs ...string) postgres.BoolExpressi
 
 // BodyHTMLContains matches body_html that contain term, ignoring case.
 func (emailTemplateVersionsWhere) BodyHTMLContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.BodyHTML).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplateVersions.BodyHTML)
 }
 
 // BodyHTMLEqualsIgnoreCase is lower(body_html) = lower(v).
@@ -1026,39 +1005,12 @@ func (emailTemplateVersionsWhere) BodyTextIn(vs ...string) postgres.BoolExpressi
 
 // BodyTextContains matches body_text that contain term, ignoring case.
 func (emailTemplateVersionsWhere) BodyTextContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.BodyText).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplateVersions.BodyText)
 }
 
 // BodyTextEqualsIgnoreCase is lower(body_text) = lower(v).
 func (emailTemplateVersionsWhere) BodyTextEqualsIgnoreCase(v string) postgres.BoolExpression {
 	return postgres.LOWER(table.EmailTemplateVersions.BodyText).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// VariablesJSON is variables_json = v.
-func (emailTemplateVersionsWhere) VariablesJSON(v string) postgres.BoolExpression {
-	return table.EmailTemplateVersions.VariablesJSON.EQ(postgres.String(v))
-}
-
-// VariablesJSONIn is variables_json IN (vs...); no value matches no row.
-func (emailTemplateVersionsWhere) VariablesJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.EmailTemplateVersions.VariablesJSON.IN(exprs...)
-}
-
-// VariablesJSONContains matches variables_json that contain term, ignoring case.
-func (emailTemplateVersionsWhere) VariablesJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.VariablesJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// VariablesJSONEqualsIgnoreCase is lower(variables_json) = lower(v).
-func (emailTemplateVersionsWhere) VariablesJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.VariablesJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // Status is status = v.
@@ -1080,7 +1032,7 @@ func (emailTemplateVersionsWhere) StatusIn(vs ...string) postgres.BoolExpression
 
 // StatusContains matches status that contain term, ignoring case.
 func (emailTemplateVersionsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplateVersions.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplateVersions.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -1344,8 +1296,11 @@ func (b emailTemplatesBase) queryRows(ctx context.Context, stmt postgres.Stateme
 }
 
 // emailTemplatesWhere builds predicates on the columns of email_templates. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on example_data: compare on b.t.
 type emailTemplatesWhere struct{}
 
 // ID is id = v.
@@ -1418,7 +1373,7 @@ func (emailTemplatesWhere) SlugIn(vs ...string) postgres.BoolExpression {
 
 // SlugContains matches slug that contain term, ignoring case.
 func (emailTemplatesWhere) SlugContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplates.Slug).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplates.Slug)
 }
 
 // SlugEqualsIgnoreCase is lower(slug) = lower(v).
@@ -1445,7 +1400,7 @@ func (emailTemplatesWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (emailTemplatesWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplates.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplates.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -1472,7 +1427,7 @@ func (emailTemplatesWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (emailTemplatesWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplates.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.EmailTemplates.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -1593,37 +1548,4 @@ func (emailTemplatesWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (emailTemplatesWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.EmailTemplates.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// ExampleData is example_data = v.
-func (emailTemplatesWhere) ExampleData(v string) postgres.BoolExpression {
-	return table.EmailTemplates.ExampleData.EQ(postgres.String(v))
-}
-
-// ExampleDataIn is example_data IN (vs...); no value matches no row.
-func (emailTemplatesWhere) ExampleDataIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.EmailTemplates.ExampleData.IN(exprs...)
-}
-
-// ExampleDataContains matches example_data that contain term, ignoring case.
-func (emailTemplatesWhere) ExampleDataContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplates.ExampleData).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// ExampleDataEqualsIgnoreCase is lower(example_data) = lower(v).
-func (emailTemplatesWhere) ExampleDataEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.EmailTemplates.ExampleData).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }

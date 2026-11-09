@@ -8,11 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
@@ -187,8 +187,9 @@ func (b licenseSchemasBase) queryRows(ctx context.Context, stmt postgres.Stateme
 }
 
 // licenseSchemasWhere builds predicates on the columns of license_schemas. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type licenseSchemasWhere struct{}
 
 // ID is id = v.
@@ -261,7 +262,7 @@ func (licenseSchemasWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (licenseSchemasWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.LicenseSchemas.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.LicenseSchemas.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -321,10 +322,4 @@ func (licenseSchemasWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (licenseSchemasWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.LicenseSchemas.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }

@@ -8,11 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
@@ -187,8 +187,9 @@ func (b resourcesBase) queryRows(ctx context.Context, stmt postgres.Statement) t
 }
 
 // resourcesWhere builds predicates on the columns of resources. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type resourcesWhere struct{}
 
 // ID is id = v.
@@ -295,7 +296,7 @@ func (resourcesWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (resourcesWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Resources.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Resources.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -377,10 +378,4 @@ func (resourcesWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (resourcesWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.Resources.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }
