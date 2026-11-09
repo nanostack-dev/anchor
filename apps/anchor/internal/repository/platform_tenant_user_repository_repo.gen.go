@@ -2,9 +2,38 @@
 
 package repository
 
-// PlatformTenantUserRepository on *platformTenantUserRepositoryImpl: 0 derived methods on table platform_users; the other methods are
+import (
+	"anchor/internal/domain/platform"
+	"context"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
+
+// PlatformTenantUserRepository on *platformTenantUserRepositoryImpl: 3 derived methods on table platform_users; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means PlatformTenantUserRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ PlatformTenantUserRepository = (*platformTenantUserRepositoryImpl)(nil)
+
+// FindByPlatformTenantIDAndID is derived from its name:
+//
+//	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND id = $2 LIMIT 2 -- at most one row: platform_users_pkey (id); a second row is ErrMoreThanOneRow
+func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) (functional.Option[platform.User], error) {
+	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
+}
+
+// FindByPlatformTenantIDAndEmail is derived from its name:
+//
+//	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND email = $2 LIMIT 2 -- at most one row: idx_platform_users_tenant_email (platform_tenant_id, email); a second row is ErrMoreThanOneRow
+func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[platform.User], error) {
+	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.Email(email)))
+}
+
+// DeleteByPlatformTenantIDAndID is derived from its name:
+//
+//	DELETE FROM platform_users WHERE platform_tenant_id = $1 AND id = $2
+func (r *platformTenantUserRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
+	return err
+}

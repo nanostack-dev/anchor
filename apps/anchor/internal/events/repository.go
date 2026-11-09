@@ -10,29 +10,43 @@ import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
+// endpointRepository keeps the model rows: endpointFromModel returns an error,
+// and a nanorepo mapper cannot. DeleteByPlatformTenantIDAndProductID is
+// derived; the other methods are hand-written. DeleteByProductIDInternal
+// deletes across tenants, and such a delete never derives.
+func _() {
+	nanorepo.Implement[EndpointRepository, endpointRepository](
+		table.ProductEventEndpointConfigs, nanorepo.NoMapper[model.ProductEventEndpointConfigs],
+	)
+}
+
 type EndpointRepository interface {
 	FindByProductIDInternal(ctx context.Context, productID string) (functional.Option[Endpoint], error)
 	Upsert(ctx context.Context, endpoint Endpoint) error
-	Delete(ctx context.Context, tenantID, productID string) error
+	DeleteByPlatformTenantIDAndProductID(ctx context.Context, platformTenantID, productID string) error
 	DeleteByProductIDInternal(ctx context.Context, productID string) error
 	// RecordDeliveryResultInternal updates delivery state from the background worker only.
 	RecordDeliveryResultInternal(ctx context.Context, productID, endpointURL string, succeeded bool) error
 }
 
 type endpointRepository struct {
+	productEventEndpointConfigsBase
+
 	db     *sql.DB
 	logger *slog.Logger
 }
 
 func NewEndpointRepository(db *sql.DB, logger *slog.Logger) EndpointRepository {
 	return &endpointRepository{
-		db:     db,
-		logger: logger.With(slog.String("component", "event_endpoint_repository")),
+		productEventEndpointConfigsBase: newProductEventEndpointConfigsBase(db),
+		db:                              db,
+		logger:                          logger.With(slog.String("component", "event_endpoint_repository")),
 	}
 }
 
@@ -108,15 +122,6 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 				),
 			),
 		)
-	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *endpointRepository) Delete(ctx context.Context, tenantID, productID string) error {
-	stmt := table.ProductEventEndpointConfigs.DELETE().WHERE(
-		table.ProductEventEndpointConfigs.ProductID.EQ(postgres.String(productID)).AND(
-			table.ProductEventEndpointConfigs.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	)
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 

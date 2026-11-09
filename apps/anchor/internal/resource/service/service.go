@@ -296,7 +296,7 @@ func (s *service) Delete(
 		); err != nil {
 			return err
 		}
-		if err = s.repo.Delete(txCtx, organizationID, target.RowID); err != nil {
+		if err = s.repo.DeleteByOrganizationIDAndID(txCtx, organizationID, target.RowID); err != nil {
 			return err
 		}
 		for _, node := range subtree {
@@ -380,7 +380,7 @@ func (s *service) holdOrganization(ctx context.Context, productID, organizationI
 }
 
 func (s *service) requireOrganization(ctx context.Context, productID, organizationID string) error {
-	found, err := s.organizations.FindByID(ctx, productID, organizationID)
+	found, err := s.organizations.FindByProductIDAndID(ctx, productID, organizationID)
 	if err != nil {
 		return err
 	}

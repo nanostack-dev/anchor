@@ -115,7 +115,7 @@ func (auth *AuthMiddleware) validateAccessToken(r *http.Request) (*service.AuthC
 		return nil, unauthorized("access token rejected")
 	}
 	// A deleted platform user keeps a signed token until it expires; the token must stop with the user.
-	member, err := auth.members.FindByTenantIDAndUserID(r.Context(), token.TenantID, token.UserID)
+	member, err := auth.members.FindByPlatformTenantIDAndUserID(r.Context(), token.TenantID, token.UserID)
 	if err != nil {
 		return nil, &schemeError{fault: fault.ErrUnexpected, reason: "platform user lookup failed"}
 	}

@@ -23,8 +23,6 @@ import (
 )
 
 // organizationToDomain is the stateless mapper that the generated base calls.
-//
-// organizationToDomain is the stateless mapper that the generated base calls.
 func organizationToDomain(row model.Organizations) organization.Organization {
 	return (&mapper.OrganizationMapper{}).ToDomain(row)
 }
@@ -42,7 +40,7 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 }
 
 type OrganizationRepository interface {
-	FindByID(
+	FindByProductIDAndID(
 		ctx context.Context, productID string, id string,
 	) (functional.Option[organization.Organization], error)
 	Create(ctx context.Context, org organization.Organization) (
@@ -51,7 +49,7 @@ type OrganizationRepository interface {
 	Update(
 		ctx context.Context, productID string, organization organization.Organization,
 	) (organization.Organization, error)
-	DeleteByID(ctx context.Context, productID string, id string) error
+	DeleteByProductIDAndID(ctx context.Context, productID string, id string) error
 	SearchByProductID(
 		ctx context.Context, productID string,
 		input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
@@ -77,25 +75,6 @@ func NewOrganizationRepository(
 		organizationMapper: organizationMapper,
 		logger:             logger.With(slog.String("component", "organization_repository")),
 	}
-}
-
-func (r *organizationRepositoryImpl) FindByID(
-	ctx context.Context, productID string, id string,
-) (functional.Option[organization.Organization], error) {
-	stmt := table.Organizations.SELECT(
-		table.Organizations.AllColumns,
-	).FROM(
-		table.Organizations,
-	).WHERE(
-		table.Organizations.ID.EQ(postgres.String(id)).AND(
-			table.Organizations.ProductID.EQ(postgres.String(productID)),
-		),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt,
-		r.organizationMapper.ToDomain,
-	)
 }
 
 func (r *organizationRepositoryImpl) Create(
@@ -134,18 +113,6 @@ func (r *organizationRepositoryImpl) Update(
 	return transactor.QueryMap(
 		ctx, r.db, updateStmt, r.organizationMapper.ToDomain,
 	).Value()
-}
-
-func (r *organizationRepositoryImpl) DeleteByID(
-	ctx context.Context, productID string, id string,
-) error {
-	stmt := table.Organizations.DELETE().WHERE(
-		table.Organizations.ID.EQ(postgres.String(id)).AND(
-			table.Organizations.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationRepositoryImpl) SearchByProductID(

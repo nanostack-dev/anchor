@@ -621,7 +621,7 @@ func (s *integrationService) DeleteInstance(
 			},
 		)
 
-		return s.instanceRepo.DeleteByID(
+		return s.instanceRepo.DeleteByPlatformTenantIDAndID(
 			txCtx, input.TenantID, input.ID,
 		)
 	})
@@ -1943,7 +1943,7 @@ func (s *integrationService) findDuplicateEvent(
 	instance *integration.Instance,
 	event integration.Event,
 ) (*integration.Event, error) {
-	found, err := s.eventRepo.FindByExternalEventIDInternal(
+	found, err := s.eventRepo.FindByIntegrationInstanceIDAndExternalEventIDInternal(
 		ctx,
 		instance.ID,
 		event.ExternalEventID,

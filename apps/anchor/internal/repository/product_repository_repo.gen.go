@@ -2,9 +2,21 @@
 
 package repository
 
-// ProductRepository on *productRepositoryImpl: 0 derived methods on table products; the other methods are
+import (
+	"context"
+)
+
+// ProductRepository on *productRepositoryImpl: 1 derived method on table products; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means ProductRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ ProductRepository = (*productRepositoryImpl)(nil)
+
+// DeleteByPlatformTenantIDAndID is derived from its name:
+//
+//	DELETE FROM products WHERE platform_tenant_id = $1 AND id = $2
+func (r *productRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
+	return err
+}

@@ -328,7 +328,9 @@ func (s *organizationMembershipService) RemoveMember(
 		); releaseErr != nil {
 			return releaseErr
 		}
-		if delErr := s.orgMembershipRepo.Delete(txCtx, input.OrganizationID, input.ProductUserID); delErr != nil {
+		if delErr := s.orgMembershipRepo.DeleteByOrganizationIDAndProductUserID(
+			txCtx, input.OrganizationID, input.ProductUserID,
+		); delErr != nil {
 			return delErr
 		}
 		return s.emitMembership(
@@ -519,7 +521,7 @@ func (s *organizationMembershipService) ensureOrganizationExists(
 	organizationID string,
 	logger *slog.Logger,
 ) error {
-	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	found, err := s.organizationRepo.FindByProductIDAndID(ctx, productID, organizationID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to verify organization exists",
 			log.Err(err),

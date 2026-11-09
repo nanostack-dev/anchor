@@ -20,8 +20,6 @@ import (
 )
 
 // integrationEventToDomain is the stateless mapper that the generated base calls.
-//
-// integrationEventToDomain is the stateless mapper that the generated base calls.
 func integrationEventToDomain(row model.IntegrationEvents) integration.Event {
 	return (&mapper.IntegrationEventMapper{}).ToDomain(row)
 }
@@ -52,13 +50,13 @@ type IntegrationEventRepository interface {
 	FindByIDInternal(
 		ctx context.Context, id string,
 	) (functional.Option[integration.Event], error)
-	// FindByExternalEventIDInternal looks up an event by instance ID and
-	// external event ID without tenant scoping. Reserved for trusted
-	// system-internal paths (webhook ingress deduplication) where no
-	// authenticated tenant context exists. Must NOT be called from
+	// FindByIntegrationInstanceIDAndExternalEventIDInternal looks up an event
+	// by instance ID and external event ID without tenant scoping. Reserved
+	// for trusted system-internal paths (webhook ingress deduplication) where
+	// no authenticated tenant context exists. Must NOT be called from
 	// tenant-facing API handlers.
-	FindByExternalEventIDInternal(
-		ctx context.Context, instanceID string, externalEventID string,
+	FindByIntegrationInstanceIDAndExternalEventIDInternal(
+		ctx context.Context, integrationInstanceID string, externalEventID string,
 	) (functional.Option[integration.Event], error)
 	// UpdateStatusInternal updates event status by ID without tenant scoping.
 	// Reserved for trusted system-internal paths (async queue workers, webhook
@@ -111,40 +109,6 @@ func (r *integrationEventRepositoryImpl) CreateInternal(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).OnUnique(ErrIntegrationEventExists, integrationEventExternalIDUniqueConstraint).Value()
-}
-
-func (r *integrationEventRepositoryImpl) FindByIDInternal(
-	ctx context.Context, id string,
-) (functional.Option[integration.Event], error) {
-	stmt := table.IntegrationEvents.SELECT(
-		table.IntegrationEvents.AllColumns,
-	).FROM(
-		table.IntegrationEvents,
-	).WHERE(
-		table.IntegrationEvents.ID.EQ(postgres.String(id)),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *integrationEventRepositoryImpl) FindByExternalEventIDInternal(
-	ctx context.Context, instanceID string, externalEventID string,
-) (functional.Option[integration.Event], error) {
-	stmt := table.IntegrationEvents.SELECT(
-		table.IntegrationEvents.AllColumns,
-	).FROM(
-		table.IntegrationEvents,
-	).WHERE(
-		table.IntegrationEvents.IntegrationInstanceID.EQ(postgres.String(instanceID)).AND(
-			table.IntegrationEvents.ExternalEventID.EQ(postgres.String(externalEventID)),
-		),
-	).LIMIT(1)
-
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
 }
 
 func (r *integrationEventRepositoryImpl) UpdateStatusInternal(

@@ -87,7 +87,7 @@ func (s *authService) GetUserByTenantIDAndID(
 ) (*platform.User, error) {
 	logger := s.logger.With(slog.String("operation", "GetUserByTenantIDAndID"))
 
-	found, err := s.platformTenantUserRepo.FindByTenantIDAndUserID(ctx, tenantID, userID)
+	found, err := s.platformTenantUserRepo.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find user by tenant and user ID",
 			slog.String("tenant_id", tenantID),
@@ -208,7 +208,7 @@ func (s *authService) handleInvitation(
 		logger.DebugContext(ctx, "invitation code is empty")
 		return invitation.PlatformInvitation{}, ErrInvitationCodeNotProvided
 	}
-	foundInvitation, err := s.invitationRepo.FindByCodeAndEmail(ctx, code, email)
+	foundInvitation, err := s.invitationRepo.FindByCodeAndEmailInternal(ctx, code, email)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find invitation", slog.String("email", email), log.Err(err))
 		return invitation.PlatformInvitation{}, fmt.Errorf("failed to find invitation: %w", err)
@@ -274,7 +274,7 @@ func (s *authService) Login(
 	}
 
 	// Try to find platform user in the first tenant
-	foundPlatformUser, err := s.platformTenantUserRepo.FindByTenantIDAndEmail(
+	foundPlatformUser, err := s.platformTenantUserRepo.FindByPlatformTenantIDAndEmail(
 		ctx, tenants[0].ID, user.Email,
 	)
 	if err != nil {
