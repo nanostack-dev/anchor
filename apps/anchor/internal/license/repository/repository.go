@@ -157,7 +157,7 @@ type OrganizationLicenseRepository interface {
 	// the license it holds. An Organization holding none is a result with a nil
 	// license, not an absent row.
 	Search(
-		ctx context.Context, in license.SearchOrganizationLicensesInput,
+		ctx context.Context, q OrganizationLicenseSearch,
 	) (search.Result[license.OrganizationLicenseSummary], error)
 	// CountLicensesForTemplate reports how many Organization licenses in this
 	// Product still name the given template. A template delete checks this

@@ -2,10 +2,6 @@ package organizationinvitation
 
 import (
 	"time"
-
-	"anchor/internal/searchx"
-
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateInput struct {
@@ -45,42 +41,6 @@ type AcceptInput struct {
 	ProductUserID  string `validate:"required,notblank"`
 }
 
-type SearchFilter struct {
-	Statuses []Status `validate:"omitempty,dive,oneof=pending accepted expired"`
-	Emails   []string `validate:"omitempty,dive,email"`
-}
-
+// SortField is the sort_by type of the organization invitation searches. The
+// generated searches own the values; this type gives the OpenAPI schema its Go type.
 type SortField string
-
-const (
-	SortFieldCreatedAt SortField = "created_at"
-	SortFieldEmail     SortField = "email"
-	SortFieldExpiresAt SortField = "expires_at"
-)
-
-type SearchInput struct {
-	ProductID      string                                  `validate:"required,notblank"`
-	OrganizationID string                                  `validate:"required,notblank"`
-	Request        search.Request[SearchFilter, SortField] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldCreatedAt,
-		SortFieldEmail,
-		SortFieldExpiresAt)
-}
-
-type SearchInProductInput struct {
-	ProductID string                                  `validate:"required,notblank"`
-	Request   search.Request[SearchFilter, SortField] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchInProductInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldCreatedAt,
-		SortFieldEmail,
-		SortFieldExpiresAt)
-}

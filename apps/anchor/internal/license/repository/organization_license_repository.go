@@ -10,16 +10,117 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
+
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 )
 
-var _ OrganizationLicenseRepository = (*organizationLicenseRepositoryImpl)(nil)
+// The base returns model rows: the repository maps them with the license mapper.
+func _() {
+	nanorepo.Implement[OrganizationLicenseRepository, organizationLicenseRepositoryImpl](
+		table.OrganizationLicenses, nanorepo.NoMapper[model.OrganizationLicenses],
+	)
+
+	// POST /v1/products/{product_id}/licensing/organization-licenses/search: the
+	// Product's customer book. The Organizations are the subject, so the license
+	// joins with LEFT JOIN, and its tenant is the tenant of the Product, stated in
+	// the ON clause: a WHERE on it would drop every Organization that holds no
+	// license. The Product joins to carry the tenant.
+	nanorepo.Search[organizationLicenseRow]("OrganizationLicense", table.Organizations,
+		nanorepo.Map(organizationLicenseRowToDomain),
+		nanorepo.From(organizationsWithTheirLicense),
+		nanorepo.Scope(table.Organizations.ProductID),
+		nanorepo.Scope(table.Products.PlatformTenantID),
+		nanorepo.Filter(table.Organizations.ID, nanorepo.In.API("organization_ids")),
+		nanorepo.Filter(table.OrganizationLicenses.TemplateID, nanorepo.In.API("license_template_ids")),
+		nanorepo.Flag("Licensed", licenseHeld),
+		nanorepo.FullText(table.Organizations.Name),
+		nanorepo.SortKey(table.Organizations.Name).API("organization_name"),
+		nanorepo.SortKey(table.OrganizationLicenses.InstantiatedAt).API("instantiated_at").NullsLast(),
+		nanorepo.DefaultSort(table.Organizations.Name, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
+	)
+}
+
+// organizationLicenseRow is one row of the customer-book search: an Organization
+// left-joined onto the license it holds. Every license column is a pointer
+// because the join keeps the Organizations that hold none.
+type organizationLicenseRow struct {
+	model.Organizations
+	LicenseID               *string    `alias:"organization_licenses.id"`
+	LicensePlatformTenantID *string    `alias:"organization_licenses.platform_tenant_id"`
+	LicenseProductID        *string    `alias:"organization_licenses.product_id"`
+	LicenseOrganizationID   *string    `alias:"organization_licenses.organization_id"`
+	LicenseTemplateID       *string    `alias:"organization_licenses.template_id"`
+	LicenseValuesJSON       *string    `alias:"organization_licenses.values_json"`
+	LicenseInstantiatedAt   *time.Time `alias:"organization_licenses.instantiated_at"`
+	LicenseCreatedAt        *time.Time `alias:"organization_licenses.created_at"`
+	LicenseUpdatedAt        *time.Time `alias:"organization_licenses.updated_at"`
+	LicenseAdjustedFields   *string    `alias:"organization_licenses.adjusted_fields"`
+}
+
+func organizationsWithTheirLicense() postgres.ReadableTable {
+	return table.Organizations.
+		INNER_JOIN(table.Products, table.Products.ID.EQ(table.Organizations.ProductID)).
+		LEFT_JOIN(
+			table.OrganizationLicenses,
+			table.OrganizationLicenses.OrganizationID.EQ(table.Organizations.ID).
+				AND(table.OrganizationLicenses.ProductID.EQ(table.Organizations.ProductID)).
+				AND(table.OrganizationLicenses.PlatformTenantID.EQ(table.Products.PlatformTenantID)),
+		)
+}
+
+// organizationLicenseRowToDomain maps a search row: an Organization with the
+// license it holds, if any.
+func organizationLicenseRowToDomain(row organizationLicenseRow) license.OrganizationLicenseSummary {
+	summary := license.OrganizationLicenseSummary{
+		OrganizationID:   row.Organizations.ID,
+		OrganizationName: row.Organizations.Name,
+	}
+	if row.LicenseID == nil {
+		return summary
+	}
+	held := model.OrganizationLicenses{ID: *row.LicenseID}
+	if row.LicensePlatformTenantID != nil {
+		held.PlatformTenantID = *row.LicensePlatformTenantID
+	}
+	if row.LicenseProductID != nil {
+		held.ProductID = *row.LicenseProductID
+	}
+	if row.LicenseOrganizationID != nil {
+		held.OrganizationID = *row.LicenseOrganizationID
+	}
+	if row.LicenseTemplateID != nil {
+		held.TemplateID = *row.LicenseTemplateID
+	}
+	if row.LicenseValuesJSON != nil {
+		held.ValuesJSON = *row.LicenseValuesJSON
+	}
+	if row.LicenseInstantiatedAt != nil {
+		held.InstantiatedAt = *row.LicenseInstantiatedAt
+	}
+	if row.LicenseCreatedAt != nil {
+		held.CreatedAt = *row.LicenseCreatedAt
+	}
+	if row.LicenseUpdatedAt != nil {
+		held.UpdatedAt = *row.LicenseUpdatedAt
+	}
+	if row.LicenseAdjustedFields != nil {
+		held.AdjustedFields = *row.LicenseAdjustedFields
+	}
+	license := (&mapper.OrganizationLicenseMapper{}).ToDomain(held)
+	summary.License = &license
+	return summary
+}
+
+// licenseHeld is true for an Organization that holds a license.
+func licenseHeld() postgres.BoolExpression {
+	return table.OrganizationLicenses.ID.IS_NOT_NULL()
+}
 
 func organizationLicensesUpdatableColumns() postgres.ColumnList {
 	return table.OrganizationLicenses.AllColumns.Except(
@@ -28,6 +129,8 @@ func organizationLicensesUpdatableColumns() postgres.ColumnList {
 }
 
 type organizationLicenseRepositoryImpl struct {
+	organizationLicensesBase
+
 	db     *sql.DB
 	mapper *mapper.OrganizationLicenseMapper
 	logger *slog.Logger
@@ -37,9 +140,10 @@ func NewOrganizationLicenseRepository(
 	db *sql.DB, m *mapper.OrganizationLicenseMapper, logger *slog.Logger,
 ) OrganizationLicenseRepository {
 	return &organizationLicenseRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "organization_license_repository")),
+		organizationLicensesBase: newOrganizationLicensesBase(db),
+		db:                       db,
+		mapper:                   m,
+		logger:                   logger.With(slog.String("component", "organization_license_repository")),
 	}
 }
 
@@ -203,117 +307,6 @@ func (r *organizationLicenseRepositoryImpl) ListOrganizationIDsForTemplateAfter(
 		ctx, r.db, stmt,
 		func(entity model.OrganizationLicenses) string { return entity.OrganizationID },
 	).Value()
-}
-
-// organizationLicenseJoin left-joins each Organization onto the license it
-// holds. Left, not inner: an Organization that was never licensed is a result
-// with no license, and dropping it would hide exactly the customers an operator
-// is looking for half the time. organization_licenses.organization_id is
-// unique, so the join cannot multiply rows.
-func organizationLicenseJoin(tenantID string) postgres.ReadableTable {
-	return table.Organizations.LEFT_JOIN(
-		table.OrganizationLicenses,
-		table.OrganizationLicenses.OrganizationID.EQ(table.Organizations.ID).
-			AND(table.OrganizationLicenses.ProductID.EQ(table.Organizations.ProductID)).
-			// In the join rather than the WHERE: organizations carries no tenant
-			// column of its own, so this is the only place the scope can be
-			// stated, and moving it to the WHERE would drop every Organization
-			// holding no license.
-			AND(table.OrganizationLicenses.PlatformTenantID.EQ(
-				postgres.String(tenantID),
-			)),
-	)
-}
-
-// licenseHeldFilter narrows to Organizations that hold a license, or to those
-// that hold none. The left join is what makes both expressible from one query.
-func licenseHeldFilter(licensed *bool) postgres.BoolExpression {
-	switch {
-	case licensed == nil:
-		return nil
-	case *licensed:
-		return table.OrganizationLicenses.ID.IS_NOT_NULL()
-	default:
-		return table.OrganizationLicenses.ID.IS_NULL()
-	}
-}
-
-func (r *organizationLicenseRepositoryImpl) Search(
-	ctx context.Context, in license.SearchOrganizationLicensesInput,
-) (search.Result[license.OrganizationLicenseSummary], error) {
-	where := table.Organizations.ProductID.EQ(postgres.String(in.ProductID))
-
-	if filter := in.Request.Filter; filter != nil {
-		if ids := jetx.BuildIDFilter(
-			table.Organizations.ID, filter.OrganizationIDs,
-		); ids != nil {
-			where = where.AND(ids)
-		}
-		if templates := jetx.BuildIDFilter(
-			table.OrganizationLicenses.TemplateID, filter.LicenseTemplateIDs,
-		); templates != nil {
-			where = where.AND(templates)
-		}
-		if held := licenseHeldFilter(filter.Licensed); held != nil {
-			where = where.AND(held)
-		}
-	}
-
-	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		where = where.AND(searchx.Contains(*term, table.Organizations.Name))
-	}
-
-	order, err := organizationLicenseOrder(in.Request.Sort)
-	if err != nil {
-		return search.Result[license.OrganizationLicenseSummary]{}, err
-	}
-
-	return transactor.Page(
-		r.db,
-		r.mapper.SummaryToDomain,
-		table.Organizations.AllColumns,
-		table.OrganizationLicenses.AllColumns,
-	).
-		From(organizationLicenseJoin(in.TenantID)).
-		Where(where).
-		Keyset(order).
-		Run(ctx, in.Request.Pagination).
-		Value()
-}
-
-// organizationLicenseOrder is the keyset ordering of the customer-book search.
-//
-// instantiated_at comes from the outer side of the join, so it is NULL for an
-// Organization holding no license: a nullable key, although the column is NOT
-// NULL in its own table. NullsLast keeps the organizations holding no license
-// after every licensed one in both directions, and the cursor follows that
-// placement. Organizations hold one row each, so the organization id is the
-// tiebreak.
-func organizationLicenseOrder(
-	sorts []search.Sort[license.SortFieldOrganizationLicense],
-) (transactor.Order[mapper.OrganizationLicenseSummaryRow], error) {
-	return transactor.StrictKeys(
-		sorts,
-		map[license.SortFieldOrganizationLicense]transactor.Key[mapper.OrganizationLicenseSummaryRow]{
-			license.SortFieldOrganizationLicenseOrganizationName: transactor.StringKey(
-				table.Organizations.Name,
-				func(row mapper.OrganizationLicenseSummaryRow) string { return row.Organizations.Name },
-			),
-			license.SortFieldOrganizationLicenseInstantiatedAt: transactor.NullableTimeKey(
-				table.OrganizationLicenses.InstantiatedAt,
-				func(row mapper.OrganizationLicenseSummaryRow) *time.Time {
-					if row.License == nil {
-						return nil
-					}
-					return &row.License.InstantiatedAt
-				},
-			).NullsLast(),
-		},
-		transactor.StringKey(
-			table.Organizations.ID,
-			func(row mapper.OrganizationLicenseSummaryRow) string { return row.Organizations.ID },
-		),
-	)
 }
 
 // CountLicensesForTemplate reports how many Organization licenses still name

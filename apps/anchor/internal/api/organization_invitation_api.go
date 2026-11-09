@@ -5,12 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organizationinvitation"
+	invitationrepo "anchor/internal/invitation/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func (s *AnchorAPI) CreateOrganizationInvitation(
@@ -45,11 +48,11 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	result, err := s.OrganizationInvitationService.Search(ctx, organizationinvitation.SearchInput{
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		Request:        mapSearchOrganizationInvitationsRequestToInput(*request.Body),
-	})
+	q, err := organizationInvitationSearch(request.ProductId, request.OrganizationId, *request.Body)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.OrganizationInvitationService.Search(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization invitations",
 			slog.String("product_id", request.ProductId),
@@ -144,10 +147,11 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, organizationinvitation.SearchInProductInput{
-		ProductID: request.ProductId,
-		Request:   mapSearchOrganizationInvitationsRequestToInput(*request.Body),
-	})
+	q, err := productInvitationSearch(request.ProductId, *request.Body)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search product organization invitations",
 			slog.String("product_id", request.ProductId),
@@ -189,25 +193,63 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 	return AcceptOrganizationInvitation200JSONResponse(mapInvitationToResponse(invitation)), nil
 }
 
-func mapSearchOrganizationInvitationsRequestToInput(
-	body SearchOrganizationInvitationsJSONRequestBody,
-) search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField] {
-	var req search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField]
-
-	var filter *organizationinvitation.SearchFilter
-	if body.Filter != nil {
-		filter = &organizationinvitation.SearchFilter{
-			Statuses: functional.FromPtr(body.Filter.Statuses).OrElse(nil),
-			Emails: functional.Slice(functional.FromPtr(body.Filter.Emails).OrElse(nil)).Map(
-				func(email openapi_types.Email) string { return string(email) },
-			),
-		}
+// organizationInvitationSearch builds the search of one organization's
+// invitations from the request body. The scope comes from the route, which the
+// authorization middleware checked against the principal; the body never sets
+// it. full_text_search is accepted and ignored: an invitation has no text column
+// that the contract names.
+func organizationInvitationSearch(
+	productID, organizationID string, body SearchOrganizationInvitationsJSONRequestBody,
+) (invitationrepo.OrganizationInvitationSearch, error) {
+	statuses, emails, err := invitationFilters(body)
+	if err != nil {
+		return invitationrepo.OrganizationInvitationSearch{}, err
 	}
+	q := invitationrepo.NewOrganizationInvitationSearch(
+		invitationrepo.OrganizationInvitationScope{ProductID: productID, OrganizationID: organizationID},
+	)
+	q = searchexec.Some(q, q.Status().In, statuses)
+	q = searchexec.Some(q, q.Email().In, emails)
+	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
+		invitationrepo.OrganizationInvitationSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, body.Pagination), nil
+}
 
-	return req.WithFilter(filter).
-		WithSort(body.SortBy, body.SortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// productInvitationSearch builds the search of every invitation of the product
+// from the request body.
+func productInvitationSearch(
+	productID string, body SearchOrganizationInvitationsJSONRequestBody,
+) (invitationrepo.ProductInvitationSearch, error) {
+	statuses, emails, err := invitationFilters(body)
+	if err != nil {
+		return invitationrepo.ProductInvitationSearch{}, err
+	}
+	q := invitationrepo.NewProductInvitationSearch(productID)
+	q = searchexec.Some(q, q.Status().In, statuses)
+	q = searchexec.Some(q, q.Email().In, emails)
+	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
+		invitationrepo.ProductInvitationSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, body.Pagination), nil
+}
+
+// invitationFilters reads the status and email filters of an invitation search.
+func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]string, []string, error) {
+	var statuses []organizationinvitation.Status
+	var emails []string
+	if body.Filter != nil {
+		statuses = orEmpty(body.Filter.Statuses)
+		emails = functional.Slice(orEmpty(body.Filter.Emails)).Map(
+			func(email openapi_types.Email) string { return string(email) },
+		)
+	}
+	if err := requireOneOf("statuses", statuses,
+		organizationinvitation.StatusPending, organizationinvitation.StatusAccepted,
+		organizationinvitation.StatusExpired); err != nil {
+		return nil, nil, err
+	}
+	return functional.Slice(statuses).Map(func(status organizationinvitation.Status) string {
+		return string(status)
+	}), emails, nil
 }
 
 func mapInvitationToResponse(invitation organizationinvitation.Invitation) OrganizationInvitationResponse {

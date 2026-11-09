@@ -8,16 +8,84 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organizationinvitation"
+
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 )
 
-var _ Repository = (*repositoryImpl)(nil)
+// The base returns model rows: the repository maps them with toDomain.
+func _() {
+	nanorepo.Implement[Repository, repositoryImpl](
+		table.OrganizationInvitations, nanorepo.NoMapper[model.OrganizationInvitations],
+	)
+
+	// POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search.
+	// full_text_search is accepted and ignored: an invitation has no text column
+	// that the contract names. The status of an invitation is never stored: the
+	// Status filter derives it from accepted_at and expires_at at the moment of
+	// the read.
+	nanorepo.Search[model.OrganizationInvitations]("OrganizationInvitation", table.OrganizationInvitations,
+		nanorepo.Map(invitationToDomain),
+		nanorepo.Scope(table.OrganizationInvitations.ProductID),
+		nanorepo.Scope(table.OrganizationInvitations.OrganizationID),
+		nanorepo.FilterExpr("Status", invitationStatus, nanorepo.In),
+		nanorepo.Filter(table.OrganizationInvitations.Email, nanorepo.InFold),
+		nanorepo.Sort(
+			table.OrganizationInvitations.CreatedAt, table.OrganizationInvitations.Email,
+			table.OrganizationInvitations.ExpiresAt,
+		),
+		nanorepo.DefaultSort(table.OrganizationInvitations.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
+	)
+
+	// POST /v1/products/{product_id}/invitations/search: the invitations of every
+	// organization of the product.
+	nanorepo.Search[model.OrganizationInvitations]("ProductInvitation", table.OrganizationInvitations,
+		nanorepo.Map(invitationToDomain),
+		nanorepo.Scope(table.OrganizationInvitations.ProductID),
+		nanorepo.Unscoped(table.OrganizationInvitations.OrganizationID,
+			"the product-wide search reads the invitations of every organization of the product"),
+		nanorepo.FilterExpr("Status", invitationStatus, nanorepo.In),
+		nanorepo.Filter(table.OrganizationInvitations.Email, nanorepo.InFold),
+		nanorepo.Sort(
+			table.OrganizationInvitations.CreatedAt, table.OrganizationInvitations.Email,
+			table.OrganizationInvitations.ExpiresAt,
+		),
+		nanorepo.DefaultSort(table.OrganizationInvitations.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
+	)
+}
+
+// The values of the Status filter: an invitation is accepted once it has an
+// acceptance, expired once its expiry has passed without one, and pending
+// otherwise. It is organizationinvitation.DeriveStatus, evaluated by the
+// database at the moment of the read.
+const (
+	statusPending  = string(organizationinvitation.StatusPending)
+	statusAccepted = string(organizationinvitation.StatusAccepted)
+	statusExpired  = string(organizationinvitation.StatusExpired)
+)
+
+func invitationStatus() postgres.StringExpression {
+	return postgres.StringExp(
+		postgres.CASE().
+			WHEN(table.OrganizationInvitations.AcceptedAt.IS_NOT_NULL()).THEN(postgres.String(statusAccepted)).
+			WHEN(table.OrganizationInvitations.ExpiresAt.LT_EQ(postgres.NOW())).THEN(postgres.String(statusExpired)).
+			ELSE(postgres.String(statusPending)),
+	)
+}
+
+// invitationToDomain is the mapper of a search row: it derives the status at the
+// moment of the read.
+func invitationToDomain(entity model.OrganizationInvitations) organizationinvitation.Invitation {
+	return toDomain(time.Now())(entity)
+}
 
 // ErrRoleGone is returned by Create and UpdateRoleAndExpiry when the role was
 // deleted after the service found it: a role delete holds the role's row FOR
@@ -51,13 +119,13 @@ type Repository interface {
 	// EmailBelongsToMember reports whether a member of the organization has the
 	// email address, compared without regard to letter case.
 	EmailBelongsToMember(ctx context.Context, productID, organizationID, email string) (bool, error)
-	// Search lists the invitations of one organization, or of every
-	// organization of the product when organizationID is absent.
-	Search(
-		ctx context.Context,
-		productID string,
-		organizationID functional.Option[string],
-		req search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField],
+	// SearchInOrganization lists the invitations of one organization.
+	SearchInOrganization(
+		ctx context.Context, q OrganizationInvitationSearch,
+	) (search.Result[organizationinvitation.Invitation], error)
+	// SearchInProduct lists the invitations of every organization of the product.
+	SearchInProduct(
+		ctx context.Context, q ProductInvitationSearch,
 	) (search.Result[organizationinvitation.Invitation], error)
 	UpdateRoleAndExpiry(
 		ctx context.Context, invitation organizationinvitation.Invitation,
@@ -78,14 +146,17 @@ type Repository interface {
 }
 
 type repositoryImpl struct {
+	organizationInvitationsBase
+
 	db     *sql.DB
 	logger *slog.Logger
 }
 
 func NewRepository(db *sql.DB, logger *slog.Logger) Repository {
 	return &repositoryImpl{
-		db:     db,
-		logger: logger.With(slog.String("component", "organization_invitation_repository")),
+		organizationInvitationsBase: newOrganizationInvitationsBase(db),
+		db:                          db,
+		logger:                      logger.With(slog.String("component", "organization_invitation_repository")),
 	}
 }
 
@@ -128,18 +199,6 @@ func expiredAt(now time.Time) postgres.BoolExpression {
 
 func acceptedPredicate() postgres.BoolExpression {
 	return table.OrganizationInvitations.AcceptedAt.IS_NOT_NULL()
-}
-
-func statusPredicate(status organizationinvitation.Status, now time.Time) postgres.BoolExpression {
-	switch status {
-	case organizationinvitation.StatusPending:
-		return pendingAt(now)
-	case organizationinvitation.StatusExpired:
-		return expiredAt(now)
-	case organizationinvitation.StatusAccepted:
-		return acceptedPredicate()
-	}
-	return postgres.Bool(false)
 }
 
 func (r *repositoryImpl) LockOrganization(ctx context.Context, productID, organizationID string) (bool, error) {
@@ -227,75 +286,6 @@ func (r *repositoryImpl) EmailBelongsToMember(
 		return false, err
 	}
 	return found.IsPresent(), nil
-}
-
-func (r *repositoryImpl) Search(
-	ctx context.Context,
-	productID string,
-	organizationID functional.Option[string],
-	req search.Request[organizationinvitation.SearchFilter, organizationinvitation.SortField],
-) (search.Result[organizationinvitation.Invitation], error) {
-	now := time.Now()
-	where := table.OrganizationInvitations.ProductID.EQ(postgres.String(productID))
-	if organizationID.IsPresent() {
-		where = invitationScope(productID, organizationID.Value())
-	}
-
-	if req.Filter != nil && len(req.Filter.Statuses) > 0 {
-		predicates := functional.Slice(req.Filter.Statuses).Map(
-			func(status organizationinvitation.Status) postgres.BoolExpression {
-				return statusPredicate(status, now)
-			},
-		)
-		anyStatus := predicates[0]
-		for _, predicate := range predicates[1:] {
-			anyStatus = anyStatus.OR(predicate)
-		}
-		where = where.AND(anyStatus)
-	}
-
-	if req.Filter != nil && len(req.Filter.Emails) > 0 {
-		emails := functional.Slice(req.Filter.Emails).Map(func(email string) postgres.Expression {
-			return postgres.LOWER(postgres.String(email))
-		})
-		where = where.AND(postgres.LOWER(table.OrganizationInvitations.Email).IN(emails...))
-	}
-
-	order, err := transactor.StrictKeys(
-		req.Sort,
-		map[organizationinvitation.SortField]transactor.Key[model.OrganizationInvitations]{
-			organizationinvitation.SortFieldCreatedAt: transactor.TimeKey(
-				table.OrganizationInvitations.CreatedAt,
-				func(row model.OrganizationInvitations) time.Time { return row.CreatedAt },
-			),
-			organizationinvitation.SortFieldEmail: transactor.StringKey(
-				table.OrganizationInvitations.Email,
-				func(row model.OrganizationInvitations) string { return row.Email },
-			),
-			organizationinvitation.SortFieldExpiresAt: transactor.TimeKey(
-				table.OrganizationInvitations.ExpiresAt,
-				func(row model.OrganizationInvitations) time.Time { return row.ExpiresAt },
-			),
-		},
-		transactor.StringKey(
-			table.OrganizationInvitations.ID,
-			func(row model.OrganizationInvitations) string { return row.ID },
-		),
-	)
-	if err != nil {
-		return search.Result[organizationinvitation.Invitation]{}, err
-	}
-
-	return transactor.Page(
-		r.db,
-		toDomain(now),
-		table.OrganizationInvitations.AllColumns,
-	).
-		From(table.OrganizationInvitations).
-		Where(where).
-		Keyset(order).
-		Run(ctx, req.Pagination).
-		Value()
 }
 
 func (r *repositoryImpl) UpdateRoleAndExpiry(

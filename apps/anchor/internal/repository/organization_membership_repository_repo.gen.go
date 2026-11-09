@@ -3,7 +3,16 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/organization"
+	"anchor/internal/domain/product/user"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // OrganizationMembershipRepository on *organizationMembershipRepositoryImpl: 1 derived method on table organization_memberships; the other methods are
@@ -19,4 +28,135 @@ var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)
 func (r *organizationMembershipRepositoryImpl) DeleteByOrganizationIDAndProductUserID(ctx context.Context, organizationID string, productUserID string) error {
 	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ProductUserID(productUserID)))
 	return err
+}
+
+// SearchByProductUserID runs an UserOrganizationSearch: *organizationMembershipRepositoryImpl has no hand-written SearchByProductUserID.
+func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(ctx context.Context, q UserOrganizationSearch) (search.Result[user.OrganizationMembership], error) {
+	return r.search(ctx, userOrganizationSearch, q.Query, userOrganizationToDomain)
+}
+
+// SearchByOrgID runs an OrganizationMemberSearch: *organizationMembershipRepositoryImpl has no hand-written SearchByOrgID.
+func (r *organizationMembershipRepositoryImpl) SearchByOrgID(ctx context.Context, q OrganizationMemberSearch) (search.Result[organization.Membership], error) {
+	return r.search(ctx, organizationMemberSearch, q.Query, memberToDomain)
+}
+
+// UserOrganizationSearch is an immutable search of organization_memberships. Start one with NewUserOrganizationSearch.
+type UserOrganizationSearch struct {
+	searchexec.Query[userOrganizationRow, UserOrganizationSearch, UserOrganizationSort, UserOrganizationScope]
+}
+
+// UserOrganizationScope is the tenant of an UserOrganizationSearch. A zero field refuses the search.
+type UserOrganizationScope struct {
+	_             struct{} // keyed fields only
+	ProductID     string   // organizations.product_id
+	ProductUserID string   // organization_memberships.product_user_id
+}
+
+// UserOrganizationSort is a sort of UserOrganizationSearch.
+type UserOrganizationSort string
+
+const (
+	UserOrganizationSortJoinedAt UserOrganizationSort = "joined_at"
+	UserOrganizationSortName     UserOrganizationSort = "name"
+)
+
+var userOrganizationSearch = searchexec.DefineSpec(searchexec.SpecDef[userOrganizationRow, UserOrganizationSort, UserOrganizationScope]{
+	From: func(UserOrganizationScope) keyset.Source { return membershipsWithTheirOrganization() },
+	Columns: postgres.ProjectionList{ // the Row is userOrganizationRow
+		table.OrganizationMemberships.AllColumns, table.Organizations.Name,
+		table.Organizations.Description, table.Organizations.MetadataJSON, table.ProductRoles.Name,
+	},
+	Scope: []searchexec.ScopeCol[UserOrganizationScope]{
+		searchexec.ScopeEq(func(s UserOrganizationScope) string { return s.ProductID }, table.Organizations.ProductID),
+		searchexec.ScopeEq(func(s UserOrganizationScope) string { return s.ProductUserID }, table.OrganizationMemberships.ProductUserID),
+	},
+	Keys: map[UserOrganizationSort]keyset.Key[userOrganizationRow]{
+		UserOrganizationSortJoinedAt: keyset.TimeKey(table.OrganizationMemberships.CreatedAt, func(r userOrganizationRow) time.Time { return r.OrganizationMemberships.CreatedAt }),
+		UserOrganizationSortName:     keyset.StringKey(table.Organizations.Name, func(r userOrganizationRow) string { return r.OrganizationName }),
+	},
+	Tiebreak: []keyset.Key[userOrganizationRow]{ // organization_memberships_pkey (organization_id, product_user_id)
+		keyset.StringKey(table.OrganizationMemberships.OrganizationID, func(r userOrganizationRow) string { return r.OrganizationMemberships.OrganizationID }),
+		keyset.StringKey(table.OrganizationMemberships.ProductUserID, func(r userOrganizationRow) string { return r.OrganizationMemberships.ProductUserID }),
+	},
+	Default: searchexec.Asc(UserOrganizationSortJoinedAt),
+	Limit:   10,
+})
+
+// NewUserOrganizationSearch starts an UserOrganizationSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewUserOrganizationSearch(scope UserOrganizationScope) UserOrganizationSearch {
+	return searchexec.New[UserOrganizationSearch](userOrganizationSearch, scope)
+}
+
+// The filters of UserOrganizationSearch: each returns a field of q, whose method returns the filtered copy.
+func (q UserOrganizationSearch) OrganizationID() searchexec.In[UserOrganizationSearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationMemberships.OrganizationID, searchexec.StringLit[string])
+}
+func (q UserOrganizationSearch) ProductRoleID() searchexec.In[UserOrganizationSearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationMemberships.ProductRoleID, searchexec.StringLit[string])
+}
+
+// OrganizationMemberSearch is an immutable search of organization_memberships. Start one with NewOrganizationMemberSearch.
+type OrganizationMemberSearch struct {
+	searchexec.Query[orgMemberRow, OrganizationMemberSearch, OrganizationMemberSort, OrganizationMemberScope]
+}
+
+// OrganizationMemberScope is the tenant of an OrganizationMemberSearch. A zero field refuses the search.
+type OrganizationMemberScope struct {
+	_              struct{} // keyed fields only
+	OrganizationID string   // organization_memberships.organization_id
+	ProductID      string   // product_users.product_id
+}
+
+// OrganizationMemberSort is a sort of OrganizationMemberSearch.
+type OrganizationMemberSort string
+
+const (
+	OrganizationMemberSortJoinedAt OrganizationMemberSort = "joined_at"
+	OrganizationMemberSortEmail    OrganizationMemberSort = "email"
+)
+
+var organizationMemberSearch = searchexec.DefineSpec(searchexec.SpecDef[orgMemberRow, OrganizationMemberSort, OrganizationMemberScope]{
+	From: func(OrganizationMemberScope) keyset.Source { return membershipsWithTheirUser() },
+	Columns: postgres.ProjectionList{ // the Row is orgMemberRow
+		table.OrganizationMemberships.AllColumns, table.ProductUsers.Email, table.ProductUsers.Name,
+		table.ProductUsers.ExternalID, table.ProductRoles.Name,
+	},
+	Scope: []searchexec.ScopeCol[OrganizationMemberScope]{
+		searchexec.ScopeEq(func(s OrganizationMemberScope) string { return s.OrganizationID }, table.OrganizationMemberships.OrganizationID),
+		searchexec.ScopeEq(func(s OrganizationMemberScope) string { return s.ProductID }, table.ProductUsers.ProductID),
+	},
+	Keys: map[OrganizationMemberSort]keyset.Key[orgMemberRow]{
+		OrganizationMemberSortJoinedAt: keyset.TimeKey(table.OrganizationMemberships.CreatedAt, func(r orgMemberRow) time.Time { return r.OrganizationMemberships.CreatedAt }),
+		OrganizationMemberSortEmail:    keyset.StringKey(table.ProductUsers.Email, func(r orgMemberRow) string { return r.UserEmail }),
+	},
+	Tiebreak: []keyset.Key[orgMemberRow]{ // organization_memberships_pkey (organization_id, product_user_id)
+		keyset.StringKey(table.OrganizationMemberships.OrganizationID, func(r orgMemberRow) string { return r.OrganizationMemberships.OrganizationID }),
+		keyset.StringKey(table.OrganizationMemberships.ProductUserID, func(r orgMemberRow) string { return r.OrganizationMemberships.ProductUserID }),
+	},
+	Default: searchexec.Desc(OrganizationMemberSortJoinedAt),
+	Limit:   10,
+})
+
+// NewOrganizationMemberSearch starts an OrganizationMemberSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewOrganizationMemberSearch(scope OrganizationMemberScope) OrganizationMemberSearch {
+	return searchexec.New[OrganizationMemberSearch](organizationMemberSearch, scope)
+}
+
+// The filters of OrganizationMemberSearch: each returns a field of q, whose method returns the filtered copy.
+func (q OrganizationMemberSearch) ProductUserID() searchexec.In[OrganizationMemberSearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationMemberships.ProductUserID, searchexec.StringLit[string])
+}
+func (q OrganizationMemberSearch) ExternalID() searchexec.In[OrganizationMemberSearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.ExternalID, searchexec.StringLit[string])
+}
+func (q OrganizationMemberSearch) Email() searchexec.In[OrganizationMemberSearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.Email, searchexec.StringLit[string])
+}
+func (q OrganizationMemberSearch) ProductRoleID() searchexec.In[OrganizationMemberSearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationMemberships.ProductRoleID, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where email or name contains term (searchexec.Contains). A blank term filters nothing.
+func (q OrganizationMemberSearch) FullText(term string) OrganizationMemberSearch {
+	return searchexec.NewText(q.Query, table.ProductUsers.Email, table.ProductUsers.Name).Contains(term)
 }

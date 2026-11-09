@@ -15,19 +15,119 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 func _() {
 	nanorepo.Implement[OrganizationMembershipRepository, organizationMembershipRepositoryImpl](
 		table.OrganizationMemberships, nanorepo.NoMapper[model.OrganizationMemberships],
 	)
+
+	// POST /v1/products/{product_id}/product-users/{id}/organizations/search. The
+	// membership is covered through its INNER JOIN to the organization (its
+	// organization_id is the key of the organization, which the product scopes);
+	// the role is the membership's own data (product_role_id is the key of the
+	// role). The route names the product user.
+	nanorepo.Search[userOrganizationRow]("UserOrganization", table.OrganizationMemberships,
+		nanorepo.Map(userOrganizationToDomain),
+		nanorepo.From(membershipsWithTheirOrganization),
+		nanorepo.Scope(table.Organizations.ProductID),
+		nanorepo.Scope(table.OrganizationMemberships.ProductUserID),
+		nanorepo.Filter(table.OrganizationMemberships.OrganizationID, nanorepo.In.API("organization_ids")),
+		nanorepo.Filter(table.OrganizationMemberships.ProductRoleID, nanorepo.In.API("role_ids")),
+		nanorepo.SortKey(table.OrganizationMemberships.CreatedAt).API("joined_at"),
+		nanorepo.SortKey(table.Organizations.Name).API("name"),
+		nanorepo.DefaultSort(table.OrganizationMemberships.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
+	)
+
+	// POST /v1/products/{product_id}/organizations/{organization_id}/members/search.
+	// The product user is covered directly by the product; the membership by the
+	// organization; the role is the membership's own data.
+	nanorepo.Search[orgMemberRow]("OrganizationMember", table.OrganizationMemberships,
+		nanorepo.Map(memberToDomain),
+		nanorepo.From(membershipsWithTheirUser),
+		nanorepo.Scope(table.OrganizationMemberships.OrganizationID),
+		nanorepo.Scope(table.ProductUsers.ProductID),
+		nanorepo.Filter(table.OrganizationMemberships.ProductUserID, nanorepo.In),
+		nanorepo.Filter(table.ProductUsers.ExternalID, nanorepo.In),
+		nanorepo.Filter(table.ProductUsers.Email, nanorepo.In),
+		nanorepo.Filter(table.OrganizationMemberships.ProductRoleID, nanorepo.In.API("role_ids")),
+		nanorepo.FullText(table.ProductUsers.Email, table.ProductUsers.Name),
+		nanorepo.SortKey(table.OrganizationMemberships.CreatedAt).API("joined_at"),
+		nanorepo.SortKey(table.ProductUsers.Email).API("email"),
+		nanorepo.DefaultSort(table.OrganizationMemberships.CreatedAt, nanorepo.Desc),
+		nanorepo.DefaultLimit(10),
+	)
+}
+
+// membershipsWithTheirOrganization reads each membership with its organization
+// and, when it holds one, its role.
+func membershipsWithTheirOrganization() postgres.ReadableTable {
+	return table.OrganizationMemberships.
+		INNER_JOIN(
+			table.Organizations,
+			table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
+		).
+		LEFT_JOIN(
+			table.ProductRoles,
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		)
+}
+
+// membershipsWithTheirUser reads each membership with its product user and,
+// when it holds one, its role.
+func membershipsWithTheirUser() postgres.ReadableTable {
+	return table.OrganizationMemberships.
+		INNER_JOIN(
+			table.ProductUsers,
+			table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
+		).
+		LEFT_JOIN(
+			table.ProductRoles,
+			table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
+		)
+}
+
+// userOrganizationToDomain maps a search row. The role permissions of a page
+// load in a second statement (RolePermissionsByRoleID), only when the caller
+// asks for them.
+func userOrganizationToDomain(row userOrganizationRow) user.OrganizationMembership {
+	return user.OrganizationMembership{
+		OrganizationID:           row.OrganizationID,
+		OrganizationName:         row.OrganizationName,
+		OrganizationDescription:  row.OrganizationDescription,
+		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.OrganizationMetadataJSON),
+		Role:                     heldRole(row.OrganizationMemberships, model.ProductRoles{Name: derefString(row.RoleName)}),
+		RolePermissions:          []string{},
+		JoinedAt:                 row.CreatedAt,
+	}
+}
+
+// memberToDomain maps a search row.
+func memberToDomain(row orgMemberRow) organization.Membership {
+	return organization.Membership{
+		OrganizationID:  row.OrganizationID,
+		ProductUserID:   row.ProductUserID,
+		UserEmail:       row.UserEmail,
+		UserName:        derefString(row.UserName),
+		UserExternalID:  row.UserExternalID,
+		Role:            heldRole(row.OrganizationMemberships, model.ProductRoles{Name: derefString(row.RoleName)}),
+		RolePermissions: []string{},
+		JoinedAt:        row.CreatedAt,
+	}
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 // userOrgMembershipRow is the composite struct for scanning the joined query result
@@ -39,13 +139,16 @@ type userOrgMembershipRow struct {
 	Permissions  []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
 }
 
-// userOrgMembershipSearchRow scans one membership per row for the paginated
-// search of a user's organizations. Role permissions load for the page in a
-// second statement, so the row carries no permission slice.
-type userOrgMembershipSearchRow struct {
+// userOrganizationRow is one row of the paginated search of a user's
+// organizations: the membership with the columns of its organization and of its
+// role that the domain type needs. Role permissions load for the page in a
+// second statement, so the row carries none.
+type userOrganizationRow struct {
 	model.OrganizationMemberships
-	Organization model.Organizations `alias:"organizations"`
-	Role         model.ProductRoles  `alias:"product_roles"`
+	OrganizationName         string  `alias:"organizations.name"`
+	OrganizationDescription  *string `alias:"organizations.description"`
+	OrganizationMetadataJSON *string `alias:"organizations.metadata_json"`
+	RoleName                 *string `alias:"product_roles.name"`
 }
 
 // orgMembershipRow is the composite struct for scanning the joined query result
@@ -57,12 +160,16 @@ type orgMembershipRow struct {
 	Permissions []model.ProductRoleResourcePermissions `alias:"product_role_resource_permissions"`
 }
 
-// orgMembershipSearchRow scans one membership per row for the paginated search.
-// It carries no permission slice: a keyset page needs one SQL row per item.
-type orgMembershipSearchRow struct {
+// orgMemberRow is one row of the paginated search of an organization's members:
+// the membership with the columns of its product user and of its role that the
+// domain type needs. A keyset page needs one SQL row per item, so the row carries
+// no permission slice.
+type orgMemberRow struct {
 	model.OrganizationMemberships
-	ProductUser model.ProductUsers `alias:"product_users"`
-	Role        model.ProductRoles `alias:"product_roles"`
+	UserEmail      string  `alias:"product_users.email"`
+	UserName       *string `alias:"product_users.name"`
+	UserExternalID *string `alias:"product_users.external_id"`
+	RoleName       *string `alias:"product_roles.name"`
 }
 
 // OrganizationMembershipRepository provides access to organization memberships.
@@ -80,12 +187,12 @@ type OrganizationMembershipRepository interface {
 	// with a cursor. When includePermissions is true, role permissions are
 	// loaded for the page.
 	SearchByProductUserID(
-		ctx context.Context,
-		productID string,
-		productUserID string,
-		includePermissions bool,
-		req search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization],
+		ctx context.Context, q UserOrganizationSearch,
 	) (search.Result[user.OrganizationMembership], error)
+
+	// RolePermissionsByRoleID reads the permission names of each role, keyed by
+	// role ID. A role that holds none has no entry.
+	RolePermissionsByRoleID(ctx context.Context, roleIDs []string) (map[string][]string, error)
 
 	// FindByProductUserIDAndOrgID returns a specific organization membership for a product user.
 	// When includePermissions is true, role permissions are included.
@@ -118,12 +225,7 @@ type OrganizationMembershipRepository interface {
 
 	// SearchByOrgID returns paginated, filtered members of an organization.
 	// Supports filtering by product_user_ids, external_ids, emails, and role_ids.
-	SearchByOrgID(
-		ctx context.Context,
-		productID string,
-		orgID string,
-		req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
-	) (search.Result[organization.Membership], error)
+	SearchByOrgID(ctx context.Context, q OrganizationMemberSearch) (search.Result[organization.Membership], error)
 
 	// Create adds the member. A nil roleID adds a member who holds no role.
 	Create(
@@ -182,95 +284,15 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserID(
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		r.toDomain,
+		userOrgMembershipToDomain,
 	).Value()
 }
 
-func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
-	ctx context.Context,
-	productID string,
-	productUserID string,
-	includePermissions bool,
-	req search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization],
-) (search.Result[user.OrganizationMembership], error) {
-	whereStmt := table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).AND(
-		table.Organizations.ProductID.EQ(postgres.String(productID)),
-	)
-
-	if req.Filter != nil {
-		if ids := jetx.BuildIDFilter(
-			table.OrganizationMemberships.OrganizationID, req.Filter.OrganizationIDs,
-		); ids != nil {
-			whereStmt = whereStmt.AND(ids)
-		}
-		if roleIDs := jetx.BuildIDFilter(
-			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
-		); roleIDs != nil {
-			whereStmt = whereStmt.AND(roleIDs)
-		}
-	}
-
-	order, err := transactor.StrictKeys(
-		req.Sort,
-		map[user.SortFieldUserOrganization]transactor.Key[userOrgMembershipSearchRow]{
-			user.SortFieldUserOrganizationJoinedAt: transactor.TimeKey(
-				table.OrganizationMemberships.CreatedAt,
-				func(row userOrgMembershipSearchRow) time.Time { return row.OrganizationMemberships.CreatedAt },
-			),
-			user.SortFieldUserOrganizationName: transactor.StringKey(
-				table.Organizations.Name,
-				func(row userOrgMembershipSearchRow) string { return row.Organization.Name },
-			),
-		},
-		transactor.StringKey(
-			table.OrganizationMemberships.OrganizationID,
-			func(row userOrgMembershipSearchRow) string { return row.OrganizationMemberships.OrganizationID },
-		),
-	)
-	if err != nil {
-		return search.Result[user.OrganizationMembership]{}, err
-	}
-
-	result, err := transactor.Page(
-		r.db,
-		func(row userOrgMembershipSearchRow) user.OrganizationMembership {
-			return r.toDomain(userOrgMembershipRow{
-				OrganizationMemberships: row.OrganizationMemberships,
-				Organization:            row.Organization,
-				Role:                    row.Role,
-			})
-		},
-		table.OrganizationMemberships.AllColumns,
-		table.Organizations.AllColumns,
-		table.ProductRoles.AllColumns,
-	).
-		From(
-			table.OrganizationMemberships.
-				INNER_JOIN(
-					table.Organizations,
-					table.OrganizationMemberships.OrganizationID.EQ(table.Organizations.ID),
-				).
-				LEFT_JOIN(
-					table.ProductRoles,
-					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
-				),
-		).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, req.Pagination).
-		Value()
-	if err != nil || !includePermissions || len(result.Items) == 0 {
-		return result, err
-	}
-
-	var roleIDs []string
-	for _, item := range result.Items {
-		if item.Role != nil {
-			roleIDs = append(roleIDs, item.Role.ID)
-		}
-	}
+func (r *organizationMembershipRepositoryImpl) RolePermissionsByRoleID(
+	ctx context.Context, roleIDs []string,
+) (map[string][]string, error) {
 	if len(roleIDs) == 0 {
-		return result, nil
+		return map[string][]string{}, nil
 	}
 	permissions, err := transactor.Query[[]model.ProductRoleResourcePermissions](
 		ctx, r.db,
@@ -279,7 +301,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 		),
 	).Value()
 	if err != nil {
-		return search.Result[user.OrganizationMembership]{}, err
+		return nil, err
 	}
 
 	rolePermissions := map[string][]string{}
@@ -288,13 +310,7 @@ func (r *organizationMembershipRepositoryImpl) SearchByProductUserID(
 			rolePermissions[permission.ProductRoleID], permission.PermissionName,
 		)
 	}
-	for i := range result.Items {
-		if held := result.Items[i].Role; held != nil {
-			result.Items[i].RolePermissions = rolePermissions[held.ID]
-		}
-	}
-
-	return result, nil
+	return rolePermissions, nil
 }
 
 func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
@@ -314,7 +330,7 @@ func (r *organizationMembershipRepositoryImpl) FindByProductUserIDAndOrgID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		r.toDomain,
+		userOrgMembershipToDomain,
 	)
 }
 
@@ -454,7 +470,7 @@ func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions boo
 	).FROM(joinExpr)
 }
 
-func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow) user.OrganizationMembership {
+func userOrgMembershipToDomain(row userOrgMembershipRow) user.OrganizationMembership {
 	permissions := functional.Slice(row.Permissions).Map(
 		func(p model.ProductRoleResourcePermissions) string { return p.PermissionName },
 	)
@@ -471,7 +487,7 @@ func (r *organizationMembershipRepositoryImpl) toDomain(row userOrgMembershipRow
 }
 
 // toDomainMembership maps an orgMembershipRow (org-perspective join) to organization.Membership.
-func (r *organizationMembershipRepositoryImpl) toDomainMembership(row orgMembershipRow) organization.Membership {
+func orgMembershipToDomain(row orgMembershipRow) organization.Membership {
 	permissions := functional.Slice(row.Permissions).Map(
 		func(p model.ProductRoleResourcePermissions) string { return p.PermissionName },
 	)
@@ -540,7 +556,7 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgIDAndUserID(
 
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt,
-		r.toDomainMembership,
+		orgMembershipToDomain,
 	)
 }
 
@@ -558,98 +574,8 @@ func (r *organizationMembershipRepositoryImpl) FindByOrgID(
 
 	return transactor.QueryMapSlice(
 		ctx, r.db, stmt,
-		r.toDomainMembership,
+		orgMembershipToDomain,
 	).Value()
-}
-
-func (r *organizationMembershipRepositoryImpl) SearchByOrgID(
-	ctx context.Context,
-	productID string,
-	orgID string,
-	req search.Request[organization.SearchMembersFilter, organization.SortFieldMember],
-) (search.Result[organization.Membership], error) {
-	whereStmt := table.OrganizationMemberships.OrganizationID.EQ(postgres.String(orgID)).AND(
-		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
-	)
-
-	if req.Filter != nil {
-		if ids := jetx.BuildIDFilter(
-			table.OrganizationMemberships.ProductUserID, req.Filter.ProductUserIDs,
-		); ids != nil {
-			whereStmt = whereStmt.AND(ids)
-		}
-		if extIDs := jetx.BuildIDFilter(
-			table.ProductUsers.ExternalID, req.Filter.ExternalIDs,
-		); extIDs != nil {
-			whereStmt = whereStmt.AND(extIDs)
-		}
-		if emails := jetx.BuildStringArrayFilter(
-			table.ProductUsers.Email, req.Filter.Emails,
-		); emails != nil {
-			whereStmt = whereStmt.AND(emails)
-		}
-		if roleIDs := jetx.BuildIDFilter(
-			table.OrganizationMemberships.ProductRoleID, req.Filter.RoleIDs,
-		); roleIDs != nil {
-			whereStmt = whereStmt.AND(roleIDs)
-		}
-	}
-
-	if req.FullTextSearch != nil && *req.FullTextSearch != "" {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(*req.FullTextSearch, table.ProductUsers.Email, table.ProductUsers.Name),
-		)
-	}
-
-	order, err := transactor.StrictKeys(
-		req.Sort,
-		map[organization.SortFieldMember]transactor.Key[orgMembershipSearchRow]{
-			organization.SortFieldMemberJoinedAt: transactor.TimeKey(
-				table.OrganizationMemberships.CreatedAt,
-				func(row orgMembershipSearchRow) time.Time { return row.OrganizationMemberships.CreatedAt },
-			),
-			organization.SortFieldMemberEmail: transactor.StringKey(
-				table.ProductUsers.Email,
-				func(row orgMembershipSearchRow) string { return row.ProductUser.Email },
-			),
-		},
-		transactor.StringKey(
-			table.OrganizationMemberships.ProductUserID,
-			func(row orgMembershipSearchRow) string { return row.OrganizationMemberships.ProductUserID },
-		),
-	)
-	if err != nil {
-		return search.Result[organization.Membership]{}, err
-	}
-
-	return transactor.Page(
-		r.db,
-		func(row orgMembershipSearchRow) organization.Membership {
-			return r.toDomainMembership(orgMembershipRow{
-				OrganizationMemberships: row.OrganizationMemberships,
-				ProductUser:             row.ProductUser,
-				Role:                    row.Role,
-			})
-		},
-		table.OrganizationMemberships.AllColumns,
-		table.ProductUsers.AllColumns,
-		table.ProductRoles.AllColumns,
-	).
-		From(
-			table.OrganizationMemberships.
-				INNER_JOIN(
-					table.ProductUsers,
-					table.OrganizationMemberships.ProductUserID.EQ(table.ProductUsers.ID),
-				).
-				LEFT_JOIN(
-					table.ProductRoles,
-					table.OrganizationMemberships.ProductRoleID.EQ(table.ProductRoles.ID),
-				),
-		).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, req.Pagination).
-		Value()
 }
 
 // heldRole is the membership's role, or nil for a member who holds none: the

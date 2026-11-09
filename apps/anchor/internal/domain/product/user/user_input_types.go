@@ -1,12 +1,6 @@
 //revive:disable-next-line:var-naming
 package user
 
-import (
-	"github.com/nanostack-dev/nanostack-framework/db/search"
-
-	"anchor/internal/searchx"
-)
-
 type CreateProductUserInput struct {
 	ProductID  string            `validate:"required,notblank"`
 	Email      string            `validate:"required,email"`
@@ -50,34 +44,9 @@ type ListUserOrganizationsInput struct {
 }
 
 // SortFieldUserOrganization names a column a user-organization search may order by.
+// SortFieldUserOrganization is the sort_by type of POST /product-users/{id}/organizations/search.
+// The generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldUserOrganization string
-
-const (
-	SortFieldUserOrganizationJoinedAt SortFieldUserOrganization = "joined_at"
-	SortFieldUserOrganizationName     SortFieldUserOrganization = "name"
-)
-
-// SearchUserOrganizationsFilter narrows the organizations a user belongs to.
-type SearchUserOrganizationsFilter struct {
-	OrganizationIDs []string
-	RoleIDs         []string
-}
-
-// SearchUserOrganizationsInput is the input for searching the organizations a
-// product user belongs to.
-type SearchUserOrganizationsInput struct {
-	ProductID          string `validate:"required,notblank"`
-	ProductUserID      string `validate:"required,notblank"`
-	IncludePermissions bool
-	Request            search.Request[SearchUserOrganizationsFilter, SortFieldUserOrganization] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchUserOrganizationsInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldUserOrganizationJoinedAt,
-		SortFieldUserOrganizationName)
-}
 
 // GetUserOrganizationInput is the input for getting a specific organization a user belongs to.
 type GetUserOrganizationInput struct {

@@ -5,12 +5,13 @@ import (
 	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
-	"anchor/internal/domain/license"
-	"anchor/internal/searchx"
+	licenserepo "anchor/internal/license/repository"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func (s *AnchorAPI) SearchOrganizationLicenses(
@@ -26,11 +27,10 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 		body = &SearchOrganizationLicensesJSONRequestBody{}
 	}
 
-	result, err := s.OrganizationLicenseService.Search(ctx, license.SearchOrganizationLicensesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   mapToSearchOrganizationLicensesRequest(body),
-	})
+	q := organizationLicenseSearch(
+		licenserepo.OrganizationLicenseScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
+	result, err := s.OrganizationLicenseService.Search(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization licenses",
 			slog.String("product_id", request.ProductId),
@@ -46,27 +46,19 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 	}, nil
 }
 
-func mapToSearchOrganizationLicensesRequest(
-	body *SearchOrganizationLicensesJSONRequestBody,
-) search.Request[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f OrganizationLicenseFilter) license.SearchOrganizationLicenseFilter {
-			return license.SearchOrganizationLicenseFilter{
-				OrganizationIDs:    f.OrganizationIds,
-				LicenseTemplateIDs: f.LicenseTemplateIds,
-				Licensed:           f.Licensed,
-			}
-		}).
-		ToPtr()
-
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection,
-		license.SortFieldOrganizationLicenseOrganizationName, search.SortAscending,
-	)
-
-	return search.NewRequest[license.SearchOrganizationLicenseFilter, license.SortFieldOrganizationLicense]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// organizationLicenseSearch builds the search from the request body. The scope
+// comes from the authenticated principal and the route; the body never sets it.
+func organizationLicenseSearch(
+	scope licenserepo.OrganizationLicenseScope, body *SearchOrganizationLicensesJSONRequestBody,
+) licenserepo.OrganizationLicenseSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := licenserepo.NewOrganizationLicenseSearch(scope)
+	q = searchexec.Some(q, q.ID().In, f.OrganizationIds)
+	q = searchexec.Some(q, q.TemplateID().In, f.LicenseTemplateIds)
+	q = searchexec.Opt(q, q.Licensed().Is, f.Licensed)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		licenserepo.OrganizationLicenseSortOrganizationName, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

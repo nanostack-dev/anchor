@@ -8,7 +8,6 @@ import (
 	"anchor/internal/domain/product"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"anchor/internal/repository"
@@ -19,21 +18,18 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-func mapToSearchProductInput(request *SearchProductsRequestObject) search.
-	Request[product.SearchProductFilter, product.SortFieldProduct] {
-	filter := functional.FromPtr(request.Body.Filter).Map(func(f ProductFilter) product.SearchProductFilter {
-		return product.SearchProductFilter{
-			IDs:   f.Ids,
-			Names: f.Names,
-		}
-	}).ToPtr()
-
-	return search.NewRequest[product.SearchProductFilter, product.SortFieldProduct]().
-		WithFilter(filter).
-		WithSort(
-			request.Body.SortBy,
-			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
+// productSearch builds the search from the request body. The tenant scope comes
+// from the authenticated principal; the body never sets it.
+func productSearch(tenantID string, body *SearchProductsJSONRequestBody) repository.ProductSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := repository.NewProductSearch(tenantID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Name().In, f.Names)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.ProductSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func mapProductToResponse(prod product.Product) ProductResponse {
@@ -103,14 +99,7 @@ func (s *AnchorAPI) SearchProducts(
 		return nil, err
 	}
 
-	searchRequest := mapToSearchProductInput(&request)
-
-	input := product.SearchProductInput{
-		TenantID: tenantID,
-		Request:  searchRequest,
-	}
-
-	result, err := s.ProductService.Search(ctx, input)
+	result, err := s.ProductService.Search(ctx, productSearch(tenantID, request.Body))
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search products")
 		return nil, err
@@ -441,12 +430,8 @@ func (s *AnchorAPI) SearchUserOrganizations(
 		body = &SearchUserOrganizationsJSONRequestBody{}
 	}
 
-	result, err := s.ProductUserService.SearchUserOrganizations(ctx, user.SearchUserOrganizationsInput{
-		ProductID:          request.ProductId,
-		ProductUserID:      request.ProductUserId,
-		IncludePermissions: includePermissions,
-		Request:            mapToSearchUserOrganizationsRequest(body),
-	})
+	q := userOrganizationSearch(request.ProductId, request.ProductUserId, body)
+	result, err := s.ProductUserService.SearchUserOrganizations(ctx, q, includePermissions)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search user organizations",
 			slog.String("product_id", request.ProductId),
@@ -466,23 +451,24 @@ func (s *AnchorAPI) SearchUserOrganizations(
 	}, nil
 }
 
-func mapToSearchUserOrganizationsRequest(
-	body *SearchUserOrganizationsJSONRequestBody,
-) search.Request[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f UserOrganizationFilter) user.SearchUserOrganizationsFilter {
-			return user.SearchUserOrganizationsFilter{OrganizationIDs: f.OrganizationIds, RoleIDs: f.RoleIds}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, user.SortFieldUserOrganizationJoinedAt, search.SortAscending,
-	)
-
-	return search.NewRequest[user.SearchUserOrganizationsFilter, user.SortFieldUserOrganization]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// userOrganizationSearch builds the search from the request body. The product
+// scope comes from the route, which the authorization middleware checked against
+// the principal, and the route names the product user; the body never sets
+// them. full_text_search is accepted and ignored: a membership has no text
+// column that the contract names.
+func userOrganizationSearch(
+	productID, productUserID string, body *SearchUserOrganizationsJSONRequestBody,
+) repository.UserOrganizationSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := repository.NewUserOrganizationSearch(repository.UserOrganizationScope{
+		ProductID: productID, ProductUserID: productUserID,
+	})
+	q = searchexec.Some(q, q.OrganizationID().In, f.OrganizationIds)
+	q = searchexec.Some(q, q.ProductRoleID().In, f.RoleIds)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.UserOrganizationSortJoinedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) GetUserOrganization(
