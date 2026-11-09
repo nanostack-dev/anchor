@@ -97,7 +97,7 @@ async function writeMetadata(metadata, path = metadataPath) {
 	await rename(temporaryPath, path);
 }
 
-async function sourceFingerprint() {
+export async function sourceFingerprint() {
 	const hash = createHash("sha256");
 	hash.update(`${process.platform}/${process.arch}`);
 	hash.update(

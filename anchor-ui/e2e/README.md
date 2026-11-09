@@ -80,6 +80,44 @@ the full suite without secrets and uploads results plus failure screenshots.
 Reports, traces and generated credentials remain ignored; UI mode records local
 diagnostic traces, so keep its server on loopback and recordings out of commits.
 
+## Managed test preflight
+
+`pnpm test:e2e:preflight` checks prerequisites for a fresh managed run;
+`pnpm test:e2e:preflight --reuse` verifies an already running owned preview.
+Add `--ui` to check the interactive UI port too. Run these from the frontend
+directory. The command emits a JSON `READY` or `BLOCKED` report with a stable
+reason, corrective action and elapsed time; blocked checks exit nonzero.
+`coverage: prerequisites_only` means no application scenarios have run.
+
+The gate checks Node 24, a compatible pnpm version from `package.json`, the
+backend Go toolchain from `go.mod`, loadable Playwright/Vite dependencies,
+Docker/Compose, and preview port ownership. A blank headless Chromium is briefly
+launched to verify the browser installation and its system dependencies. Each
+tool/browser probe has a five-second limit. Prepare an unavailable Go toolchain
+with `go version` in the backend module before retrying. Dependencies and browsers
+are installed explicitly through the setup commands above.
+
+A fresh check requires no running application and refuses occupied preview ports,
+existing runtime metadata or a pending startup. Reuse additionally requires the
+owned backend to be active, backend/toolchain and frontend fingerprints to match,
+and the preview identity and readiness endpoint to agree with that runtime.
+Failures leave services and unrelated listeners untouched. Stop a runtime through
+its owning manager; use the existing owned cleanup and `verify-stopped` procedure
+for an interrupted launch. Rebuild the managed preview after source changes.
+
+Application and responsive-review commands enforce the gate before Playwright
+execution. Complete verification and affected-run commands require fresh checks;
+the interactive launcher verifies either a fresh start or an existing owned
+preview, then retains its normal ownership checks. Direct
+`node scripts/serve-e2e-full.mjs` startup is gated too. Set
+`E2E_REUSE_SERVER=1` for app/review iteration only when that preview is already
+ready; reuse no longer falls back silently to a fresh launch. Help, print-config,
+selection planning and Playwright `--list` remain available without a Docker
+runtime. `test:e2e:status` remains an informational diagnostic report, not a
+readiness gate. Storybook, motion, deployed smoke and legacy test commands retain
+their separate prerequisites. Full final verification and its zero-retry/completion rules remain
+required.
+
 ## Login and Products smoke
 
 This suite covers the public browser boundary: guest access protection, real

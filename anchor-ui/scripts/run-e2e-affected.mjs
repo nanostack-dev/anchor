@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { verifyCompletion } from "./e2e-completion.mjs";
 import { planFromGit } from "./e2e-impact.mjs";
+import { assertPreflight } from "./e2e-preflight.mjs";
 import { statusRuntime } from "./e2e-runtime.mjs";
 
 const cwd = path.resolve(import.meta.dirname, "..");
@@ -75,6 +76,7 @@ async function main(args) {
 		);
 		return;
 	}
+	if (!list) await assertPreflight({ mode: "fresh" });
 	if (!list && (await statusRuntime()))
 		throw new Error(
 			"An Anchor E2E runtime already exists. Stop its owner before a fresh verification; it has been left running.",
