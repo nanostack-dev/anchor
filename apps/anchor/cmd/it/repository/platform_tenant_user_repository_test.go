@@ -152,8 +152,7 @@ func TestPlatformTenantUserRepositoryRefusesASecondRowForTheSameTenantAndUser(t 
 	}
 	second.GenerateID()
 	_, err := repoCtx.PlatformTenantUserRepository.Create(ctx, second)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "idx_platform_users_tenant_user")
+	require.ErrorContains(t, err, "idx_platform_users_tenant_user")
 
 	got, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
 	require.NoError(t, err)
