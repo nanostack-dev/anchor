@@ -71,7 +71,7 @@ if [[ ! -f $module_dir/$tool_modfile ]]; then
 fi
 version="$(sed -nE 's#^[[:space:]]*github\.com/golangci/golangci-lint/v2 (v[^ ]+).*$#\1#p' "$module_dir/$tool_modfile")"
 if [[ ! $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  printf 'Expected one exact github.com/golangci/golangci-lint/v2 version such as v2.14.0 in %s\n' "$module_dir/$tool_modfile" >> "$log_file"
+  printf 'Expected one exact github.com/golangci/golangci-lint/v2 version such as v2.15.0 in %s\n' "$module_dir/$tool_modfile" >> "$log_file"
   report 2 setup_error
 fi
 tool_version() {
