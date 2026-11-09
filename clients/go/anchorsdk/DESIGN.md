@@ -106,7 +106,7 @@ Judgment calls made without a human in the loop, flagged here rather than silent
 ## Verify
 
 ```
-cd clients/go && go build ./... && go test ./... && golangci-lint run --path-mode=abs --timeout 5m --fix
+cd clients/go && go build ./... && go test ./... && GOWORK=off go tool -modfile=../../apps/anchor/tools/golangci-lint/go.mod golangci-lint run --path-mode=abs --timeout 15m --fix
 ```
 
 Done when build succeeds, tests pass, and lint exits 0.

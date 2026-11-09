@@ -10,5 +10,4 @@ goImage = "golang:1.27.3-bookworm"
 playwrightImage = "mcr.microsoft.com/playwright:v1.60.0-noble"
 pnpmVersion = "11.1.0"
 goVersion = "1.27.3"
-# Same release as .golangci-lint-version.
-golangciLintVersion = "2.14.0"
+# golangci-lint is pinned in apps/anchor/tools/golangci-lint/go.mod.

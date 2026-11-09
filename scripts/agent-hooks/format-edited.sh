@@ -6,14 +6,10 @@ file="$(printf '%s' "$input" | python3 -c 'import json,sys; print(json.load(sys.
 root="$(git -C "$(dirname "$file")" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [[ -f $file && -f $root/scripts/lint.sh ]] || exit 0
 format_go() {
-  local version bin module="$root/apps/anchor"
-  version="$(cat "$root/.golangci-lint-version")"
-  bin="${ANCHOR_TOOL_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/anchor}/golangci-lint/$version/golangci-lint"
-  if [[ ! -x $bin ]]; then
-    bin="$(command -v golangci-lint)" || return 0
-    # Only the pinned version formats; scripts/lint.sh installs it otherwise.
-    "$bin" version 2>/dev/null | grep -q "version ${version#v} " || return 0
-  fi
+  local bin module="$root/apps/anchor"
+  # Only the linter pinned in the tool module formats, as scripts/lint.sh runs it.
+  bin="$(cd "$root/apps/anchor" && GOWORK=off go tool -modfile=tools/golangci-lint/go.mod -n golangci-lint 2>/dev/null)" || return 0
+  [[ -x $bin ]] || return 0
   [[ $file == "$root"/clients/go/* ]] && module="$root/clients/go"
   (cd "$module" && "$bin" fmt --config "$root/.golangci.yml" "$file") > /dev/null 2>&1
 }

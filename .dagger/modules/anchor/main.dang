@@ -27,23 +27,16 @@ type Anchor {
   """
   pub goVersion: String!
 
-  """
-  golangci-lint release, as in .golangci-lint-version (without the v).
-  """
-  pub golangciLintVersion: String!
-
   new(
     goImage: String! = "golang:1.27.3-bookworm",
     playwrightImage: String! = "mcr.microsoft.com/playwright:v1.60.0-noble",
     pnpmVersion: String! = "11.1.0",
     goVersion: String! = "1.27.3",
-    golangciLintVersion: String! = "2.14.0",
   ) {
     self.goImage = goImage
     self.playwrightImage = playwrightImage
     self.pnpmVersion = pnpmVersion
     self.goVersion = goVersion
-    self.golangciLintVersion = golangciLintVersion
     self
   }
 
@@ -107,17 +100,20 @@ type Anchor {
   """
   lint(ws: Workspace!): Void @check {
     container
-      # The released binary on the Go toolchain go.mod pins, as CI ran it
-      # before (golangci-lint-action on setup-go).
       .from(goImage)
-      .withExec(["sh", "-c", "curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v" + golangciLintVersion + "/golangci-lint-" + golangciLintVersion + "-linux-$(go env GOARCH).tar.gz | tar -xz -C /usr/local --strip-components=1 --wildcards '*/golangci-lint' && mv /usr/local/golangci-lint /usr/local/bin/"])
       .withMountedCache("/go/pkg/mod", cacheVolume("go-mod"))
       .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
       .withDirectory("/repo", source(ws))
       .withWorkdir("/repo/apps/anchor")
-      # Module downloads stay outside golangci-lint's own 5 m timeout.
+      # Module downloads stay outside golangci-lint's own timeout.
       .withExec(["go", "mod", "download"])
-      .withExec(["golangci-lint", "run", "--config", "../../.golangci.yml", "--timeout", "5m", "--path-mode=abs", "./..."])
+      # The linter pinned in the tool module, built as local runs build it
+      # (scripts/lint.sh). The first call builds it, outside the lint timeout,
+      # and prints the version.
+      .withExec(["go", "tool", "-modfile=tools/golangci-lint/go.mod", "golangci-lint", "version"])
+      # 15 m: the 5 m budget timed out on 4 vCPU runners (5m18s and 9m14s
+      # runs) when a ruleguard rule made a cold lint take 353 s.
+      .withExec(["go", "tool", "-modfile=tools/golangci-lint/go.mod", "golangci-lint", "run", "--config", "../../.golangci.yml", "--path-mode=abs", "--timeout", "15m", "--allow-serial-runners", "./..."])
       .sync
     null
   }
@@ -151,6 +147,7 @@ type Anchor {
     container
       .from("python:3.13-bookworm")
       .withDirectory("/repo", source(ws))
+      .withDirectory("/repo", ws.directory("/", include: [".dagger/modules/anchor/main.dang"]))
       .withWorkdir("/repo")
       .withExec(["python3", "scripts/test_lint.py"])
       .sync

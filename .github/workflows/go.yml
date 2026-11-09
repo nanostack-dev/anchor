@@ -13,7 +13,6 @@ on:
       - 'apps/anchor/**/application.yaml'
       - 'apps/anchor/*codegen*.yaml'
       - '.golangci.yml'
-      - '.golangci-lint-version'
       - 'scripts/lint.sh'
       - 'scripts/test_lint.py'
       - 'lint-fix.sh'
@@ -83,7 +82,6 @@ jobs:
         apps/anchor/**/application.yaml
         apps/anchor/*codegen*.yaml
         .golangci.yml
-        .golangci-lint-version
         scripts/lint.sh
         scripts/test_lint.py
         lint-fix.sh

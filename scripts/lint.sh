@@ -62,47 +62,36 @@ report() {
   exit "$exit_code"
 }
 
-pin_file="$root_dir/.golangci-lint-version"
-if [[ ! -f $pin_file ]]; then
-  printf 'Missing version pin: %s\n' "$pin_file" >> "$log_file"
+# The tool module pins the linter: local runs, the edit hook and CI build the
+# same golangci-lint from it with `go tool`.
+tool_modfile="tools/golangci-lint/go.mod"
+if [[ ! -f $module_dir/$tool_modfile ]]; then
+  printf 'Missing tool module: %s\n' "$module_dir/$tool_modfile" >> "$log_file"
   report 2 setup_error
 fi
-version="$(cat "$pin_file")"
+version="$(sed -nE 's#^[[:space:]]*github\.com/golangci/golangci-lint/v2 (v[^ ]+).*$#\1#p' "$module_dir/$tool_modfile")"
 if [[ ! $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  printf 'Expected an exact version such as v2.14.0 in %s\n' "$pin_file" >> "$log_file"
+  printf 'Expected one exact github.com/golangci/golangci-lint/v2 version such as v2.14.0 in %s\n' "$module_dir/$tool_modfile" >> "$log_file"
   report 2 setup_error
 fi
 tool_version() {
   "$1" version 2>> "$log_file" | sed -nE 's/^golangci-lint has version ([^ ]+).*/\1/p' || true
 }
-cache_bin="${ANCHOR_TOOL_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/anchor}/golangci-lint/$version/golangci-lint"
-install_hint="go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$version"
-lint_bin=""
-installed_version=""
-# The pinned cache wins over PATH, so a stale global binary never runs.
-if [[ -x $cache_bin ]]; then
-  lint_bin="$cache_bin"
-elif path_bin="$(command -v golangci-lint)"; then
-  installed_version="$(tool_version "$path_bin")"
-  if [[ ${installed_version#v} == "${version#v}" ]]; then lint_bin="$path_bin"; fi
-fi
-if [[ -z $lint_bin ]] && command -v go > /dev/null; then
-  printf 'Installing golangci-lint %s into %s\n' "$version" "$(dirname "$cache_bin")" >> "$log_file"
-  if (cd "$module_dir" && GOBIN="$(dirname "$cache_bin")" go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$version") >> "$log_file" 2>&1; then
-    lint_bin="$cache_bin"
-  fi
-fi
-if [[ -z $lint_bin && -z $installed_version ]]; then
-  printf 'Install the pinned tool: %s\n' "$install_hint" >> "$log_file"
+install_hint="cd apps/anchor && go tool -modfile=$tool_modfile golangci-lint version"
+if ! command -v go > /dev/null; then
+  printf 'Install Go, then build the pinned tool: %s\n' "$install_hint" >> "$log_file"
   report 2 tool_missing
 fi
-if [[ -z $lint_bin ]]; then
-  printf 'Expected %s, found %s. Install: %s\n' "$version" "$installed_version" "$install_hint" >> "$log_file"
-  report 2 version_mismatch
+# `go tool -n` builds the pinned linter into the build cache and prints its
+# path. GOWORK=off: -modfile refuses workspace mode, and a stray go.work must
+# not change the linter's dependencies.
+if ! lint_bin="$(cd "$module_dir" && GOWORK=off go tool -modfile="$tool_modfile" -n golangci-lint 2>> "$log_file")" || [[ ! -x $lint_bin ]]; then
+  printf 'Could not build the pinned tool: %s\n' "$install_hint" >> "$log_file"
+  report 2 tool_missing
 fi
-if [[ $lint_bin == "$cache_bin" ]]; then installed_version="$(tool_version "$lint_bin")"; fi
+installed_version="$(tool_version "$lint_bin")"
 if [[ ${installed_version#v} != "${version#v}" ]]; then
-  printf 'Expected %s, found %s in %s. Install: %s\n' "$version" "${installed_version:-unknown}" "$lint_bin" "$install_hint" >> "$log_file"
+  printf 'Expected %s, found %s in %s\n' "$version" "${installed_version:-unknown}" "$lint_bin" >> "$log_file"
   report 2 version_mismatch
 fi
 
@@ -157,7 +146,7 @@ select_changes() {
   fi
   while IFS= read -r -d '' path; do
     case "$path" in
-      .golangci.*|.golangci-lint-version|go.mod|go.sum|go.work|go.work.sum|scripts/*|lint-fix.sh|Makefile|.github/workflows/*)
+      .golangci.*|go.mod|go.sum|go.work|go.work.sum|scripts/*|lint-fix.sh|Makefile|.github/workflows/*)
         use_full_scope validation_inputs_changed; return ;;
       clients/go/*.go|clients/go/go.mod|clients/go/go.sum)
         use_full_scope local_dependency_changed; return ;;
@@ -212,7 +201,7 @@ if [[ $action == format ]]; then
   set -- fmt --config "$config" --color=never
   if [[ $mode == check ]]; then set -- "$@" --diff; fi
 else
-  set -- run --config "$config" --path-mode=abs --timeout 5m
+  set -- run --config "$config" --path-mode=abs --timeout 15m --allow-serial-runners
   if [[ $mode == fix ]]; then set -- "$@" --fix; fi
 fi
 set -- "$@" "${targets[@]}"

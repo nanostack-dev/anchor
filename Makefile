@@ -1,4 +1,4 @@
-.PHONY: generate-client contract-test contract-update contract-bench
+.PHONY: generate-client contract-test contract-update contract-bench lint lint-fix
 
 generate-client:
 	@echo "Generating Anchor Go client..."
@@ -20,3 +20,11 @@ contract-update:
 
 contract-bench:
 	cd apps/anchor && go test -tags contract -run '^$$' -bench . -benchmem -count=10 -timeout 60m ./cmd/it/contract/
+
+# Full backend lint with the golangci-lint pinned in
+# apps/anchor/tools/golangci-lint/go.mod (built by `go tool`, as CI runs it).
+lint:
+	./scripts/lint.sh backend
+
+lint-fix:
+	./scripts/lint.sh backend --fix
