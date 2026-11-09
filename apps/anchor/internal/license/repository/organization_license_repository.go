@@ -42,7 +42,7 @@ func _() {
 		nanorepo.SortKey(table.Organizations.Name).API("organization_name"),
 		nanorepo.SortKey(table.OrganizationLicenses.InstantiatedAt).API("instantiated_at").NullsLast(),
 		nanorepo.DefaultSort(table.Organizations.Name, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

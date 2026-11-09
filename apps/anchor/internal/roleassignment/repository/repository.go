@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/db/gen/anchor/public/model"

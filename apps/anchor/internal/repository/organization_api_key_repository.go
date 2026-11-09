@@ -101,7 +101,7 @@ func _() {
 			table.OrganizationAPIKeys.Status, table.OrganizationAPIKeys.LastUsedAt,
 		),
 		nanorepo.DefaultSort(table.OrganizationAPIKeys.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

@@ -41,7 +41,7 @@ func _() {
 			table.PlatformInvitations.CreatedAt, table.PlatformInvitations.UpdatedAt, table.PlatformInvitations.Email,
 		),
 		nanorepo.DefaultSort(table.PlatformInvitations.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
@@ -67,7 +67,10 @@ type InvitationRepository interface {
 	DeleteByTenantIDAndID(
 		ctx context.Context, tenantID string, code string,
 	) error
-	SearchByTenantID(ctx context.Context, q PlatformInvitationSearch) (search.Result[invitation.PlatformInvitation], error)
+	SearchByTenantID(
+		ctx context.Context,
+		q PlatformInvitationSearch,
+	) (search.Result[invitation.PlatformInvitation], error)
 }
 
 type invitationRepositoryImpl struct {

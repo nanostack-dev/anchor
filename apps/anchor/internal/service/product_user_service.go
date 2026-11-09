@@ -368,8 +368,8 @@ func (s *productUserService) SearchUserOrganizations(
 		return search.Result[user.OrganizationMembership]{}, err
 	}
 	if includePermissions {
-		if err := s.attachRolePermissions(ctx, result.Items); err != nil {
-			return search.Result[user.OrganizationMembership]{}, err
+		if attachErr := s.attachRolePermissions(ctx, result.Items); attachErr != nil {
+			return search.Result[user.OrganizationMembership]{}, attachErr
 		}
 	}
 

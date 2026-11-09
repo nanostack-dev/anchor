@@ -42,7 +42,7 @@ func _() {
 			table.IntegrationAuditLogs.Severity,
 		),
 		nanorepo.DefaultSort(table.IntegrationAuditLogs.CreatedAt, nanorepo.Desc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

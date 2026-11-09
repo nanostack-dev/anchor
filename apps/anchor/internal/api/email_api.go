@@ -76,7 +76,8 @@ func (s *AnchorAPI) ListEmailTemplates(
 	scope := emailrepo.EmailTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}
 	templates, err := legacyListPage(limit, offset,
 		func(pagination search.Pagination) (search.Result[email.Template], error) {
-			q := emailrepo.NewEmailTemplateSearch(scope).SortBy(emailrepo.EmailTemplateSortCreatedAt, search.SortDescending)
+			q := emailrepo.NewEmailTemplateSearch(scope).
+				SortBy(emailrepo.EmailTemplateSortCreatedAt, search.SortDescending)
 			return s.EmailService.SearchTemplates(ctx, searchexec.APIPage(q.Query, &pagination))
 		})
 	if err != nil {
@@ -103,12 +104,9 @@ func (s *AnchorAPI) SearchEmailTemplates(
 		body = &SearchEmailTemplatesJSONRequestBody{}
 	}
 
-	q, err := emailTemplateSearch(
+	q := emailTemplateSearch(
 		emailrepo.EmailTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
 	)
-	if err != nil {
-		return nil, err
-	}
 	result, err := s.EmailService.SearchTemplates(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search email templates",
@@ -129,7 +127,7 @@ func (s *AnchorAPI) SearchEmailTemplates(
 // from the authenticated principal and the route; the body never sets it.
 func emailTemplateSearch(
 	scope emailrepo.EmailTemplateScope, body *SearchEmailTemplatesJSONRequestBody,
-) (emailrepo.EmailTemplateSearch, error) {
+) emailrepo.EmailTemplateSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	q := emailrepo.NewEmailTemplateSearch(scope)
@@ -140,7 +138,7 @@ func emailTemplateSearch(
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		emailrepo.EmailTemplateSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) GetEmailTemplate(
@@ -456,6 +454,7 @@ func (s *AnchorAPI) ListEmailSends(
 	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: int(records.Total)}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchEmailSends(
 	ctx context.Context, request SearchEmailSendsRequestObject,
 ) (SearchEmailSendsResponseObject, error) {

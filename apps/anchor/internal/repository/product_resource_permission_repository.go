@@ -42,7 +42,7 @@ func _() {
 			table.ProductResourcePermissions.Name,
 		),
 		nanorepo.DefaultSort(table.ProductResourcePermissions.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

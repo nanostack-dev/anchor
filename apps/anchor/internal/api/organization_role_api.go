@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/domain/product/role"
 )

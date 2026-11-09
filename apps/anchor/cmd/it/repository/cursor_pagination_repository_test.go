@@ -3,7 +3,6 @@ package repository_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/stretchr/testify/assert"
@@ -14,8 +13,6 @@ const (
 	cursorFixtureRows = 7
 	cursorPageLimit   = 3
 )
-
-var cursorTiedAt = time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
 // walkByCursor follows NextCursor from the first page to the last and returns
 // every id once in the order the pages came in, with the number of pages.

@@ -42,7 +42,7 @@ func _() {
 			table.ProductUsers.Name, table.ProductUsers.Status,
 		),
 		nanorepo.DefaultSort(table.ProductUsers.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
@@ -305,4 +305,3 @@ func (r *productUserRepositoryImpl) optional(
 	}
 	return functional.Some(mapped), nil
 }
-

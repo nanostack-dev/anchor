@@ -105,6 +105,7 @@ func (s *AnchorAPI) ListLicenseTemplates(
 	}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchLicenseTemplates(
 	ctx context.Context, request SearchLicenseTemplatesRequestObject,
 ) (SearchLicenseTemplatesResponseObject, error) {

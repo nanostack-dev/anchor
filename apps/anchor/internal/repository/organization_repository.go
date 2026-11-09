@@ -8,8 +8,8 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -39,7 +39,7 @@ func _() {
 		nanorepo.FullText(table.Organizations.Name),
 		nanorepo.Sort(table.Organizations.Name, table.Organizations.CreatedAt, table.Organizations.UpdatedAt),
 		nanorepo.DefaultSort(table.Organizations.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

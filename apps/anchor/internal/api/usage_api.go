@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/security"
@@ -27,10 +27,10 @@ import (
 // consumer parses one error format for the whole body.
 func errUsageValueMissing() *fault.Error {
 	return fault.NewWithDetails([]fault.Detail{{
-		Code:     "VALIDATION_ERROR",
+		Code:     validationErrorCode,
 		Message:  "A usage report must carry a value",
-		Field:    "value",
-		Metadata: map[string]any{"rule": "required"},
+		Field:    metaValue,
+		Metadata: map[string]any{metaRule: "required"},
 	}}, http.StatusBadRequest)
 }
 

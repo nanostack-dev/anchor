@@ -36,7 +36,7 @@ func _() {
 			table.LicenseTemplates.CreatedAt, table.LicenseTemplates.UpdatedAt,
 		),
 		nanorepo.DefaultSort(table.LicenseTemplates.Name, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

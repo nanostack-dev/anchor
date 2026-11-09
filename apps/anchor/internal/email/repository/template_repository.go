@@ -37,7 +37,7 @@ func _() {
 			table.EmailTemplates.Name, table.EmailTemplates.Slug,
 		),
 		nanorepo.DefaultSort(table.EmailTemplates.CreatedAt, nanorepo.Desc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

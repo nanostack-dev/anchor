@@ -10,8 +10,8 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/stretchr/testify/assert"
 
 	"anchor/internal/applog"

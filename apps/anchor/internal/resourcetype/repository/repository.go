@@ -62,7 +62,10 @@ type DeletedInvitation struct {
 // The base returns model rows: a resource type is read with its parent slugs,
 // which the search maps one page at a time.
 func _() {
-	nanorepo.Implement[Repository, repositoryImpl](table.ProductResourceTypes, nanorepo.NoMapper[model.ProductResourceTypes])
+	nanorepo.Implement[Repository, repositoryImpl](
+		table.ProductResourceTypes,
+		nanorepo.NoMapper[model.ProductResourceTypes],
+	)
 
 	// POST /v1/products/{product_id}/resource-types/search
 	nanorepo.Search[model.ProductResourceTypes]("ResourceType", table.ProductResourceTypes,
@@ -76,7 +79,7 @@ func _() {
 			table.ProductResourceTypes.Slug, table.ProductResourceTypes.Name,
 		),
 		nanorepo.DefaultSort(table.ProductResourceTypes.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

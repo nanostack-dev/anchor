@@ -43,7 +43,7 @@ func _() {
 		nanorepo.SortKey(table.OrganizationMemberships.CreatedAt).API("joined_at"),
 		nanorepo.SortKey(table.Organizations.Name).API("name"),
 		nanorepo.DefaultSort(table.OrganizationMemberships.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 
 	// POST /v1/products/{product_id}/organizations/{organization_id}/members/search.
@@ -62,7 +62,7 @@ func _() {
 		nanorepo.SortKey(table.OrganizationMemberships.CreatedAt).API("joined_at"),
 		nanorepo.SortKey(table.ProductUsers.Email).API("email"),
 		nanorepo.DefaultSort(table.OrganizationMemberships.CreatedAt, nanorepo.Desc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
@@ -103,9 +103,12 @@ func userOrganizationToDomain(row userOrganizationRow) user.OrganizationMembersh
 		OrganizationName:         row.OrganizationName,
 		OrganizationDescription:  row.OrganizationDescription,
 		OrganizationMetadataJSON: mapper.MetadataJSONToDomain(row.OrganizationMetadataJSON),
-		Role:                     heldRole(row.OrganizationMemberships, model.ProductRoles{Name: derefString(row.RoleName)}),
-		RolePermissions:          []string{},
-		JoinedAt:                 row.CreatedAt,
+		Role: heldRole(
+			row.OrganizationMemberships,
+			model.ProductRoles{Name: derefString(row.RoleName)},
+		),
+		RolePermissions: []string{},
+		JoinedAt:        row.CreatedAt,
 	}
 }
 

@@ -3,7 +3,6 @@ package repository_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 
@@ -39,19 +38,4 @@ func createResourcePermissionFull(
 	require.NoError(t, err)
 
 	return created
-}
-
-// backdateResourcePermission overwrites created_at/updated_at directly in
-// the DB. Create() lets Postgres default these columns, so ordering tests
-// need explicit, well-separated timestamps to be deterministic.
-func backdateResourcePermission(
-	t *testing.T, productID, name string, createdAt, updatedAt time.Time,
-) {
-	t.Helper()
-
-	_, err := repoCtx.DB.Exec(
-		`UPDATE product_resource_permissions SET created_at = $1, updated_at = $2 WHERE product_id = $3 AND name = $4`,
-		createdAt, updatedAt, productID, name,
-	)
-	require.NoError(t, err)
 }

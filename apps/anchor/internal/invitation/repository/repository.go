@@ -41,7 +41,7 @@ func _() {
 			table.OrganizationInvitations.ExpiresAt,
 		),
 		nanorepo.DefaultSort(table.OrganizationInvitations.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 
 	// POST /v1/products/{product_id}/invitations/search: the invitations of every
@@ -58,7 +58,7 @@ func _() {
 			table.OrganizationInvitations.ExpiresAt,
 		),
 		nanorepo.DefaultSort(table.OrganizationInvitations.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
@@ -190,15 +190,6 @@ func toDomain(now time.Time) func(model.OrganizationInvitations) organizationinv
 func pendingAt(now time.Time) postgres.BoolExpression {
 	return table.OrganizationInvitations.AcceptedAt.IS_NULL().
 		AND(table.OrganizationInvitations.ExpiresAt.GT(postgres.TimestampzT(now)))
-}
-
-func expiredAt(now time.Time) postgres.BoolExpression {
-	return table.OrganizationInvitations.AcceptedAt.IS_NULL().
-		AND(table.OrganizationInvitations.ExpiresAt.LT_EQ(postgres.TimestampzT(now)))
-}
-
-func acceptedPredicate() postgres.BoolExpression {
-	return table.OrganizationInvitations.AcceptedAt.IS_NOT_NULL()
 }
 
 func (r *repositoryImpl) LockOrganization(ctx context.Context, productID, organizationID string) (bool, error) {

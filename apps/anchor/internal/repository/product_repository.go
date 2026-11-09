@@ -39,7 +39,7 @@ func _() {
 		nanorepo.FullText(table.Products.Name, table.Products.Description),
 		nanorepo.Sort(table.Products.Name, table.Products.CreatedAt, table.Products.UpdatedAt),
 		nanorepo.DefaultSort(table.Products.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

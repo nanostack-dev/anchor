@@ -36,7 +36,7 @@ func _() {
 			nanorepo.Range("changed_after", "changed_before").HalfOpen()),
 		nanorepo.Sort(table.OrganizationLicenseChanges.ChangedAt),
 		nanorepo.DefaultSort(table.OrganizationLicenseChanges.ChangedAt, nanorepo.Desc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

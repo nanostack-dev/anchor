@@ -16,10 +16,10 @@ const roleIDField = "role_id"
 func requiredRoleID(field nullable.Nullable[string]) (*string, error) {
 	if !field.IsSpecified() {
 		return nil, fault.NewWithDetails([]fault.Detail{{
-			Code:     "VALIDATION_ERROR",
+			Code:     validationErrorCode,
 			Message:  "role_id is a required field; send null for no role",
 			Field:    roleIDField,
-			Metadata: map[string]any{"rule": "required"},
+			Metadata: map[string]any{metaRule: "required"},
 		}}, http.StatusBadRequest)
 	}
 	if field.IsNull() {

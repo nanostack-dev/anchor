@@ -8,6 +8,12 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 )
 
+const (
+	validationErrorCode = "VALIDATION_ERROR"
+	metaRule            = "rule"
+	metaValue           = "value"
+)
+
 // requireOneOf refuses a filter value outside the closed set the contract
 // names. The request body of a search is not checked against the OpenAPI
 // enums, and a generated builder takes any value of a named type, so an
@@ -22,13 +28,13 @@ func requireOneOf[T ~string](field string, values []T, allowed ...T) error {
 			names[i] = string(name)
 		}
 		return fault.NewWithDetails([]fault.Detail{{
-			Code:    "VALIDATION_ERROR",
+			Code:    validationErrorCode,
 			Message: field + " must be one of: " + strings.Join(names, ", "),
 			Metadata: map[string]any{
-				"field": field,
-				"rule":  "oneof",
-				"param": strings.Join(names, " "),
-				"value": string(value),
+				"field":   field,
+				metaRule:  "oneof",
+				"param":   strings.Join(names, " "),
+				metaValue: string(value),
 			},
 		}}, http.StatusBadRequest)
 	}
@@ -53,7 +59,7 @@ func requireNotBlank(field string, terms []string) error {
 			continue
 		}
 		return fault.NewWithDetails([]fault.Detail{{
-			Code:    "VALIDATION_ERROR",
+			Code:    validationErrorCode,
 			Message: field + " must not contain a blank term",
 			Metadata: map[string]any{
 				"field": field,

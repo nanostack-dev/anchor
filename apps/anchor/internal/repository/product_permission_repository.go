@@ -77,7 +77,7 @@ func _() {
 		nanorepo.SortKey(table.ProductPermissions.Name).API("name", "id", "resource"),
 		nanorepo.Sort(table.ProductPermissions.CreatedAt),
 		nanorepo.DefaultSort(table.ProductPermissions.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

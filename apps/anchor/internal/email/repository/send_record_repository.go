@@ -30,7 +30,7 @@ func _() {
 		nanorepo.FilterAs[email.SendStatus](table.EmailSendRecords.Status, nanorepo.In),
 		nanorepo.Sort(table.EmailSendRecords.CreatedAt, table.EmailSendRecords.Status),
 		nanorepo.DefaultSort(table.EmailSendRecords.CreatedAt, nanorepo.Desc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 

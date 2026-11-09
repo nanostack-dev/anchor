@@ -44,7 +44,7 @@ func _() {
 			table.PlatformUsers.Email, table.PlatformUsers.Role,
 		),
 		nanorepo.DefaultSort(table.PlatformUsers.CreatedAt, nanorepo.Asc),
-		nanorepo.DefaultLimit(10),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
