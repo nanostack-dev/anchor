@@ -77,16 +77,20 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
   The implementation embeds the generated base of the table (`platformTenantsBase`) and sets it with `newPlatformTenantsBase(db)`.
 - The mapper has no state and cannot fail. Write it as a function, such as `tenantToDomain`, which calls `(&mapper.TenantMapper{}).ToDomain(row)`. Do not use a package variable: lint refuses it (`gochecknoglobals`).
 - Use `nanorepo.NoMapper[model.X]` when the mapper has state or can fail. `ProductUserRepository` uses it because `ProductUserMapper.ToDomain` returns `(user.ProductUser, error)`. `IntegrationInstanceRepository` uses it because `IntegrationInstanceMapper` holds a cipher and a logger. With `NoMapper`, the base returns model rows, so a find that returns a domain type does not derive. `DeleteBy`, `ExistsBy` and `Count` methods still derive.
-- A derived name says every column that it filters on, joined by `And`. On a scoped table, the scope column comes first: `platform_tenant_id`, `product_id` or `organization_id` (`Postgres.Scopes` in `apps/anchor/nanogen/project.go`). Example: `GetByOrganizationIDAndName` on `organization_api_keys`. `OrganizationRepository.FindByID` does not derive, because `organizations` is scoped by `product_id` and the name does not filter on it first.
+- A derived name says every column that it filters on, joined by `And`. On a scoped table, the scope column comes first: `platform_tenant_id`, `product_id` or `organization_id` (`Postgres.Scopes` in `apps/anchor/nanogen/project.go`). Example: `FindByPlatformTenantIDAndProductIDAndSlug` on `email_templates` (`internal/email/repository`). `OrganizationRepository.FindByID` does not derive, because `organizations` is scoped by `product_id` and the name does not filter on it first.
 - The `Internal` suffix lets only a read derive without a scope column, for example `FindAllInternal` or `CountInternal`. `-explain` and the generated comment mark that read `UNSCOPED`. The rule under [Invariants](#invariants) still applies: each method that bypasses tenant scope has the suffix, a doc comment, and no caller in a tenant-facing handler.
 - A delete across tenants never derives, also with the `Internal` suffix. Write it by hand, so that review sees it, and give it the suffix. Example: `events.EndpointRepository.DeleteByProductIDInternal` in `internal/events/repository.go`.
-- A find that returns one row derives only when its columns cover the primary key or a unique key. It reads `LIMIT 2` and returns `transactor.ErrMoreThanOneRow` when two rows match. A hand-written `LIMIT 1` on columns that are not unique can return a different row on each call. Replace it with `r.first` and an order that ends on a unique column. `platform_users` has no unique key on `(platform_tenant_id, user_id)`, so `PlatformTenantUserRepository.FindByTenantIDAndUserID` becomes:
+- A find that returns one row derives only when its columns cover the primary key or a unique key. It reads `LIMIT 2` and returns `transactor.ErrMoreThanOneRow` when two rows match. A hand-written `LIMIT 1` on columns that are not unique can return a different row on each call. Replace it with `r.first` and an order that ends on a unique column. `platform_users` has no unique key on `(platform_tenant_id, user_id)`, so `PlatformTenantUserRepository.FindByTenantIDAndUserID` is renamed `FindByPlatformTenantIDAndUserID` and stays hand-written:
 
   ```go
-  return r.first(ctx,
-  	r.where.PlatformTenantID(tenantID).AND(r.where.UserID(userID)),
-  	r.t.CreatedAt.ASC(), r.t.ID.ASC(),
-  )
+  func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(
+  	ctx context.Context, tenantID string, userID string,
+  ) (functional.Option[platform.User], error) {
+  	return r.first(ctx,
+  		r.where.PlatformTenantID(tenantID).AND(r.where.UserID(userID)),
+  		r.t.CreatedAt.ASC(), r.t.ID.ASC(),
+  	)
+  }
   ```
 
 - Before you write a body, run the repo step with `-explain` from `apps/anchor`. Pass the scope columns of `nanogen/project.go`, because the single step does not read them:
@@ -96,7 +100,7 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
     -scopes platform_tenant_id,product_id,organization_id -explain UserRepository
   ```
 
-  It prints how each method resolves. When a note says that the name also derives, delete the hand-written body:
+  It prints how each method resolves. When a note says that the name also derives, compare the SQL in the note with the body. Delete the body only when both run the same query: the same filter, order and joins. A derived `FindAll` or slice find has no `ORDER BY`, so a body that orders its rows stays. Example: `TenantRepository.FindAll` stays hand-written, because login reads `tenants[0]` (`internal/service/auth_service.go`). The note on `FindByEmail` shows the same query as its body, so that body goes:
 
   ```text
   FindByEmail  hand-written user_repository.go:61
@@ -104,9 +108,10 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
   ```
 
   When a note says that the name would not derive, it gives the reason. Fix the name, or keep the body on the base helpers (`r.findOne`, `r.first`, `r.findAll`, `r.where`).
+- Do not give the implementation a method with the name of a base helper: `findOne`, `first`, `findAll`, `exists`, `count`, `deleteWhere`, `updateWhere`, `page`, `query*` or `exec*`. Your method hides the helper. Derived methods then call your method, and their SQL comment no longer shows the query that runs. `organizationAPIKeyRepository` and `productAPIKeyRepository` do this today: their `findOne` adds a join on the permissions table. Rename that helper (for example `findOneWithPermissions`) before a method of those repositories derives.
 - A hand-written method that uses the base (`r.t`, `r.where` or a helper) on a scoped table with no predicate on a scope column gets a warning from `nano gen`, unless its name ends in `Internal`. Add the scope predicate. Do not ignore the warning: it does not fail the run.
 - After you add, remove or rename a method, run `go tool nano gen` from `apps/anchor`. CI runs `go tool nano gen -check -fresh`, which fails on a stale `<file>_repo.gen.go`.
-- In review, read the SQL comment of each derived method in `<file>_repo.gen.go`. In `repo_base.gen.go`, read only the predicate list (the `<table>Where` methods) of each table that the change binds. The generator writes the rest of that file in the same way for each table.
+- In review, read the SQL comment of each derived method in `<file>_repo.gen.go`, and check that the implementation hides no base helper. In `repo_base.gen.go`, read only the predicate list (the `<table>Where` methods) of each table that the change binds. The generator writes the rest of that file in the same way for each table.
 
 ## Pull requests
 
