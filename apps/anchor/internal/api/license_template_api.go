@@ -5,12 +5,14 @@ import (
 	"log/slog"
 
 	"anchor/internal/domain/license"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	licenserepo "anchor/internal/license/repository"
+
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 // ---------------------------------------------------------------------------
@@ -116,11 +118,13 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 		body = &SearchLicenseTemplatesJSONRequestBody{}
 	}
 
-	result, err := s.LicenseTemplateService.SearchTemplates(ctx, license.SearchTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   mapToSearchLicenseTemplatesRequest(body),
-	})
+	q, err := licenseTemplateSearch(
+		licenserepo.LicenseTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.LicenseTemplateService.SearchTemplates(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search license templates",
 			slog.String("product_id", request.ProductId),
@@ -136,23 +140,22 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 	}, nil
 }
 
-func mapToSearchLicenseTemplatesRequest(
-	body *SearchLicenseTemplatesJSONRequestBody,
-) search.Request[license.SearchTemplatesFilter, license.SortFieldTemplate] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f LicenseTemplateFilter) license.SearchTemplatesFilter {
-			return license.SearchTemplatesFilter{Statuses: f.Statuses}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, license.SortFieldTemplateName, search.SortAscending,
-	)
-
-	return search.NewRequest[license.SearchTemplatesFilter, license.SortFieldTemplate]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// licenseTemplateSearch builds the search from the request body. The scope
+// comes from the authenticated principal and the route; the body never sets it.
+func licenseTemplateSearch(
+	scope licenserepo.LicenseTemplateScope, body *SearchLicenseTemplatesJSONRequestBody,
+) (licenserepo.LicenseTemplateSearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	if err := requireOneOf("statuses", f.Statuses, license.TemplateActive, license.TemplateArchived); err != nil {
+		return licenserepo.LicenseTemplateSearch{}, err
+	}
+	q := licenserepo.NewLicenseTemplateSearch(scope)
+	q = searchexec.Some(q, q.Status().In, f.Statuses)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		licenserepo.LicenseTemplateSortName, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }
 
 func (s *AnchorAPI) UpdateLicenseTemplate(

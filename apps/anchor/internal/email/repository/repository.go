@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/email"
 )
@@ -25,9 +25,7 @@ type TemplateRepository interface {
 	FindByPlatformTenantIDAndProductIDAndSlug(
 		ctx context.Context, platformTenantID string, productID string, slug string,
 	) (functional.Option[email.Template], error)
-	Search(
-		ctx context.Context, in email.SearchTemplatesInput,
-	) (search.Result[email.Template], error)
+	Search(ctx context.Context, q EmailTemplateSearch) (search.Result[email.Template], error)
 	Create(
 		ctx context.Context, template email.Template,
 	) (email.Template, error)
@@ -116,9 +114,7 @@ type SendRecordRepository interface {
 	FindByPlatformTenantIDAndProductIDAndDedupeKey(
 		ctx context.Context, platformTenantID string, productID string, dedupeKey string,
 	) (functional.Option[email.SendRecord], error)
-	Search(
-		ctx context.Context, input email.SearchSendsInput,
-	) (search.Result[email.SendRecord], error)
+	Search(ctx context.Context, q EmailSendSearch) (search.Result[email.SendRecord], error)
 	// CountSince returns the number of sends for a product and tenant since
 	// the given timestamp.
 	CountSince(

@@ -12,7 +12,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

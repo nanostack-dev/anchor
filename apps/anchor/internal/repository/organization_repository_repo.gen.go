@@ -3,9 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"context"
+	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
@@ -29,4 +35,59 @@ func (r *organizationRepositoryImpl) FindByProductIDAndID(ctx context.Context, p
 func (r *organizationRepositoryImpl) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 	return err
+}
+
+// SearchByProductID runs an OrganizationSearch: *organizationRepositoryImpl has no hand-written SearchByProductID.
+func (r *organizationRepositoryImpl) SearchByProductID(ctx context.Context, q OrganizationSearch) (search.Result[organization.Organization], error) {
+	return r.search(ctx, organizationSearch, q.Query, organizationToDomain)
+}
+
+// OrganizationSearch is an immutable search of organizations. Start one with NewOrganizationSearch.
+type OrganizationSearch struct {
+	searchexec.Query[model.Organizations, OrganizationSearch, OrganizationSort, string]
+}
+
+// OrganizationSort is a sort of OrganizationSearch.
+type OrganizationSort string
+
+const (
+	OrganizationSortName      OrganizationSort = "name"
+	OrganizationSortCreatedAt OrganizationSort = "created_at"
+	OrganizationSortUpdatedAt OrganizationSort = "updated_at"
+)
+
+var organizationSearch = searchexec.DefineSpec(searchexec.SpecDef[model.Organizations, OrganizationSort, string]{
+	From:    func(string) keyset.Source { return table.Organizations },
+	Columns: table.Organizations.AllColumns, // the Row is model.Organizations
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.Organizations.ProductID),
+	},
+	Keys: map[OrganizationSort]keyset.Key[model.Organizations]{
+		OrganizationSortName:      keyset.StringKey(table.Organizations.Name, func(r model.Organizations) string { return r.Name }),
+		OrganizationSortCreatedAt: keyset.TimeKey(table.Organizations.CreatedAt, func(r model.Organizations) time.Time { return r.CreatedAt }),
+		OrganizationSortUpdatedAt: keyset.TimeKey(table.Organizations.UpdatedAt, func(r model.Organizations) time.Time { return r.UpdatedAt }),
+	},
+	Tiebreak: []keyset.Key[model.Organizations]{ // organizations_pkey (id)
+		keyset.StringKey(table.Organizations.ID, func(r model.Organizations) string { return r.ID }),
+	},
+	Default: searchexec.Asc(OrganizationSortCreatedAt),
+	Limit:   10,
+})
+
+// NewOrganizationSearch starts an OrganizationSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewOrganizationSearch(productID string) OrganizationSearch {
+	return searchexec.New[OrganizationSearch](organizationSearch, productID)
+}
+
+// The filters of OrganizationSearch: each returns a field of q, whose method returns the filtered copy.
+func (q OrganizationSearch) ID() searchexec.In[OrganizationSearch, string] {
+	return searchexec.NewIn(q.Query, table.Organizations.ID, searchexec.StringLit[string])
+}
+func (q OrganizationSearch) Name() searchexec.In[OrganizationSearch, string] {
+	return searchexec.NewIn(q.Query, table.Organizations.Name, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where name contains term (searchexec.Contains). A blank term filters nothing.
+func (q OrganizationSearch) FullText(term string) OrganizationSearch {
+	return searchexec.NewText(q.Query, table.Organizations.Name).Contains(term)
 }

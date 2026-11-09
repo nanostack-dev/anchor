@@ -21,6 +21,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -177,6 +178,21 @@ func (b integrationEventsBase) execAffected(ctx context.Context, stmt postgres.S
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b integrationEventsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b integrationEventsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b integrationEventsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one integration_events row, such as an INSERT or
@@ -577,6 +593,21 @@ func (b integrationInstancesBase) execAffected(ctx context.Context, stmt postgre
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b integrationInstancesBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b integrationInstancesBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b integrationInstancesBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one integration_instances row, such as an INSERT or
@@ -1021,6 +1052,21 @@ func (b organizationAPIKeysBase) execAffected(ctx context.Context, stmt postgres
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b organizationAPIKeysBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationAPIKeysBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationAPIKeysBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one organization_api_keys row, such as an INSERT or
@@ -1490,6 +1536,21 @@ func (b organizationMembershipsBase) page[T, R any](mapFunc func(T) R, columns .
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationMembershipsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationMembershipsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one organization_memberships row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b organizationMembershipsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.OrganizationMemberships] {
@@ -1773,6 +1834,21 @@ func (b organizationsBase) execAffected(ctx context.Context, stmt postgres.State
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b organizationsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one organizations row, such as an INSERT or
@@ -2104,6 +2180,21 @@ func (b platformInvitationsBase) page[T, R any](mapFunc func(T) R, columns ...po
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformInvitationsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformInvitationsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one platform_invitations row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with invitationToDomain.
 func (b platformInvitationsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[invitation.PlatformInvitation] {
@@ -2421,6 +2512,21 @@ func (b platformTenantsBase) page[T, R any](mapFunc func(T) R, columns ...postgr
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformTenantsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformTenantsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one platform_tenants row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with tenantToDomain.
 func (b platformTenantsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[tenant.PlatformTenant] {
@@ -2719,6 +2825,21 @@ func (b platformUsersBase) execAffected(ctx context.Context, stmt postgres.State
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b platformUsersBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformUsersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformUsersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one platform_users row, such as an INSERT or
@@ -3134,6 +3255,21 @@ func (b productAPIKeysBase) execAffected(ctx context.Context, stmt postgres.Stat
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b productAPIKeysBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productAPIKeysBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productAPIKeysBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one product_api_keys row, such as an INSERT or
@@ -3588,6 +3724,21 @@ func (b productPermissionsBase) page[T, R any](mapFunc func(T) R, columns ...pos
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productPermissionsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productPermissionsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one product_permissions row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with productPermissionToDomain.
 func (b productPermissionsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[permission.ProductPermission] {
@@ -3881,6 +4032,21 @@ func (b productUsersBase) execAffected(ctx context.Context, stmt postgres.Statem
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b productUsersBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productUsersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productUsersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one product_users row, such as an INSERT or
@@ -4254,6 +4420,21 @@ func (b productsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Proj
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one products row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b productsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.Products] {
@@ -4591,6 +4772,21 @@ func (b usersBase) execAffected(ctx context.Context, stmt postgres.Statement) tr
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b usersBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b usersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b usersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one users row, such as an INSERT or

@@ -388,7 +388,7 @@ components:
             non-zero `offset`. An invalid cursor answers 400 INVALID_CURSOR.
       x-go-type: search.Pagination
       x-go-type-import:
-        path: github.com/nanostack-dev/nanostack-framework/pkg/search
+        path: github.com/nanostack-dev/nanostack-framework/db/search
     SortDirection:
       type: string
       enum: [ASC, DESC]
@@ -397,7 +397,7 @@ components:
         one, the operation's documented default order applies.
       x-go-type: search.SortDirection
       x-go-type-import:
-        path: github.com/nanostack-dev/nanostack-framework/pkg/search
+        path: github.com/nanostack-dev/nanostack-framework/db/search
     Metadata:
       type: object
       additionalProperties: true

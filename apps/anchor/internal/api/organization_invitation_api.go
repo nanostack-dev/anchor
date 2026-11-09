@@ -7,7 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organizationinvitation"

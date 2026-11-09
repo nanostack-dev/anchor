@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
 )

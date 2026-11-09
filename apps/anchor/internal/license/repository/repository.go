@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/license"
 )
@@ -80,9 +80,7 @@ type TemplateRepository interface {
 	) ([]license.Template, error)
 	// Search pages the Product's templates with a cursor, every status unless
 	// the filter names some.
-	Search(
-		ctx context.Context, in license.SearchTemplatesInput,
-	) (search.Result[license.Template], error)
+	Search(ctx context.Context, q LicenseTemplateSearch) (search.Result[license.Template], error)
 	Create(
 		ctx context.Context, template license.Template,
 	) (license.Template, error)

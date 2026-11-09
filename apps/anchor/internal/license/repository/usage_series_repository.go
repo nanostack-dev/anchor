@@ -8,7 +8,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/view"

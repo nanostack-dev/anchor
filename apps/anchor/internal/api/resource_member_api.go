@@ -6,7 +6,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/roleassignment"

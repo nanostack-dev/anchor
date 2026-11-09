@@ -6,10 +6,12 @@ import (
 	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/organization"
+	"anchor/internal/repository"
 	"anchor/internal/security"
 )
 
@@ -134,21 +136,14 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		searchReqBody = &SearchProductOrganizationsJSONRequestBody{}
 	}
 
-	searchRequest := mapToSearchProductOrganizationInput(searchReqBody)
-
 	tenantID, includes, err := resolveIncludes(ctx, request.Params.Include)
 	if err != nil {
 		return nil, err
 	}
 
-	input := organization.SearchProductOrganizationsInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   searchRequest,
-		Include:   includes,
-	}
+	q := productOrganizationSearch(request.ProductId, searchReqBody)
 
-	result, err := s.OrganizationService.Search(ctx, input)
+	result, err := s.OrganizationService.Search(ctx, q, tenantID, includes)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search product organizations")
 		return nil, err
@@ -227,22 +222,19 @@ func (s *AnchorAPI) UpdateProductOrganization(
 	return UpdateProductOrganization200JSONResponse(mapOrganizationToResponse(updatedOrganization)), nil
 }
 
-func mapToSearchProductOrganizationInput(
-	searchReqBody *SearchProductOrganizationsJSONRequestBody,
-) search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f OrganizationFilter) organization.SearchProductOrganizationFilter {
-			return organization.SearchProductOrganizationFilter{
-				IDs:   f.Ids,
-				Names: f.Names,
-			}
-		}).
-		ToPtr()
-
-	return search.NewRequest[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization]().
-		WithFilter(filter).
-		WithSort(
-			searchReqBody.SortBy,
-			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
+// productOrganizationSearch builds the search from the request body. The
+// product scope comes from the route, which the authorization middleware
+// checked against the principal; the body never sets it.
+func productOrganizationSearch(
+	productID string, body *SearchProductOrganizationsJSONRequestBody,
+) repository.OrganizationSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := repository.NewOrganizationSearch(productID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Name().In, f.Names)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.OrganizationSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

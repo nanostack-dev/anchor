@@ -8,7 +8,7 @@ import (
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

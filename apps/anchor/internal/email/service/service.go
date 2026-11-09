@@ -17,12 +17,12 @@ import (
 	intrepo "anchor/internal/repository"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
@@ -134,7 +134,7 @@ type EmailService interface {
 	GetTemplateDraft(ctx context.Context, in email.GetTemplateDraftInput) (*email.TemplateVersion, error)
 	PublishTemplate(ctx context.Context, in email.PublishTemplateInput) (email.TemplateVersion, error)
 	GetTemplate(ctx context.Context, in email.GetTemplateInput) (*email.Template, error)
-	SearchTemplates(ctx context.Context, in email.SearchTemplatesInput) (search.Result[email.Template], error)
+	SearchTemplates(ctx context.Context, q emailrepo.EmailTemplateSearch) (search.Result[email.Template], error)
 	DeleteTemplate(ctx context.Context, in email.DeleteTemplateInput) error
 
 	SaveTemplateExamples(ctx context.Context, in email.SaveTemplateExamplesInput) ([]email.TemplateExample, error)
@@ -143,7 +143,7 @@ type EmailService interface {
 	Send(ctx context.Context, in email.SendInput) (email.SendRecord, error)
 	TestSend(ctx context.Context, in email.TestSendInput) (email.SendRecord, error)
 
-	SearchSends(ctx context.Context, in email.SearchSendsInput) (search.Result[email.SendRecord], error)
+	SearchSends(ctx context.Context, q emailrepo.EmailSendSearch) (search.Result[email.SendRecord], error)
 }
 
 type emailService struct {
@@ -563,12 +563,9 @@ func (s *emailService) GetTemplate(
 }
 
 func (s *emailService) SearchTemplates(
-	ctx context.Context, in email.SearchTemplatesInput,
+	ctx context.Context, q emailrepo.EmailTemplateSearch,
 ) (search.Result[email.Template], error) {
-	if err := in.Validate(); err != nil {
-		return search.Result[email.Template]{}, err
-	}
-	return s.templateRepo.Search(ctx, in)
+	return s.templateRepo.Search(ctx, q)
 }
 
 func (s *emailService) DeleteTemplate(
@@ -890,10 +887,7 @@ func (s *emailService) TestSend(
 }
 
 func (s *emailService) SearchSends(
-	ctx context.Context, in email.SearchSendsInput,
+	ctx context.Context, q emailrepo.EmailSendSearch,
 ) (search.Result[email.SendRecord], error) {
-	if err := in.Validate(); err != nil {
-		return search.Result[email.SendRecord]{}, err
-	}
-	return s.sendRepo.Search(ctx, in)
+	return s.sendRepo.Search(ctx, q)
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -168,6 +169,21 @@ func (b emailSendRecordsBase) execAffected(ctx context.Context, stmt postgres.St
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b emailSendRecordsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b emailSendRecordsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b emailSendRecordsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one email_send_records row, such as an INSERT or
@@ -847,6 +863,21 @@ func (b emailTemplateVersionsBase) page[T, R any](mapFunc func(T) R, columns ...
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b emailTemplateVersionsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b emailTemplateVersionsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one email_template_versions row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with emailTemplateVersionToDomain.
 func (b emailTemplateVersionsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[email.TemplateVersion] {
@@ -1277,6 +1308,21 @@ func (b emailTemplatesBase) execAffected(ctx context.Context, stmt postgres.Stat
 // page starts a paginated query of rows T mapped to R; both come from mapFunc.
 func (b emailTemplatesBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
 	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b emailTemplatesBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b emailTemplatesBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
 }
 
 // queryRow runs stmt, which returns one email_templates row, such as an INSERT or

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 )

@@ -12,7 +12,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"

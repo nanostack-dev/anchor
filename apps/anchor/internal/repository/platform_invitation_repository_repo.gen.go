@@ -3,9 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/invitation"
 	"context"
+	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
@@ -30,4 +36,59 @@ func (r *invitationRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Co
 // UNSCOPED: the name ends in Internal, so it does not filter on platform_tenant_id.
 func (r *invitationRepositoryImpl) FindByCodeAndEmailInternal(ctx context.Context, code string, email string) (functional.Option[invitation.PlatformInvitation], error) {
 	return r.findOne(ctx, r.where.Code(code).AND(r.where.Email(email)))
+}
+
+// SearchByTenantID runs a PlatformInvitationSearch: *invitationRepositoryImpl has no hand-written SearchByTenantID.
+func (r *invitationRepositoryImpl) SearchByTenantID(ctx context.Context, q PlatformInvitationSearch) (search.Result[invitation.PlatformInvitation], error) {
+	return r.search(ctx, platformInvitationSearch, q.Query, invitationToDomain)
+}
+
+// PlatformInvitationSearch is an immutable search of platform_invitations. Start one with NewPlatformInvitationSearch.
+type PlatformInvitationSearch struct {
+	searchexec.Query[model.PlatformInvitations, PlatformInvitationSearch, PlatformInvitationSort, string]
+}
+
+// PlatformInvitationSort is a sort of PlatformInvitationSearch.
+type PlatformInvitationSort string
+
+const (
+	PlatformInvitationSortCreatedAt PlatformInvitationSort = "created_at"
+	PlatformInvitationSortUpdatedAt PlatformInvitationSort = "updated_at"
+	PlatformInvitationSortEmail     PlatformInvitationSort = "email"
+)
+
+var platformInvitationSearch = searchexec.DefineSpec(searchexec.SpecDef[model.PlatformInvitations, PlatformInvitationSort, string]{
+	From:    func(string) keyset.Source { return table.PlatformInvitations },
+	Columns: table.PlatformInvitations.AllColumns, // the Row is model.PlatformInvitations
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.PlatformInvitations.PlatformTenantID),
+	},
+	Keys: map[PlatformInvitationSort]keyset.Key[model.PlatformInvitations]{
+		PlatformInvitationSortCreatedAt: keyset.TimeKey(table.PlatformInvitations.CreatedAt, func(r model.PlatformInvitations) time.Time { return r.CreatedAt }),
+		PlatformInvitationSortUpdatedAt: keyset.TimeKey(table.PlatformInvitations.UpdatedAt, func(r model.PlatformInvitations) time.Time { return r.UpdatedAt }),
+		PlatformInvitationSortEmail:     keyset.StringKey(table.PlatformInvitations.Email, func(r model.PlatformInvitations) string { return r.Email }),
+	},
+	Tiebreak: []keyset.Key[model.PlatformInvitations]{ // platform_invitations_pkey (id)
+		keyset.StringKey(table.PlatformInvitations.ID, func(r model.PlatformInvitations) string { return r.ID }),
+	},
+	Default: searchexec.Asc(PlatformInvitationSortCreatedAt),
+	Limit:   10,
+})
+
+// NewPlatformInvitationSearch starts a PlatformInvitationSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewPlatformInvitationSearch(platformTenantID string) PlatformInvitationSearch {
+	return searchexec.New[PlatformInvitationSearch](platformInvitationSearch, platformTenantID)
+}
+
+// The filters of PlatformInvitationSearch: each returns a field of q, whose method returns the filtered copy.
+func (q PlatformInvitationSearch) Email() searchexec.In[PlatformInvitationSearch, string] {
+	return searchexec.NewIn(q.Query, table.PlatformInvitations.Email, searchexec.StringLit[string])
+}
+func (q PlatformInvitationSearch) ID() searchexec.In[PlatformInvitationSearch, string] {
+	return searchexec.NewIn(q.Query, table.PlatformInvitations.ID, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where email contains term (searchexec.Contains). A blank term filters nothing.
+func (q PlatformInvitationSearch) FullText(term string) PlatformInvitationSearch {
+	return searchexec.NewText(q.Query, table.PlatformInvitations.Email).Contains(term)
 }

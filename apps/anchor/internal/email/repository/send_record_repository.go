@@ -7,9 +7,6 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -22,6 +19,19 @@ import (
 
 func _() {
 	nanorepo.Implement[SendRecordRepository, sendRecordRepositoryImpl](table.EmailSendRecords, emailSendRecordToDomain)
+
+	// POST /v1/products/{product_id}/email/sends/search and the deprecated GET list.
+	// full_text_search is accepted and ignored, as it always was.
+	nanorepo.Search[model.EmailSendRecords]("EmailSend", table.EmailSendRecords,
+		nanorepo.Map(emailSendRecordToDomain),
+		nanorepo.Scope(table.EmailSendRecords.PlatformTenantID),
+		nanorepo.Scope(table.EmailSendRecords.ProductID),
+		nanorepo.Filter(table.EmailSendRecords.TemplateID, nanorepo.In),
+		nanorepo.FilterAs[email.SendStatus](table.EmailSendRecords.Status, nanorepo.In),
+		nanorepo.Sort(table.EmailSendRecords.CreatedAt, table.EmailSendRecords.Status),
+		nanorepo.DefaultSort(table.EmailSendRecords.CreatedAt, nanorepo.Desc),
+		nanorepo.DefaultLimit(10),
+	)
 }
 
 // emailSendRecordToDomain maps the rows that the base returns. EmailSendRecordMapper has no state.
@@ -102,48 +112,6 @@ func (r *sendRecordRepositoryImpl) UpdateStatus(
 			AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))),
 	)
 	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *sendRecordRepositoryImpl) Search(
-	ctx context.Context, input email.SearchSendsInput,
-) (search.Result[email.SendRecord], error) {
-	where := table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(input.TenantID)).
-		AND(table.EmailSendRecords.ProductID.EQ(postgres.String(input.ProductID)))
-
-	if filter := input.Request.Filter; filter != nil {
-		if templates := jetx.BuildIDFilter(table.EmailSendRecords.TemplateID, filter.TemplateIDs); templates != nil {
-			where = where.AND(templates)
-		}
-		if len(filter.Statuses) > 0 {
-			statuses := functional.Slice(filter.Statuses).Map(func(status email.SendStatus) string {
-				return string(status)
-			})
-			where = where.AND(table.EmailSendRecords.Status.IN(jetx.ToStringExpressions(statuses)...))
-		}
-	}
-
-	order, err := transactor.StrictKeys(
-		input.Request.Sort,
-		map[email.SortFieldSend]transactor.Key[model.EmailSendRecords]{
-			email.SortFieldSendCreatedAt: transactor.TimeKey(
-				table.EmailSendRecords.CreatedAt, func(row model.EmailSendRecords) time.Time { return row.CreatedAt },
-			),
-			email.SortFieldSendStatus: transactor.StringKey(
-				table.EmailSendRecords.Status, func(row model.EmailSendRecords) string { return row.Status },
-			),
-		},
-		transactor.StringKey(table.EmailSendRecords.ID, func(row model.EmailSendRecords) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[email.SendRecord]{}, err
-	}
-
-	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailSendRecords.AllColumns).
-		From(table.EmailSendRecords).
-		Where(where).
-		Keyset(order).
-		Run(ctx, input.Request.Pagination).
-		Value()
 }
 
 func (r *sendRecordRepositoryImpl) CountSince(

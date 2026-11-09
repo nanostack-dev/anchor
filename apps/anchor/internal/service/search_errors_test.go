@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

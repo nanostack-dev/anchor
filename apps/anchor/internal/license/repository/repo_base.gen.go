@@ -3,6 +3,7 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"context"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
@@ -170,6 +172,21 @@ func (b licenseSchemasBase) page[T, R any](mapFunc func(T) R, columns ...postgre
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b licenseSchemasBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b licenseSchemasBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one license_schemas row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with licenseSchemaToDomain.
 func (b licenseSchemasBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[license.Schema] {
@@ -322,4 +339,382 @@ func (licenseSchemasWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (licenseSchemasWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.LicenseSchemas.UpdatedAt.LT(postgres.TimestampzT(v))
+}
+
+// licenseTemplatesBase is the generated base of table license_templates. It holds the table (t),
+// typed predicates (where), helpers that run in the context transaction and
+// return the model rows, and the pkg/db/transactor functions as methods.
+// Embed it in the implementation and set it with newLicenseTemplatesBase(db).
+type licenseTemplatesBase struct {
+	db    qrm.DB
+	t     *table.LicenseTemplatesTable
+	where licenseTemplatesWhere
+}
+
+// newLicenseTemplatesBase returns the base of table license_templates. It runs its statements on the
+// transaction of the context, and on db outside one.
+func newLicenseTemplatesBase(db qrm.DB) licenseTemplatesBase {
+	return licenseTemplatesBase{db: db, t: table.LicenseTemplates}
+}
+
+// findOne returns the row matching cond: absent when none does, and
+// transactor.ErrMoreThanOneRow when two do. It reads LIMIT 2, so a key that
+// stopped being unique is an error, never a silent first row. To pick one of
+// several rows, use first with an order.
+func (b licenseTemplatesBase) findOne(ctx context.Context, cond postgres.BoolExpression) (functional.Option[model.LicenseTemplates], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	rows, err := b.queryRows(ctx, stmt.LIMIT(2)).Value()
+	switch {
+	case err != nil:
+		return functional.None[model.LicenseTemplates](), err
+	case len(rows) > 1:
+		return functional.None[model.LicenseTemplates](), fmt.Errorf("%w: license_templates", transactor.ErrMoreThanOneRow)
+	case len(rows) == 0:
+		return functional.None[model.LicenseTemplates](), nil
+	}
+	return functional.Some(rows[0]), nil
+}
+
+// first returns the first row matching cond in the given order, absent when
+// none does. End the order with a unique column, such as the primary key, so
+// the row it picks is stable.
+func (b licenseTemplatesBase) first(ctx context.Context, cond postgres.BoolExpression, order postgres.OrderByClause, more ...postgres.OrderByClause) (functional.Option[model.LicenseTemplates], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryRowOptional(ctx, stmt.ORDER_BY(append([]postgres.OrderByClause{order}, more...)...).LIMIT(1))
+}
+
+// findAll returns every row matching cond, every row when cond is nil, in the
+// given order.
+func (b licenseTemplatesBase) findAll(ctx context.Context, cond postgres.BoolExpression, order ...postgres.OrderByClause) ([]model.LicenseTemplates, error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	if len(order) > 0 {
+		stmt = stmt.ORDER_BY(order...)
+	}
+	return b.queryRows(ctx, stmt).Value()
+}
+
+// exists reports whether a row matches cond, or whether the table has a row
+// when cond is nil. PostgreSQL refuses a row lock on it, which aggregates.
+func (b licenseTemplatesBase) exists(ctx context.Context, cond postgres.BoolExpression) (bool, error) {
+	found := b.t.SELECT(postgres.Int32(1))
+	if cond != nil {
+		found = found.WHERE(cond)
+	}
+	n, err := b.queryCount(ctx, postgres.SELECT(postgres.COUNT(postgres.STAR)).FROM(found.LIMIT(1).AsTable("found"))).Value()
+	return n > 0, err
+}
+
+// count counts the rows matching cond, every row when cond is nil.
+// PostgreSQL refuses a row lock on it, which aggregates.
+func (b licenseTemplatesBase) count(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	stmt := b.t.SELECT(postgres.COUNT(postgres.STAR))
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryCount(ctx, stmt).Value()
+}
+
+// deleteWhere deletes the rows matching cond and returns how many it deleted.
+// It refuses a nil cond. A locked context returns transactor.ErrRowLockNotSelect
+// or ErrRowLockOutsideTx without running the DELETE.
+func (b licenseTemplatesBase) deleteWhere(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("license_templates: deleteWhere needs a condition")
+	}
+	return b.execAffected(ctx, b.t.DELETE().WHERE(cond)).Value()
+}
+
+// updateWhere applies the assignments, such as b.t.Name.SET(postgres.String(v)),
+// to the rows matching cond and returns how many it updated. It refuses a nil
+// cond, and a locked context, as deleteWhere does.
+func (b licenseTemplatesBase) updateWhere(ctx context.Context, cond postgres.BoolExpression, set postgres.ColumnAssigment, more ...postgres.ColumnAssigment) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("license_templates: updateWhere needs a condition")
+	}
+	values := make([]any, len(more))
+	for i, m := range more {
+		values[i] = m
+	}
+	return b.execAffected(ctx, b.t.UPDATE().SET(set, values...).WHERE(cond)).Value()
+}
+
+// query runs stmt and scans its rows into T: a model row, a slice, or a struct
+// of aliased columns. Chain OnUnique, OnForeignKey or OnNoRows before Value.
+func (b licenseTemplatesBase) query[T any](ctx context.Context, stmt postgres.Statement) transactor.Result[T] {
+	return transactor.Query[T](ctx, b.db, stmt)
+}
+
+// queryOptional runs stmt, which may match no row: then the Option is absent
+// and the error nil.
+func (b licenseTemplatesBase) queryOptional[T any](ctx context.Context, stmt postgres.Statement) (functional.Option[T], error) {
+	return transactor.QueryOptional[T](ctx, b.db, stmt)
+}
+
+// queryMap runs stmt, scans one T and maps it with mapFunc.
+func (b licenseTemplatesBase) queryMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[R] {
+	return transactor.QueryMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryOptionalMap is queryOptional, then mapFunc on the row when there is one.
+func (b licenseTemplatesBase) queryOptionalMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) (functional.Option[R], error) {
+	return transactor.QueryOptionalMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryMapSlice runs stmt and maps every row with mapFunc.
+func (b licenseTemplatesBase) queryMapSlice[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[[]R] {
+	return transactor.QueryMapSlice(ctx, b.db, stmt, mapFunc)
+}
+
+// queryCount runs a SELECT COUNT statement.
+func (b licenseTemplatesBase) queryCount(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.QueryCount(ctx, b.db, stmt)
+}
+
+// exec runs a statement that returns no rows. Unwrap it with Err.
+func (b licenseTemplatesBase) exec(ctx context.Context, stmt postgres.Statement) transactor.Result[struct{}] {
+	return transactor.Exec(ctx, b.db, stmt)
+}
+
+// execAffected runs a statement and returns the number of rows it changed.
+func (b licenseTemplatesBase) execAffected(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.ExecAffected(ctx, b.db, stmt)
+}
+
+// page starts a paginated query of rows T mapped to R; both come from mapFunc.
+func (b licenseTemplatesBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
+	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b licenseTemplatesBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b licenseTemplatesBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// queryRow runs stmt, which returns one license_templates row, such as an INSERT or
+// UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
+func (b licenseTemplatesBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.LicenseTemplates] {
+	return b.query[model.LicenseTemplates](ctx, stmt)
+}
+
+// queryRowOptional is queryRow for a statement that may return no row.
+func (b licenseTemplatesBase) queryRowOptional(ctx context.Context, stmt postgres.Statement) (functional.Option[model.LicenseTemplates], error) {
+	return b.queryOptional[model.LicenseTemplates](ctx, stmt)
+}
+
+// queryRows is queryRow for every row stmt returns; no row is an empty slice.
+func (b licenseTemplatesBase) queryRows(ctx context.Context, stmt postgres.Statement) transactor.Result[[]model.LicenseTemplates] {
+	return b.queryMapSlice(ctx, stmt, func(row model.LicenseTemplates) model.LicenseTemplates { return row })
+}
+
+// licenseTemplatesWhere builds predicates on the columns of license_templates. A string predicate
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on values_json: compare on b.t.
+type licenseTemplatesWhere struct{}
+
+// ID is id = v.
+func (licenseTemplatesWhere) ID(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.ID.EQ(postgres.String(v))
+}
+
+// IDIn is id IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) IDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.ID.IN(exprs...)
+}
+
+// PlatformTenantID is platform_tenant_id = v.
+func (licenseTemplatesWhere) PlatformTenantID(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.PlatformTenantID.EQ(postgres.String(v))
+}
+
+// PlatformTenantIDIn is platform_tenant_id IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) PlatformTenantIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.PlatformTenantID.IN(exprs...)
+}
+
+// ProductID is product_id = v.
+func (licenseTemplatesWhere) ProductID(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.ProductID.EQ(postgres.String(v))
+}
+
+// ProductIDIn is product_id IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) ProductIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.ProductID.IN(exprs...)
+}
+
+// Name is name = v.
+func (licenseTemplatesWhere) Name(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.Name.EQ(postgres.String(v))
+}
+
+// NameIn is name IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) NameIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.Name.IN(exprs...)
+}
+
+// NameContains matches name that contain term, ignoring case.
+func (licenseTemplatesWhere) NameContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.LicenseTemplates.Name)
+}
+
+// NameEqualsIgnoreCase is lower(name) = lower(v).
+func (licenseTemplatesWhere) NameEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.LicenseTemplates.Name).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// Description is description = v.
+func (licenseTemplatesWhere) Description(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.Description.EQ(postgres.String(v))
+}
+
+// DescriptionIn is description IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.Description.IN(exprs...)
+}
+
+// DescriptionContains matches description that contain term, ignoring case.
+func (licenseTemplatesWhere) DescriptionContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.LicenseTemplates.Description)
+}
+
+// DescriptionEqualsIgnoreCase is lower(description) = lower(v).
+func (licenseTemplatesWhere) DescriptionEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.LicenseTemplates.Description).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// CreatedAt is created_at = v.
+func (licenseTemplatesWhere) CreatedAt(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.CreatedAt.EQ(postgres.TimestampzT(v))
+}
+
+// CreatedAtIn is created_at IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) CreatedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.LicenseTemplates.CreatedAt.IN(exprs...)
+}
+
+// CreatedAtAfter is created_at > v.
+func (licenseTemplatesWhere) CreatedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.CreatedAt.GT(postgres.TimestampzT(v))
+}
+
+// CreatedAtBefore is created_at < v.
+func (licenseTemplatesWhere) CreatedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.CreatedAt.LT(postgres.TimestampzT(v))
+}
+
+// UpdatedAt is updated_at = v.
+func (licenseTemplatesWhere) UpdatedAt(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.UpdatedAt.EQ(postgres.TimestampzT(v))
+}
+
+// UpdatedAtIn is updated_at IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) UpdatedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.LicenseTemplates.UpdatedAt.IN(exprs...)
+}
+
+// UpdatedAtAfter is updated_at > v.
+func (licenseTemplatesWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.UpdatedAt.GT(postgres.TimestampzT(v))
+}
+
+// UpdatedAtBefore is updated_at < v.
+func (licenseTemplatesWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.LicenseTemplates.UpdatedAt.LT(postgres.TimestampzT(v))
+}
+
+// Status is status = v.
+func (licenseTemplatesWhere) Status(v string) postgres.BoolExpression {
+	return table.LicenseTemplates.Status.EQ(postgres.String(v))
+}
+
+// StatusIn is status IN (vs...); no value matches no row.
+func (licenseTemplatesWhere) StatusIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.LicenseTemplates.Status.IN(exprs...)
+}
+
+// StatusContains matches status that contain term, ignoring case.
+func (licenseTemplatesWhere) StatusContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.LicenseTemplates.Status)
+}
+
+// StatusEqualsIgnoreCase is lower(status) = lower(v).
+func (licenseTemplatesWhere) StatusEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.LicenseTemplates.Status).EQ(postgres.LOWER(postgres.String(v)))
 }

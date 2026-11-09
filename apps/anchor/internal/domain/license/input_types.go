@@ -5,7 +5,7 @@ import (
 
 	"anchor/internal/searchx"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 // FieldDeclaration is one license field as supplied by a caller: the authored
@@ -96,38 +96,9 @@ type ListTemplatesInput struct {
 	Status    *TemplateStatus
 }
 
-// SortFieldTemplate names a column a template search may order by.
+// SortFieldTemplate is the sort_by type of POST /licensing/templates/search.
+// The generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldTemplate string
-
-const (
-	SortFieldTemplateName      SortFieldTemplate = "name"
-	SortFieldTemplateStatus    SortFieldTemplate = "status"
-	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
-	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
-)
-
-// SearchTemplatesFilter narrows a template search. Empty Statuses keeps every
-// template, archived ones included.
-type SearchTemplatesFilter struct {
-	Statuses []TemplateStatus `validate:"omitempty,dive,oneof=ACTIVE ARCHIVED"`
-}
-
-// SearchTemplatesInput is the request shape for searching a Product's license
-// templates.
-type SearchTemplatesInput struct {
-	TenantID  string                                                   `validate:"required,notblank"`
-	ProductID string                                                   `validate:"required,notblank"`
-	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchTemplatesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldTemplateName,
-		SortFieldTemplateStatus,
-		SortFieldTemplateCreatedAt,
-		SortFieldTemplateUpdatedAt)
-}
 
 // ArchiveTemplateInput is the request shape for withdrawing one license
 // template. The row is kept, because the Organizations licensed from it name it

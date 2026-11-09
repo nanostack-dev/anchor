@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
-	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -20,7 +18,6 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/invitation"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 )
 
 // invitationToDomain is the stateless mapper that the generated base calls.
@@ -31,6 +28,20 @@ func invitationToDomain(row model.PlatformInvitations) invitation.PlatformInvita
 func _() {
 	nanorepo.Implement[InvitationRepository, invitationRepositoryImpl](
 		table.PlatformInvitations, invitationToDomain,
+	)
+
+	// POST /v1/platform-invitations/search, and GET of one invitation.
+	nanorepo.Search[model.PlatformInvitations]("PlatformInvitation", table.PlatformInvitations,
+		nanorepo.Map(invitationToDomain),
+		nanorepo.Scope(table.PlatformInvitations.PlatformTenantID),
+		nanorepo.Filter(table.PlatformInvitations.Email, nanorepo.In),
+		nanorepo.Filter(table.PlatformInvitations.ID, nanorepo.In),
+		nanorepo.FullText(table.PlatformInvitations.Email),
+		nanorepo.Sort(
+			table.PlatformInvitations.CreatedAt, table.PlatformInvitations.UpdatedAt, table.PlatformInvitations.Email,
+		),
+		nanorepo.DefaultSort(table.PlatformInvitations.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
 	)
 }
 
@@ -56,10 +67,7 @@ type InvitationRepository interface {
 	DeleteByTenantIDAndID(
 		ctx context.Context, tenantID string, code string,
 	) error
-	SearchByTenantID(
-		ctx context.Context, tenantID string,
-		input search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation],
-	) (search.Result[invitation.PlatformInvitation], error)
+	SearchByTenantID(ctx context.Context, q PlatformInvitationSearch) (search.Result[invitation.PlatformInvitation], error)
 }
 
 type invitationRepositoryImpl struct {
@@ -81,67 +89,6 @@ func NewPlatformInvitationRepository(
 		mapper:                  mapper,
 		logger:                  logger.With(slog.String("component", "invitation_repository")),
 	}
-}
-
-func (r *invitationRepositoryImpl) SearchByTenantID(
-	ctx context.Context, tenantID string,
-	input search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation],
-) (search.Result[invitation.PlatformInvitation], error) {
-	whereStmt := table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID))
-
-	if input.Filter != nil {
-		if len(input.Filter.Emails) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Emails)
-			whereStmt = whereStmt.AND(table.PlatformInvitations.Email.IN(expressions...))
-		}
-
-		if len(input.Filter.IDs) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.IDs)
-			whereStmt = whereStmt.AND(table.PlatformInvitations.ID.IN(expressions...))
-		}
-
-		if input.Filter.Code != nil {
-			whereStmt = whereStmt.AND(
-				table.PlatformInvitations.Code.EQ(postgres.String(*input.Filter.Code)),
-			)
-		}
-	}
-	if input.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(*input.FullTextSearch, table.PlatformInvitations.Email),
-		)
-	}
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[invitation.SortFieldPlatformInvitation]transactor.Key[model.PlatformInvitations]{
-			invitation.SortFieldPlatformInvitationCreatedAt: transactor.TimeKey(
-				table.PlatformInvitations.CreatedAt,
-				func(row model.PlatformInvitations) time.Time { return row.CreatedAt },
-			),
-			invitation.SortFieldPlatformInvitationUpdatedAt: transactor.TimeKey(
-				table.PlatformInvitations.UpdatedAt,
-				func(row model.PlatformInvitations) time.Time { return row.UpdatedAt },
-			),
-			invitation.SortFieldPlatformInvitationEmail: transactor.StringKey(
-				table.PlatformInvitations.Email,
-				func(row model.PlatformInvitations) string { return row.Email },
-			),
-		},
-		transactor.StringKey(
-			table.PlatformInvitations.ID,
-			func(row model.PlatformInvitations) string { return row.ID },
-		),
-	)
-	if err != nil {
-		return search.Result[invitation.PlatformInvitation]{}, err
-	}
-
-	return transactor.Page(r.db, r.mapper.ToDomain, table.PlatformInvitations.AllColumns).
-		From(table.PlatformInvitations).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }
 
 // invitationTenantEmailUniqueIndex is the UNIQUE (platform_tenant_id, email)

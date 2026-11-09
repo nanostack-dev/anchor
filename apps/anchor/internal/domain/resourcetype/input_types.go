@@ -4,10 +4,7 @@ import (
 	"regexp"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-
-	"anchor/internal/searchx"
 )
 
 type CreateInput struct {
@@ -44,30 +41,9 @@ type ReplaceTreeInput struct {
 	Types     []TreeItem `validate:"max=50,unique=Slug,dive"`
 }
 
-type Filter struct {
-	IDs   []string `validate:"omitempty,max=100,dive,notblank"`
-	Slugs []string `validate:"omitempty,max=100,dive,notblank"`
-}
-
+// SortField is the sort_by type of POST /products/{product_id}/resource-types/search.
+// The generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortField string
-
-const (
-	SortFieldCreatedAt SortField = "created_at"
-	SortFieldUpdatedAt SortField = "updated_at"
-	SortFieldSlug      SortField = "slug"
-	SortFieldName      SortField = "name"
-)
-
-type SearchInput struct {
-	ProductID string                            `validate:"required,notblank"`
-	Request   search.Request[Filter, SortField] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldCreatedAt, SortFieldUpdatedAt, SortFieldSlug, SortFieldName)
-}
 
 // slugPattern keeps a slug a valid OpenFGA type name (ADR-0022 A1).
 var slugPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,48}$`)

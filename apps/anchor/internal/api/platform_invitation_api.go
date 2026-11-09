@@ -4,12 +4,15 @@ import (
 	"context"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
+	"anchor/internal/repository"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func (s *AnchorAPI) CreatePlatformInvitation(
@@ -45,20 +48,8 @@ func (s *AnchorAPI) GetPlatformInvitation(
 		return nil, err
 	}
 	invitationID := request.InvitationId
-	result, err := s.PlatformInvitationService.SearchInvitation(
-		ctx, invitation.SearchInvitationInput{
-			TenantID: tenantID,
-			Request: search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]{
-				Filter: &invitation.SearchPlatformInvitationFilter{
-					IDs: []string{invitationID},
-				},
-				Pagination: search.Pagination{
-					Limit:  1,
-					Offset: 0,
-				},
-			},
-		},
-	)
+	q := repository.NewPlatformInvitationSearch(tenantID).ID().In(invitationID).Limit(1)
+	result, err := s.PlatformInvitationService.SearchInvitation(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -99,16 +90,8 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 	if err != nil {
 		return nil, err
 	}
-	searchReqBody := request.Body
-
-	searchRequest := mapToSearchPlatformInvitationRequest(
-		searchReqBody,
-	)
 	result, err := s.PlatformInvitationService.SearchInvitation(
-		ctx, invitation.SearchInvitationInput{
-			TenantID: tenantID,
-			Request:  searchRequest,
-		},
+		ctx, platformInvitationSearch(tenantID, request.Body),
 	)
 	if err != nil {
 		return nil, err
@@ -121,25 +104,20 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 	}, nil
 }
 
-// mapToSearchPlatformInvitationRequest builds a search.Request for platform invitations.
-func mapToSearchPlatformInvitationRequest(
-	searchReqBody *SearchPlatformInvitationsJSONRequestBody,
-) search.Request[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f PlatformInvitationFilter) invitation.SearchPlatformInvitationFilter {
-			return invitation.SearchPlatformInvitationFilter{
-				Emails: f.Emails,
-				IDs:    f.Ids,
-			}
-		}).
-		ToPtr()
-
-	return search.NewRequest[invitation.SearchPlatformInvitationFilter, invitation.SortFieldPlatformInvitation]().
-		WithFilter(filter).
-		WithSort(
-			searchReqBody.SortBy,
-			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
+// platformInvitationSearch builds the search from the request body. The tenant
+// scope comes from the authenticated principal; the body never sets it.
+func platformInvitationSearch(
+	tenantID string, body *SearchPlatformInvitationsJSONRequestBody,
+) repository.PlatformInvitationSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := repository.NewPlatformInvitationSearch(tenantID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Email().In, f.Emails)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.PlatformInvitationSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func mapPlatformInvitationToResponse(

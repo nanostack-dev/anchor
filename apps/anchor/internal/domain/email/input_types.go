@@ -1,11 +1,5 @@
 package email
 
-import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
-
-	"anchor/internal/searchx"
-)
-
 // CreateTemplateInput is the request shape for authoring a new template.
 //
 // On create the service writes the envelope row plus a single DRAFT version
@@ -76,38 +70,9 @@ type GetTemplateInput struct {
 	ID        string `validate:"required"`
 }
 
-// SortFieldTemplate names a column a template search may order by.
+// SortFieldTemplate is the sort_by type of POST /email/templates/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldTemplate string
-
-const (
-	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
-	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
-	SortFieldTemplateName      SortFieldTemplate = "name"
-	SortFieldTemplateSlug      SortFieldTemplate = "slug"
-)
-
-// SearchTemplatesFilter narrows a template search. Empty fields do not filter.
-type SearchTemplatesFilter struct {
-	IDs      []string
-	Slugs    []string
-	IsActive *bool
-}
-
-// SearchTemplatesInput is the request shape for searching a product's templates.
-type SearchTemplatesInput struct {
-	TenantID  string                                                   `validate:"required"`
-	ProductID string                                                   `validate:"required"`
-	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchTemplatesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldTemplateCreatedAt,
-		SortFieldTemplateUpdatedAt,
-		SortFieldTemplateName,
-		SortFieldTemplateSlug)
-}
 
 // DeleteTemplateInput is the request shape for removing a template (and all
 // its versions cascade-deleted).
@@ -183,30 +148,6 @@ type SaveTemplateExamplesInput struct {
 	Examples   []TemplateExample
 }
 
-// SortFieldSend names a column a send-record search may order by.
+// SortFieldSend is the sort_by type of POST /email/sends/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldSend string
-
-const (
-	SortFieldSendCreatedAt SortFieldSend = "created_at"
-	SortFieldSendStatus    SortFieldSend = "status"
-)
-
-// SearchSendsFilter narrows a send-record search. Empty fields do not filter.
-type SearchSendsFilter struct {
-	TemplateIDs []string
-	Statuses    []SendStatus `validate:"omitempty,dive,oneof=QUEUED SENDING SENT FAILED"`
-}
-
-// SearchSendsInput is the request shape for searching the send history.
-type SearchSendsInput struct {
-	TenantID  string                                           `validate:"required"`
-	ProductID string                                           `validate:"required"`
-	Request   search.Request[SearchSendsFilter, SortFieldSend] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchSendsInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldSendCreatedAt,
-		SortFieldSendStatus)
-}

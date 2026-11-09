@@ -9,14 +9,12 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/organization"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -30,6 +28,18 @@ func organizationToDomain(row model.Organizations) organization.Organization {
 func _() {
 	nanorepo.Implement[OrganizationRepository, organizationRepositoryImpl](
 		table.Organizations, organizationToDomain,
+	)
+
+	// POST /v1/products/{product_id}/organizations/search
+	nanorepo.Search[model.Organizations]("Organization", table.Organizations,
+		nanorepo.Map(organizationToDomain),
+		nanorepo.Scope(table.Organizations.ProductID),
+		nanorepo.Filter(table.Organizations.ID, nanorepo.In),
+		nanorepo.Filter(table.Organizations.Name, nanorepo.In),
+		nanorepo.FullText(table.Organizations.Name),
+		nanorepo.Sort(table.Organizations.Name, table.Organizations.CreatedAt, table.Organizations.UpdatedAt),
+		nanorepo.DefaultSort(table.Organizations.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
 	)
 }
 
@@ -50,10 +60,7 @@ type OrganizationRepository interface {
 		ctx context.Context, productID string, organization organization.Organization,
 	) (organization.Organization, error)
 	DeleteByProductIDAndID(ctx context.Context, productID string, id string) error
-	SearchByProductID(
-		ctx context.Context, productID string,
-		input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-	) (search.Result[organization.Organization], error)
+	SearchByProductID(ctx context.Context, q OrganizationSearch) (search.Result[organization.Organization], error)
 }
 
 type organizationRepositoryImpl struct {
@@ -113,54 +120,4 @@ func (r *organizationRepositoryImpl) Update(
 	return transactor.QueryMap(
 		ctx, r.db, updateStmt, r.organizationMapper.ToDomain,
 	).Value()
-}
-
-func (r *organizationRepositoryImpl) SearchByProductID(
-	ctx context.Context, productID string,
-	input search.Request[organization.SearchProductOrganizationFilter, organization.SortFieldProductOrganization],
-) (search.Result[organization.Organization], error) {
-	whereStmt := table.Organizations.ProductID.EQ(postgres.String(productID))
-
-	if input.Filter != nil {
-		if ids := jetx.BuildIDFilter(
-			table.Organizations.ID, input.Filter.IDs,
-		); ids != nil {
-			whereStmt = whereStmt.AND(ids)
-		}
-		if names := jetx.BuildStringArrayFilter(
-			table.Organizations.Name, input.Filter.Names,
-		); names != nil {
-			whereStmt = whereStmt.AND(names)
-		}
-	}
-
-	if input.FullTextSearch != nil && *input.FullTextSearch != "" {
-		whereStmt = whereStmt.AND(searchx.Contains(*input.FullTextSearch, table.Organizations.Name))
-	}
-
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[organization.SortFieldProductOrganization]transactor.Key[model.Organizations]{
-			organization.SortFieldProductOrganizationCreatedAt: transactor.TimeKey(
-				table.Organizations.CreatedAt, func(row model.Organizations) time.Time { return row.CreatedAt },
-			),
-			organization.SortFieldProductOrganizationUpdatedAt: transactor.TimeKey(
-				table.Organizations.UpdatedAt, func(row model.Organizations) time.Time { return row.UpdatedAt },
-			),
-			organization.SortFieldProductOrganizationName: transactor.StringKey(
-				table.Organizations.Name, func(row model.Organizations) string { return row.Name },
-			),
-		},
-		transactor.StringKey(table.Organizations.ID, func(row model.Organizations) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[organization.Organization]{}, err
-	}
-
-	return transactor.Page(r.db, r.organizationMapper.ToDomain, table.Organizations.AllColumns).
-		From(table.Organizations).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }

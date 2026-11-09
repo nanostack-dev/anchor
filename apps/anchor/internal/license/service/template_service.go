@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/license"
@@ -87,7 +87,7 @@ type LicenseTemplateService interface {
 	ListTemplates(ctx context.Context, in license.ListTemplatesInput) ([]license.Template, error)
 	// SearchTemplates pages the Product's templates with a cursor.
 	SearchTemplates(
-		ctx context.Context, in license.SearchTemplatesInput,
+		ctx context.Context, q licenserepo.LicenseTemplateSearch,
 	) (search.Result[license.Template], error)
 	UpdateTemplate(ctx context.Context, in license.UpdateTemplateInput) (license.Template, error)
 	// ArchiveTemplate withdraws the tier and returns it. It is idempotent, and it
@@ -204,13 +204,9 @@ func (s *licenseTemplateService) ListTemplates(
 }
 
 func (s *licenseTemplateService) SearchTemplates(
-	ctx context.Context, in license.SearchTemplatesInput,
+	ctx context.Context, q licenserepo.LicenseTemplateSearch,
 ) (search.Result[license.Template], error) {
-	if err := in.Validate(); err != nil {
-		return search.Result[license.Template]{}, err
-	}
-
-	return s.templateRepo.Search(ctx, in)
+	return s.templateRepo.Search(ctx, q)
 }
 
 func (s *licenseTemplateService) UpdateTemplate(

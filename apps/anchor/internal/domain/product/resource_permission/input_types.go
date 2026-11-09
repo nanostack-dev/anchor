@@ -1,7 +1,7 @@
 package resourcepermission
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/resourcetype"
 

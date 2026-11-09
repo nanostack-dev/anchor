@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"

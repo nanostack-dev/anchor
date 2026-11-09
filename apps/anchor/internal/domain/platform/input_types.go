@@ -3,7 +3,7 @@ package platform
 import (
 	"strings"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/searchx"
 )

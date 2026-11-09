@@ -7,7 +7,7 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
