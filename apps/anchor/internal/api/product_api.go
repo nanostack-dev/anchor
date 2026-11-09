@@ -99,6 +99,9 @@ func (s *AnchorAPI) SearchProducts(
 		return nil, err
 	}
 
+	if err = validateProductsSearch(tenantID, &request); err != nil {
+		return nil, err
+	}
 	result, err := s.ProductService.Search(ctx, productSearch(tenantID, request.Body))
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search products")
@@ -244,17 +247,10 @@ func (s *AnchorAPI) GetProductEventsCatalog(
 // principal; the body never sets it.
 func productUserSearch(
 	productID string, body *SearchProductUsersJSONRequestBody,
-) (repository.ProductUserSearch, error) {
+) repository.ProductUserSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	statuses := functional.Slice(orEmpty(f.Statuses)).Map(foldProductUserStatus)
-	if err := requireOneOf("statuses", statuses,
-		user.ProductUserStatusActive, user.ProductUserStatusInvited, user.ProductUserStatusSuspended); err != nil {
-		return repository.ProductUserSearch{}, err
-	}
-	if err := requireNotBlank("names", orEmpty(f.Names)); err != nil {
-		return repository.ProductUserSearch{}, err
-	}
 	q := repository.NewProductUserSearch(productID)
 	q = searchexec.Some(q, q.ID().In, orEmpty(f.Ids))
 	q = searchexec.Some(q, q.Email().In, f.Emails)
@@ -264,7 +260,7 @@ func productUserSearch(
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.ProductUserSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 // foldProductUserStatus ignores the letter case of a requested status: Anchor
@@ -320,10 +316,10 @@ func (s *AnchorAPI) CreateProductUser(
 func (s *AnchorAPI) SearchProductUsers(
 	ctx context.Context, request SearchProductUsersRequestObject,
 ) (SearchProductUsersResponseObject, error) {
-	q, err := productUserSearch(request.ProductId, request.Body)
-	if err != nil {
+	if err := validateProductUsersSearch(request.ProductId, &request); err != nil {
 		return nil, err
 	}
+	q := productUserSearch(request.ProductId, request.Body)
 
 	result, err := s.ProductUserService.Search(ctx, q)
 	if err != nil {
@@ -430,6 +426,14 @@ func (s *AnchorAPI) SearchUserOrganizations(
 		body = &SearchUserOrganizationsJSONRequestBody{}
 	}
 
+	if err := validateUserOrganizationsSearch(
+		request.ProductId,
+		request.ProductUserId,
+		includePermissions,
+		body,
+	); err != nil {
+		return nil, err
+	}
 	q := userOrganizationSearch(request.ProductId, request.ProductUserId, body)
 	result, err := s.ProductUserService.SearchUserOrganizations(ctx, q, includePermissions)
 	if err != nil {

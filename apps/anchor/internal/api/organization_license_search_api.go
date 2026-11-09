@@ -27,6 +27,9 @@ func (s *AnchorAPI) SearchOrganizationLicenses(
 		body = &SearchOrganizationLicensesJSONRequestBody{}
 	}
 
+	if err = validateOrganizationLicensesSearch(tenantID, request.ProductId, body); err != nil {
+		return nil, err
+	}
 	q := organizationLicenseSearch(
 		licenserepo.OrganizationLicenseScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
 	)

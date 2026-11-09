@@ -1,5 +1,13 @@
 package license
 
+import (
+	"time"
+
+	"anchor/internal/searchvalid"
+
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+)
+
 // FieldDeclaration is one license field as supplied by a caller: the authored
 // shape, before an ID or timestamps exist.
 type FieldDeclaration struct {
@@ -88,9 +96,38 @@ type ListTemplatesInput struct {
 	Status    *TemplateStatus
 }
 
-// SortFieldTemplate is the sort_by type of POST /licensing/templates/search.
-// The generated search owns the values; this type gives the OpenAPI schema its Go type.
+// SortFieldTemplate names a column a template search may order by.
 type SortFieldTemplate string
+
+const (
+	SortFieldTemplateName      SortFieldTemplate = "name"
+	SortFieldTemplateStatus    SortFieldTemplate = "status"
+	SortFieldTemplateCreatedAt SortFieldTemplate = "created_at"
+	SortFieldTemplateUpdatedAt SortFieldTemplate = "updated_at"
+)
+
+// SearchTemplatesFilter narrows a template search. Empty Statuses keeps every
+// template, archived ones included.
+type SearchTemplatesFilter struct {
+	Statuses []TemplateStatus `validate:"omitempty,dive,oneof=ACTIVE ARCHIVED"`
+}
+
+// SearchTemplatesInput is the request shape for searching a Product's license
+// templates.
+type SearchTemplatesInput struct {
+	TenantID  string                                                   `validate:"required,notblank"`
+	ProductID string                                                   `validate:"required,notblank"`
+	Request   search.Request[SearchTemplatesFilter, SortFieldTemplate] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchTemplatesInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldTemplateName,
+		SortFieldTemplateStatus,
+		SortFieldTemplateCreatedAt,
+		SortFieldTemplateUpdatedAt)
+}
 
 // ArchiveTemplateInput is the request shape for withdrawing one license
 // template. The row is kept, because the Organizations licensed from it name it
@@ -137,9 +174,33 @@ type GetLicenseInput struct {
 	OrganizationID string `validate:"required,notblank"`
 }
 
-// SortFieldChange is the sort_by type of POST /license/history/search. The
-// generated search owns the values; this type gives the OpenAPI schema its Go type.
+// SortFieldChange names a column a license history search may order by.
 type SortFieldChange string
+
+const (
+	SortFieldChangeChangedAt SortFieldChange = "changed_at"
+)
+
+// SearchLicenseChangesFilter narrows one Organization's license history.
+type SearchLicenseChangesFilter struct {
+	Types         []ChangeType `validate:"omitempty,dive,oneof=INSTANTIATED ADJUSTED SET TEMPLATE_SYNCED"`
+	ChangedAfter  *time.Time
+	ChangedBefore *time.Time
+}
+
+// SearchLicenseChangesInput searches one Organization's license history.
+type SearchLicenseChangesInput struct {
+	TenantID       string                                                      `validate:"required,notblank"`
+	ProductID      string                                                      `validate:"required,notblank"`
+	OrganizationID string                                                      `validate:"required,notblank"`
+	Request        search.Request[SearchLicenseChangesFilter, SortFieldChange] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchLicenseChangesInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldChangeChangedAt)
+}
 
 // AdjustLicenseInput adjusts one Organization's license without touching the
 // template. Values are merged, not replaced — the opposite of

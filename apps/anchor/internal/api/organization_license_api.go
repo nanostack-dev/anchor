@@ -182,12 +182,12 @@ func (s *AnchorAPI) SearchOrganizationLicenseHistory(
 		body = &SearchOrganizationLicenseHistoryJSONRequestBody{}
 	}
 
-	q, err := licenseChangeSearch(licenserepo.OrganizationLicenseChangeScope{
-		PlatformTenantID: tenantID, ProductID: request.ProductId, OrganizationID: request.OrganizationId,
-	}, body)
-	if err != nil {
+	if err = validateLicenseChangesSearch(tenantID, request.ProductId, request.OrganizationId, body); err != nil {
 		return nil, err
 	}
+	q := licenseChangeSearch(licenserepo.OrganizationLicenseChangeScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, OrganizationID: request.OrganizationId,
+	}, body)
 	result, err := s.LicenseHistoryService.SearchChanges(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization license history",
@@ -211,19 +211,14 @@ func (s *AnchorAPI) SearchOrganizationLicenseHistory(
 // accepted and ignored: a history entry has no text column that the contract names.
 func licenseChangeSearch(
 	scope licenserepo.OrganizationLicenseChangeScope, body *SearchOrganizationLicenseHistoryJSONRequestBody,
-) (licenserepo.OrganizationLicenseChangeSearch, error) {
+) licenserepo.OrganizationLicenseChangeSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
-	if err := requireOneOf("types", f.Types,
-		license.ChangeInstantiated, license.ChangeAdjusted, license.ChangeSet, license.ChangeTemplateSynced,
-	); err != nil {
-		return licenserepo.OrganizationLicenseChangeSearch{}, err
-	}
 	q := licenserepo.NewOrganizationLicenseChangeSearch(scope)
 	q = searchexec.Some(q, q.ChangeType().In, f.Types)
 	q = searchexec.Opt(q, q.ChangedAt().Since, f.ChangedAfter)
 	q = searchexec.Opt(q, q.ChangedAt().Before, f.ChangedBefore)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		licenserepo.OrganizationLicenseChangeSortChangedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

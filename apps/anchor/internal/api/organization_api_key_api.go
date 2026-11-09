@@ -87,10 +87,14 @@ func (s *AnchorAPI) SearchOrganizationAPIKeys(
 	ctx context.Context,
 	request SearchOrganizationAPIKeysRequestObject,
 ) (SearchOrganizationAPIKeysResponseObject, error) {
-	q, err := organizationAPIKeySearch(request.OrganizationId, request.Body)
-	if err != nil {
+	body := request.Body
+	if body == nil {
+		body = &SearchOrganizationAPIKeysJSONRequestBody{}
+	}
+	if err := validateOrganizationAPIKeysSearch(request.ProductId, request.OrganizationId, body); err != nil {
 		return nil, err
 	}
+	q := organizationAPIKeySearch(request.OrganizationId, body)
 
 	result, err := s.OrganizationAPIKeyService.Search(ctx, request.ProductId, q)
 	if err != nil {
@@ -263,13 +267,10 @@ func (s *AnchorAPI) IntrospectOrganizationAPIKey(
 // last_used_before are exclusive bounds.
 func organizationAPIKeySearch(
 	organizationID string, body *SearchOrganizationAPIKeysJSONRequestBody,
-) (repository.OrganizationAPIKeySearch, error) {
+) repository.OrganizationAPIKeySearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	statuses := orEmpty(f.Status)
-	if err := requireOneOf("status", statuses, orgapikey.StatusActive, orgapikey.StatusInactive); err != nil {
-		return repository.OrganizationAPIKeySearch{}, err
-	}
 	q := repository.NewOrganizationAPIKeySearch(organizationID)
 	q = searchexec.Some(q, q.ID().In, f.Ids)
 	q = searchexec.Some(q, q.Name().In, f.Names)
@@ -281,5 +282,5 @@ func organizationAPIKeySearch(
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.OrganizationAPIKeySortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

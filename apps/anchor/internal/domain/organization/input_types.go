@@ -1,5 +1,11 @@
 package organization
 
+import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
+	"anchor/internal/searchvalid"
+)
+
 // Include names a related resource a read can ask for alongside the
 // organization. A read that does not name one leaves the field nil, which says
 // nothing about whether the organization has it.
@@ -43,11 +49,35 @@ type DeleteOrganizationInput struct {
 	ProductID      string `validate:"required,notblank"`
 	OrganizationID string `validate:"required,notblank"`
 }
+type SearchProductOrganizationFilter struct {
+	IDs   []string `validate:"omitempty,dive,notblank"`
+	Names []string `validate:"omitempty,dive,notblank"`
+}
 
-// SortFieldProductOrganization is the sort_by type of POST
-// /products/{product_id}/organizations/search. The generated search owns the
-// values; this type only gives the OpenAPI schema its Go type.
 type SortFieldProductOrganization string
+
+const (
+	SortFieldProductOrganizationCreatedAt SortFieldProductOrganization = "created_at"
+	SortFieldProductOrganizationUpdatedAt SortFieldProductOrganization = "updated_at"
+	SortFieldProductOrganizationName      SortFieldProductOrganization = "name"
+)
+
+type SearchProductOrganizationsInput struct {
+	// TenantID is required only when Include names a related resource read
+	// tenant-scoped. The organization itself is addressed by product.
+	TenantID  string                                                                        `validate:"required_with=Include"`
+	ProductID string                                                                        `validate:"required,notblank"`
+	Request   search.Request[SearchProductOrganizationFilter, SortFieldProductOrganization] `validate:"required"`
+	Include   []Include
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductOrganizationsInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldProductOrganizationCreatedAt,
+		SortFieldProductOrganizationUpdatedAt,
+		SortFieldProductOrganizationName)
+}
 
 // CreateOrganizationWithMemberInput is the input for atomically creating an organization
 // and assigning its founding member with a role in a single transaction.

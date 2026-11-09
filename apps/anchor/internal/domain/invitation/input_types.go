@@ -1,7 +1,10 @@
 package invitation
 
 import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
 	"anchor/internal/domain/platform"
+	"anchor/internal/searchvalid"
 )
 
 // CreateInvitationInput defines the input structure for creating an invitation.
@@ -17,6 +20,30 @@ type DeleteInvitationInput struct {
 	InvitationID string `validate:"required,notblank"`
 }
 
-// SortFieldPlatformInvitation is the sort_by type of POST /platform-invitations/search.
-// The generated search owns the values; this type gives the OpenAPI schema its Go type.
+type SearchPlatformInvitationFilter struct {
+	IDs    []string `validate:"omitempty,dive,notblank"`
+	Emails []string `validate:"omitempty,dive,email"`
+	Code   *string
+}
+
 type SortFieldPlatformInvitation string
+
+const (
+	SortFieldPlatformInvitationCreatedAt SortFieldPlatformInvitation = "created_at"
+	SortFieldPlatformInvitationUpdatedAt SortFieldPlatformInvitation = "updated_at"
+	SortFieldPlatformInvitationEmail     SortFieldPlatformInvitation = "email"
+)
+
+// SearchInvitationInput defines the input structure for searching invitations.
+type SearchInvitationInput struct {
+	TenantID string                                                                      `validate:"required,notblank"`
+	Request  search.Request[SearchPlatformInvitationFilter, SortFieldPlatformInvitation] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchInvitationInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldPlatformInvitationCreatedAt,
+		SortFieldPlatformInvitationUpdatedAt,
+		SortFieldPlatformInvitationEmail)
+}

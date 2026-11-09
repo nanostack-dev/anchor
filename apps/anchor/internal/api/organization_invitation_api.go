@@ -48,10 +48,14 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	q, err := organizationInvitationSearch(request.ProductId, request.OrganizationId, *request.Body)
-	if err != nil {
+	if err := validateOrganizationInvitationsSearch(
+		request.ProductId,
+		request.OrganizationId,
+		*request.Body,
+	); err != nil {
 		return nil, err
 	}
+	q := organizationInvitationSearch(request.ProductId, request.OrganizationId, *request.Body)
 	result, err := s.OrganizationInvitationService.Search(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization invitations",
@@ -147,10 +151,10 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	q, err := productInvitationSearch(request.ProductId, *request.Body)
-	if err != nil {
+	if err := validateProductInvitationsSearch(request.ProductId, *request.Body); err != nil {
 		return nil, err
 	}
+	q := productInvitationSearch(request.ProductId, *request.Body)
 	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search product organization invitations",
@@ -200,11 +204,8 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 // that the contract names.
 func organizationInvitationSearch(
 	productID, organizationID string, body SearchOrganizationInvitationsJSONRequestBody,
-) (invitationrepo.OrganizationInvitationSearch, error) {
-	statuses, emails, err := invitationFilters(body)
-	if err != nil {
-		return invitationrepo.OrganizationInvitationSearch{}, err
-	}
+) invitationrepo.OrganizationInvitationSearch {
+	statuses, emails := invitationFilters(body)
 	q := invitationrepo.NewOrganizationInvitationSearch(
 		invitationrepo.OrganizationInvitationScope{ProductID: productID, OrganizationID: organizationID},
 	)
@@ -212,28 +213,25 @@ func organizationInvitationSearch(
 	q = searchexec.Some(q, q.Email().In, emails)
 	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
 		invitationrepo.OrganizationInvitationSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, body.Pagination), nil
+	return searchexec.APIPage(q.Query, body.Pagination)
 }
 
 // productInvitationSearch builds the search of every invitation of the product
 // from the request body.
 func productInvitationSearch(
 	productID string, body SearchOrganizationInvitationsJSONRequestBody,
-) (invitationrepo.ProductInvitationSearch, error) {
-	statuses, emails, err := invitationFilters(body)
-	if err != nil {
-		return invitationrepo.ProductInvitationSearch{}, err
-	}
+) invitationrepo.ProductInvitationSearch {
+	statuses, emails := invitationFilters(body)
 	q := invitationrepo.NewProductInvitationSearch(productID)
 	q = searchexec.Some(q, q.Status().In, statuses)
 	q = searchexec.Some(q, q.Email().In, emails)
 	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
 		invitationrepo.ProductInvitationSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, body.Pagination), nil
+	return searchexec.APIPage(q.Query, body.Pagination)
 }
 
 // invitationFilters reads the status and email filters of an invitation search.
-func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]string, []string, error) {
+func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]string, []string) {
 	var statuses []organizationinvitation.Status
 	var emails []string
 	if body.Filter != nil {
@@ -242,14 +240,9 @@ func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]str
 			func(email openapi_types.Email) string { return string(email) },
 		)
 	}
-	if err := requireOneOf("statuses", statuses,
-		organizationinvitation.StatusPending, organizationinvitation.StatusAccepted,
-		organizationinvitation.StatusExpired); err != nil {
-		return nil, nil, err
-	}
 	return functional.Slice(statuses).Map(func(status organizationinvitation.Status) string {
 		return string(status)
-	}), emails, nil
+	}), emails
 }
 
 func mapInvitationToResponse(invitation organizationinvitation.Invitation) OrganizationInvitationResponse {

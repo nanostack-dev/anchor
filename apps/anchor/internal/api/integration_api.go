@@ -360,12 +360,12 @@ func (s *AnchorAPI) SearchIntegrationAuditLogs(
 		body = &SearchIntegrationAuditLogsJSONRequestBody{}
 	}
 
-	q, err := integrationAuditLogSearch(repository.IntegrationAuditLogScope{
-		PlatformTenantID: tenantID, ProductID: request.ProductId, IntegrationInstanceID: request.IntegrationInstanceId,
-	}, body)
-	if err != nil {
+	if err = validateAuditLogsSearch(tenantID, request.ProductId, request.IntegrationInstanceId, body); err != nil {
 		return nil, err
 	}
+	q := integrationAuditLogSearch(repository.IntegrationAuditLogScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, IntegrationInstanceID: request.IntegrationInstanceId,
+	}, body)
 	result, err := s.IntegrationService.SearchAuditLogs(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search integration audit logs",
@@ -389,17 +389,9 @@ func (s *AnchorAPI) SearchIntegrationAuditLogs(
 // accepted and ignored: an audit entry has no text column that the contract names.
 func integrationAuditLogSearch(
 	scope repository.IntegrationAuditLogScope, body *SearchIntegrationAuditLogsJSONRequestBody,
-) (repository.IntegrationAuditLogSearch, error) {
+) repository.IntegrationAuditLogSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
-	if err := requireOneOf("filter.actions", f.Actions, integration.AuditActions()...); err != nil {
-		return repository.IntegrationAuditLogSearch{}, err
-	}
-	if err := requireOneOf("severities", f.Severities,
-		integration.AuditSeverityInfo, integration.AuditSeveritySuccess,
-		integration.AuditSeverityWarning, integration.AuditSeverityError); err != nil {
-		return repository.IntegrationAuditLogSearch{}, err
-	}
 	q := repository.NewIntegrationAuditLogSearch(scope)
 	q = searchexec.Some(q, q.Action().In, f.Actions)
 	q = searchexec.Some(q, q.Severity().In, f.Severities)
@@ -407,7 +399,7 @@ func integrationAuditLogSearch(
 	q = searchexec.Opt(q, q.CreatedAt().Before, f.CreatedBefore)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.IntegrationAuditLogSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 // ---------------------------------------------------------------------------

@@ -90,6 +90,9 @@ func (s *AnchorAPI) SearchPlatformInvitations(
 	if err != nil {
 		return nil, err
 	}
+	if err = validatePlatformInvitationsSearch(tenantID, request.Body); err != nil {
+		return nil, err
+	}
 	result, err := s.PlatformInvitationService.SearchInvitation(
 		ctx, platformInvitationSearch(tenantID, request.Body),
 	)

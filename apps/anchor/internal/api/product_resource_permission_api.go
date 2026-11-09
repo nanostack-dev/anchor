@@ -83,6 +83,9 @@ func (s *AnchorAPI) CreateProductResourcePermission(
 func (s *AnchorAPI) SearchProductResourcePermissions(
 	ctx context.Context, request SearchProductResourcePermissionsRequestObject,
 ) (SearchProductResourcePermissionsResponseObject, error) {
+	if err := validateProductResourcePermissionsSearch(request.ProductId, request.Body); err != nil {
+		return nil, err
+	}
 	q, resourceTypes := productResourcePermissionSearch(request.ProductId, request.Body)
 
 	result, err := s.ResourcePermissionService.SearchByProduct(ctx, q, resourceTypes)

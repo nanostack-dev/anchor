@@ -72,6 +72,9 @@ func (s *AnchorAPI) ReplaceProductResourceTypes(
 func (s *AnchorAPI) SearchProductResourceTypes(
 	ctx context.Context, request SearchProductResourceTypesRequestObject,
 ) (SearchProductResourceTypesResponseObject, error) {
+	if err := validateResourceTypesSearch(request.ProductId, request.Body); err != nil {
+		return nil, err
+	}
 	result, err := s.ResourceTypeService.Search(ctx, resourceTypeSearch(request.ProductId, request.Body))
 	if err != nil {
 		return nil, err

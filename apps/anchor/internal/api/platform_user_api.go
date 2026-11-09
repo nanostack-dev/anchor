@@ -25,10 +25,14 @@ func (s *AnchorAPI) SearchPlatformUsers(
 		return nil, err
 	}
 
-	q, err := platformUserSearch(tenantID, request.Body)
-	if err != nil {
+	body := request.Body
+	if body == nil {
+		body = &SearchPlatformUsersJSONRequestBody{}
+	}
+	if err = validatePlatformUsersSearch(tenantID, body); err != nil {
 		return nil, err
 	}
+	q := platformUserSearch(tenantID, body)
 
 	result, err := s.PlatformUserService.SearchPlatformUsers(ctx, q)
 	if err != nil {
@@ -135,18 +139,13 @@ func (s *AnchorAPI) GetCurrentUser(
 // comes from the authenticated principal; the body never sets it.
 func platformUserSearch(
 	tenantID string, body *SearchPlatformUsersJSONRequestBody,
-) (repository.PlatformUserSearch, error) {
+) repository.PlatformUserSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	// A role compares without regard to letter case.
 	roles := functional.Slice(f.Roles).Map(func(role platform.TenantRole) string {
 		return strings.ToLower(string(role))
 	})
-	if err := requireOneOf("filter.roles", roles,
-		strings.ToLower(string(platform.TenantRoleOwner)), strings.ToLower(string(platform.TenantRoleAdmin)),
-	); err != nil {
-		return repository.PlatformUserSearch{}, err
-	}
 	q := repository.NewPlatformUserSearch(tenantID)
 	q = searchexec.Some(q, q.ID().In, f.Ids)
 	q = searchexec.Some(q, q.Email().In, f.Emails)
@@ -154,7 +153,7 @@ func platformUserSearch(
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.PlatformUserSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func mapPlatformUserToResponse(

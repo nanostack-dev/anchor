@@ -1,5 +1,11 @@
 package permission
 
+import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
+	"anchor/internal/searchvalid"
+)
+
 // CreateProductPermissionInput represents input for creating a new permission.
 type CreateProductPermissionInput struct {
 	ProductID   string  `json:"product_id"  validate:"required,notblank"`
@@ -27,12 +33,34 @@ type FindProductPermissionInput struct {
 	Name      string `json:"name"       validate:"required,permission_name"`
 }
 
-// SearchProductPermissionNames is the shape the permission-name check of a
-// search filter validates.
-type SearchProductPermissionNames struct {
+// SearchProductPermissionFilter represents search filter criteria.
+type SearchProductPermissionFilter struct {
 	Names []string `json:"names,omitempty" validate:"omitempty,dive,permission_name"`
 }
 
-// SortFieldProductPermission is the sort_by type of POST /permissions/search.
-// The generated search owns the values; this type gives the OpenAPI schema its Go type.
+// SortFieldProductPermission defines sortable fields.
 type SortFieldProductPermission string
+
+const (
+	SortFieldProductPermissionID        SortFieldProductPermission = "id"
+	SortFieldProductPermissionResource  SortFieldProductPermission = "resource"
+	SortFieldProductPermissionCreatedAt SortFieldProductPermission = "created_at"
+	SortFieldProductPermissionUpdatedAt SortFieldProductPermission = "updated_at"
+	SortFieldProductPermissionName      SortFieldProductPermission = "name"
+)
+
+// SearchProductPermissionInput represents search input.
+type SearchProductPermissionInput struct {
+	ProductID string                                                                    `json:"product_id" validate:"required,notblank"`
+	Request   search.Request[SearchProductPermissionFilter, SortFieldProductPermission] `json:"request"    validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductPermissionInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldProductPermissionID,
+		SortFieldProductPermissionName,
+		SortFieldProductPermissionResource,
+		SortFieldProductPermissionCreatedAt,
+		SortFieldProductPermissionUpdatedAt)
+}

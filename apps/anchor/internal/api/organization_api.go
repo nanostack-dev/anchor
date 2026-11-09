@@ -141,6 +141,9 @@ func (s *AnchorAPI) SearchProductOrganizations(
 		return nil, err
 	}
 
+	if err = validateProductOrganizationsSearch(tenantID, request.ProductId, includes, searchReqBody); err != nil {
+		return nil, err
+	}
 	q := productOrganizationSearch(request.ProductId, searchReqBody)
 
 	result, err := s.OrganizationService.Search(ctx, q, tenantID, includes)

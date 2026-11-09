@@ -2,6 +2,11 @@ package integration
 
 import (
 	"encoding/json"
+	"time"
+
+	"anchor/internal/searchvalid"
+
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateInstanceInput struct {
@@ -54,6 +59,41 @@ type CreateAuditLogInput struct {
 	DiffJSON              json.RawMessage
 }
 
-// SortFieldAuditLog is the sort_by type of POST /integrations/{id}/audit-logs/search.
-// The generated search owns the values; this type gives the OpenAPI schema its Go type.
+// SortFieldAuditLog names a column an audit log search may order by.
 type SortFieldAuditLog string
+
+const (
+	SortFieldAuditLogCreatedAt SortFieldAuditLog = "created_at"
+	SortFieldAuditLogAction    SortFieldAuditLog = "action"
+	SortFieldAuditLogSeverity  SortFieldAuditLog = "severity"
+)
+
+// SearchAuditLogsFilter narrows an audit log search. Empty fields do not
+// filter.
+type SearchAuditLogsFilter struct {
+	Actions       []string
+	Severities    []AuditSeverity `validate:"omitempty,dive,oneof=INFO SUCCESS WARNING ERROR"`
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
+
+type SearchAuditLogsInput struct {
+	TenantID              string                                                   `validate:"required"`
+	ProductID             string                                                   `validate:"required"`
+	IntegrationInstanceID string                                                   `validate:"required"`
+	Request               search.Request[SearchAuditLogsFilter, SortFieldAuditLog] `validate:"required"`
+}
+
+// Validate checks the input, the sort the client named and the actions it filters on.
+func (in SearchAuditLogsInput) Validate() error {
+	if err := searchvalid.ValidateRequest(in, in.Request,
+		SortFieldAuditLogCreatedAt,
+		SortFieldAuditLogAction,
+		SortFieldAuditLogSeverity); err != nil {
+		return err
+	}
+	if in.Request.Filter == nil {
+		return nil
+	}
+	return searchvalid.ValidateOneOf("filter.actions", in.Request.Filter.Actions, AuditActions())
+}

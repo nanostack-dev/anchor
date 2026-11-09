@@ -165,6 +165,9 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
+	if err := validateOrganizationMembersSearch(request); err != nil {
+		return nil, err
+	}
 	res, err := s.OrganizationMembershipService.SearchMembers(
 		ctx, organizationMemberSearch(request.ProductId, request.OrganizationId, request.Body),
 	)

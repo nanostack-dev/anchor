@@ -91,6 +91,7 @@ func (s *AnchorAPI) ListEmailTemplates(
 	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: int(templates.Total)}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchEmailTemplates(
 	ctx context.Context, request SearchEmailTemplatesRequestObject,
 ) (SearchEmailTemplatesResponseObject, error) {
@@ -104,6 +105,9 @@ func (s *AnchorAPI) SearchEmailTemplates(
 		body = &SearchEmailTemplatesJSONRequestBody{}
 	}
 
+	if err = validateEmailTemplatesSearch(tenantID, request.ProductId, body); err != nil {
+		return nil, err
+	}
 	q := emailTemplateSearch(
 		emailrepo.EmailTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
 	)
@@ -468,12 +472,12 @@ func (s *AnchorAPI) SearchEmailSends(
 		body = &SearchEmailSendsJSONRequestBody{}
 	}
 
-	q, err := emailSendSearch(
-		emailrepo.EmailSendScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
-	)
-	if err != nil {
+	if err = validateEmailSendsSearch(tenantID, request.ProductId, body); err != nil {
 		return nil, err
 	}
+	q := emailSendSearch(
+		emailrepo.EmailSendScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
 	result, err := s.EmailService.SearchSends(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search email sends",
@@ -496,17 +500,13 @@ func (s *AnchorAPI) SearchEmailSends(
 // column that the contract names.
 func emailSendSearch(
 	scope emailrepo.EmailSendScope, body *SearchEmailSendsJSONRequestBody,
-) (emailrepo.EmailSendSearch, error) {
+) emailrepo.EmailSendSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
-	if err := requireOneOf("statuses", f.Statuses,
-		email.SendStatusQueued, email.SendStatusSending, email.SendStatusSent, email.SendStatusFailed); err != nil {
-		return emailrepo.EmailSendSearch{}, err
-	}
 	q := emailrepo.NewEmailSendSearch(scope)
 	q = searchexec.Some(q, q.TemplateID().In, f.TemplateIds)
 	q = searchexec.Some(q, q.Status().In, f.Statuses)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		emailrepo.EmailSendSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

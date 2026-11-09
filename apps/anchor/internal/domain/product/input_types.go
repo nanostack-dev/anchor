@@ -1,5 +1,11 @@
 package product
 
+import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
+	"anchor/internal/searchvalid"
+)
+
 type CreateProductInput struct {
 	TenantID    string `json:"tenant_id"   validate:"required,notblank"`
 	Name        string `json:"name"        validate:"required,notblank,min=2,max=100"`
@@ -21,9 +27,31 @@ type UpdateConfigInput struct {
 	Events              *EventsConfig
 }
 
-// SortFieldProduct is the sort_by type of POST /products/search. The generated
-// search owns the values; this type gives the OpenAPI schema its Go type.
+type SearchProductFilter struct {
+	IDs   []string `json:"ids,omitempty"   validate:"omitempty,dive,notblank"`
+	Names []string `json:"names,omitempty" validate:"omitempty,dive,notblank"`
+}
+
 type SortFieldProduct string
+
+const (
+	SortFieldProductCreatedAt SortFieldProduct = "created_at"
+	SortFieldProductUpdatedAt SortFieldProduct = "updated_at"
+	SortFieldProductName      SortFieldProduct = "name"
+)
+
+type SearchProductInput struct {
+	TenantID string                                                `json:"tenant_id" validate:"required,notblank"`
+	Request  search.Request[SearchProductFilter, SortFieldProduct] `json:"request"   validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldProductCreatedAt,
+		SortFieldProductUpdatedAt,
+		SortFieldProductName)
+}
 
 type GetProductInput struct {
 	TenantID  string `json:"tenant_id"  validate:"required,notblank"`

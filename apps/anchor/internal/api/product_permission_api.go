@@ -11,7 +11,6 @@ import (
 	"anchor/internal/repository"
 
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
-	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
 func mapProductPermissionToResponse(perm permission.ProductPermission) ProductPermissionResponse {
@@ -27,10 +26,14 @@ func mapProductPermissionToResponse(perm permission.ProductPermission) ProductPe
 func (s *AnchorAPI) SearchProductPermissions(
 	ctx context.Context, request SearchProductPermissionsRequestObject,
 ) (SearchProductPermissionsResponseObject, error) {
-	q, err := productPermissionSearch(request.ProductId, request.Body)
-	if err != nil {
+	body := request.Body
+	if body == nil {
+		body = &SearchProductPermissionsJSONRequestBody{}
+	}
+	if err := validateProductPermissionsSearch(request.ProductId, body); err != nil {
 		return nil, err
 	}
+	q := productPermissionSearch(request.ProductId, body)
 
 	result, nanostackErr := s.PermissionService.SearchByProductID(ctx, q)
 	if nanostackErr != nil {
@@ -68,19 +71,16 @@ func (s *AnchorAPI) GetProductPermission(
 // against the principal; the body never sets it.
 func productPermissionSearch(
 	productID string, body *SearchProductPermissionsJSONRequestBody,
-) (repository.ProductPermissionSearch, error) {
+) repository.ProductPermissionSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	names := lowerPermissionNames(f.Names)
-	if err := validate.ValidateStruct(permission.SearchProductPermissionNames{Names: names}); err != nil {
-		return repository.ProductPermissionSearch{}, err
-	}
 	q := repository.NewProductPermissionSearch(productID)
 	q = searchexec.Some(q, q.Name().In, names)
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.ProductPermissionSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func lowerPermissionNames(names []string) []string {

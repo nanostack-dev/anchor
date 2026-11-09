@@ -1,9 +1,43 @@
 package license
 
-// SortFieldOrganizationLicense is the sort_by type of POST
-// /licensing/organization-licenses/search. The generated search owns the
-// values; this type gives the OpenAPI schema its Go type.
+import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
+	"anchor/internal/searchvalid"
+)
+
+// SearchOrganizationLicenseFilter narrows a search over a Product's
+// Organizations and the licenses they hold.
+type SearchOrganizationLicenseFilter struct {
+	OrganizationIDs    []string
+	LicenseTemplateIDs []string
+	// Licensed keeps only Organizations that hold a license when true, only
+	// those that hold none when false, and both when nil.
+	Licensed *bool
+}
+
+// SortFieldOrganizationLicense names a column a search may order by.
 type SortFieldOrganizationLicense string
+
+const (
+	SortFieldOrganizationLicenseOrganizationName SortFieldOrganizationLicense = "organization_name"
+	SortFieldOrganizationLicenseInstantiatedAt   SortFieldOrganizationLicense = "instantiated_at"
+)
+
+// SearchOrganizationLicensesInput reads a page of the Product's customer book:
+// each Organization and the license it holds, if any.
+type SearchOrganizationLicensesInput struct {
+	TenantID  string `validate:"required,notblank"`
+	ProductID string `validate:"required,notblank"`
+	Request   search.Request[SearchOrganizationLicenseFilter, SortFieldOrganizationLicense]
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchOrganizationLicensesInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldOrganizationLicenseOrganizationName,
+		SortFieldOrganizationLicenseInstantiatedAt)
+}
 
 // OrganizationLicenseSummary is one Organization and the license it holds.
 //

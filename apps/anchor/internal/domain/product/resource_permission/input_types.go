@@ -1,5 +1,13 @@
 package resourcepermission
 
+import (
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+
+	"anchor/internal/domain/resourcetype"
+
+	"anchor/internal/searchvalid"
+)
+
 type CreateProductResourcePermissionInput struct {
 	ProductID     string  `validate:"required,notblank"`
 	Name          string  `validate:"required,notblank,min=2,max=200"`
@@ -25,12 +33,44 @@ type DeleteProductResourcePermissionInput struct {
 	Name      string `validate:"required,notblank"`
 }
 
-// SortFieldProductResourcePermission is the sort_by type of POST
-// /resource-permissions/search. The generated search owns the values; this type
-// gives the OpenAPI schema its Go type.
+type SearchProductResourcePermissionFilter struct {
+	Names          []string `validate:"omitempty,dive,notblank"`
+	ScopeModifiers []string `validate:"omitempty,dive,notblank"`
+	ResourceTypes  []string `validate:"omitempty,max=50,dive,notblank"`
+	// Scopes is what the service resolves ResourceTypes to.
+	Scopes resourcetype.ScopeFilter
+}
+
 type SortFieldProductResourcePermission string
+
+const (
+	SortFieldProductResourcePermissionCreatedAt SortFieldProductResourcePermission = "created_at"
+	SortFieldProductResourcePermissionUpdatedAt SortFieldProductResourcePermission = "updated_at"
+	SortFieldProductResourcePermissionName      SortFieldProductResourcePermission = "name"
+)
+
+type SearchProductResourcePermissionInput struct {
+	ProductID string                                                                                    `validate:"required,notblank"`
+	Request   search.Request[SearchProductResourcePermissionFilter, SortFieldProductResourcePermission] `validate:"required"`
+}
+
+// Validate checks the input and the sort the client named.
+func (in SearchProductResourcePermissionInput) Validate() error {
+	return searchvalid.ValidateRequest(in, in.Request,
+		SortFieldProductResourcePermissionCreatedAt,
+		SortFieldProductResourcePermissionUpdatedAt,
+		SortFieldProductResourcePermissionName)
+}
 
 type GetProductRoleResourcePermissionsInput struct {
 	ProductID     string `json:"product_id"      validate:"required,notblank"`
 	ProductRoleID string `json:"product_role_id" validate:"required,notblank"`
+}
+
+// WithScopes resolves the filter's resource types against the product's tree.
+func (f SearchProductResourcePermissionFilter) WithScopes(
+	tree resourcetype.Tree,
+) SearchProductResourcePermissionFilter {
+	f.Scopes = tree.ResolveScopes(f.ResourceTypes)
+	return f
 }

@@ -119,12 +119,12 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 		body = &SearchLicenseTemplatesJSONRequestBody{}
 	}
 
-	q, err := licenseTemplateSearch(
-		licenserepo.LicenseTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
-	)
-	if err != nil {
+	if err = validateLicenseTemplatesSearch(tenantID, request.ProductId, body); err != nil {
 		return nil, err
 	}
+	q := licenseTemplateSearch(
+		licenserepo.LicenseTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
 	result, err := s.LicenseTemplateService.SearchTemplates(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search license templates",
@@ -145,18 +145,15 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 // comes from the authenticated principal and the route; the body never sets it.
 func licenseTemplateSearch(
 	scope licenserepo.LicenseTemplateScope, body *SearchLicenseTemplatesJSONRequestBody,
-) (licenserepo.LicenseTemplateSearch, error) {
+) licenserepo.LicenseTemplateSearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
-	if err := requireOneOf("statuses", f.Statuses, license.TemplateActive, license.TemplateArchived); err != nil {
-		return licenserepo.LicenseTemplateSearch{}, err
-	}
 	q := licenserepo.NewLicenseTemplateSearch(scope)
 	q = searchexec.Some(q, q.Status().In, f.Statuses)
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		licenserepo.LicenseTemplateSortName, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) UpdateLicenseTemplate(

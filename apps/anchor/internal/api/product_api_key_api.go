@@ -80,10 +80,14 @@ func (s *AnchorAPI) CreateProductAPIKey(
 func (s *AnchorAPI) SearchProductAPIKeys(
 	ctx context.Context, request SearchProductAPIKeysRequestObject,
 ) (SearchProductAPIKeysResponseObject, error) {
-	q, err := productAPIKeySearch(request.ProductId, request.Body)
-	if err != nil {
+	body := request.Body
+	if body == nil {
+		body = &SearchProductAPIKeysJSONRequestBody{}
+	}
+	if err := validateProductAPIKeysSearch(request.ProductId, body); err != nil {
 		return nil, err
 	}
+	q := productAPIKeySearch(request.ProductId, body)
 
 	result, err := s.ProductAPIKeyService.Search(ctx, q)
 	if err != nil {
@@ -162,13 +166,10 @@ func (s *AnchorAPI) DeleteProductAPIKey(
 // accepted and ignored: product API keys have no expiry column to filter on.
 func productAPIKeySearch(
 	productID string, body *SearchProductAPIKeysJSONRequestBody,
-) (repository.ProductAPIKeySearch, error) {
+) repository.ProductAPIKeySearch {
 	b := searchexec.OrZero(body)
 	f := searchexec.OrZero(b.Filter)
 	statuses := orEmpty(f.Status)
-	if err := requireOneOf("status", statuses, apikey.StatusActive, apikey.StatusInactive); err != nil {
-		return repository.ProductAPIKeySearch{}, err
-	}
 	q := repository.NewProductAPIKeySearch(productID)
 	q = searchexec.Some(q, q.ID().In, f.Ids)
 	q = searchexec.Some(q, q.Name().In, f.Names)
@@ -178,5 +179,5 @@ func productAPIKeySearch(
 	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
 	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
 		repository.ProductAPIKeySortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, b.Pagination), nil
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
