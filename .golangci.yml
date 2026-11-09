@@ -249,7 +249,7 @@ linters:
       # Default: [ switch ]
       check:
         - switch
-        - map
+        - mapliteral
 
     exhaustruct:
       # List of regular expressions to exclude struct packages and their names from checks.
@@ -324,6 +324,13 @@ linters:
       # Default: []
       disable:
         - fieldalignment # too strict
+        # TEMP(golang/go#81188): Go 1.27.0 to 1.27.3 write export data that
+        # loses the order of generic methods, so analyzers misread facts on
+        # packages that import them. Enable again once go.mod pins Go 1.27.4
+        # (CL 855582) and a full lint of the framework and of each service
+        # passes with it. The framework lint/smoke does not reproduce the bug,
+        # so its pass proves nothing here; see the framework lint/README.md.
+        - nilness
       # Settings per analyzer.
       settings:
         shadow:
@@ -414,6 +421,9 @@ linters:
       # Default: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
       checks:
         - all
+        # TEMP(golang/go#81188): disabled with govet nilness above, for the
+        # same export data bug, and enabled again under the same rule.
+        - -SA4023
         # Incorrect or missing package comment.
         # https://staticcheck.dev/docs/checks/#ST1000
         - -ST1000
