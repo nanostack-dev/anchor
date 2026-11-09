@@ -63,7 +63,7 @@ type ProductRepository interface {
 	Update(
 		ctx context.Context, tenantID string, product product.Product,
 	) (product.Product, error)
-	DeleteByID(ctx context.Context, tenantID string, id string) error
+	DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID, id string) error
 	SearchByTenantID(
 		ctx context.Context, tenantID string,
 		input search.Request[product.SearchProductFilter, product.SortFieldProduct],
@@ -273,18 +273,6 @@ func (r *productRepositoryImpl) Update(
 			currentProd.Config.WithDefaults().OrganizationAPIKeys,
 		),
 	), nil
-}
-
-func (r *productRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, id string,
-) error {
-	stmt := table.Products.DELETE().WHERE(
-		table.Products.ID.EQ(postgres.String(id)).AND(
-			table.Products.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productRepositoryImpl) SearchByTenantID(

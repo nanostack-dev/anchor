@@ -2,7 +2,11 @@
 
 package repository
 
-// ProductAPIKeyRepository on *productAPIKeyRepository: 0 derived methods on table product_api_keys; the other methods are
+import (
+	"context"
+)
+
+// ProductAPIKeyRepository on *productAPIKeyRepository: 1 derived method on table product_api_keys; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // Hand-written although the name derives (deleting the method switches it
@@ -11,3 +15,11 @@ package repository
 // A compile error on the next line means ProductAPIKeyRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ ProductAPIKeyRepository = (*productAPIKeyRepository)(nil)
+
+// DeleteByProductIDAndID is derived from its name:
+//
+//	DELETE FROM product_api_keys WHERE product_id = $1 AND id = $2
+func (r *productAPIKeyRepository) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
+	return err
+}
