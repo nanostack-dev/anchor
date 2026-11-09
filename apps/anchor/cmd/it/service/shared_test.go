@@ -61,6 +61,7 @@ var (
 	RoleAssignmentService  assignmentservice.Service
 	ResourceRepo           resourcerepository.Repository
 	RoleAssignmentRepo     assignmentrepository.Repository
+	PermissionStartupSync  *service.ProductPermissionStartupSync
 )
 
 func TestMain(m *testing.M) {
@@ -102,6 +103,7 @@ func TestMain(m *testing.M) {
 				OrganizationService = c.OrganizationService
 				ProductRoleService = c.ProductRoleService
 				ResourcePermissionSvc = c.ResourcePermissionService
+				PermissionStartupSync = c.ProductPermissionStartupSync
 			},
 		},
 	)
