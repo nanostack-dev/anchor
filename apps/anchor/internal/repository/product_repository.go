@@ -19,10 +19,15 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ ProductRepository = (*productRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[ProductRepository, productRepositoryImpl](
+		table.Products, nanorepo.NoMapper[model.Products],
+	)
+}
 
 type productWithOrganizationAPIKeyConfig struct {
 	model.Products
@@ -70,6 +75,8 @@ type ProductRepository interface {
 }
 
 type productRepositoryImpl struct {
+	productsBase
+
 	db            *sql.DB
 	productMapper *mapper.ProductMapper
 	logger        *slog.Logger
@@ -77,6 +84,7 @@ type productRepositoryImpl struct {
 
 func NewProductRepository(db *sql.DB, productMapper *mapper.ProductMapper, logger *slog.Logger) ProductRepository {
 	return &productRepositoryImpl{
+		productsBase:  newProductsBase(db),
 		db:            db,
 		productMapper: productMapper,
 		logger:        logger.With(slog.String("component", "product_repository")),

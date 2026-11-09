@@ -20,10 +20,15 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ ProductUserRepository = (*productUserRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[ProductUserRepository, productUserRepositoryImpl](
+		table.ProductUsers, nanorepo.NoMapper[model.ProductUsers],
+	)
+}
 
 func productUsersUpdatableColumns() postgres.ColumnList {
 	return table.ProductUsers.AllColumns.Except(
@@ -69,6 +74,8 @@ type ProductUserRepository interface {
 }
 
 type productUserRepositoryImpl struct {
+	productUsersBase
+
 	db                *sql.DB
 	productUserMapper *mapper.ProductUserMapper
 	logger            *slog.Logger
@@ -80,6 +87,7 @@ func NewProductUserRepository(
 	logger *slog.Logger,
 ) ProductUserRepository {
 	return &productUserRepositoryImpl{
+		productUsersBase:  newProductUsersBase(db),
 		db:                db,
 		productUserMapper: productUserMapper,
 		logger:            logger.With(slog.String("component", "product_user_repository")),

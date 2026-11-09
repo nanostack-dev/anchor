@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -21,6 +22,19 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 )
+
+// invitationToDomain is the stateless mapper that the generated base calls.
+//
+// invitationToDomain is the stateless mapper that the generated base calls.
+func invitationToDomain(row model.PlatformInvitations) invitation.PlatformInvitation {
+	return (&mapper.InvitationMapper{}).ToDomain(row)
+}
+
+func _() {
+	nanorepo.Implement[InvitationRepository, invitationRepositoryImpl](
+		table.PlatformInvitations, invitationToDomain,
+	)
+}
 
 // Remove global variable, use a function instead.
 func platformInvitationsUpdatableColumns() postgres.ColumnList {
@@ -49,6 +63,8 @@ type InvitationRepository interface {
 }
 
 type invitationRepositoryImpl struct {
+	platformInvitationsBase
+
 	db     *sql.DB
 	mapper *mapper.InvitationMapper // Use concrete type
 	logger *slog.Logger
@@ -60,9 +76,10 @@ func NewPlatformInvitationRepository(
 	logger *slog.Logger,
 ) InvitationRepository {
 	return &invitationRepositoryImpl{
-		db:     db,
-		mapper: mapper,
-		logger: logger.With(slog.String("component", "invitation_repository")),
+		platformInvitationsBase: newPlatformInvitationsBase(db),
+		db:                      db,
+		mapper:                  mapper,
+		logger:                  logger.With(slog.String("component", "invitation_repository")),
 	}
 }
 

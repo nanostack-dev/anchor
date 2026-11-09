@@ -18,10 +18,22 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ OrganizationRepository = (*organizationRepositoryImpl)(nil)
+// organizationToDomain is the stateless mapper that the generated base calls.
+//
+// organizationToDomain is the stateless mapper that the generated base calls.
+func organizationToDomain(row model.Organizations) organization.Organization {
+	return (&mapper.OrganizationMapper{}).ToDomain(row)
+}
+
+func _() {
+	nanorepo.Implement[OrganizationRepository, organizationRepositoryImpl](
+		table.Organizations, organizationToDomain,
+	)
+}
 
 func organizationsUpdatableColumns() postgres.ColumnList {
 	return table.Organizations.AllColumns.Except(
@@ -47,6 +59,8 @@ type OrganizationRepository interface {
 }
 
 type organizationRepositoryImpl struct {
+	organizationsBase
+
 	db                 *sql.DB
 	organizationMapper *mapper.OrganizationMapper
 	logger             *slog.Logger
@@ -58,6 +72,7 @@ func NewOrganizationRepository(
 	logger *slog.Logger,
 ) OrganizationRepository {
 	return &organizationRepositoryImpl{
+		organizationsBase:  newOrganizationsBase(db),
 		db:                 db,
 		organizationMapper: organizationMapper,
 		logger:             logger.With(slog.String("component", "organization_repository")),

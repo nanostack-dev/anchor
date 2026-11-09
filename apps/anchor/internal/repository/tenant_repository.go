@@ -5,16 +5,29 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/mapper"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-var _ TenantRepository = (*tenantRepositoryImpl)(nil)
+// tenantToDomain is the stateless mapper that the generated base calls.
+//
+// tenantToDomain is the stateless mapper that the generated base calls.
+func tenantToDomain(row model.PlatformTenants) tenant.PlatformTenant {
+	return (&mapper.TenantMapper{}).ToDomain(row)
+}
+
+func _() {
+	nanorepo.Implement[TenantRepository, tenantRepositoryImpl](
+		table.PlatformTenants, tenantToDomain,
+	)
+}
 
 func platformTenantsUpdatableColumns() postgres.ColumnList {
 	return table.PlatformTenants.AllColumns.Except(
@@ -32,6 +45,8 @@ type TenantRepository interface {
 }
 
 type tenantRepositoryImpl struct {
+	platformTenantsBase
+
 	db           *sql.DB
 	tenantMapper *mapper.TenantMapper
 	logger       *slog.Logger
@@ -41,9 +56,10 @@ func NewTenantRepository(
 	db *sql.DB, tenantMapper *mapper.TenantMapper, logger *slog.Logger,
 ) TenantRepository {
 	return &tenantRepositoryImpl{
-		db:           db,
-		tenantMapper: tenantMapper,
-		logger:       logger.With(slog.String("component", "tenant_repository")),
+		platformTenantsBase: newPlatformTenantsBase(db),
+		db:                  db,
+		tenantMapper:        tenantMapper,
+		logger:              logger.With(slog.String("component", "tenant_repository")),
 	}
 }
 

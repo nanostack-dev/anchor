@@ -10,14 +10,20 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[IntegrationInstanceRepository, integrationInstanceRepositoryImpl](
+		table.IntegrationInstances, nanorepo.NoMapper[model.IntegrationInstances],
+	)
+}
 
 func integrationInstancesUpdatableColumns() postgres.ColumnList {
 	return table.IntegrationInstances.AllColumns.Except(
@@ -74,6 +80,8 @@ type IntegrationInstanceRepository interface {
 }
 
 type integrationInstanceRepositoryImpl struct {
+	integrationInstancesBase
+
 	db     *sql.DB
 	mapper *mapper.IntegrationInstanceMapper
 	logger *slog.Logger
@@ -83,9 +91,10 @@ func NewIntegrationInstanceRepository(
 	db *sql.DB, m *mapper.IntegrationInstanceMapper, logger *slog.Logger,
 ) IntegrationInstanceRepository {
 	return &integrationInstanceRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "integration_instance_repository")),
+		integrationInstancesBase: newIntegrationInstancesBase(db),
+		db:                       db,
+		mapper:                   m,
+		logger:                   logger.With(slog.String("component", "integration_instance_repository")),
 	}
 }
 

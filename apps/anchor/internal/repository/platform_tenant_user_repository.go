@@ -21,8 +21,22 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
+
+// platformUserToDomain is the stateless mapper that the generated base calls.
+//
+// platformUserToDomain is the stateless mapper that the generated base calls.
+func platformUserToDomain(row model.PlatformUsers) platform.User {
+	return (&mapper.PlatformUserMapper{}).ToDomain(row)
+}
+
+func _() {
+	nanorepo.Implement[PlatformTenantUserRepository, platformTenantUserRepositoryImpl](
+		table.PlatformUsers, platformUserToDomain,
+	)
+}
 
 // Remove global variable, use a function instead.
 func platformUsersUpdatableColumns() postgres.ColumnList {
@@ -54,6 +68,8 @@ type PlatformTenantUserRepository interface {
 }
 
 type platformTenantUserRepositoryImpl struct {
+	platformUsersBase
+
 	db                 *sql.DB
 	platformUserMapper *mapper.PlatformUserMapper
 	logger             *slog.Logger
@@ -222,6 +238,7 @@ func NewPlatformTenantUserRepository(
 	logger *slog.Logger,
 ) PlatformTenantUserRepository {
 	return &platformTenantUserRepositoryImpl{
+		platformUsersBase:  newPlatformUsersBase(db),
 		db:                 db,
 		platformUserMapper: platformUserMapper,
 		logger:             logger.With(slog.String("component", "platform_tenant_user_repository")),
