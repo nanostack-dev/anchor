@@ -30,7 +30,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - Every exported service method validates its input via `nanostack-framework/pkg/validate` before any repository or transaction call.
 - Business rules live in the service layer, never in SQL. New migrations must not add `CHECK` constraints or business triggers — the DB keeps PK/FK/UNIQUE/NOT NULL/defaults and the `updated_at` trigger only. One exception: time-series aggregation is delegated to TimescaleDB (`time_bucket`, continuous aggregates, retention and compression policies) — see `docs/adr/0005-timescaledb-for-usage-history.md`. Interpreting a series is still service-layer work.
 - New subsystems get their own package tree with a `nano.Module` (`internal/email/`, `internal/license/`), not another file in the flat `internal/service` and `internal/repository` packages. List the module in `apps/anchor/cmd/app/manifest.go`, and run `go tool nano gen` from `apps/anchor` after a change to a provider, a config field, or the method set of a repository bound with `nanorepo.Implement`: `cmd/app`'s tests fail on stale generated files. Background work is a type with `Start`, `Stop` or `Run` (`nano.Starter`, `Stopper`, `Runner`), never a goroutine started from a constructor. API handler methods stay in `internal/api` because the generated `StrictServerInterface` is implemented by one struct. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
-- Tenant-facing paths stay tenant-scoped at the repository/service boundary. Methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers.
+- Tenant-facing paths stay tenant-scoped at the repository/service boundary. Methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers. [Repositories](#repositories) gives the naming rules for a repository bound with `nanorepo.Implement`.
 - Public IDs are KSUIDs.
 - Log through log/slog with an injected `*slog.Logger` and a context (`logger.InfoContext(ctx, ...)`); zerolog and `pkg/log` are banned by depguard. Log an error from a request path with core/log's `log.ErrorTo(ctx, logger, err, msg, ...)` so the level follows the error: a cancelled request (a cancelled PostgreSQL statement included) logs at warn, a caller fault (a 4xx fault, a client search error) at debug, anything else at error.
 - A collection of a persisted resource is a `POST .../search` that pages with a keyset cursor: `transactor.Page(...).Keyset(order)` with `order` from `transactor.StrictKeys(...)` (typed keys, the primary key as the tiebreak, an unmapped sort refused), a documented default order, and a `searchtest` suite in `TestCursorSearches`. Return a client search error (`searchx.IsClientError`: cursor errors and an unknown sort) unlogged from repositories and services; `log.ErrorTo` logs it once at debug. Never add a `GET` list or an `OrderBy` page. See [cursor-paginated searches](../technical/cursor-pagination.md).
@@ -59,6 +59,59 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - Every CT scenario needs a plain-English `t.Run` name as defined in [component-test names](../engineering-best-practices.md#component-test-names). For other code, prefer clear names and comment only non-obvious behavior or algorithms.
 - Product-scoped writes that change a catalogued resource must `events.Emit` inside the same `transactor.InTx` as the write. Catalogued resources: organization, membership, organization invitation, organization API key, product user, organization license, product role, organization custom role, product resource permission, product resource type, resource, resource role assignment. Add the type to `internal/events` first. A definition marked `Undelivered` (`resource.created|updated|deleted`) is never queued nor offered to an endpoint; cover it through its observer's effect, such as the relationship store, and assert that the endpoint receives nothing and that no delivery job is queued. Clerk ingest is a product write: emit the matching product-user event. Cover the emit with a CT that configures an endpoint (`ProductContext.CaptureEvents`) and waits with `WaitFor`. `CaptureEvents` asserts Standard Webhooks on every captured delivery (signature, headers, envelope). No endpoint configured is not an error: the worker completes with an empty fan-out. Assign and unassign of a resource permission on a role emit `product.role.updated` only when the assignment actually changes.
 - An `events` TxObserver that takes a lock takes it after the locks of the observers whose type names sort before its own: the emitter runs them in type-name order on every replica, and two replicas taking the same locks in opposite orders deadlock ([postmortem](../postmortems/2026-10-31-tx-observer-order-deadlock.md)).
+
+## Repositories
+
+A repository is an interface and its implementation struct. `nanorepo.Implement` binds them to one go-jet table. The repo step of `go tool nano gen` derives each interface method that has no hand-written body from its name, and writes the method to `<file>_repo.gen.go`. The framework reference is [Repositories: `nano gen repo`](https://github.com/nanostack-dev/nanostack-framework/blob/v0.23.0-beta.3/docs/generation.md#repositories-nano-gen-repo) (v0.23.0-beta.3). The examples below come from `apps/anchor/internal/repository`. For the output of a derived method, see `apps/anchor/internal/email/repository/template_repository_repo.gen.go`.
+
+- Each repository file has one `func _()` declaration. It binds the interfaces of that file, and it stays next to them (`internal/repository/tenant_repository.go`):
+
+  ```go
+  func _() {
+  	nanorepo.Implement[TenantRepository, tenantRepositoryImpl](
+  		table.PlatformTenants, tenantToDomain,
+  	)
+  }
+  ```
+
+  The implementation embeds the generated base of the table (`platformTenantsBase`) and sets it with `newPlatformTenantsBase(db)`.
+- The mapper has no state and cannot fail. Write it as a function, such as `tenantToDomain`, which calls `(&mapper.TenantMapper{}).ToDomain(row)`. Do not use a package variable: lint refuses it (`gochecknoglobals`).
+- Use `nanorepo.NoMapper[model.X]` when the mapper has state or can fail. `ProductUserRepository` uses it because `ProductUserMapper.ToDomain` returns `(user.ProductUser, error)`. `IntegrationInstanceRepository` uses it because `IntegrationInstanceMapper` holds a cipher and a logger. With `NoMapper`, the base returns model rows, so a find that returns a domain type does not derive. `DeleteBy`, `ExistsBy` and `Count` methods still derive.
+- A derived name says every column that it filters on, joined by `And`. On a scoped table, the scope column comes first: `platform_tenant_id`, `product_id` or `organization_id` (`Postgres.Scopes` in `apps/anchor/nanogen/project.go`). Example: `FindByPlatformTenantIDAndProductIDAndSlug` on `email_templates` (`internal/email/repository`). `OrganizationRepository.FindByID` does not derive, because `organizations` is scoped by `product_id` and the name does not filter on it first.
+- The `Internal` suffix lets only a read derive without a scope column, for example `FindAllInternal` or `CountInternal`. `-explain` and the generated comment mark that read `UNSCOPED`. The rule under [Invariants](#invariants) still applies: each method that bypasses tenant scope has the suffix, a doc comment, and no caller in a tenant-facing handler.
+- A delete across tenants never derives, also with the `Internal` suffix. Write it by hand, so that review sees it, and give it the suffix. Example: `events.EndpointRepository.DeleteByProductIDInternal` in `internal/events/repository.go`.
+- A find that returns one row derives only when its columns cover the primary key or a unique key. It reads `LIMIT 2` and returns `transactor.ErrMoreThanOneRow` when two rows match. A hand-written `LIMIT 1` on columns that are not unique can return a different row on each call. Replace it with `r.first` and an order that ends on a unique column. `platform_users` has no unique key on `(platform_tenant_id, user_id)`, so `PlatformTenantUserRepository.FindByTenantIDAndUserID` is renamed `FindByPlatformTenantIDAndUserID` and stays hand-written:
+
+  ```go
+  func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(
+  	ctx context.Context, tenantID string, userID string,
+  ) (functional.Option[platform.User], error) {
+  	return r.first(ctx,
+  		r.where.PlatformTenantID(tenantID).AND(r.where.UserID(userID)),
+  		r.t.CreatedAt.ASC(), r.t.ID.ASC(),
+  	)
+  }
+  ```
+
+- Before you write a body, run the repo step with `-explain` from `apps/anchor`. Pass the scope columns of `nanogen/project.go`, because the single step does not read them:
+
+  ```sh
+  go tool nano gen repo -dir internal/repository \
+    -scopes platform_tenant_id,product_id,organization_id -explain UserRepository
+  ```
+
+  It prints how each method resolves. When a note says that the name also derives, compare the SQL in the note with the body. Delete the body only when both run the same query: the same filter, order and joins. A derived `FindAll` or slice find has no `ORDER BY`, so a body that orders its rows stays. Example: `TenantRepository.FindAll` stays hand-written, because login reads `tenants[0]` (`internal/service/auth_service.go`). The note on `FindByEmail` shows the same query as its body, so that body goes:
+
+  ```text
+  FindByEmail  hand-written user_repository.go:61
+               note: the name also derives (SELECT * FROM users WHERE email = $1 LIMIT 2 -- at most one row: users_email_key (email); a second row is ErrMoreThanOneRow); the hand-written method wins
+  ```
+
+  When a note says that the name would not derive, it gives the reason. Fix the name, or keep the body on the base helpers (`r.findOne`, `r.first`, `r.findAll`, `r.where`).
+- Do not give the implementation a method with the name of a base helper: `findOne`, `first`, `findAll`, `exists`, `count`, `deleteWhere`, `updateWhere`, `page`, `query*` or `exec*`. Your method hides the helper. Derived methods then call your method, and their SQL comment no longer shows the query that runs. `organizationAPIKeyRepository` and `productAPIKeyRepository` do this today: their `findOne` adds a join on the permissions table. Rename that helper (for example `findOneWithPermissions`) before a method of those repositories derives.
+- A hand-written method that uses the base (`r.t`, `r.where` or a helper) on a scoped table with no predicate on a scope column gets a warning from `nano gen`, unless its name ends in `Internal`. Add the scope predicate. Do not ignore the warning: it does not fail the run.
+- After you add, remove or rename a method, run `go tool nano gen` from `apps/anchor`. CI runs `go tool nano gen -check -fresh`, which fails on a stale `<file>_repo.gen.go`.
+- In review, read the SQL comment of each derived method in `<file>_repo.gen.go`, and check that the implementation hides no base helper. In `repo_base.gen.go`, read only the predicate list (the `<table>Where` methods) of each table that the change binds. The generator writes the rest of that file in the same way for each table.
 
 ## Pull requests
 

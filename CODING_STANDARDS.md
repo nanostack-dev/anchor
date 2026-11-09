@@ -42,6 +42,12 @@ Uniqueness, locks and validation cover exactly what the domain requires. Ask wha
 
 Example: a unique index on an organization's display name, or one lock key taken by every organization creation; drop both.
 
+## 7. A bound repository method derives from its name
+
+In a repository bound with `nanorepo.Implement`, a method whose name derives and whose body runs the derived SQL has no hand-written body. Keep a hand-written body only when `go tool nano gen repo -explain` says that the name does not derive, when the method is a delete across tenants, or when the body does more than the derived SQL (an `ORDER BY`, a join). The implementation has no method with the name of a base helper (`findOne`, `first`, `findAll`), because that hides the helper from derived methods. Read the SQL comment of each derived method in `<file>_repo.gen.go`. In `repo_base.gen.go`, read only the predicate list: the generator writes the rest in the same way for each table. The full rules are in [Repositories](docs/development/agent-rules.md#repositories).
+
+Example: a hand-written `UserRepository.FindByEmail` with a `LIMIT 1` query, where `users_email_key` makes the name derive; delete the body and run `go tool nano gen`.
+
 ## Enforced by tooling
 
 These rules fail lint or the UI contract check, so a reviewer does not repeat them:
@@ -49,4 +55,5 @@ These rules fail lint or the UI contract check, so a reviewer does not repeat th
 - Scroll regions use the design-system `ScrollArea`, never `overflow-*-auto|scroll` classes (`anchor-ui/scripts/check-ui-contract.mjs`).
 - Design-system components take no `className` or `style`, and UI imports only public design-system entry points (`anchor-ui/scripts/check-ui-contract.mjs`).
 - Raw palette and arbitrary colors are banned in favour of tokens (`anchor-ui/scripts/check-ui-contract.mjs`).
+- A repository interface method that neither derives nor has a hand-written body, and a stale `<file>_repo.gen.go`, fail `go tool nano gen -check -fresh` (`dag://anchor/generated-code`).
 - `functional.Seq` chains use the fused forms and a row-locked context stays inline in the call it locks (`apps/anchor/gorules/`).
