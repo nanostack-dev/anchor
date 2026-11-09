@@ -309,39 +309,74 @@ func TestProductUserRepositorySearchByProductIDFilterByEmails(t *testing.T) {
 	assert.Empty(t, none.Items)
 }
 
-func TestProductUserRepositorySearchByProductIDFilterByNames(t *testing.T) {
-	productID := tenantProductChain(t)
-
-	target := createProductUserWithDetails(t, user.ProductUser{
-		ProductID: productID,
-		Name:      uniqueName(t, "Distinct Name"),
-		Email:     uniqueName(t, "namefilter") + "@example.com",
-		Status:    user.ProductUserStatusActive,
-	})
-	_ = createProductUser(t, productID) // unrelated, must not match
+// searchProductUsersByNames runs a product-user search with only the names
+// filter and returns the IDs it finds.
+func searchProductUsersByNames(t *testing.T, productID string, names ...string) []string {
+	t.Helper()
 
 	result, err := repoCtx.ProductUserRepository.SearchByProductID(
 		context.Background(), productID,
 		search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]{
-			Filter:     &user.SearchProductUserFilter{Names: []string{target.Name}},
+			Filter:     &user.SearchProductUserFilter{Names: names},
 			Pagination: search.Pagination{Limit: 10, Offset: 0},
 		},
 	)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), result.Total)
-	require.Len(t, result.Items, 1)
-	assert.Equal(t, target.ID, result.Items[0].ID)
+	require.Len(t, result.Items, int(result.Total))
 
-	none, err := repoCtx.ProductUserRepository.SearchByProductID(
-		context.Background(), productID,
-		search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]{
-			Filter:     &user.SearchProductUserFilter{Names: []string{"No Such Name At All"}},
-			Pagination: search.Pagination{Limit: 10, Offset: 0},
+	ids := make([]string, 0, len(result.Items))
+	for _, item := range result.Items {
+		ids = append(ids, item.ID)
+	}
+	return ids
+}
+
+// The spec documents the names filter as "contains any of these terms", each a
+// case-insensitive, literal substring, the rule every free-text filter follows.
+func TestProductUserRepositorySearchByProductIDFilterByNames(t *testing.T) {
+	productID := tenantProductChain(t)
+
+	create := func(name, email string) string {
+		return createProductUserWithDetails(t, user.ProductUser{
+			ProductID: productID,
+			Name:      name,
+			Email:     uniqueName(t, email) + "@example.com",
+			Status:    user.ProductUserStatusActive,
+		}).ID
+	}
+	joanne := create("Joanne Atlas", "joanne")
+	ann := create("Ann Borealis", "ann")
+	percent := create("100% Renewable", "percent")
+	noPercent := create("1000 Renewable", "nopercent")
+	underscore := create("seat_cap owner", "underscore")
+	noUnderscore := create("seatXcap owner", "nounderscore")
+	// The email holds the term; the names filter reads the name only.
+	byEmail := create("Someone Else", "atlas-in-email")
+
+	tests := map[string]struct {
+		names []string
+		want  []string
+	}{
+		"a whole name still matches":            {names: []string{"Joanne Atlas"}, want: []string{joanne}},
+		"a part of the name matches":            {names: []string{"atla"}, want: []string{joanne}},
+		"letter case is ignored":                {names: []string{"JOANNE atlas"}, want: []string{joanne}},
+		"a term matches inside a longer name":   {names: []string{"ann"}, want: []string{joanne, ann}},
+		"several terms match any of them":       {names: []string{"atlas", "borealis"}, want: []string{joanne, ann}},
+		"percent matches itself":                {names: []string{"100%"}, want: []string{percent}},
+		"underscore matches itself":             {names: []string{"seat_cap"}, want: []string{underscore}},
+		"a term found only in the email misses": {names: []string{"atlas-in-email"}, want: []string{}},
+		"a term no name holds matches nothing":  {names: []string{"No Such Name At All"}, want: []string{}},
+		// The near misses exist, so the misses above come from the filter.
+		"the near misses match their own names": {
+			names: []string{"1000 renewable", "seatxcap", "someone else"},
+			want:  []string{noPercent, noUnderscore, byEmail},
 		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), none.Total)
-	assert.Empty(t, none.Items)
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.want, searchProductUsersByNames(t, productID, tc.names...))
+		})
+	}
 }
 
 func TestProductUserRepositorySearchByProductIDFilterByStatuses(t *testing.T) {

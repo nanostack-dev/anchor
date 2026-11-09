@@ -2347,7 +2347,7 @@ components:
           type: array
           items:
             type: string
-          description: Filter by names containing these substrings.
+          description: "Keep users whose name contains any of these terms, each matched as a case-insensitive, literal substring: % and _ match themselves."
         statuses:
           type: array
           items:

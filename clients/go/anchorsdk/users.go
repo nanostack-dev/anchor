@@ -243,7 +243,8 @@ func (s *UserSearch) ExternalIDs(externalIDs ...string) *UserSearch {
 	return s
 }
 
-// Names restricts the result to users whose name contains one of the substrings.
+// Names restricts the result to users whose name contains one of the terms.
+// Each term is a case-insensitive, literal substring: % and _ match themselves.
 func (s *UserSearch) Names(names ...string) *UserSearch {
 	s.filter().Names = new(names)
 	return s

@@ -3012,7 +3012,7 @@ type ProductUserFilter struct {
 	// Ids Filter by specific product Product User IDs.
 	Ids *[]Ksuid `json:"ids,omitempty"`
 
-	// Names Filter by names containing these substrings.
+	// Names Keep users whose name contains any of these terms, each matched as a case-insensitive, literal substring: % and _ match themselves.
 	Names *[]string `json:"names,omitempty"`
 
 	// Statuses Filter by Product User statuses.
