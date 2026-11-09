@@ -354,3 +354,35 @@ func TestPlatformInvitationRepositorySearchByTenantIDScopesToTenant(t *testing.T
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), otherResult.Total)
 }
+
+func TestPlatformInvitationRepositoryFindByPlatformTenantIDAndEmailScopesToTenant(t *testing.T) {
+	ctx := context.Background()
+	tenantA, tenantB := createTenant(t), createTenant(t)
+	created := createInvitation(t, tenantB)
+
+	cross, err := repoCtx.InvitationRepository.FindByPlatformTenantIDAndEmail(ctx, tenantA, created.Email)
+	require.NoError(t, err)
+	assert.True(t, cross.IsAbsent())
+
+	own, err := repoCtx.InvitationRepository.FindByPlatformTenantIDAndEmail(ctx, tenantB, created.Email)
+	require.NoError(t, err)
+	require.True(t, own.IsPresent())
+	assert.Equal(t, created.ID, own.Value().ID)
+}
+
+// FindByCodeAndEmailInternal runs before the tenant is known, so it matches on
+// code and email only.
+func TestPlatformInvitationRepositoryFindByCodeAndEmailInternal(t *testing.T) {
+	ctx := context.Background()
+	created := createInvitation(t, createTenant(t))
+
+	got, err := repoCtx.InvitationRepository.FindByCodeAndEmailInternal(ctx, created.Code, created.Email)
+	require.NoError(t, err)
+	require.True(t, got.IsPresent())
+	assert.Equal(t, created.ID, got.Value().ID)
+	assert.Equal(t, created.PlatformTenantID, got.Value().PlatformTenantID)
+
+	wrong, err := repoCtx.InvitationRepository.FindByCodeAndEmailInternal(ctx, created.Code, "other-"+created.Email)
+	require.NoError(t, err)
+	assert.True(t, wrong.IsAbsent())
+}
