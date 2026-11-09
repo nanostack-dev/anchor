@@ -92,7 +92,7 @@ type Overrides struct {
 	PglockClient                        *pglock.Client
 	Locker                              fgasync.Locker
 	Tables                              *source.Tables
-	RepositoryRepository3               repository6.Repository
+	ResourcetypeRepositoryRepository    repository6.Repository
 	QueueClient                         *queue.Client
 	EventRegistration                   *events.Registration
 	EventRegistration2                  *events.Registration
@@ -116,7 +116,7 @@ type Overrides struct {
 	ModelSizeGuard                      *source.ModelSizeGuard
 	TxObservers                         []events.TxObserver
 	Emitter                             events.Emitter
-	ServiceService2                     service6.Service
+	ResourcetypeServiceService          service6.Service
 	SourceCatalog                       *source.Catalog
 	ModelSource                         fgasync.ModelSource
 	Syncer                              *fgasync.Syncer
@@ -139,13 +139,13 @@ type Overrides struct {
 	IntegrationAuditLogRepository       repository4.IntegrationAuditLogRepository
 	ProductUserMapper                   *mapper.ProductUserMapper
 	ProductUserRepository               repository4.ProductUserRepository
-	RepositoryRepository4               repository7.Repository
+	RoleassignmentRepositoryRepository  repository7.Repository
 	OrganizationMapper                  *mapper.OrganizationMapper
 	OrganizationRepository              repository4.OrganizationRepository
-	RepositoryRepository2               repository5.Repository
+	ResourceRepositoryRepository        repository5.Repository
 	ProductRoleMapper                   *mapper.ProductRoleMapper
 	ProductRoleRepository               repository4.ProductRoleRepository
-	ServiceService3                     service7.Service
+	RoleassignmentServiceService        service7.Service
 	Provider                            *clerk.Provider
 	Provider2                           *smtp.Provider
 	Providers                           []provider.Provider
@@ -157,7 +157,7 @@ type Overrides struct {
 	EndpointService                     events.EndpointService
 	Worker                              *events.Worker
 	LicenseTemplateMapper               *mapper.LicenseTemplateMapper
-	RepositoryTemplateRepository2       repository3.TemplateRepository
+	LicenseRepositoryTemplateRepository repository3.TemplateRepository
 	OrganizationLicenseMapper           *mapper.OrganizationLicenseMapper
 	OrganizationLicenseRepository       repository3.OrganizationLicenseRepository
 	OrganizationLicenseChangeMapper     *mapper.OrganizationLicenseChangeMapper
@@ -182,8 +182,8 @@ type Overrides struct {
 	InvitationRepository                repository4.InvitationRepository
 	PlatformUserMapper                  *mapper.PlatformUserMapper
 	PlatformTenantUserRepository        repository4.PlatformTenantUserRepository
-	RepositoryRepository5               repository8.Repository
-	ServiceService4                     service9.Service
+	SessionRepositoryRepository         repository8.Repository
+	SessionServiceService               service9.Service
 	AuthConfig                          *config.AuthConfig
 	JWTHelper                           service8.JWTHelper
 	AuthService                         service8.AuthService
@@ -199,13 +199,13 @@ type Overrides struct {
 	ProductResourcePermissionMapper     *mapper.ProductResourcePermissionMapper
 	ProductResourcePermissionRepository repository4.ProductResourcePermissionRepository
 	OrganizationAPIKeyService           service8.OrganizationAPIKeyService
-	RepositoryRepository                repository2.Repository
+	InvitationRepositoryRepository      repository2.Repository
 	ProductRoleService                  service8.ProductRoleService
 	OrganizationRoleService             service8.OrganizationRoleService
 	OrganizationMembershipRepository    repository4.OrganizationMembershipRepository
 	ProductUserService                  service8.ProductUserService
 	ResourcePermissionService           service8.ResourcePermissionService
-	ServiceService                      service5.Service
+	ResourceServiceService              service5.Service
 	LicenseTemplateService              service4.LicenseTemplateService
 	UsageObservationMapper              *mapper.UsageObservationMapper
 	UsageObservationRepository          repository3.UsageObservationRepository
@@ -214,7 +214,7 @@ type Overrides struct {
 	OrganizationMembershipService       service8.OrganizationMembershipService
 	OrganizationInvitationService       service3.OrganizationInvitationService
 	EmailTemplateMapper                 *mapper.EmailTemplateMapper
-	RepositoryTemplateRepository        repository.TemplateRepository
+	EmailRepositoryTemplateRepository   repository.TemplateRepository
 	EmailTemplateVersionMapper          *mapper.EmailTemplateVersionMapper
 	TemplateVersionRepository           repository.TemplateVersionRepository
 	EmailSendRecordMapper               *mapper.EmailSendRecordMapper
@@ -260,7 +260,7 @@ type Components struct {
 	PglockClient                        *pglock.Client
 	Locker                              fgasync.Locker
 	Tables                              source.Tables
-	RepositoryRepository3               repository6.Repository
+	ResourcetypeRepositoryRepository    repository6.Repository
 	QueueClient                         *queue.Client
 	EventRegistration                   events.Registration
 	EventRegistration2                  events.Registration
@@ -284,7 +284,7 @@ type Components struct {
 	ModelSizeGuard                      *source.ModelSizeGuard
 	TxObservers                         []events.TxObserver
 	Emitter                             events.Emitter
-	ServiceService2                     service6.Service
+	ResourcetypeServiceService          service6.Service
 	SourceCatalog                       source.Catalog
 	ModelSource                         fgasync.ModelSource
 	Syncer                              *fgasync.Syncer
@@ -307,13 +307,13 @@ type Components struct {
 	IntegrationAuditLogRepository       repository4.IntegrationAuditLogRepository
 	ProductUserMapper                   *mapper.ProductUserMapper
 	ProductUserRepository               repository4.ProductUserRepository
-	RepositoryRepository4               repository7.Repository
+	RoleassignmentRepositoryRepository  repository7.Repository
 	OrganizationMapper                  *mapper.OrganizationMapper
 	OrganizationRepository              repository4.OrganizationRepository
-	RepositoryRepository2               repository5.Repository
+	ResourceRepositoryRepository        repository5.Repository
 	ProductRoleMapper                   *mapper.ProductRoleMapper
 	ProductRoleRepository               repository4.ProductRoleRepository
-	ServiceService3                     service7.Service
+	RoleassignmentServiceService        service7.Service
 	Provider                            *clerk.Provider
 	Provider2                           *smtp.Provider
 	Providers                           []provider.Provider
@@ -325,7 +325,7 @@ type Components struct {
 	EndpointService                     events.EndpointService
 	Worker                              *events.Worker
 	LicenseTemplateMapper               *mapper.LicenseTemplateMapper
-	RepositoryTemplateRepository2       repository3.TemplateRepository
+	LicenseRepositoryTemplateRepository repository3.TemplateRepository
 	OrganizationLicenseMapper           *mapper.OrganizationLicenseMapper
 	OrganizationLicenseRepository       repository3.OrganizationLicenseRepository
 	OrganizationLicenseChangeMapper     *mapper.OrganizationLicenseChangeMapper
@@ -350,8 +350,8 @@ type Components struct {
 	InvitationRepository                repository4.InvitationRepository
 	PlatformUserMapper                  *mapper.PlatformUserMapper
 	PlatformTenantUserRepository        repository4.PlatformTenantUserRepository
-	RepositoryRepository5               repository8.Repository
-	ServiceService4                     service9.Service
+	SessionRepositoryRepository         repository8.Repository
+	SessionServiceService               service9.Service
 	AuthConfig                          config.AuthConfig
 	JWTHelper                           service8.JWTHelper
 	AuthService                         service8.AuthService
@@ -367,13 +367,13 @@ type Components struct {
 	ProductResourcePermissionMapper     *mapper.ProductResourcePermissionMapper
 	ProductResourcePermissionRepository repository4.ProductResourcePermissionRepository
 	OrganizationAPIKeyService           service8.OrganizationAPIKeyService
-	RepositoryRepository                repository2.Repository
+	InvitationRepositoryRepository      repository2.Repository
 	ProductRoleService                  service8.ProductRoleService
 	OrganizationRoleService             service8.OrganizationRoleService
 	OrganizationMembershipRepository    repository4.OrganizationMembershipRepository
 	ProductUserService                  service8.ProductUserService
 	ResourcePermissionService           service8.ResourcePermissionService
-	ServiceService                      service5.Service
+	ResourceServiceService              service5.Service
 	LicenseTemplateService              service4.LicenseTemplateService
 	UsageObservationMapper              *mapper.UsageObservationMapper
 	UsageObservationRepository          repository3.UsageObservationRepository
@@ -382,7 +382,7 @@ type Components struct {
 	OrganizationMembershipService       service8.OrganizationMembershipService
 	OrganizationInvitationService       service3.OrganizationInvitationService
 	EmailTemplateMapper                 *mapper.EmailTemplateMapper
-	RepositoryTemplateRepository        repository.TemplateRepository
+	EmailRepositoryTemplateRepository   repository.TemplateRepository
 	EmailTemplateVersionMapper          *mapper.EmailTemplateVersionMapper
 	TemplateVersionRepository           repository.TemplateVersionRepository
 	EmailSendRecordMapper               *mapper.EmailSendRecordMapper
@@ -439,13 +439,13 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needLicenseMigrationService := needAnchorAPI && ov.AnchorAPI == nil
 	needLicenseHistoryService := needAnchorAPI && ov.AnchorAPI == nil
 	needEmailService := needAnchorAPI && ov.AnchorAPI == nil
-	needRenderer2 := needEmailService && ov.EmailService == nil
+	needRenderer := needEmailService && ov.EmailService == nil
 	needSendRecordRepository := needEmailService && ov.EmailService == nil
 	needEmailSendRecordMapper := needSendRecordRepository && ov.SendRecordRepository == nil
 	needTemplateVersionRepository := needEmailService && ov.EmailService == nil
 	needEmailTemplateVersionMapper := needTemplateVersionRepository && ov.TemplateVersionRepository == nil
-	needTemplateRepository2 := needEmailService && ov.EmailService == nil
-	needEmailTemplateMapper := needTemplateRepository2 && ov.RepositoryTemplateRepository == nil
+	needEmailRepositoryTemplateRepository := needEmailService && ov.EmailService == nil
+	needEmailTemplateMapper := needEmailRepositoryTemplateRepository && ov.EmailRepositoryTemplateRepository == nil
 	needOrganizationInvitationService := needAnchorAPI && ov.AnchorAPI == nil
 	needOrganizationMembershipService := (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needOrganizationService := needAnchorAPI && ov.AnchorAPI == nil
@@ -453,30 +453,30 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needUsageObservationRepository := (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needUsageService && ov.UsageService == nil)
 	needUsageObservationMapper := needUsageObservationRepository && ov.UsageObservationRepository == nil
 	needLicenseTemplateService := (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
-	needService14 := needAnchorAPI && ov.AnchorAPI == nil
+	needResourceServiceService := needAnchorAPI && ov.AnchorAPI == nil
 	needResourcePermissionService := needAnchorAPI && ov.AnchorAPI == nil
 	needProductUserService := needAnchorAPI && ov.AnchorAPI == nil
 	needOrganizationMembershipRepository := (needProductUserService && ov.ProductUserService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needEvaluator && ov.Evaluator == nil)
 	needOrganizationRoleService := needAnchorAPI && ov.AnchorAPI == nil
 	needProductRoleService := needAnchorAPI && ov.AnchorAPI == nil
-	needRepository14 := (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil)
+	needInvitationRepositoryRepository := (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil)
 	needOrganizationAPIKeyService := (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needProductResourcePermissionRepository := (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil)
 	needProductResourcePermissionMapper := needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil
 	needProductAPIKeyService := (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
-	needCache3 := needProductAPIKeyService && ov.ProductAPIKeyService == nil
+	needNanocacheCache3 := needProductAPIKeyService && ov.ProductAPIKeyService == nil
 	needProductAPIKeyRepository := (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil)
 	needProductAPIKeyMapper := needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil
 	needProductService := (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
-	needCache2 := needProductService && ov.ProductService == nil
+	needNanocacheCache2 := needProductService && ov.ProductService == nil
 	needPermissionService := needAnchorAPI && ov.AnchorAPI == nil
 	needPlatformUserService := needAnchorAPI && ov.AnchorAPI == nil
 	needInvitationService := needAnchorAPI && ov.AnchorAPI == nil
 	needAuthService := needAnchorAPI && ov.AnchorAPI == nil
-	needJwtHelper := (needAuthService && ov.AuthService == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
-	needAuthConfig := (needJwtHelper && ov.JWTHelper == nil) || (needAuthService && ov.AuthService == nil)
-	needService13 := needAuthService && ov.AuthService == nil
-	needRepository13 := needService13 && ov.ServiceService4 == nil
+	needJWTHelper := (needAuthService && ov.AuthService == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
+	needAuthConfig := (needJWTHelper && ov.JWTHelper == nil) || (needAuthService && ov.AuthService == nil)
+	needSessionServiceService := needAuthService && ov.AuthService == nil
+	needSessionRepositoryRepository := needSessionServiceService && ov.SessionServiceService == nil
 	needPlatformTenantUserRepository := (needAuthService && ov.AuthService == nil) || (needInvitationService && ov.InvitationService == nil) || (needPlatformUserService && ov.PlatformUserService == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
 	needPlatformUserMapper := needPlatformTenantUserRepository && ov.PlatformTenantUserRepository == nil
 	needInvitationRepository := (needAuthService && ov.AuthService == nil) || (needInvitationService && ov.InvitationService == nil)
@@ -486,11 +486,11 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needTenantService := needAnchorAPI && ov.AnchorAPI == nil
 	needTenantRepository := (needTenantService && ov.TenantService == nil) || (needAuthService && ov.AuthService == nil)
 	needTenantMapper := (needTenantRepository && ov.TenantRepository == nil) || (needUserRepository && ov.UserRepository == nil)
-	needConfig2 := needServer && ov.Server == nil
+	needConfig := needServer && ov.Server == nil
 	needLicenseTemplateSyncWorker := true
 	needLicenseTemplateSyncService := needLicenseTemplateSyncWorker && ov.LicenseTemplateSyncWorker == nil
-	needCache := (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
-	needStore2 := (needCache && ov.NanocacheCache == nil) || (needCache2 && ov.NanocacheCache2 == nil) || (needCache3 && ov.NanocacheCache3 == nil)
+	needNanocacheCache := (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
+	needStore := (needNanocacheCache && ov.NanocacheCache == nil) || (needNanocacheCache2 && ov.NanocacheCache2 == nil) || (needNanocacheCache3 && ov.NanocacheCache3 == nil)
 	needLicenseSchemaService := (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needUsageService && ov.UsageService == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needLicenseTemplateSyncEnqueuer := (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil)
 	needSchemaFieldRepository := needLicenseSchemaService && ov.LicenseSchemaService == nil
@@ -501,8 +501,8 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needOrganizationLicenseChangeMapper := needOrganizationLicenseChangeRepository && ov.OrganizationLicenseChangeRepository == nil
 	needOrganizationLicenseRepository := (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
 	needOrganizationLicenseMapper := needOrganizationLicenseRepository && ov.OrganizationLicenseRepository == nil
-	needTemplateRepository := (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil)
-	needLicenseTemplateMapper := needTemplateRepository && ov.RepositoryTemplateRepository2 == nil
+	needLicenseRepositoryTemplateRepository := (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil)
+	needLicenseTemplateMapper := needLicenseRepositoryTemplateRepository && ov.LicenseRepositoryTemplateRepository == nil
 	needWorker := true
 	needEndpointService := (needWorker && ov.Worker == nil) || (needProductService && ov.ProductService == nil)
 	needEndpointRepository := (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil)
@@ -511,27 +511,27 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needIntegrationService := (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needRegistry := (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEmailService && ov.EmailService == nil)
 	needProviders := needRegistry && ov.Registry == nil
-	needProvider5 := needProviders && ov.Providers == nil
-	needProvider4 := needProviders && ov.Providers == nil
-	needService12 := (needProvider4 && ov.Provider == nil) || (needProductUserService && ov.ProductUserService == nil) || (needService14 && ov.ServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
-	needProductRoleRepository := (needService12 && ov.ServiceService3 == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil)
+	needProvider2 := needProviders && ov.Providers == nil
+	needProvider := needProviders && ov.Providers == nil
+	needRoleassignmentServiceService := (needProvider && ov.Provider == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
+	needProductRoleRepository := (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil)
 	needProductRoleMapper := needProductRoleRepository && ov.ProductRoleRepository == nil
-	needRepository12 := (needService12 && ov.ServiceService3 == nil) || (needService14 && ov.ServiceService == nil) || (needEvaluator && ov.Evaluator == nil)
-	needOrganizationRepository := (needService12 && ov.ServiceService3 == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needService14 && ov.ServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needLicenseHistoryService && ov.LicenseHistoryService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil) || (needUsageSeriesService && ov.UsageSeriesService == nil) || (needEvaluator && ov.Evaluator == nil)
+	needResourceRepositoryRepository := (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needEvaluator && ov.Evaluator == nil)
+	needOrganizationRepository := (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needLicenseHistoryService && ov.LicenseHistoryService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil) || (needUsageSeriesService && ov.UsageSeriesService == nil) || (needEvaluator && ov.Evaluator == nil)
 	needOrganizationMapper := needOrganizationRepository && ov.OrganizationRepository == nil
-	needRepository11 := (needService12 && ov.ServiceService3 == nil) || (needEvaluator && ov.Evaluator == nil)
-	needProductUserRepository := (needProvider4 && ov.Provider == nil) || (needProductUserService && ov.ProductUserService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needEvaluator && ov.Evaluator == nil)
+	needRoleassignmentRepositoryRepository := (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needEvaluator && ov.Evaluator == nil)
+	needProductUserRepository := (needProvider && ov.Provider == nil) || (needProductUserService && ov.ProductUserService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needEvaluator && ov.Evaluator == nil)
 	needProductUserMapper := needProductUserRepository && ov.ProductUserRepository == nil
-	needIntegrationAuditLogRepository := (needProvider4 && ov.Provider == nil) || (needIntegrationService && ov.IntegrationService == nil)
+	needIntegrationAuditLogRepository := (needProvider && ov.Provider == nil) || (needIntegrationService && ov.IntegrationService == nil)
 	needIntegrationAuditLogMapper := needIntegrationAuditLogRepository && ov.IntegrationAuditLogRepository == nil
 	needIntegrationEventRepository := needIntegrationService && ov.IntegrationService == nil
 	needIntegrationEventMapper := needIntegrationEventRepository && ov.IntegrationEventRepository == nil
 	needIntegrationInstanceRepository := (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEmailService && ov.EmailService == nil)
 	needIntegrationInstanceMapper := needIntegrationInstanceRepository && ov.IntegrationInstanceRepository == nil
-	needService11 := (needIntegrationInstanceMapper && ov.IntegrationInstanceMapper == nil) || (needProvider4 && ov.Provider == nil) || (needProvider5 && ov.Provider2 == nil) || (needEndpointService && ov.EndpointService == nil)
-	needCoreConfig := (needService11 && ov.EncryptionService == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needAuthConfig && ov.AuthConfig == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
-	needApiKeyEventWorker := true
-	needOrganizationAPIKeyEventService := needApiKeyEventWorker && ov.APIKeyEventWorker == nil
+	needEncryptionService := (needIntegrationInstanceMapper && ov.IntegrationInstanceMapper == nil) || (needProvider && ov.Provider == nil) || (needProvider2 && ov.Provider2 == nil) || (needEndpointService && ov.EndpointService == nil)
+	needCoreConfig := (needEncryptionService && ov.EncryptionService == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needAuthConfig && ov.AuthConfig == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
+	needAPIKeyEventWorker := true
+	needOrganizationAPIKeyEventService := needAPIKeyEventWorker && ov.APIKeyEventWorker == nil
 	needOrganizationAPIKeyRepository := (needOrganizationAPIKeyEventService && ov.OrganizationAPIKeyEventService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil)
 	needOrganizationAPIKeyMapper := needOrganizationAPIKeyRepository && ov.OrganizationAPIKeyRepository == nil
 	needProductPermissionStartupSync := true
@@ -541,20 +541,20 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needProductMapper := needProductRepository && ov.ProductRepository == nil
 	needSyncer := (needPermissionChecker && ov.PermissionChecker == nil) || (needHandler && ov.Handler == nil)
 	needModelSource := needSyncer && ov.Syncer == nil
-	needCatalog2 := needModelSource && ov.ModelSource == nil
-	needService10 := (needCatalog2 && ov.SourceCatalog == nil) || (needService12 && ov.ServiceService3 == nil) || (needProductService && ov.ProductService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needService14 && ov.ServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
-	needEmitter := (needService10 && ov.ServiceService2 == nil) || (needService12 && ov.ServiceService3 == nil) || (needProvider4 && ov.Provider == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needService14 && ov.ServiceService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
+	needSourceCatalog := needModelSource && ov.ModelSource == nil
+	needResourcetypeServiceService := (needSourceCatalog && ov.SourceCatalog == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProductService && ov.ProductService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
+	needEmitter := (needResourcetypeServiceService && ov.ResourcetypeServiceService == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProvider && ov.Provider == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
 	needTxObservers := needEmitter && ov.Emitter == nil
 	needModelSizeGuard := needTxObservers && ov.TxObservers == nil
 	needMarker := needTxObservers && ov.TxObservers == nil
 	needSources := (needMarker && ov.Marker == nil) || (needSyncer && ov.Syncer == nil)
 	needResourceAssignments := needSources && ov.Sources == nil
 	needResourceParents := needSources && ov.Sources == nil
-	needApiKeyGrants := needSources && ov.Sources == nil
+	needAPIKeyGrants := needSources && ov.Sources == nil
 	needRoleGrants := needSources && ov.Sources == nil
 	needAssignments := needSources && ov.Sources == nil
-	needCatalog := (needEmitter && ov.Emitter == nil) || (needEndpointService && ov.EndpointService == nil)
-	needRegistrations := needCatalog && ov.EventsCatalog == nil
+	needEventsCatalog := (needEmitter && ov.Emitter == nil) || (needEndpointService && ov.EndpointService == nil)
+	needRegistrations := needEventsCatalog && ov.EventsCatalog == nil
 	needEventRegistration5 := needRegistrations && ov.Registrations == nil
 	needEventRegistration4 := needRegistrations && ov.Registrations == nil
 	needWebhookEventRegistration := needRegistrations && ov.Registrations == nil
@@ -565,26 +565,26 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needEventRegistration3 := needRegistrations && ov.Registrations == nil
 	needEventRegistration2 := needRegistrations && ov.Registrations == nil
 	needEventRegistration := needRegistrations && ov.Registrations == nil
-	needClient2 := (needEmitter && ov.Emitter == nil) || (needApiKeyEventWorker && ov.APIKeyEventWorker == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needQueueRetention && ov.QueueRetention == nil) || (needWorker && ov.Worker == nil) || (needLicenseTemplateSyncEnqueuer && ov.LicenseTemplateSyncEnqueuer == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateSyncWorker && ov.LicenseTemplateSyncWorker == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needAnchorAPI && ov.AnchorAPI == nil) || (needQueueDashboard && ov.QueueDashboard == nil)
-	needRepository10 := (needModelSizeGuard && ov.ModelSizeGuard == nil) || (needService10 && ov.ServiceService2 == nil)
-	needTables := (needAssignments && ov.Assignments == nil) || (needRoleGrants && ov.RoleGrants == nil) || (needApiKeyGrants && ov.APIKeyGrants == nil) || (needResourceParents && ov.ResourceParents == nil) || (needResourceAssignments && ov.ResourceAssignments == nil) || (needModelSizeGuard && ov.ModelSizeGuard == nil) || (needCatalog2 && ov.SourceCatalog == nil)
+	needQueueClient := (needEmitter && ov.Emitter == nil) || (needAPIKeyEventWorker && ov.APIKeyEventWorker == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needQueueRetention && ov.QueueRetention == nil) || (needWorker && ov.Worker == nil) || (needLicenseTemplateSyncEnqueuer && ov.LicenseTemplateSyncEnqueuer == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateSyncWorker && ov.LicenseTemplateSyncWorker == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needAnchorAPI && ov.AnchorAPI == nil) || (needQueueDashboard && ov.QueueDashboard == nil)
+	needResourcetypeRepositoryRepository := (needModelSizeGuard && ov.ModelSizeGuard == nil) || (needResourcetypeServiceService && ov.ResourcetypeServiceService == nil)
+	needTables := (needAssignments && ov.Assignments == nil) || (needRoleGrants && ov.RoleGrants == nil) || (needAPIKeyGrants && ov.APIKeyGrants == nil) || (needResourceParents && ov.ResourceParents == nil) || (needResourceAssignments && ov.ResourceAssignments == nil) || (needModelSizeGuard && ov.ModelSizeGuard == nil) || (needSourceCatalog && ov.SourceCatalog == nil)
 	needLocker := needSyncer && ov.Syncer == nil
-	needClient := (needLocker && ov.Locker == nil) || (needProductPermissionStartupSync && ov.ProductPermissionStartupSync == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
-	needTransactor2 := (needLocker && ov.Locker == nil) || (needService10 && ov.ServiceService2 == nil) || (needService12 && ov.ServiceService3 == nil) || (needProvider4 && ov.Provider == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needService13 && ov.ServiceService4 == nil) || (needAuthService && ov.AuthService == nil) || (needProductService && ov.ProductService == nil) || (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needService14 && ov.ServiceService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEmailService && ov.EmailService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
-	needRepository9 := (needMarker && ov.Marker == nil) || (needSyncer && ov.Syncer == nil)
-	needStores2 := needSyncer && ov.Syncer == nil
-	needStores := (needStores2 && ov.FgasyncStores == nil) || (needPermissionChecker && ov.PermissionChecker == nil)
-	needScoped := (needStores && ov.StoreStores == nil) || (needPermissionChecker && ov.PermissionChecker == nil) || (needEvaluator && ov.Evaluator == nil) || (needHandler && ov.Handler == nil)
+	needPglockClient := (needLocker && ov.Locker == nil) || (needProductPermissionStartupSync && ov.ProductPermissionStartupSync == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
+	needTransactor := (needLocker && ov.Locker == nil) || (needResourcetypeServiceService && ov.ResourcetypeServiceService == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProvider && ov.Provider == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needSessionServiceService && ov.SessionServiceService == nil) || (needAuthService && ov.AuthService == nil) || (needProductService && ov.ProductService == nil) || (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEmailService && ov.EmailService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
+	needFgasyncRepository := (needMarker && ov.Marker == nil) || (needSyncer && ov.Syncer == nil)
+	needFgasyncStores := needSyncer && ov.Syncer == nil
+	needStoreStores := (needFgasyncStores && ov.FgasyncStores == nil) || (needPermissionChecker && ov.PermissionChecker == nil)
+	needScoped := (needStoreStores && ov.StoreStores == nil) || (needPermissionChecker && ov.PermissionChecker == nil) || (needEvaluator && ov.Evaluator == nil) || (needHandler && ov.Handler == nil)
 	needEngines := needSyncer && ov.Syncer == nil
-	needProvider3 := (needEngines && ov.Engines == nil) || (needStores && ov.StoreStores == nil)
+	needEngineProvider := (needEngines && ov.Engines == nil) || (needStoreStores && ov.StoreStores == nil)
 	needSchemaCheck := true
 	needMigrator := true
-	needDb2 := (needMigrator && ov.Migrator == nil) || (needSchemaCheck && ov.SchemaCheck == nil) || (needProvider3 && ov.EngineProvider == nil) || (needStores && ov.StoreStores == nil) || (needRepository9 && ov.FgasyncRepository == nil) || (needTransactor2 && ov.Transactor == nil) || (needClient && ov.PglockClient == nil) || (needTables && ov.Tables == nil) || (needRepository10 && ov.RepositoryRepository3 == nil) || (needClient2 && ov.QueueClient == nil) || (needProductRepository && ov.ProductRepository == nil) || (needProductPermissionRepository && ov.ProductPermissionRepository == nil) || (needOrganizationAPIKeyRepository && ov.OrganizationAPIKeyRepository == nil) || (needIntegrationInstanceRepository && ov.IntegrationInstanceRepository == nil) || (needIntegrationEventRepository && ov.IntegrationEventRepository == nil) || (needIntegrationAuditLogRepository && ov.IntegrationAuditLogRepository == nil) || (needProductUserRepository && ov.ProductUserRepository == nil) || (needRepository11 && ov.RepositoryRepository4 == nil) || (needOrganizationRepository && ov.OrganizationRepository == nil) || (needRepository12 && ov.RepositoryRepository2 == nil) || (needProductRoleRepository && ov.ProductRoleRepository == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needEndpointRepository && ov.EndpointRepository == nil) || (needTemplateRepository && ov.RepositoryTemplateRepository2 == nil) || (needOrganizationLicenseRepository && ov.OrganizationLicenseRepository == nil) || (needOrganizationLicenseChangeRepository && ov.OrganizationLicenseChangeRepository == nil) || (needSchemaRepository && ov.SchemaRepository == nil) || (needSchemaFieldRepository && ov.SchemaFieldRepository == nil) || (needTenantRepository && ov.TenantRepository == nil) || (needUserRepository && ov.UserRepository == nil) || (needInvitationRepository && ov.InvitationRepository == nil) || (needPlatformTenantUserRepository && ov.PlatformTenantUserRepository == nil) || (needRepository13 && ov.RepositoryRepository5 == nil) || (needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil) || (needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil) || (needRepository14 && ov.RepositoryRepository == nil) || (needOrganizationMembershipRepository && ov.OrganizationMembershipRepository == nil) || (needUsageObservationRepository && ov.UsageObservationRepository == nil) || (needTemplateRepository2 && ov.RepositoryTemplateRepository == nil) || (needTemplateVersionRepository && ov.TemplateVersionRepository == nil) || (needSendRecordRepository && ov.SendRecordRepository == nil) || (needUsageSeriesRepository && ov.UsageSeriesRepository == nil)
-	needDb := needDb2 && ov.SQLDB == nil
-	needTracerProvider := needDb && ov.NanopgDB == nil
+	needSQLDB := (needMigrator && ov.Migrator == nil) || (needSchemaCheck && ov.SchemaCheck == nil) || (needEngineProvider && ov.EngineProvider == nil) || (needStoreStores && ov.StoreStores == nil) || (needFgasyncRepository && ov.FgasyncRepository == nil) || (needTransactor && ov.Transactor == nil) || (needPglockClient && ov.PglockClient == nil) || (needTables && ov.Tables == nil) || (needResourcetypeRepositoryRepository && ov.ResourcetypeRepositoryRepository == nil) || (needQueueClient && ov.QueueClient == nil) || (needProductRepository && ov.ProductRepository == nil) || (needProductPermissionRepository && ov.ProductPermissionRepository == nil) || (needOrganizationAPIKeyRepository && ov.OrganizationAPIKeyRepository == nil) || (needIntegrationInstanceRepository && ov.IntegrationInstanceRepository == nil) || (needIntegrationEventRepository && ov.IntegrationEventRepository == nil) || (needIntegrationAuditLogRepository && ov.IntegrationAuditLogRepository == nil) || (needProductUserRepository && ov.ProductUserRepository == nil) || (needRoleassignmentRepositoryRepository && ov.RoleassignmentRepositoryRepository == nil) || (needOrganizationRepository && ov.OrganizationRepository == nil) || (needResourceRepositoryRepository && ov.ResourceRepositoryRepository == nil) || (needProductRoleRepository && ov.ProductRoleRepository == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needEndpointRepository && ov.EndpointRepository == nil) || (needLicenseRepositoryTemplateRepository && ov.LicenseRepositoryTemplateRepository == nil) || (needOrganizationLicenseRepository && ov.OrganizationLicenseRepository == nil) || (needOrganizationLicenseChangeRepository && ov.OrganizationLicenseChangeRepository == nil) || (needSchemaRepository && ov.SchemaRepository == nil) || (needSchemaFieldRepository && ov.SchemaFieldRepository == nil) || (needTenantRepository && ov.TenantRepository == nil) || (needUserRepository && ov.UserRepository == nil) || (needInvitationRepository && ov.InvitationRepository == nil) || (needPlatformTenantUserRepository && ov.PlatformTenantUserRepository == nil) || (needSessionRepositoryRepository && ov.SessionRepositoryRepository == nil) || (needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil) || (needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil) || (needInvitationRepositoryRepository && ov.InvitationRepositoryRepository == nil) || (needOrganizationMembershipRepository && ov.OrganizationMembershipRepository == nil) || (needUsageObservationRepository && ov.UsageObservationRepository == nil) || (needEmailRepositoryTemplateRepository && ov.EmailRepositoryTemplateRepository == nil) || (needTemplateVersionRepository && ov.TemplateVersionRepository == nil) || (needSendRecordRepository && ov.SendRecordRepository == nil) || (needUsageSeriesRepository && ov.UsageSeriesRepository == nil)
+	needNanopgDB := needSQLDB && ov.SQLDB == nil
+	needTracerProvider := needNanopgDB && ov.NanopgDB == nil
 	needInstaller := true
-	needProvider2 := (needInstaller && ov.Installer == nil) || (needTracerProvider && ov.TracerProvider == nil)
-	needLogger := (needProvider2 && ov.NanotraceProvider == nil) || (needDb && ov.NanopgDB == nil) || (needMigrator && ov.Migrator == nil) || (needProvider3 && ov.EngineProvider == nil) || (needStores && ov.StoreStores == nil) || (needClient2 && ov.QueueClient == nil) || (needService10 && ov.ServiceService2 == nil) || (needSyncer && ov.Syncer == nil) || (needProductRepository && ov.ProductRepository == nil) || (needProductPermissionRepository && ov.ProductPermissionRepository == nil) || (needProductPermissionStartupSync && ov.ProductPermissionStartupSync == nil) || (needOrganizationAPIKeyRepository && ov.OrganizationAPIKeyRepository == nil) || (needOrganizationAPIKeyEventService && ov.OrganizationAPIKeyEventService == nil) || (needApiKeyEventWorker && ov.APIKeyEventWorker == nil) || (needIntegrationInstanceMapper && ov.IntegrationInstanceMapper == nil) || (needIntegrationInstanceRepository && ov.IntegrationInstanceRepository == nil) || (needIntegrationEventRepository && ov.IntegrationEventRepository == nil) || (needIntegrationAuditLogRepository && ov.IntegrationAuditLogRepository == nil) || (needProductUserRepository && ov.ProductUserRepository == nil) || (needOrganizationRepository && ov.OrganizationRepository == nil) || (needProductRoleRepository && ov.ProductRoleRepository == nil) || (needService12 && ov.ServiceService3 == nil) || (needProvider4 && ov.Provider == nil) || (needProvider5 && ov.Provider2 == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needQueueRetention && ov.QueueRetention == nil) || (needEndpointRepository && ov.EndpointRepository == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needTemplateRepository && ov.RepositoryTemplateRepository2 == nil) || (needOrganizationLicenseRepository && ov.OrganizationLicenseRepository == nil) || (needOrganizationLicenseChangeRepository && ov.OrganizationLicenseChangeRepository == nil) || (needSchemaRepository && ov.SchemaRepository == nil) || (needSchemaFieldRepository && ov.SchemaFieldRepository == nil) || (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needStore2 && ov.Store == nil) || (needCache && ov.NanocacheCache == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateSyncWorker && ov.LicenseTemplateSyncWorker == nil) || (needTenantRepository && ov.TenantRepository == nil) || (needTenantService && ov.TenantService == nil) || (needUserRepository && ov.UserRepository == nil) || (needInvitationRepository && ov.InvitationRepository == nil) || (needPlatformTenantUserRepository && ov.PlatformTenantUserRepository == nil) || (needService13 && ov.ServiceService4 == nil) || (needAuthService && ov.AuthService == nil) || (needInvitationService && ov.InvitationService == nil) || (needPlatformUserService && ov.PlatformUserService == nil) || (needPermissionService && ov.PermissionService == nil) || (needCache2 && ov.NanocacheCache2 == nil) || (needProductService && ov.ProductService == nil) || (needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil) || (needCache3 && ov.NanocacheCache3 == nil) || (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needRepository14 && ov.RepositoryRepository == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationMembershipRepository && ov.OrganizationMembershipRepository == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needService14 && ov.ServiceService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needUsageObservationRepository && ov.UsageObservationRepository == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needTemplateRepository2 && ov.RepositoryTemplateRepository == nil) || (needTemplateVersionRepository && ov.TemplateVersionRepository == nil) || (needSendRecordRepository && ov.SendRecordRepository == nil) || (needEmailService && ov.EmailService == nil) || (needLicenseHistoryService && ov.LicenseHistoryService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil) || (needUsageService && ov.UsageService == nil) || (needUsageSeriesRepository && ov.UsageSeriesRepository == nil) || (needUsageSeriesService && ov.UsageSeriesService == nil) || (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil) || (needHandler && ov.Handler == nil) || (needServer && ov.Server == nil) || (needQueueDashboard && ov.QueueDashboard == nil)
+	needNanotraceProvider := (needInstaller && ov.Installer == nil) || (needTracerProvider && ov.TracerProvider == nil)
+	needLogger := (needNanotraceProvider && ov.NanotraceProvider == nil) || (needNanopgDB && ov.NanopgDB == nil) || (needMigrator && ov.Migrator == nil) || (needEngineProvider && ov.EngineProvider == nil) || (needStoreStores && ov.StoreStores == nil) || (needQueueClient && ov.QueueClient == nil) || (needResourcetypeServiceService && ov.ResourcetypeServiceService == nil) || (needSyncer && ov.Syncer == nil) || (needProductRepository && ov.ProductRepository == nil) || (needProductPermissionRepository && ov.ProductPermissionRepository == nil) || (needProductPermissionStartupSync && ov.ProductPermissionStartupSync == nil) || (needOrganizationAPIKeyRepository && ov.OrganizationAPIKeyRepository == nil) || (needOrganizationAPIKeyEventService && ov.OrganizationAPIKeyEventService == nil) || (needAPIKeyEventWorker && ov.APIKeyEventWorker == nil) || (needIntegrationInstanceMapper && ov.IntegrationInstanceMapper == nil) || (needIntegrationInstanceRepository && ov.IntegrationInstanceRepository == nil) || (needIntegrationEventRepository && ov.IntegrationEventRepository == nil) || (needIntegrationAuditLogRepository && ov.IntegrationAuditLogRepository == nil) || (needProductUserRepository && ov.ProductUserRepository == nil) || (needOrganizationRepository && ov.OrganizationRepository == nil) || (needProductRoleRepository && ov.ProductRoleRepository == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProvider && ov.Provider == nil) || (needProvider2 && ov.Provider2 == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needQueueRetention && ov.QueueRetention == nil) || (needEndpointRepository && ov.EndpointRepository == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needLicenseRepositoryTemplateRepository && ov.LicenseRepositoryTemplateRepository == nil) || (needOrganizationLicenseRepository && ov.OrganizationLicenseRepository == nil) || (needOrganizationLicenseChangeRepository && ov.OrganizationLicenseChangeRepository == nil) || (needSchemaRepository && ov.SchemaRepository == nil) || (needSchemaFieldRepository && ov.SchemaFieldRepository == nil) || (needLicenseSchemaService && ov.LicenseSchemaService == nil) || (needStore && ov.Store == nil) || (needNanocacheCache && ov.NanocacheCache == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needLicenseTemplateSyncWorker && ov.LicenseTemplateSyncWorker == nil) || (needTenantRepository && ov.TenantRepository == nil) || (needTenantService && ov.TenantService == nil) || (needUserRepository && ov.UserRepository == nil) || (needInvitationRepository && ov.InvitationRepository == nil) || (needPlatformTenantUserRepository && ov.PlatformTenantUserRepository == nil) || (needSessionServiceService && ov.SessionServiceService == nil) || (needAuthService && ov.AuthService == nil) || (needInvitationService && ov.InvitationService == nil) || (needPlatformUserService && ov.PlatformUserService == nil) || (needPermissionService && ov.PermissionService == nil) || (needNanocacheCache2 && ov.NanocacheCache2 == nil) || (needProductService && ov.ProductService == nil) || (needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil) || (needNanocacheCache3 && ov.NanocacheCache3 == nil) || (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needInvitationRepositoryRepository && ov.InvitationRepositoryRepository == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needOrganizationMembershipRepository && ov.OrganizationMembershipRepository == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needLicenseTemplateService && ov.LicenseTemplateService == nil) || (needUsageObservationRepository && ov.UsageObservationRepository == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEmailRepositoryTemplateRepository && ov.EmailRepositoryTemplateRepository == nil) || (needTemplateVersionRepository && ov.TemplateVersionRepository == nil) || (needSendRecordRepository && ov.SendRecordRepository == nil) || (needEmailService && ov.EmailService == nil) || (needLicenseHistoryService && ov.LicenseHistoryService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil) || (needUsageService && ov.UsageService == nil) || (needUsageSeriesRepository && ov.UsageSeriesRepository == nil) || (needUsageSeriesService && ov.UsageSeriesService == nil) || (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil) || (needHandler && ov.Handler == nil) || (needServer && ov.Server == nil) || (needQueueDashboard && ov.QueueDashboard == nil)
 	needLoggers := (needLogger && ov.Logger == nil) || (needScoped && ov.Scoped == nil) || (needIdentity && ov.Identity == nil)
 
 	var loggers applog.Loggers
@@ -609,17 +609,17 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		app.SetLogger(logger)
 	}
 
-	var provider2 *nanotrace.Provider
-	if needProvider2 {
+	var nanotraceProvider *nanotrace.Provider
+	if needNanotraceProvider {
 		if ov.NanotraceProvider != nil {
-			provider2 = ov.NanotraceProvider
+			nanotraceProvider = ov.NanotraceProvider
 		} else {
-			provider2, err = nanotrace.NewProvider(ctx, cfg.Tracing, cfg.Log, logger)
+			nanotraceProvider, err = nanotrace.NewProvider(ctx, cfg.Tracing, cfg.Log, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *nanotrace.Provider: nanotrace.NewProvider: %w", err)
 			}
 		}
-		app.Manage("*nanotrace.Provider", provider2) // Stopper
+		app.Manage("*nanotrace.Provider", nanotraceProvider) // Stopper
 	}
 
 	var installer *nanotrace.Installer
@@ -627,7 +627,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Installer != nil {
 			installer = ov.Installer
 		} else {
-			installer = nanotrace.NewInstaller(provider2)
+			installer = nanotrace.NewInstaller(nanotraceProvider)
 		}
 		app.Manage("*nanotrace.Installer", installer) // Starter
 	}
@@ -637,30 +637,30 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.TracerProvider != nil {
 			tracerProvider = ov.TracerProvider
 		} else {
-			tracerProvider = nanotrace.TracerProvider(provider2)
+			tracerProvider = nanotrace.TracerProvider(nanotraceProvider)
 		}
 		app.Manage("trace.TracerProvider", tracerProvider) // interface: lifecycle by dynamic type
 	}
 
-	var db *nanopg.DB
-	if needDb {
+	var nanopgDB *nanopg.DB
+	if needNanopgDB {
 		if ov.NanopgDB != nil {
-			db = ov.NanopgDB
+			nanopgDB = ov.NanopgDB
 		} else {
-			db, err = nanopg.NewDB(ctx, cfg.Postgres, logger, tracerProvider)
+			nanopgDB, err = nanopg.NewDB(ctx, cfg.Postgres, logger, tracerProvider)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *nanopg.DB: nanopg.NewDB: %w", err)
 			}
 		}
-		app.Manage("*nanopg.DB", db) // Stopper, HealthChecker
+		app.Manage("*nanopg.DB", nanopgDB) // Stopper, HealthChecker
 	}
 
-	var db2 *sql.DB
-	if needDb2 {
+	var sqldb *sql.DB
+	if needSQLDB {
 		if ov.SQLDB != nil {
-			db2 = ov.SQLDB
+			sqldb = ov.SQLDB
 		} else {
-			db2 = nanopg.SQL(db)
+			sqldb = nanopg.SQL(nanopgDB)
 		}
 	}
 
@@ -669,7 +669,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Migrator != nil {
 			migrator = ov.Migrator
 		} else {
-			migrator = nanomigrate.NewMigrator(cfg.Migrations, db2, logger)
+			migrator = nanomigrate.NewMigrator(cfg.Migrations, sqldb, logger)
 		}
 	}
 
@@ -678,19 +678,19 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.SchemaCheck != nil {
 			schemaCheck = ov.SchemaCheck
 		} else {
-			schemaCheck = resourcetype.NewSchemaCheck(db2)
+			schemaCheck = resourcetype.NewSchemaCheck(sqldb)
 		}
 		app.Manage("*resourcetype.SchemaCheck", schemaCheck) // Starter
 	}
 
-	var provider3 engine.Provider
-	if needProvider3 {
+	var engineProvider engine.Provider
+	if needEngineProvider {
 		if ov.EngineProvider != nil {
-			provider3 = ov.EngineProvider
+			engineProvider = ov.EngineProvider
 		} else {
-			provider3 = engine.New(cfg.Postgres, db2, logger)
+			engineProvider = engine.New(cfg.Postgres, sqldb, logger)
 		}
-		app.Manage("engine.Provider", provider3) // interface: lifecycle by dynamic type
+		app.Manage("engine.Provider", engineProvider) // interface: lifecycle by dynamic type
 	}
 
 	var engines fgasync.Engines
@@ -699,7 +699,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 			engines = ov.Engines
 			app.Manage("fgasync.Engines", engines)
 		} else {
-			engines = provider3
+			engines = engineProvider
 		}
 	}
 
@@ -712,52 +712,52 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		}
 	}
 
-	var stores store.Stores
-	if needStores {
+	var storeStores store.Stores
+	if needStoreStores {
 		if ov.StoreStores != nil {
-			stores = ov.StoreStores
+			storeStores = ov.StoreStores
 		} else {
-			stores = store.New(db2, provider3, logger, scoped)
+			storeStores = store.New(sqldb, engineProvider, logger, scoped)
 		}
-		app.Manage("store.Stores", stores) // interface: lifecycle by dynamic type
+		app.Manage("store.Stores", storeStores) // interface: lifecycle by dynamic type
 	}
 
-	var stores2 fgasync.Stores
-	if needStores2 {
+	var fgasyncStores fgasync.Stores
+	if needFgasyncStores {
 		if ov.FgasyncStores != nil {
-			stores2 = ov.FgasyncStores
-			app.Manage("fgasync.Stores", stores2)
+			fgasyncStores = ov.FgasyncStores
+			app.Manage("fgasync.Stores", fgasyncStores)
 		} else {
-			stores2 = stores
+			fgasyncStores = storeStores
 		}
 	}
 
-	var repository9 fgasync.Repository
-	if needRepository9 {
+	var fgasyncRepository fgasync.Repository
+	if needFgasyncRepository {
 		if ov.FgasyncRepository != nil {
-			repository9 = ov.FgasyncRepository
+			fgasyncRepository = ov.FgasyncRepository
 		} else {
-			repository9 = fgasync.NewPostgresRepository(db2)
+			fgasyncRepository = fgasync.NewPostgresRepository(sqldb)
 		}
-		app.Manage("fgasync.Repository", repository9) // interface: lifecycle by dynamic type
+		app.Manage("fgasync.Repository", fgasyncRepository) // interface: lifecycle by dynamic type
 	}
 
 	var transactor2 transactor.Transactor
-	if needTransactor2 {
+	if needTransactor {
 		if ov.Transactor != nil {
 			transactor2 = ov.Transactor
 		} else {
-			transactor2 = nanopg.NewTransactor(db2)
+			transactor2 = nanopg.NewTransactor(sqldb)
 		}
 		app.Manage("transactor.Transactor", transactor2) // interface: lifecycle by dynamic type
 	}
 
-	var client *pglock.Client
-	if needClient {
+	var pglockClient *pglock.Client
+	if needPglockClient {
 		if ov.PglockClient != nil {
-			client = ov.PglockClient
+			pglockClient = ov.PglockClient
 		} else {
-			client, err = service8.NewIntegrationLock(db2)
+			pglockClient, err = service8.NewIntegrationLock(sqldb)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *pglock.Client: service.NewIntegrationLock: %w", err)
 			}
@@ -769,7 +769,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Locker != nil {
 			locker = ov.Locker
 		} else {
-			locker = fgasync.NewPostgresLocker(transactor2, client)
+			locker = fgasync.NewPostgresLocker(transactor2, pglockClient)
 		}
 		app.Manage("fgasync.Locker", locker) // interface: lifecycle by dynamic type
 	}
@@ -779,26 +779,26 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Tables != nil {
 			tables = *ov.Tables
 		} else {
-			tables = source.NewTables(db2)
+			tables = source.NewTables(sqldb)
 		}
 	}
 
-	var repository10 repository6.Repository
-	if needRepository10 {
-		if ov.RepositoryRepository3 != nil {
-			repository10 = ov.RepositoryRepository3
+	var resourcetypeRepositoryRepository repository6.Repository
+	if needResourcetypeRepositoryRepository {
+		if ov.ResourcetypeRepositoryRepository != nil {
+			resourcetypeRepositoryRepository = ov.ResourcetypeRepositoryRepository
 		} else {
-			repository10 = repository6.NewRepository(db2)
+			resourcetypeRepositoryRepository = repository6.NewRepository(sqldb)
 		}
-		app.Manage("repository.Repository", repository10) // interface: lifecycle by dynamic type
+		app.Manage("repository.Repository", resourcetypeRepositoryRepository) // interface: lifecycle by dynamic type
 	}
 
-	var client2 *queue.Client
-	if needClient2 {
+	var queueClient *queue.Client
+	if needQueueClient {
 		if ov.QueueClient != nil {
-			client2 = ov.QueueClient
+			queueClient = ov.QueueClient
 		} else {
-			client2, err = service8.NewIntegrationQueue(db2, logger)
+			queueClient, err = service8.NewIntegrationQueue(sqldb, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *queue.Client: service.NewIntegrationQueue: %w", err)
 			}
@@ -904,14 +904,14 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		}
 	}
 
-	var catalog events.Catalog
-	if needCatalog {
+	var eventsCatalog events.Catalog
+	if needEventsCatalog {
 		if ov.EventsCatalog != nil {
-			catalog = ov.EventsCatalog
+			eventsCatalog = ov.EventsCatalog
 		} else {
-			catalog = events.NewCatalog(registrations)
+			eventsCatalog = events.NewCatalog(registrations)
 		}
-		app.Manage("events.Catalog", catalog) // interface: lifecycle by dynamic type
+		app.Manage("events.Catalog", eventsCatalog) // interface: lifecycle by dynamic type
 	}
 
 	var assignments source.Assignments
@@ -933,7 +933,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	}
 
 	var apiKeyGrants source.APIKeyGrants
-	if needApiKeyGrants {
+	if needAPIKeyGrants {
 		if ov.APIKeyGrants != nil {
 			apiKeyGrants = *ov.APIKeyGrants
 		} else {
@@ -976,7 +976,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Marker != nil {
 			marker = ov.Marker
 		} else {
-			marker, err = authz.NewMarker(repository9, sources)
+			marker, err = authz.NewMarker(fgasyncRepository, sources)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *fgasync.Marker: authz.NewMarker: %w", err)
 			}
@@ -988,7 +988,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ModelSizeGuard != nil {
 			modelSizeGuard = ov.ModelSizeGuard
 		} else {
-			modelSizeGuard = source.NewModelSizeGuard(tables, repository10)
+			modelSizeGuard = source.NewModelSizeGuard(tables, resourcetypeRepositoryRepository)
 		}
 	}
 
@@ -1009,27 +1009,27 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Emitter != nil {
 			emitter = ov.Emitter
 		} else {
-			emitter = events.ProvideEmitter(client2, catalog, txObservers)
+			emitter = events.ProvideEmitter(queueClient, eventsCatalog, txObservers)
 		}
 		app.Manage("events.Emitter", emitter) // interface: lifecycle by dynamic type
 	}
 
-	var service10 service6.Service
-	if needService10 {
-		if ov.ServiceService2 != nil {
-			service10 = ov.ServiceService2
+	var resourcetypeServiceService service6.Service
+	if needResourcetypeServiceService {
+		if ov.ResourcetypeServiceService != nil {
+			resourcetypeServiceService = ov.ResourcetypeServiceService
 		} else {
-			service10 = service6.NewService(repository10, transactor2, emitter, logger)
+			resourcetypeServiceService = service6.NewService(resourcetypeRepositoryRepository, transactor2, emitter, logger)
 		}
-		app.Manage("service.Service", service10) // interface: lifecycle by dynamic type
+		app.Manage("service.Service", resourcetypeServiceService) // interface: lifecycle by dynamic type
 	}
 
-	var catalog2 source.Catalog
-	if needCatalog2 {
+	var sourceCatalog source.Catalog
+	if needSourceCatalog {
 		if ov.SourceCatalog != nil {
-			catalog2 = *ov.SourceCatalog
+			sourceCatalog = *ov.SourceCatalog
 		} else {
-			catalog2 = source.NewCatalog(tables, service10)
+			sourceCatalog = source.NewCatalog(tables, resourcetypeServiceService)
 		}
 	}
 
@@ -1039,7 +1039,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 			modelSource = ov.ModelSource
 			app.Manage("fgasync.ModelSource", modelSource)
 		} else {
-			modelSource = catalog2
+			modelSource = sourceCatalog
 		}
 	}
 
@@ -1048,7 +1048,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Syncer != nil {
 			syncer = ov.Syncer
 		} else {
-			syncer, err = authz.NewSyncer(engines, stores2, repository9, locker, modelSource, sources, logger)
+			syncer, err = authz.NewSyncer(engines, fgasyncStores, fgasyncRepository, locker, modelSource, sources, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *fgasync.Syncer: authz.NewSyncer: %w", err)
 			}
@@ -1070,7 +1070,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductRepository != nil {
 			productRepository = ov.ProductRepository
 		} else {
-			productRepository = repository4.NewProductRepository(db2, productMapper, logger)
+			productRepository = repository4.NewProductRepository(sqldb, productMapper, logger)
 		}
 		app.Manage("repository.ProductRepository", productRepository) // interface: lifecycle by dynamic type
 	}
@@ -1089,7 +1089,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductPermissionRepository != nil {
 			productPermissionRepository = ov.ProductPermissionRepository
 		} else {
-			productPermissionRepository = repository4.NewProductPermissionRepository(db2, productPermissionMapper, logger)
+			productPermissionRepository = repository4.NewProductPermissionRepository(sqldb, productPermissionMapper, logger)
 		}
 		app.Manage("repository.ProductPermissionRepository", productPermissionRepository) // interface: lifecycle by dynamic type
 	}
@@ -1099,7 +1099,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductPermissionStartupSync != nil {
 			productPermissionStartupSync = ov.ProductPermissionStartupSync
 		} else {
-			productPermissionStartupSync = service8.NewProductPermissionStartupSync(client, productRepository, productPermissionRepository, logger)
+			productPermissionStartupSync = service8.NewProductPermissionStartupSync(pglockClient, productRepository, productPermissionRepository, logger)
 		}
 		app.Manage("*service.ProductPermissionStartupSync", productPermissionStartupSync) // Starter
 	}
@@ -1118,7 +1118,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationAPIKeyRepository != nil {
 			organizationAPIKeyRepository = ov.OrganizationAPIKeyRepository
 		} else {
-			organizationAPIKeyRepository = repository4.NewOrganizationAPIKeyRepository(db2, organizationAPIKeyMapper, logger)
+			organizationAPIKeyRepository = repository4.NewOrganizationAPIKeyRepository(sqldb, organizationAPIKeyMapper, logger)
 		}
 		app.Manage("repository.OrganizationAPIKeyRepository", organizationAPIKeyRepository) // interface: lifecycle by dynamic type
 	}
@@ -1134,11 +1134,11 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	}
 
 	var apiKeyEventWorker *service8.APIKeyEventWorker
-	if needApiKeyEventWorker {
+	if needAPIKeyEventWorker {
 		if ov.APIKeyEventWorker != nil {
 			apiKeyEventWorker = ov.APIKeyEventWorker
 		} else {
-			apiKeyEventWorker, err = service8.NewAPIKeyEventWorker(organizationAPIKeyEventService, client2, logger)
+			apiKeyEventWorker, err = service8.NewAPIKeyEventWorker(organizationAPIKeyEventService, queueClient, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *service.APIKeyEventWorker: service.NewAPIKeyEventWorker: %w", err)
 			}
@@ -1155,12 +1155,12 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		}
 	}
 
-	var service11 *encryption.Service
-	if needService11 {
+	var encryptionService *encryption.Service
+	if needEncryptionService {
 		if ov.EncryptionService != nil {
-			service11 = ov.EncryptionService
+			encryptionService = ov.EncryptionService
 		} else {
-			service11, err = encryption.NewService(coreConfig)
+			encryptionService, err = encryption.NewService(coreConfig)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *encryption.Service: encryption.NewService: %w", err)
 			}
@@ -1172,7 +1172,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationInstanceMapper != nil {
 			integrationInstanceMapper = ov.IntegrationInstanceMapper
 		} else {
-			integrationInstanceMapper, err = mapper.NewIntegrationInstanceMapper(service11, logger)
+			integrationInstanceMapper, err = mapper.NewIntegrationInstanceMapper(encryptionService, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *mapper.IntegrationInstanceMapper: mapper.NewIntegrationInstanceMapper: %w", err)
 			}
@@ -1184,7 +1184,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationInstanceRepository != nil {
 			integrationInstanceRepository = ov.IntegrationInstanceRepository
 		} else {
-			integrationInstanceRepository = repository4.NewIntegrationInstanceRepository(db2, integrationInstanceMapper, logger)
+			integrationInstanceRepository = repository4.NewIntegrationInstanceRepository(sqldb, integrationInstanceMapper, logger)
 		}
 		app.Manage("repository.IntegrationInstanceRepository", integrationInstanceRepository) // interface: lifecycle by dynamic type
 	}
@@ -1203,7 +1203,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationEventRepository != nil {
 			integrationEventRepository = ov.IntegrationEventRepository
 		} else {
-			integrationEventRepository = repository4.NewIntegrationEventRepository(db2, integrationEventMapper, logger)
+			integrationEventRepository = repository4.NewIntegrationEventRepository(sqldb, integrationEventMapper, logger)
 		}
 		app.Manage("repository.IntegrationEventRepository", integrationEventRepository) // interface: lifecycle by dynamic type
 	}
@@ -1222,7 +1222,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationAuditLogRepository != nil {
 			integrationAuditLogRepository = ov.IntegrationAuditLogRepository
 		} else {
-			integrationAuditLogRepository = repository4.NewIntegrationAuditLogRepository(db2, integrationAuditLogMapper, logger)
+			integrationAuditLogRepository = repository4.NewIntegrationAuditLogRepository(sqldb, integrationAuditLogMapper, logger)
 		}
 		app.Manage("repository.IntegrationAuditLogRepository", integrationAuditLogRepository) // interface: lifecycle by dynamic type
 	}
@@ -1241,19 +1241,19 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductUserRepository != nil {
 			productUserRepository = ov.ProductUserRepository
 		} else {
-			productUserRepository = repository4.NewProductUserRepository(db2, productUserMapper, logger)
+			productUserRepository = repository4.NewProductUserRepository(sqldb, productUserMapper, logger)
 		}
 		app.Manage("repository.ProductUserRepository", productUserRepository) // interface: lifecycle by dynamic type
 	}
 
-	var repository11 repository7.Repository
-	if needRepository11 {
-		if ov.RepositoryRepository4 != nil {
-			repository11 = ov.RepositoryRepository4
+	var roleassignmentRepositoryRepository repository7.Repository
+	if needRoleassignmentRepositoryRepository {
+		if ov.RoleassignmentRepositoryRepository != nil {
+			roleassignmentRepositoryRepository = ov.RoleassignmentRepositoryRepository
 		} else {
-			repository11 = repository7.NewRepository(db2)
+			roleassignmentRepositoryRepository = repository7.NewRepository(sqldb)
 		}
-		app.Manage("repository.Repository", repository11) // interface: lifecycle by dynamic type
+		app.Manage("repository.Repository", roleassignmentRepositoryRepository) // interface: lifecycle by dynamic type
 	}
 
 	var organizationMapper *mapper.OrganizationMapper
@@ -1270,19 +1270,19 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationRepository != nil {
 			organizationRepository = ov.OrganizationRepository
 		} else {
-			organizationRepository = repository4.NewOrganizationRepository(db2, organizationMapper, logger)
+			organizationRepository = repository4.NewOrganizationRepository(sqldb, organizationMapper, logger)
 		}
 		app.Manage("repository.OrganizationRepository", organizationRepository) // interface: lifecycle by dynamic type
 	}
 
-	var repository12 repository5.Repository
-	if needRepository12 {
-		if ov.RepositoryRepository2 != nil {
-			repository12 = ov.RepositoryRepository2
+	var resourceRepositoryRepository repository5.Repository
+	if needResourceRepositoryRepository {
+		if ov.ResourceRepositoryRepository != nil {
+			resourceRepositoryRepository = ov.ResourceRepositoryRepository
 		} else {
-			repository12 = repository5.NewRepository(db2)
+			resourceRepositoryRepository = repository5.NewRepository(sqldb)
 		}
-		app.Manage("repository.Repository", repository12) // interface: lifecycle by dynamic type
+		app.Manage("repository.Repository", resourceRepositoryRepository) // interface: lifecycle by dynamic type
 	}
 
 	var productRoleMapper *mapper.ProductRoleMapper
@@ -1299,36 +1299,36 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductRoleRepository != nil {
 			productRoleRepository = ov.ProductRoleRepository
 		} else {
-			productRoleRepository = repository4.NewProductRoleRepository(db2, productRoleMapper, logger)
+			productRoleRepository = repository4.NewProductRoleRepository(sqldb, productRoleMapper, logger)
 		}
 		app.Manage("repository.ProductRoleRepository", productRoleRepository) // interface: lifecycle by dynamic type
 	}
 
-	var service12 service7.Service
-	if needService12 {
-		if ov.ServiceService3 != nil {
-			service12 = ov.ServiceService3
+	var roleassignmentServiceService service7.Service
+	if needRoleassignmentServiceService {
+		if ov.RoleassignmentServiceService != nil {
+			roleassignmentServiceService = ov.RoleassignmentServiceService
 		} else {
-			service12 = service7.NewService(repository11, organizationRepository, repository12, service10, productRoleRepository, transactor2, emitter, logger)
+			roleassignmentServiceService = service7.NewService(roleassignmentRepositoryRepository, organizationRepository, resourceRepositoryRepository, resourcetypeServiceService, productRoleRepository, transactor2, emitter, logger)
 		}
-		app.Manage("service.Service", service12) // interface: lifecycle by dynamic type
+		app.Manage("service.Service", roleassignmentServiceService) // interface: lifecycle by dynamic type
 	}
 
-	var provider4 *clerk.Provider
-	if needProvider4 {
+	var provider2 *clerk.Provider
+	if needProvider {
 		if ov.Provider != nil {
-			provider4 = ov.Provider
+			provider2 = ov.Provider
 		} else {
-			provider4 = clerk.NewProvider(productUserRepository, integrationAuditLogRepository, service12, service11, emitter, transactor2, logger)
+			provider2 = clerk.NewProvider(productUserRepository, integrationAuditLogRepository, roleassignmentServiceService, encryptionService, emitter, transactor2, logger)
 		}
 	}
 
-	var provider5 *smtp.Provider
-	if needProvider5 {
+	var provider22 *smtp.Provider
+	if needProvider2 {
 		if ov.Provider2 != nil {
-			provider5 = ov.Provider2
+			provider22 = ov.Provider2
 		} else {
-			provider5 = smtp.NewProvider(service11, logger)
+			provider22 = smtp.NewProvider(encryptionService, logger)
 		}
 	}
 
@@ -1340,7 +1340,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 				app.Manage("provider.Provider", elem)
 			}
 		} else {
-			providers = []provider.Provider{provider4, provider5}
+			providers = []provider.Provider{provider2, provider22}
 		}
 	}
 
@@ -1358,7 +1358,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationService != nil {
 			integrationService = ov.IntegrationService
 		} else {
-			integrationService = service8.NewIntegrationService(integrationInstanceRepository, integrationEventRepository, integrationAuditLogRepository, registry, client2, client, db2, transactor2, logger, coreConfig)
+			integrationService = service8.NewIntegrationService(integrationInstanceRepository, integrationEventRepository, integrationAuditLogRepository, registry, queueClient, pglockClient, sqldb, transactor2, logger, coreConfig)
 		}
 		app.Manage("service.IntegrationService", integrationService) // interface: lifecycle by dynamic type
 	}
@@ -1368,7 +1368,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.IntegrationEventWorker != nil {
 			integrationEventWorker = ov.IntegrationEventWorker
 		} else {
-			integrationEventWorker, err = service8.NewIntegrationEventWorker(integrationService, client2, client, integrationInstanceRepository, registry, logger, coreConfig)
+			integrationEventWorker, err = service8.NewIntegrationEventWorker(integrationService, queueClient, pglockClient, integrationInstanceRepository, registry, logger, coreConfig)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *service.IntegrationEventWorker: service.NewIntegrationEventWorker: %w", err)
 			}
@@ -1381,7 +1381,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.QueueRetention != nil {
 			queueRetention = ov.QueueRetention
 		} else {
-			queueRetention = service8.NewQueueRetention(client2, logger)
+			queueRetention = service8.NewQueueRetention(queueClient, logger)
 		}
 		app.Manage("*service.QueueRetention", queueRetention) // Runner
 	}
@@ -1391,7 +1391,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.EndpointRepository != nil {
 			endpointRepository = ov.EndpointRepository
 		} else {
-			endpointRepository = events.NewEndpointRepository(db2, logger)
+			endpointRepository = events.NewEndpointRepository(sqldb, logger)
 		}
 		app.Manage("events.EndpointRepository", endpointRepository) // interface: lifecycle by dynamic type
 	}
@@ -1401,7 +1401,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.EndpointService != nil {
 			endpointService = ov.EndpointService
 		} else {
-			endpointService, err = events.ProvideEndpointService(endpointRepository, catalog, service11, coreConfig, logger)
+			endpointService, err = events.ProvideEndpointService(endpointRepository, eventsCatalog, encryptionService, coreConfig, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide events.EndpointService: events.ProvideEndpointService: %w", err)
 			}
@@ -1414,7 +1414,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Worker != nil {
 			worker = ov.Worker
 		} else {
-			worker, err = events.NewWorker(client2, endpointService, endpointRepository, logger, coreConfig)
+			worker, err = events.NewWorker(queueClient, endpointService, endpointRepository, logger, coreConfig)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *events.Worker: events.NewWorker: %w", err)
 			}
@@ -1431,14 +1431,14 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		}
 	}
 
-	var templateRepository repository3.TemplateRepository
-	if needTemplateRepository {
-		if ov.RepositoryTemplateRepository2 != nil {
-			templateRepository = ov.RepositoryTemplateRepository2
+	var licenseRepositoryTemplateRepository repository3.TemplateRepository
+	if needLicenseRepositoryTemplateRepository {
+		if ov.LicenseRepositoryTemplateRepository != nil {
+			licenseRepositoryTemplateRepository = ov.LicenseRepositoryTemplateRepository
 		} else {
-			templateRepository = repository3.NewTemplateRepository(db2, licenseTemplateMapper, logger)
+			licenseRepositoryTemplateRepository = repository3.NewTemplateRepository(sqldb, licenseTemplateMapper, logger)
 		}
-		app.Manage("repository.TemplateRepository", templateRepository) // interface: lifecycle by dynamic type
+		app.Manage("repository.TemplateRepository", licenseRepositoryTemplateRepository) // interface: lifecycle by dynamic type
 	}
 
 	var organizationLicenseMapper *mapper.OrganizationLicenseMapper
@@ -1455,7 +1455,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationLicenseRepository != nil {
 			organizationLicenseRepository = ov.OrganizationLicenseRepository
 		} else {
-			organizationLicenseRepository = repository3.NewOrganizationLicenseRepository(db2, organizationLicenseMapper, logger)
+			organizationLicenseRepository = repository3.NewOrganizationLicenseRepository(sqldb, organizationLicenseMapper, logger)
 		}
 		app.Manage("repository.OrganizationLicenseRepository", organizationLicenseRepository) // interface: lifecycle by dynamic type
 	}
@@ -1474,7 +1474,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationLicenseChangeRepository != nil {
 			organizationLicenseChangeRepository = ov.OrganizationLicenseChangeRepository
 		} else {
-			organizationLicenseChangeRepository = repository3.NewOrganizationLicenseChangeRepository(db2, organizationLicenseChangeMapper, logger)
+			organizationLicenseChangeRepository = repository3.NewOrganizationLicenseChangeRepository(sqldb, organizationLicenseChangeMapper, logger)
 		}
 		app.Manage("repository.OrganizationLicenseChangeRepository", organizationLicenseChangeRepository) // interface: lifecycle by dynamic type
 	}
@@ -1493,7 +1493,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.SchemaRepository != nil {
 			schemaRepository = ov.SchemaRepository
 		} else {
-			schemaRepository = repository3.NewSchemaRepository(db2, licenseSchemaMapper, logger)
+			schemaRepository = repository3.NewSchemaRepository(sqldb, licenseSchemaMapper, logger)
 		}
 		app.Manage("repository.SchemaRepository", schemaRepository) // interface: lifecycle by dynamic type
 	}
@@ -1512,7 +1512,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.SchemaFieldRepository != nil {
 			schemaFieldRepository = ov.SchemaFieldRepository
 		} else {
-			schemaFieldRepository = repository3.NewSchemaFieldRepository(db2, licenseSchemaFieldMapper, logger)
+			schemaFieldRepository = repository3.NewSchemaFieldRepository(sqldb, licenseSchemaFieldMapper, logger)
 		}
 		app.Manage("repository.SchemaFieldRepository", schemaFieldRepository) // interface: lifecycle by dynamic type
 	}
@@ -1522,7 +1522,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseTemplateSyncEnqueuer != nil {
 			licenseTemplateSyncEnqueuer = ov.LicenseTemplateSyncEnqueuer
 		} else {
-			licenseTemplateSyncEnqueuer = service4.NewLicenseTemplateSyncEnqueuer(client2)
+			licenseTemplateSyncEnqueuer = service4.NewLicenseTemplateSyncEnqueuer(queueClient)
 		}
 		app.Manage("service.LicenseTemplateSyncEnqueuer", licenseTemplateSyncEnqueuer) // interface: lifecycle by dynamic type
 	}
@@ -1532,13 +1532,13 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseSchemaService != nil {
 			licenseSchemaService = ov.LicenseSchemaService
 		} else {
-			licenseSchemaService = service4.NewLicenseSchemaService(transactor2, schemaRepository, schemaFieldRepository, templateRepository, licenseTemplateSyncEnqueuer, logger)
+			licenseSchemaService = service4.NewLicenseSchemaService(transactor2, schemaRepository, schemaFieldRepository, licenseRepositoryTemplateRepository, licenseTemplateSyncEnqueuer, logger)
 		}
 		app.Manage("service.LicenseSchemaService", licenseSchemaService) // interface: lifecycle by dynamic type
 	}
 
 	var store2 nanocache.Store
-	if needStore2 {
+	if needStore {
 		if ov.Store != nil {
 			store2 = ov.Store
 		} else {
@@ -1547,12 +1547,12 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		app.Manage("nanocache.Store", store2) // interface: lifecycle by dynamic type
 	}
 
-	var cache nanocache.Cache[license.OrganizationLicense]
-	if needCache {
+	var nanocacheCache nanocache.Cache[license.OrganizationLicense]
+	if needNanocacheCache {
 		if ov.NanocacheCache != nil {
-			cache = *ov.NanocacheCache
+			nanocacheCache = *ov.NanocacheCache
 		} else {
-			cache, err = service4.NewOrganizationLicenseEntries(store2, logger)
+			nanocacheCache, err = service4.NewOrganizationLicenseEntries(store2, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide nanocache.Cache[license.OrganizationLicense]: service.NewOrganizationLicenseEntries: %w", err)
 			}
@@ -1564,7 +1564,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseTemplateSyncService != nil {
 			licenseTemplateSyncService = ov.LicenseTemplateSyncService
 		} else {
-			licenseTemplateSyncService = service4.NewLicenseTemplateSyncService(templateRepository, organizationLicenseRepository, organizationLicenseChangeRepository, licenseSchemaService, transactor2, client2, cache, emitter, logger)
+			licenseTemplateSyncService = service4.NewLicenseTemplateSyncService(licenseRepositoryTemplateRepository, organizationLicenseRepository, organizationLicenseChangeRepository, licenseSchemaService, transactor2, queueClient, nanocacheCache, emitter, logger)
 		}
 		app.Manage("service.LicenseTemplateSyncService", licenseTemplateSyncService) // interface: lifecycle by dynamic type
 	}
@@ -1574,7 +1574,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseTemplateSyncWorker != nil {
 			licenseTemplateSyncWorker = ov.LicenseTemplateSyncWorker
 		} else {
-			licenseTemplateSyncWorker, err = service4.NewLicenseTemplateSyncWorker(licenseTemplateSyncService, client2, logger)
+			licenseTemplateSyncWorker, err = service4.NewLicenseTemplateSyncWorker(licenseTemplateSyncService, queueClient, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *service.LicenseTemplateSyncWorker: service.NewLicenseTemplateSyncWorker: %w", err)
 			}
@@ -1583,7 +1583,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	}
 
 	var config2 nanoserver.Config
-	if needConfig2 {
+	if needConfig {
 		if ov.Config != nil {
 			config2 = *ov.Config
 		} else {
@@ -1605,7 +1605,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.TenantRepository != nil {
 			tenantRepository = ov.TenantRepository
 		} else {
-			tenantRepository = repository4.NewTenantRepository(db2, tenantMapper, logger)
+			tenantRepository = repository4.NewTenantRepository(sqldb, tenantMapper, logger)
 		}
 		app.Manage("repository.TenantRepository", tenantRepository) // interface: lifecycle by dynamic type
 	}
@@ -1643,7 +1643,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.UserRepository != nil {
 			userRepository = ov.UserRepository
 		} else {
-			userRepository = repository4.NewUserRepository(db2, userMapper, tenantMapper, invitationMapper, logger)
+			userRepository = repository4.NewUserRepository(sqldb, userMapper, tenantMapper, invitationMapper, logger)
 		}
 		app.Manage("repository.UserRepository", userRepository) // interface: lifecycle by dynamic type
 	}
@@ -1653,7 +1653,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.InvitationRepository != nil {
 			invitationRepository = ov.InvitationRepository
 		} else {
-			invitationRepository = repository4.NewPlatformInvitationRepository(db2, invitationMapper, logger)
+			invitationRepository = repository4.NewPlatformInvitationRepository(sqldb, invitationMapper, logger)
 		}
 		app.Manage("repository.InvitationRepository", invitationRepository) // interface: lifecycle by dynamic type
 	}
@@ -1672,29 +1672,29 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.PlatformTenantUserRepository != nil {
 			platformTenantUserRepository = ov.PlatformTenantUserRepository
 		} else {
-			platformTenantUserRepository = repository4.NewPlatformTenantUserRepository(db2, platformUserMapper, logger)
+			platformTenantUserRepository = repository4.NewPlatformTenantUserRepository(sqldb, platformUserMapper, logger)
 		}
 		app.Manage("repository.PlatformTenantUserRepository", platformTenantUserRepository) // interface: lifecycle by dynamic type
 	}
 
-	var repository13 repository8.Repository
-	if needRepository13 {
-		if ov.RepositoryRepository5 != nil {
-			repository13 = ov.RepositoryRepository5
+	var sessionRepositoryRepository repository8.Repository
+	if needSessionRepositoryRepository {
+		if ov.SessionRepositoryRepository != nil {
+			sessionRepositoryRepository = ov.SessionRepositoryRepository
 		} else {
-			repository13 = repository8.NewRepository(db2)
+			sessionRepositoryRepository = repository8.NewRepository(sqldb)
 		}
-		app.Manage("repository.Repository", repository13) // interface: lifecycle by dynamic type
+		app.Manage("repository.Repository", sessionRepositoryRepository) // interface: lifecycle by dynamic type
 	}
 
-	var service13 service9.Service
-	if needService13 {
-		if ov.ServiceService4 != nil {
-			service13 = ov.ServiceService4
+	var sessionServiceService service9.Service
+	if needSessionServiceService {
+		if ov.SessionServiceService != nil {
+			sessionServiceService = ov.SessionServiceService
 		} else {
-			service13 = service9.NewService(repository13, transactor2, logger)
+			sessionServiceService = service9.NewService(sessionRepositoryRepository, transactor2, logger)
 		}
-		app.Manage("service.Service", service13) // interface: lifecycle by dynamic type
+		app.Manage("service.Service", sessionServiceService) // interface: lifecycle by dynamic type
 	}
 
 	var authConfig config.AuthConfig
@@ -1710,7 +1710,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	}
 
 	var jwtHelper service8.JWTHelper
-	if needJwtHelper {
+	if needJWTHelper {
 		if ov.JWTHelper != nil {
 			jwtHelper = ov.JWTHelper
 		} else {
@@ -1724,7 +1724,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.AuthService != nil {
 			authService = ov.AuthService
 		} else {
-			authService = service8.NewAuthService(transactor2, userRepository, tenantRepository, invitationRepository, platformTenantUserRepository, service13, authConfig, jwtHelper, logger)
+			authService = service8.NewAuthService(transactor2, userRepository, tenantRepository, invitationRepository, platformTenantUserRepository, sessionServiceService, authConfig, jwtHelper, logger)
 		}
 		app.Manage("service.AuthService", authService) // interface: lifecycle by dynamic type
 	}
@@ -1759,12 +1759,12 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		app.Manage("service.PermissionService", permissionService) // interface: lifecycle by dynamic type
 	}
 
-	var cache2 nanocache.Cache[product.Product]
-	if needCache2 {
+	var nanocacheCache2 nanocache.Cache[product.Product]
+	if needNanocacheCache2 {
 		if ov.NanocacheCache2 != nil {
-			cache2 = *ov.NanocacheCache2
+			nanocacheCache2 = *ov.NanocacheCache2
 		} else {
-			cache2, err = service8.NewProductCache(store2, logger)
+			nanocacheCache2, err = service8.NewProductCache(store2, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide nanocache.Cache[product.Product]: service.NewProductCache: %w", err)
 			}
@@ -1776,7 +1776,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductService != nil {
 			productService = ov.ProductService
 		} else {
-			productService = service8.NewProductService(productRepository, productPermissionRepository, endpointService, service10, cache2, transactor2, logger)
+			productService = service8.NewProductService(productRepository, productPermissionRepository, endpointService, resourcetypeServiceService, nanocacheCache2, transactor2, logger)
 		}
 		app.Manage("service.ProductService", productService) // interface: lifecycle by dynamic type
 	}
@@ -1795,17 +1795,17 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductAPIKeyRepository != nil {
 			productAPIKeyRepository = ov.ProductAPIKeyRepository
 		} else {
-			productAPIKeyRepository = repository4.NewProductAPIKeyRepository(db2, productAPIKeyMapper, logger)
+			productAPIKeyRepository = repository4.NewProductAPIKeyRepository(sqldb, productAPIKeyMapper, logger)
 		}
 		app.Manage("repository.ProductAPIKeyRepository", productAPIKeyRepository) // interface: lifecycle by dynamic type
 	}
 
-	var cache3 nanocache.Cache[apikey.ProductAPIKey]
-	if needCache3 {
+	var nanocacheCache3 nanocache.Cache[apikey.ProductAPIKey]
+	if needNanocacheCache3 {
 		if ov.NanocacheCache3 != nil {
-			cache3 = *ov.NanocacheCache3
+			nanocacheCache3 = *ov.NanocacheCache3
 		} else {
-			cache3, err = service8.NewProductAPIKeyCache(store2, logger)
+			nanocacheCache3, err = service8.NewProductAPIKeyCache(store2, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide nanocache.Cache[apikey.ProductAPIKey]: service.NewProductAPIKeyCache: %w", err)
 			}
@@ -1817,7 +1817,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductAPIKeyService != nil {
 			productAPIKeyService = ov.ProductAPIKeyService
 		} else {
-			productAPIKeyService = service8.NewProductAPIKeyService(transactor2, productAPIKeyRepository, productPermissionRepository, cache3, logger)
+			productAPIKeyService = service8.NewProductAPIKeyService(transactor2, productAPIKeyRepository, productPermissionRepository, nanocacheCache3, logger)
 		}
 		app.Manage("service.ProductAPIKeyService", productAPIKeyService) // interface: lifecycle by dynamic type
 	}
@@ -1836,7 +1836,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductResourcePermissionRepository != nil {
 			productResourcePermissionRepository = ov.ProductResourcePermissionRepository
 		} else {
-			productResourcePermissionRepository = repository4.NewProductResourcePermissionRepository(db2, productResourcePermissionMapper, logger)
+			productResourcePermissionRepository = repository4.NewProductResourcePermissionRepository(sqldb, productResourcePermissionMapper, logger)
 		}
 		app.Manage("repository.ProductResourcePermissionRepository", productResourcePermissionRepository) // interface: lifecycle by dynamic type
 	}
@@ -1846,19 +1846,19 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationAPIKeyService != nil {
 			organizationAPIKeyService = ov.OrganizationAPIKeyService
 		} else {
-			organizationAPIKeyService = service8.NewOrganizationAPIKeyService(transactor2, client2, organizationAPIKeyRepository, organizationRepository, productRepository, productResourcePermissionRepository, emitter, logger)
+			organizationAPIKeyService = service8.NewOrganizationAPIKeyService(transactor2, queueClient, organizationAPIKeyRepository, organizationRepository, productRepository, productResourcePermissionRepository, emitter, logger)
 		}
 		app.Manage("service.OrganizationAPIKeyService", organizationAPIKeyService) // interface: lifecycle by dynamic type
 	}
 
-	var repository14 repository2.Repository
-	if needRepository14 {
-		if ov.RepositoryRepository != nil {
-			repository14 = ov.RepositoryRepository
+	var invitationRepositoryRepository repository2.Repository
+	if needInvitationRepositoryRepository {
+		if ov.InvitationRepositoryRepository != nil {
+			invitationRepositoryRepository = ov.InvitationRepositoryRepository
 		} else {
-			repository14 = repository2.NewRepository(db2, logger)
+			invitationRepositoryRepository = repository2.NewRepository(sqldb, logger)
 		}
-		app.Manage("repository.Repository", repository14) // interface: lifecycle by dynamic type
+		app.Manage("repository.Repository", invitationRepositoryRepository) // interface: lifecycle by dynamic type
 	}
 
 	var productRoleService service8.ProductRoleService
@@ -1866,7 +1866,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductRoleService != nil {
 			productRoleService = ov.ProductRoleService
 		} else {
-			productRoleService = service8.NewProductRoleService(productRoleRepository, productResourcePermissionRepository, repository14, service10, transactor2, emitter, logger)
+			productRoleService = service8.NewProductRoleService(productRoleRepository, productResourcePermissionRepository, invitationRepositoryRepository, resourcetypeServiceService, transactor2, emitter, logger)
 		}
 		app.Manage("service.ProductRoleService", productRoleService) // interface: lifecycle by dynamic type
 	}
@@ -1876,7 +1876,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationRoleService != nil {
 			organizationRoleService = ov.OrganizationRoleService
 		} else {
-			organizationRoleService = service8.NewOrganizationRoleService(productRoleRepository, productResourcePermissionRepository, repository14, organizationRepository, service10, transactor2, emitter, logger)
+			organizationRoleService = service8.NewOrganizationRoleService(productRoleRepository, productResourcePermissionRepository, invitationRepositoryRepository, organizationRepository, resourcetypeServiceService, transactor2, emitter, logger)
 		}
 		app.Manage("service.OrganizationRoleService", organizationRoleService) // interface: lifecycle by dynamic type
 	}
@@ -1886,7 +1886,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationMembershipRepository != nil {
 			organizationMembershipRepository = ov.OrganizationMembershipRepository
 		} else {
-			organizationMembershipRepository = repository4.NewOrganizationMembershipRepository(db2, logger)
+			organizationMembershipRepository = repository4.NewOrganizationMembershipRepository(sqldb, logger)
 		}
 		app.Manage("repository.OrganizationMembershipRepository", organizationMembershipRepository) // interface: lifecycle by dynamic type
 	}
@@ -1896,7 +1896,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ProductUserService != nil {
 			productUserService = ov.ProductUserService
 		} else {
-			productUserService = service8.NewProductUserService(productUserRepository, organizationMembershipRepository, service12, transactor2, emitter, logger)
+			productUserService = service8.NewProductUserService(productUserRepository, organizationMembershipRepository, roleassignmentServiceService, transactor2, emitter, logger)
 		}
 		app.Manage("service.ProductUserService", productUserService) // interface: lifecycle by dynamic type
 	}
@@ -1906,19 +1906,19 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ResourcePermissionService != nil {
 			resourcePermissionService = ov.ResourcePermissionService
 		} else {
-			resourcePermissionService = service8.NewResourcePermissionService(productResourcePermissionRepository, productAPIKeyRepository, service10, transactor2, emitter, logger)
+			resourcePermissionService = service8.NewResourcePermissionService(productResourcePermissionRepository, productAPIKeyRepository, resourcetypeServiceService, transactor2, emitter, logger)
 		}
 		app.Manage("service.ResourcePermissionService", resourcePermissionService) // interface: lifecycle by dynamic type
 	}
 
-	var service14 service5.Service
-	if needService14 {
-		if ov.ServiceService != nil {
-			service14 = ov.ServiceService
+	var resourceServiceService service5.Service
+	if needResourceServiceService {
+		if ov.ResourceServiceService != nil {
+			resourceServiceService = ov.ResourceServiceService
 		} else {
-			service14 = service5.NewService(repository12, organizationRepository, service10, service12, transactor2, emitter, logger)
+			resourceServiceService = service5.NewService(resourceRepositoryRepository, organizationRepository, resourcetypeServiceService, roleassignmentServiceService, transactor2, emitter, logger)
 		}
-		app.Manage("service.Service", service14) // interface: lifecycle by dynamic type
+		app.Manage("service.Service", resourceServiceService) // interface: lifecycle by dynamic type
 	}
 
 	var licenseTemplateService service4.LicenseTemplateService
@@ -1926,7 +1926,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseTemplateService != nil {
 			licenseTemplateService = ov.LicenseTemplateService
 		} else {
-			licenseTemplateService = service4.NewLicenseTemplateService(templateRepository, organizationLicenseRepository, licenseSchemaService, licenseTemplateSyncEnqueuer, transactor2, logger)
+			licenseTemplateService = service4.NewLicenseTemplateService(licenseRepositoryTemplateRepository, organizationLicenseRepository, licenseSchemaService, licenseTemplateSyncEnqueuer, transactor2, logger)
 		}
 		app.Manage("service.LicenseTemplateService", licenseTemplateService) // interface: lifecycle by dynamic type
 	}
@@ -1945,7 +1945,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.UsageObservationRepository != nil {
 			usageObservationRepository = ov.UsageObservationRepository
 		} else {
-			usageObservationRepository = repository3.NewUsageObservationRepository(db2, usageObservationMapper, logger)
+			usageObservationRepository = repository3.NewUsageObservationRepository(sqldb, usageObservationMapper, logger)
 		}
 		app.Manage("repository.UsageObservationRepository", usageObservationRepository) // interface: lifecycle by dynamic type
 	}
@@ -1955,7 +1955,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationLicenseService != nil {
 			organizationLicenseService = ov.OrganizationLicenseService
 		} else {
-			organizationLicenseService = service4.NewOrganizationLicenseService(organizationLicenseRepository, licenseTemplateService, licenseSchemaService, usageObservationRepository, organizationLicenseChangeRepository, transactor2, cache, emitter, logger)
+			organizationLicenseService = service4.NewOrganizationLicenseService(organizationLicenseRepository, licenseTemplateService, licenseSchemaService, usageObservationRepository, organizationLicenseChangeRepository, transactor2, nanocacheCache, emitter, logger)
 		}
 		app.Manage("service.OrganizationLicenseService", organizationLicenseService) // interface: lifecycle by dynamic type
 	}
@@ -1965,7 +1965,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationService != nil {
 			organizationService = ov.OrganizationService
 		} else {
-			organizationService = service8.NewOrganizationService(organizationRepository, organizationMembershipRepository, productUserRepository, productRoleRepository, service10, service12, organizationLicenseService, licenseTemplateService, transactor2, client, emitter, logger)
+			organizationService = service8.NewOrganizationService(organizationRepository, organizationMembershipRepository, productUserRepository, productRoleRepository, resourcetypeServiceService, roleassignmentServiceService, organizationLicenseService, licenseTemplateService, transactor2, pglockClient, emitter, logger)
 		}
 		app.Manage("service.OrganizationService", organizationService) // interface: lifecycle by dynamic type
 	}
@@ -1975,7 +1975,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationMembershipService != nil {
 			organizationMembershipService = ov.OrganizationMembershipService
 		} else {
-			organizationMembershipService = service8.NewOrganizationMembershipService(organizationMembershipRepository, productRoleRepository, service10, service12, productUserRepository, organizationRepository, transactor2, emitter, logger)
+			organizationMembershipService = service8.NewOrganizationMembershipService(organizationMembershipRepository, productRoleRepository, resourcetypeServiceService, roleassignmentServiceService, productUserRepository, organizationRepository, transactor2, emitter, logger)
 		}
 		app.Manage("service.OrganizationMembershipService", organizationMembershipService) // interface: lifecycle by dynamic type
 	}
@@ -1985,7 +1985,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.OrganizationInvitationService != nil {
 			organizationInvitationService = ov.OrganizationInvitationService
 		} else {
-			organizationInvitationService = service3.NewOrganizationInvitationService(repository14, organizationRepository, productRoleRepository, service10, organizationMembershipService, transactor2, emitter, logger)
+			organizationInvitationService = service3.NewOrganizationInvitationService(invitationRepositoryRepository, organizationRepository, productRoleRepository, resourcetypeServiceService, organizationMembershipService, transactor2, emitter, logger)
 		}
 		app.Manage("service.OrganizationInvitationService", organizationInvitationService) // interface: lifecycle by dynamic type
 	}
@@ -1999,14 +1999,14 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		}
 	}
 
-	var templateRepository2 repository.TemplateRepository
-	if needTemplateRepository2 {
-		if ov.RepositoryTemplateRepository != nil {
-			templateRepository2 = ov.RepositoryTemplateRepository
+	var emailRepositoryTemplateRepository repository.TemplateRepository
+	if needEmailRepositoryTemplateRepository {
+		if ov.EmailRepositoryTemplateRepository != nil {
+			emailRepositoryTemplateRepository = ov.EmailRepositoryTemplateRepository
 		} else {
-			templateRepository2 = repository.NewTemplateRepository(db2, emailTemplateMapper, logger)
+			emailRepositoryTemplateRepository = repository.NewTemplateRepository(sqldb, emailTemplateMapper, logger)
 		}
-		app.Manage("repository.TemplateRepository", templateRepository2) // interface: lifecycle by dynamic type
+		app.Manage("repository.TemplateRepository", emailRepositoryTemplateRepository) // interface: lifecycle by dynamic type
 	}
 
 	var emailTemplateVersionMapper *mapper.EmailTemplateVersionMapper
@@ -2023,7 +2023,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.TemplateVersionRepository != nil {
 			templateVersionRepository = ov.TemplateVersionRepository
 		} else {
-			templateVersionRepository = repository.NewTemplateVersionRepository(db2, emailTemplateVersionMapper, logger)
+			templateVersionRepository = repository.NewTemplateVersionRepository(sqldb, emailTemplateVersionMapper, logger)
 		}
 		app.Manage("repository.TemplateVersionRepository", templateVersionRepository) // interface: lifecycle by dynamic type
 	}
@@ -2042,13 +2042,13 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.SendRecordRepository != nil {
 			sendRecordRepository = ov.SendRecordRepository
 		} else {
-			sendRecordRepository = repository.NewSendRecordRepository(db2, emailSendRecordMapper, logger)
+			sendRecordRepository = repository.NewSendRecordRepository(sqldb, emailSendRecordMapper, logger)
 		}
 		app.Manage("repository.SendRecordRepository", sendRecordRepository) // interface: lifecycle by dynamic type
 	}
 
 	var renderer2 *renderer.Renderer
-	if needRenderer2 {
+	if needRenderer {
 		if ov.Renderer != nil {
 			renderer2 = ov.Renderer
 		} else {
@@ -2061,7 +2061,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.EmailService != nil {
 			emailService = ov.EmailService
 		} else {
-			emailService = service2.NewEmailService(transactor2, templateRepository2, templateVersionRepository, sendRecordRepository, integrationInstanceRepository, registry, renderer2, logger)
+			emailService = service2.NewEmailService(transactor2, emailRepositoryTemplateRepository, templateVersionRepository, sendRecordRepository, integrationInstanceRepository, registry, renderer2, logger)
 		}
 		app.Manage("service.EmailService", emailService) // interface: lifecycle by dynamic type
 	}
@@ -2081,7 +2081,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.LicenseMigrationService != nil {
 			licenseMigrationService = ov.LicenseMigrationService
 		} else {
-			licenseMigrationService = service4.NewLicenseMigrationService(organizationLicenseRepository, licenseTemplateService, organizationLicenseChangeRepository, organizationRepository, transactor2, client, cache, emitter, logger)
+			licenseMigrationService = service4.NewLicenseMigrationService(organizationLicenseRepository, licenseTemplateService, organizationLicenseChangeRepository, organizationRepository, transactor2, pglockClient, nanocacheCache, emitter, logger)
 		}
 		app.Manage("service.LicenseMigrationService", licenseMigrationService) // interface: lifecycle by dynamic type
 	}
@@ -2101,7 +2101,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.UsageSeriesRepository != nil {
 			usageSeriesRepository = ov.UsageSeriesRepository
 		} else {
-			usageSeriesRepository = repository3.NewUsageSeriesRepository(db2, logger)
+			usageSeriesRepository = repository3.NewUsageSeriesRepository(sqldb, logger)
 		}
 		app.Manage("repository.UsageSeriesRepository", usageSeriesRepository) // interface: lifecycle by dynamic type
 	}
@@ -2121,7 +2121,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.PermissionChecker != nil {
 			permissionChecker = ov.PermissionChecker
 		} else {
-			permissionChecker = authz.NewChecker(stores, syncer, scoped)
+			permissionChecker = authz.NewChecker(storeStores, syncer, scoped)
 		}
 		app.Manage("service.PermissionChecker", permissionChecker) // interface: lifecycle by dynamic type
 	}
@@ -2131,7 +2131,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Evaluator != nil {
 			evaluator = ov.Evaluator
 		} else {
-			evaluator = service.NewEvaluator(productUserRepository, organizationMembershipRepository, organizationRepository, organizationAPIKeyService, permissionChecker, service10, repository12, repository11, logger, scoped)
+			evaluator = service.NewEvaluator(productUserRepository, organizationMembershipRepository, organizationRepository, organizationAPIKeyService, permissionChecker, resourcetypeServiceService, resourceRepositoryRepository, roleassignmentRepositoryRepository, logger, scoped)
 		}
 		app.Manage("service.Evaluator", evaluator) // interface: lifecycle by dynamic type
 	}
@@ -2141,7 +2141,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.AnchorAPI != nil {
 			anchorAPI = ov.AnchorAPI
 		} else {
-			anchorAPI = api.NewAPI(tenantService, authService, invitationService, platformUserService, permissionService, productService, productAPIKeyService, organizationAPIKeyService, productRoleService, organizationRoleService, productUserService, resourcePermissionService, service10, service14, service12, organizationService, organizationMembershipService, organizationInvitationService, integrationService, emailService, licenseSchemaService, licenseTemplateService, organizationLicenseService, licenseHistoryService, licenseMigrationService, usageService, usageSeriesService, evaluator, client2, coreConfig, logger)
+			anchorAPI = api.NewAPI(tenantService, authService, invitationService, platformUserService, permissionService, productService, productAPIKeyService, organizationAPIKeyService, productRoleService, organizationRoleService, productUserService, resourcePermissionService, resourcetypeServiceService, resourceServiceService, roleassignmentServiceService, organizationService, organizationMembershipService, organizationInvitationService, integrationService, emailService, licenseSchemaService, licenseTemplateService, organizationLicenseService, licenseHistoryService, licenseMigrationService, usageService, usageSeriesService, evaluator, queueClient, coreConfig, logger)
 		}
 	}
 
@@ -2203,7 +2203,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.QueueDashboard != nil {
 			queueDashboard = ov.QueueDashboard
 		} else {
-			queueDashboard, err = httpserver.NewQueueDashboard(client2, logger)
+			queueDashboard, err = httpserver.NewQueueDashboard(queueClient, logger)
 			if err != nil {
 				return nil, nil, fmt.Errorf("nano: provide *httpserver.QueueDashboard: httpserver.NewQueueDashboard: %w", err)
 			}
@@ -2214,5 +2214,5 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	if err = nanomigrate.Run(ctx, migrator); err != nil {
 		return nil, nil, fmt.Errorf("nano: invoke nanomigrate.Run: %w", err)
 	}
-	return app, &Components{Loggers: loggers, Logger: logger, NanotraceProvider: provider2, Installer: installer, TracerProvider: tracerProvider, NanopgDB: db, SQLDB: db2, Migrator: migrator, SchemaCheck: schemaCheck, EngineProvider: provider3, Engines: engines, Scoped: scoped, StoreStores: stores, FgasyncStores: stores2, FgasyncRepository: repository9, Transactor: transactor2, PglockClient: client, Locker: locker, Tables: tables, RepositoryRepository3: repository10, QueueClient: client2, EventRegistration: eventRegistration, EventRegistration2: eventRegistration2, EventRegistration3: eventRegistration3, OrganizationEventRegistration: organizationEventRegistration, OrganizationAPIKeyEventRegistration: organizationAPIKeyEventRegistration, ProductUserEventRegistration: productUserEventRegistration, ProductRBACEventRegistration: productRBACEventRegistration, WebhookEventRegistration: webhookEventRegistration, EventRegistration4: eventRegistration4, EventRegistration5: eventRegistration5, Registrations: registrations, EventsCatalog: catalog, Assignments: assignments, RoleGrants: roleGrants, APIKeyGrants: apiKeyGrants, ResourceParents: resourceParents, ResourceAssignments: resourceAssignments, Sources: sources, Marker: marker, ModelSizeGuard: modelSizeGuard, TxObservers: txObservers, Emitter: emitter, ServiceService2: service10, SourceCatalog: catalog2, ModelSource: modelSource, Syncer: syncer, ProductMapper: productMapper, ProductRepository: productRepository, ProductPermissionMapper: productPermissionMapper, ProductPermissionRepository: productPermissionRepository, ProductPermissionStartupSync: productPermissionStartupSync, OrganizationAPIKeyMapper: organizationAPIKeyMapper, OrganizationAPIKeyRepository: organizationAPIKeyRepository, OrganizationAPIKeyEventService: organizationAPIKeyEventService, APIKeyEventWorker: apiKeyEventWorker, CoreConfig: coreConfig, EncryptionService: service11, IntegrationInstanceMapper: integrationInstanceMapper, IntegrationInstanceRepository: integrationInstanceRepository, IntegrationEventMapper: integrationEventMapper, IntegrationEventRepository: integrationEventRepository, IntegrationAuditLogMapper: integrationAuditLogMapper, IntegrationAuditLogRepository: integrationAuditLogRepository, ProductUserMapper: productUserMapper, ProductUserRepository: productUserRepository, RepositoryRepository4: repository11, OrganizationMapper: organizationMapper, OrganizationRepository: organizationRepository, RepositoryRepository2: repository12, ProductRoleMapper: productRoleMapper, ProductRoleRepository: productRoleRepository, ServiceService3: service12, Provider: provider4, Provider2: provider5, Providers: providers, Registry: registry, IntegrationService: integrationService, IntegrationEventWorker: integrationEventWorker, QueueRetention: queueRetention, EndpointRepository: endpointRepository, EndpointService: endpointService, Worker: worker, LicenseTemplateMapper: licenseTemplateMapper, RepositoryTemplateRepository2: templateRepository, OrganizationLicenseMapper: organizationLicenseMapper, OrganizationLicenseRepository: organizationLicenseRepository, OrganizationLicenseChangeMapper: organizationLicenseChangeMapper, OrganizationLicenseChangeRepository: organizationLicenseChangeRepository, LicenseSchemaMapper: licenseSchemaMapper, SchemaRepository: schemaRepository, LicenseSchemaFieldMapper: licenseSchemaFieldMapper, SchemaFieldRepository: schemaFieldRepository, LicenseTemplateSyncEnqueuer: licenseTemplateSyncEnqueuer, LicenseSchemaService: licenseSchemaService, Store: store2, NanocacheCache: cache, LicenseTemplateSyncService: licenseTemplateSyncService, LicenseTemplateSyncWorker: licenseTemplateSyncWorker, Config: config2, TenantMapper: tenantMapper, TenantRepository: tenantRepository, TenantService: tenantService, UserMapper: userMapper, InvitationMapper: invitationMapper, UserRepository: userRepository, InvitationRepository: invitationRepository, PlatformUserMapper: platformUserMapper, PlatformTenantUserRepository: platformTenantUserRepository, RepositoryRepository5: repository13, ServiceService4: service13, AuthConfig: authConfig, JWTHelper: jwtHelper, AuthService: authService, InvitationService: invitationService, PlatformUserService: platformUserService, PermissionService: permissionService, NanocacheCache2: cache2, ProductService: productService, ProductAPIKeyMapper: productAPIKeyMapper, ProductAPIKeyRepository: productAPIKeyRepository, NanocacheCache3: cache3, ProductAPIKeyService: productAPIKeyService, ProductResourcePermissionMapper: productResourcePermissionMapper, ProductResourcePermissionRepository: productResourcePermissionRepository, OrganizationAPIKeyService: organizationAPIKeyService, RepositoryRepository: repository14, ProductRoleService: productRoleService, OrganizationRoleService: organizationRoleService, OrganizationMembershipRepository: organizationMembershipRepository, ProductUserService: productUserService, ResourcePermissionService: resourcePermissionService, ServiceService: service14, LicenseTemplateService: licenseTemplateService, UsageObservationMapper: usageObservationMapper, UsageObservationRepository: usageObservationRepository, OrganizationLicenseService: organizationLicenseService, OrganizationService: organizationService, OrganizationMembershipService: organizationMembershipService, OrganizationInvitationService: organizationInvitationService, EmailTemplateMapper: emailTemplateMapper, RepositoryTemplateRepository: templateRepository2, EmailTemplateVersionMapper: emailTemplateVersionMapper, TemplateVersionRepository: templateVersionRepository, EmailSendRecordMapper: emailSendRecordMapper, SendRecordRepository: sendRecordRepository, Renderer: renderer2, EmailService: emailService, LicenseHistoryService: licenseHistoryService, LicenseMigrationService: licenseMigrationService, UsageService: usageService, UsageSeriesRepository: usageSeriesRepository, UsageSeriesService: usageSeriesService, PermissionChecker: permissionChecker, Evaluator: evaluator, AnchorAPI: anchorAPI, Identity: identity, Resolver: resolver, AuthMiddleware: authMiddleware, Handler: handler, Server: server, QueueDashboard: queueDashboard}, nil
+	return app, &Components{Loggers: loggers, Logger: logger, NanotraceProvider: nanotraceProvider, Installer: installer, TracerProvider: tracerProvider, NanopgDB: nanopgDB, SQLDB: sqldb, Migrator: migrator, SchemaCheck: schemaCheck, EngineProvider: engineProvider, Engines: engines, Scoped: scoped, StoreStores: storeStores, FgasyncStores: fgasyncStores, FgasyncRepository: fgasyncRepository, Transactor: transactor2, PglockClient: pglockClient, Locker: locker, Tables: tables, ResourcetypeRepositoryRepository: resourcetypeRepositoryRepository, QueueClient: queueClient, EventRegistration: eventRegistration, EventRegistration2: eventRegistration2, EventRegistration3: eventRegistration3, OrganizationEventRegistration: organizationEventRegistration, OrganizationAPIKeyEventRegistration: organizationAPIKeyEventRegistration, ProductUserEventRegistration: productUserEventRegistration, ProductRBACEventRegistration: productRBACEventRegistration, WebhookEventRegistration: webhookEventRegistration, EventRegistration4: eventRegistration4, EventRegistration5: eventRegistration5, Registrations: registrations, EventsCatalog: eventsCatalog, Assignments: assignments, RoleGrants: roleGrants, APIKeyGrants: apiKeyGrants, ResourceParents: resourceParents, ResourceAssignments: resourceAssignments, Sources: sources, Marker: marker, ModelSizeGuard: modelSizeGuard, TxObservers: txObservers, Emitter: emitter, ResourcetypeServiceService: resourcetypeServiceService, SourceCatalog: sourceCatalog, ModelSource: modelSource, Syncer: syncer, ProductMapper: productMapper, ProductRepository: productRepository, ProductPermissionMapper: productPermissionMapper, ProductPermissionRepository: productPermissionRepository, ProductPermissionStartupSync: productPermissionStartupSync, OrganizationAPIKeyMapper: organizationAPIKeyMapper, OrganizationAPIKeyRepository: organizationAPIKeyRepository, OrganizationAPIKeyEventService: organizationAPIKeyEventService, APIKeyEventWorker: apiKeyEventWorker, CoreConfig: coreConfig, EncryptionService: encryptionService, IntegrationInstanceMapper: integrationInstanceMapper, IntegrationInstanceRepository: integrationInstanceRepository, IntegrationEventMapper: integrationEventMapper, IntegrationEventRepository: integrationEventRepository, IntegrationAuditLogMapper: integrationAuditLogMapper, IntegrationAuditLogRepository: integrationAuditLogRepository, ProductUserMapper: productUserMapper, ProductUserRepository: productUserRepository, RoleassignmentRepositoryRepository: roleassignmentRepositoryRepository, OrganizationMapper: organizationMapper, OrganizationRepository: organizationRepository, ResourceRepositoryRepository: resourceRepositoryRepository, ProductRoleMapper: productRoleMapper, ProductRoleRepository: productRoleRepository, RoleassignmentServiceService: roleassignmentServiceService, Provider: provider2, Provider2: provider22, Providers: providers, Registry: registry, IntegrationService: integrationService, IntegrationEventWorker: integrationEventWorker, QueueRetention: queueRetention, EndpointRepository: endpointRepository, EndpointService: endpointService, Worker: worker, LicenseTemplateMapper: licenseTemplateMapper, LicenseRepositoryTemplateRepository: licenseRepositoryTemplateRepository, OrganizationLicenseMapper: organizationLicenseMapper, OrganizationLicenseRepository: organizationLicenseRepository, OrganizationLicenseChangeMapper: organizationLicenseChangeMapper, OrganizationLicenseChangeRepository: organizationLicenseChangeRepository, LicenseSchemaMapper: licenseSchemaMapper, SchemaRepository: schemaRepository, LicenseSchemaFieldMapper: licenseSchemaFieldMapper, SchemaFieldRepository: schemaFieldRepository, LicenseTemplateSyncEnqueuer: licenseTemplateSyncEnqueuer, LicenseSchemaService: licenseSchemaService, Store: store2, NanocacheCache: nanocacheCache, LicenseTemplateSyncService: licenseTemplateSyncService, LicenseTemplateSyncWorker: licenseTemplateSyncWorker, Config: config2, TenantMapper: tenantMapper, TenantRepository: tenantRepository, TenantService: tenantService, UserMapper: userMapper, InvitationMapper: invitationMapper, UserRepository: userRepository, InvitationRepository: invitationRepository, PlatformUserMapper: platformUserMapper, PlatformTenantUserRepository: platformTenantUserRepository, SessionRepositoryRepository: sessionRepositoryRepository, SessionServiceService: sessionServiceService, AuthConfig: authConfig, JWTHelper: jwtHelper, AuthService: authService, InvitationService: invitationService, PlatformUserService: platformUserService, PermissionService: permissionService, NanocacheCache2: nanocacheCache2, ProductService: productService, ProductAPIKeyMapper: productAPIKeyMapper, ProductAPIKeyRepository: productAPIKeyRepository, NanocacheCache3: nanocacheCache3, ProductAPIKeyService: productAPIKeyService, ProductResourcePermissionMapper: productResourcePermissionMapper, ProductResourcePermissionRepository: productResourcePermissionRepository, OrganizationAPIKeyService: organizationAPIKeyService, InvitationRepositoryRepository: invitationRepositoryRepository, ProductRoleService: productRoleService, OrganizationRoleService: organizationRoleService, OrganizationMembershipRepository: organizationMembershipRepository, ProductUserService: productUserService, ResourcePermissionService: resourcePermissionService, ResourceServiceService: resourceServiceService, LicenseTemplateService: licenseTemplateService, UsageObservationMapper: usageObservationMapper, UsageObservationRepository: usageObservationRepository, OrganizationLicenseService: organizationLicenseService, OrganizationService: organizationService, OrganizationMembershipService: organizationMembershipService, OrganizationInvitationService: organizationInvitationService, EmailTemplateMapper: emailTemplateMapper, EmailRepositoryTemplateRepository: emailRepositoryTemplateRepository, EmailTemplateVersionMapper: emailTemplateVersionMapper, TemplateVersionRepository: templateVersionRepository, EmailSendRecordMapper: emailSendRecordMapper, SendRecordRepository: sendRecordRepository, Renderer: renderer2, EmailService: emailService, LicenseHistoryService: licenseHistoryService, LicenseMigrationService: licenseMigrationService, UsageService: usageService, UsageSeriesRepository: usageSeriesRepository, UsageSeriesService: usageSeriesService, PermissionChecker: permissionChecker, Evaluator: evaluator, AnchorAPI: anchorAPI, Identity: identity, Resolver: resolver, AuthMiddleware: authMiddleware, Handler: handler, Server: server, QueueDashboard: queueDashboard}, nil
 }
