@@ -1,0 +1,229 @@
+{
+  "title": "Anchor e2e-app check timed out starting its server on 4 branches",
+  "short": "E2E startup budget",
+  "service": "anchor CI (e2e-app, GitHub-hosted)",
+  "date": "2026-11-09",
+  "severity": "SEV4",
+  "status": "in review",
+  "authors": [
+    "Nanostack routine (echopoint-investigation)"
+  ],
+  "summary": "The anchor `e2e-app` PR check failed on four branches between 2026-11-04 and 2026-11-09 before any browser test ran: Playwright stopped waiting for the disposable e2e server after its 180 s `webServer` timeout. That budget covers two serial phases: the backend (Postgres plus `go build ./cmd`) and `vite build`. On green runs the backend phase alone took 33 to 150 s; on the 16:18Z run it took 165 s, leaving 15 s for a frontend build that needs about 20 to 40 s. Each failure was green on rerun, so it read as a flake. The fix raises the budget to 420 s and logs the backend phase time.",
+  "impact": {
+    "text": "CI only. Four PR branches got a red required e2e check with no test failure and needed a manual rerun; no deploy or customer impact.",
+    "numbers": [
+      {
+        "value": "4",
+        "label": "branches with a red e2e-app check"
+      },
+      {
+        "value": "4 of ~62",
+        "label": "completed e2e-app runs since 2026-11-02 (~6%)"
+      },
+      {
+        "value": "0",
+        "label": "browser tests that actually failed"
+      }
+    ]
+  },
+  "trigger": "On `feat/search-db-adopt` the backend phase of `serve-e2e-full.mjs` took 165 s, and `vite build` could not finish inside the remaining 15 s.",
+  "detection": "The echopoint-investigation routine logged the first two failures (anchor#323 branch, 2026-11-04) as an open ledger row and waited for a second branch; it found three more on 2026-11-09 by grepping job logs for `Timed out waiting 180000ms`. No CI signal separates a startup timeout from a test failure, so authors saw a generic red check and reran.",
+  "resolution": "Each affected run went green on rerun. anchor PR (this postmortem) raises the `webServer` timeout in `playwright.app.config.ts` to 420 s and prints `Anchor backend ready in … ms` so the next budget question has data.",
+  "timeline": {
+    "events": [
+      {
+        "t": "2026-11-04T00:30:11Z",
+        "kind": "trigger",
+        "label": "First timeout, anchor#323 branch (green on rerun)",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/41747296067"
+      },
+      {
+        "t": "2026-11-04T00:52:00Z",
+        "kind": "detect",
+        "approx": true,
+        "label": "Routine logs it as an open ledger row, waits for a 2nd branch"
+      },
+      {
+        "t": "2026-11-09T07:56:00Z",
+        "kind": "note",
+        "label": "Timeout on p1/bind-email",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/42582421926"
+      },
+      {
+        "t": "2026-11-09T08:05:22Z",
+        "kind": "note",
+        "label": "Timeout on p1/bind-repository-hub",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/42583446057"
+      },
+      {
+        "t": "2026-11-09T16:19:30Z",
+        "kind": "note",
+        "label": "Backend phase starts on feat/search-db-adopt",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/42653368599"
+      },
+      {
+        "t": "2026-11-09T16:22:15Z",
+        "kind": "note",
+        "label": "`vite build` starts after a 165 s backend phase",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/42653368599"
+      },
+      {
+        "t": "2026-11-09T16:22:32Z",
+        "kind": "note",
+        "label": "Timed out waiting 180000ms from config.webServer",
+        "link": "https://github.com/nanostack-dev/anchor/actions/runs/42653368599"
+      },
+      {
+        "t": "2026-11-09T16:36:09Z",
+        "kind": "note",
+        "label": "Next run on the branch is green",
+        "approx": true
+      },
+      {
+        "t": "2026-11-09T18:11:38Z",
+        "kind": "note",
+        "label": "Routine finds the second-branch timeouts in job logs"
+      },
+      {
+        "t": "2026-11-09T18:40:00Z",
+        "kind": "mitigate",
+        "approx": true,
+        "label": "Fix PR opened: 420 s budget + backend phase log"
+      },
+      {
+        "t": "2026-11-09T19:00:00Z",
+        "approx": true,
+        "kind": "resolve",
+        "label": "Fix merged to anchor main"
+      }
+    ]
+  },
+  "whys": {
+    "problem": "Four anchor PR branches got a red required `e2e-app` check without a failing test and had to be rerun.",
+    "because": [
+      {
+        "text": "Playwright gave up waiting for the e2e server: `Timed out waiting 180000ms from config.webServer`.",
+        "evidence": "[run 42653368599](https://github.com/nanostack-dev/anchor/actions/runs/42653368599) log line at 16:22:32Z; same line in the other three failed runs",
+        "because": [
+          {
+            "text": "The backend phase took 165 s, leaving 15 s for `vite build`, which needs about 20 to 40 s.",
+            "evidence": "`test:e2e:verify` starts 16:19:29Z, `[WebServer] $ vite build` 16:22:15Z, timeout 16:22:32Z",
+            "because": [
+              {
+                "text": "Backend start (Postgres compose up + `go build ./cmd`) varies from 33 to 150 s on green runs, with the Go build cache.",
+                "evidence": "14 green runs on 2026-11-09: gap from `test:e2e:verify` to `vite build` 33 s to 150 s (`scripts/e2e-runtime.mjs` runs `go build` before starting Anchor)",
+                "because": [
+                  {
+                    "id": "R1",
+                    "root": true,
+                    "text": "One fixed 180 s budget, sized from typical runs, covers two serial phases whose worst case was never measured."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "lens": "impact",
+        "text": "It recurred for six days across four branches before anyone changed the budget.",
+        "because": [
+          {
+            "text": "Each failure was green on rerun and looked like a generic red check, so it was treated as a flake.",
+            "evidence": "anchor#323 runs 2 of 3 red then green (ledger row `ci:github:anchor:e2e-app`); later branches green on their next push",
+            "because": [
+              {
+                "id": "R2",
+                "root": true,
+                "text": "Startup logs no per-phase time and CI does not flag a startup timeout apart from a test failure, so the shrinking margin was invisible."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "contributing": [
+    "Branches that touch many Go packages (codegen migrations, search refactor) recompile most of `./cmd`, the slow end of the backend range.",
+    "The e2e job timeout is 15 min, so the 180 s startup budget was far tighter than the job needed."
+  ],
+  "lessons": {
+    "well": [
+      "The failing log kept enough timestamps to split the 180 s into its two phases after the fact."
+    ],
+    "wrong": [
+      "A red-then-green check was logged and left open for six days instead of measured once."
+    ],
+    "lucky": [
+      "The timeouts hit PR checks only; the e2e suite does not gate deploys, so nothing was held from prod."
+    ]
+  },
+  "actions": [
+    {
+      "id": "A1",
+      "what": "Raise the `webServer` timeout in `playwright.app.config.ts` from 180 s to 420 s, with the measured range in a comment",
+      "type": "prevent",
+      "owner": "Nanostack routine (echopoint-investigation)",
+      "status": "done",
+      "fixes": [
+        "R1"
+      ]
+    },
+    {
+      "id": "A2",
+      "what": "`serve-e2e-full.mjs` prints `Anchor backend ready in … ms` before the frontend build; e2e guide line on sizing the budget",
+      "type": "detect",
+      "owner": "Nanostack routine (echopoint-investigation)",
+      "status": "done",
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A3",
+      "what": "Report a webServer startup timeout as its own annotation in `run-e2e-affected.mjs`, so it is not read as a test failure",
+      "type": "detect",
+      "owner": "anchor maintainers",
+      "due": "2026-11-23",
+      "status": "open",
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A4",
+      "what": "Build the backend and the frontend in parallel in `serve-e2e-full.mjs` (startup becomes the max of the two phases, not the sum)",
+      "type": "mitigate",
+      "owner": "anchor maintainers",
+      "due": "2026-11-30",
+      "status": "open",
+      "fixes": [
+        "R1"
+      ]
+    }
+  ],
+  "responders": [
+    {
+      "role": "Investigation",
+      "name": "Nanostack routine (echopoint-investigation)"
+    }
+  ],
+  "messaging": {
+    "internal": "anchor e2e-app red checks with `Timed out waiting 180000ms from config.webServer` were a startup budget, not flaky tests: backend build + frontend build ran serially inside 180 s. Budget raised to 420 s; the log now prints the backend phase time.",
+    "external": "None (CI only)."
+  },
+  "links": [
+    {
+      "label": "Report",
+      "url": "https://claude.ai/artifact/C3QGtA5xhRfr1oD1Rq9Krp"
+    },
+    {
+      "label": "Failed run, feat/search-db-adopt",
+      "url": "https://github.com/nanostack-dev/anchor/actions/runs/42653368599"
+    },
+    {
+      "label": "Failed run, anchor#323 branch",
+      "url": "https://github.com/nanostack-dev/anchor/actions/runs/41747296067"
+    }
+  ]
+}
