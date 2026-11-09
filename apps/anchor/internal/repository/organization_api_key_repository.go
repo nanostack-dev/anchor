@@ -53,7 +53,7 @@ type OrganizationAPIKeyRepository interface {
 		ctx context.Context,
 		input orgapikey.SearchOrganizationAPIKeysInput,
 	) (search.Result[orgapikey.OrganizationAPIKey], error)
-	Delete(
+	DeleteByOrganizationIDAndID(
 		ctx context.Context,
 		organizationID, id string,
 	) error
@@ -76,8 +76,6 @@ type OrganizationAPIKeyRepository interface {
 	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 }
 
-// organizationAPIKeyToDomain is the stateless mapper that the generated base calls.
-//
 // organizationAPIKeyToDomain is the stateless mapper that the generated base calls.
 func organizationAPIKeyToDomain(row model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
 	return (&mapper.OrganizationAPIKeyMapper{}).ToDomain(row)
@@ -378,19 +376,6 @@ func (r *organizationAPIKeyRepository) SearchByOrganizationID(
 		})
 
 	return result, nil
-}
-
-func (r *organizationAPIKeyRepository) Delete(
-	ctx context.Context,
-	organizationID, id string,
-) error {
-	stmt := table.OrganizationAPIKeys.DELETE().WHERE(
-		table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
-			table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationAPIKeyRepository) UpdateLastUsedAt(

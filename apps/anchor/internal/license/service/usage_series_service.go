@@ -59,7 +59,7 @@ func (s *usageSeriesService) GetSeries(
 		return search.Result[license.UsageSeriesPoint]{}, err
 	}
 
-	found, err := s.organizations.FindByID(ctx, request.ProductID, request.OrganizationID)
+	found, err := s.organizations.FindByProductIDAndID(ctx, request.ProductID, request.OrganizationID)
 	if err != nil {
 		return search.Result[license.UsageSeriesPoint]{}, err
 	}
