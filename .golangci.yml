@@ -503,13 +503,6 @@ linters:
       - path: '.*_gen\.go$'
         linters:
           - ALL
-      - path: '.*dbgen\.go$'
-        linters:
-          - ALL
-          - noctx
-      - path: 'tools\.go$'
-        linters:
-          - ALL
       # gosec G117 flags many DTO/domain field names (Password/APIKey/Token)
       # as potential secret leaks. In this codebase those are schema field names,
       # not hardcoded credentials, so we treat this as a false-positive class.

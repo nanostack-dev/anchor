@@ -9,7 +9,7 @@ Admin dashboard for the Anchor OaaS platform (Vite + React + TanStack Router/Que
 Regenerate after **any** OpenAPI change, before writing frontend code:
 
 ```sh
-(cd apps/anchor && ./generate_anchor.sh) # from the repository root; includes UI client
+(cd apps/anchor && ./generate_anchor.sh) # from the repository root; includes UI client, no database of its own
 (cd anchor-ui && pnpm openapi-ts)        # frontend-only regeneration from the same contract
 ```
 

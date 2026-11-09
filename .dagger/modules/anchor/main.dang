@@ -141,6 +141,39 @@ type Anchor {
   wiringTests(ws: Workspace!): Void @check { goTests(ws, "cmd/app") }
 
   """
+  Generated code (apps/anchor): every file that nano gen writes matches its
+  inputs. -fresh ignores nanogen.sum and applies the migrations to a new
+  database, so the go-jet models are proven against the migrations, not only
+  against the recorded checksums.
+
+  The database is a service of the image that nanogen/project.go declares,
+  named by NANO_GEN_DATABASE_URL. nano gen does not start its own container
+  here: timescaledb-tune reads the container's memory.max, which a nested
+  Docker daemon does not provide, and Postgres exits with code 2.
+  NO_TS_TUNE skips the tuning, as cmd/it/shared/test_setup.go does.
+  """
+  generatedCode(ws: Workspace!): Void @check {
+    let db = container
+      .from("timescale/timescaledb:2.23.0-pg18")
+      .withEnvVariable("POSTGRES_PASSWORD", "nanogen")
+      .withEnvVariable("NO_TS_TUNE", "true")
+      .withExposedPort(5432)
+      .asService
+    container
+      .from(goImage)
+      .withMountedCache("/go/pkg/mod", cacheVolume("go-mod"))
+      .withMountedCache("/root/.cache/go-build", cacheVolume("go-build"))
+      .withDirectory("/repo", source(ws))
+      .withWorkdir("/repo/apps/anchor")
+      .withServiceBinding("db", db)
+      .withEnvVariable("GOWORK", "off")
+      .withEnvVariable("NANO_GEN_DATABASE_URL", "postgres://postgres:nanogen@db:5432/postgres?sslmode=disable")
+      .withExec(["go", "tool", "nano", "gen", "-check", "-fresh", "-diff"])
+      .sync
+    null
+  }
+
+  """
   The lint wrapper's command boundary (scripts/lint.sh) behaves as tested.
   """
   lintTooling(ws: Workspace!): Void @check {

@@ -156,13 +156,13 @@ select_changes() {
     case "$relative" in
       gorules/*)
         use_full_scope validation_inputs_changed; return ;;
-      cmd/http/openapi.yaml|migrations/*|*codegen*.yaml|dbgen.go|generate_anchor.sh)
+      cmd/http/openapi.yaml|migrations/*|*codegen*.yaml|nanogen/project.go|generate_anchor.sh)
         use_full_scope generated_inputs_changed; return ;;
     esac
     case "$relative" in
       go.mod|go.sum|*/go.mod|*/go.sum|.golangci.*|*/.golangci.*)
         use_full_scope module_inputs_changed; return ;;
-      *.gen.go|*_gen.go|*/gen/*.go|tools.go)
+      *.gen.go|*_gen.go|*/gen/*.go)
         use_full_scope generated_inputs_changed; return ;;
       *.go) ;;
       *) continue ;;
