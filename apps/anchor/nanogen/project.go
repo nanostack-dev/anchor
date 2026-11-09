@@ -13,8 +13,9 @@ var Project = project.Project{ //nolint:gochecknoglobals // a declaration nano g
 	Postgres: &project.Postgres{
 		Name: "anchor",
 		// TimescaleDB, not plain Postgres: the usage migration creates a
-		// hypertable. Keep this image equal to docker-compose.yml and
-		// cmd/it/shared/test_setup.go.
+		// hypertable. Keep this image equal to docker-compose.yml,
+		// cmd/it/shared/test_setup.go and the generatedCode check in
+		// .dagger/modules/anchor/main.dang.
 		Image:  "timescale/timescaledb:2.23.0-pg18",
 		Scopes: []string{"platform_tenant_id", "product_id", "organization_id"},
 	},
