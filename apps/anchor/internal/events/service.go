@@ -131,7 +131,7 @@ func (s *endpointService) Get(ctx context.Context, tenantID, productID string) (
 }
 
 func (s *endpointService) Clear(ctx context.Context, tenantID, productID string) error {
-	return s.repo.Delete(ctx, tenantID, productID)
+	return s.repo.DeleteByPlatformTenantIDAndProductID(ctx, tenantID, productID)
 }
 
 func (s *endpointService) resolveSigningSecret(
