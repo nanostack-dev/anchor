@@ -44,7 +44,9 @@ const startup = startRuntime({
 });
 runtime = await startup;
 const runtimeMs = performance.now() - launchedAt;
-console.log(`Anchor backend ready in ${Math.round(runtimeMs)} ms; building the frontend`);
+console.log(
+	`Anchor backend ready in ${Math.round(runtimeMs)} ms; building the frontend`,
+);
 const ownerPath = path.join(runtime.directory, "owner.json");
 if (!existsSync(ownerPath)) {
 	writeFileSync(
