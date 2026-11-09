@@ -14,12 +14,20 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
-// ProductResourcePermissionRepository on *productResourcePermissionRepository: 0 derived methods on table product_resource_permissions; the other methods are
+// ProductResourcePermissionRepository on *productResourcePermissionRepository: 1 derived method on table product_resource_permissions; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // A compile error on the next line means ProductResourcePermissionRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ ProductResourcePermissionRepository = (*productResourcePermissionRepository)(nil)
+
+// DeleteByProductAndName is derived from its name:
+//
+//	DELETE FROM product_resource_permissions WHERE product_id = $1 AND name = $2
+func (r *productResourcePermissionRepository) DeleteByProductAndName(ctx context.Context, productID string, name string) error {
+	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.Name(name)))
+	return err
+}
 
 // SearchByProduct runs a ProductResourcePermissionSearch: *productResourcePermissionRepository has no hand-written SearchByProduct.
 func (r *productResourcePermissionRepository) SearchByProduct(ctx context.Context, q ProductResourcePermissionSearch) (search.Result[resourcepermission.ProductResourcePermission], error) {

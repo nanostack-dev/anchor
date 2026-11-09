@@ -12,24 +12,45 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/keyset"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-// OrganizationAPIKeyRepository on *organizationAPIKeyRepository: 1 derived method on table organization_api_keys; the other methods are
+// OrganizationAPIKeyRepository on *organizationAPIKeyRepository: 4 derived methods on table organization_api_keys; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
-//
-// Hand-written although the name derives (deleting the method switches it
-// to the derived query): GetByOrganizationIDAndName, GetByIDInternal.
 //
 // A compile error on the next line means OrganizationAPIKeyRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ OrganizationAPIKeyRepository = (*organizationAPIKeyRepository)(nil)
 
-// DeleteByOrganizationIDAndID is derived from its name:
+// GetByOrgAndID is derived from its name:
+//
+//	SELECT * FROM organization_api_keys WHERE organization_id = $1 AND id = $2 LIMIT 2 -- at most one row: organization_api_keys_pkey (id); a second row is ErrMoreThanOneRow
+func (r *organizationAPIKeyRepository) GetByOrgAndID(ctx context.Context, organizationID string, id string) (functional.Option[orgapikey.OrganizationAPIKey], error) {
+	return r.findOne(ctx, r.where.OrganizationID(organizationID).AND(r.where.ID(id)))
+}
+
+// GetByOrgAndName is derived from its name:
+//
+//	SELECT * FROM organization_api_keys WHERE organization_id = $1 AND name = $2 LIMIT 2 -- at most one row: organization_api_keys_organization_id_name_key (organization_id, name); a second row is ErrMoreThanOneRow
+func (r *organizationAPIKeyRepository) GetByOrgAndName(ctx context.Context, organizationID string, name string) (functional.Option[orgapikey.OrganizationAPIKey], error) {
+	return r.findOne(ctx, r.where.OrganizationID(organizationID).AND(r.where.Name(name)))
+}
+
+// DeleteByOrgAndID is derived from its name:
 //
 //	DELETE FROM organization_api_keys WHERE organization_id = $1 AND id = $2
-func (r *organizationAPIKeyRepository) DeleteByOrganizationIDAndID(ctx context.Context, organizationID string, id string) error {
+func (r *organizationAPIKeyRepository) DeleteByOrgAndID(ctx context.Context, organizationID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ID(id)))
 	return err
+}
+
+// GetByIDInternal is derived from its name:
+//
+//	SELECT * FROM organization_api_keys WHERE id = $1 LIMIT 2 -- at most one row: organization_api_keys_pkey (id); a second row is ErrMoreThanOneRow
+//
+// UNSCOPED: the name ends in Internal, so it does not filter on organization_id.
+func (r *organizationAPIKeyRepository) GetByIDInternal(ctx context.Context, id string) (functional.Option[orgapikey.OrganizationAPIKey], error) {
+	return r.findOne(ctx, r.where.ID(id))
 }
 
 // SearchByOrganizationID runs an OrganizationAPIKeySearch: *organizationAPIKeyRepository has no hand-written SearchByOrganizationID.

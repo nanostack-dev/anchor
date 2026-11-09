@@ -47,7 +47,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		)
 		assert.Empty(t, result.MissingPrivileges)
 
-		reloaded, err := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByOrgAndID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
@@ -142,7 +142,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		assert.Empty(t, result.MissingPrivileges)
 		assert.Nil(t, result.APIKey.LastUsedAt)
 
-		reloaded, err := OrgAPIKeyRepository.GetByID(
+		reloaded, err := OrgAPIKeyRepository.GetByOrgAndID(
 			t.Context(),
 			ctxData.Organization.ID,
 			updatedKey.ID,
@@ -298,7 +298,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, firstResult.APIKey.LastUsedAt)
 
-		firstReloadOpt, err := OrgAPIKeyRepository.GetByID(
+		firstReloadOpt, err := OrgAPIKeyRepository.GetByOrgAndID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,
@@ -320,7 +320,7 @@ func TestOrganizationAPIKeyValidation(t *testing.T) {
 		require.NoError(t, secondErr)
 		require.NotNil(t, secondResult.APIKey.LastUsedAt)
 
-		secondReloadOpt, err := OrgAPIKeyRepository.GetByID(
+		secondReloadOpt, err := OrgAPIKeyRepository.GetByOrgAndID(
 			t.Context(),
 			ctxData.Organization.ID,
 			createdKey.ID,

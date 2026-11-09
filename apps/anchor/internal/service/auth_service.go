@@ -87,7 +87,7 @@ func (s *authService) GetUserByTenantIDAndID(
 ) (*platform.User, error) {
 	logger := s.logger.With(slog.String("operation", "GetUserByTenantIDAndID"))
 
-	found, err := s.platformTenantUserRepo.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
+	found, err := s.platformTenantUserRepo.FindByTenantAndUserID(ctx, tenantID, userID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find user by tenant and user ID",
 			slog.String("tenant_id", tenantID),
@@ -219,7 +219,7 @@ func (s *authService) handleInvitation(
 	}
 	optInvitation := foundInvitation.Value()
 	// then delete the invitation because it is used
-	if err = s.invitationRepo.DeleteByTenantIDAndID(
+	if err = s.invitationRepo.DeleteByTenantAndID(
 		ctx, optInvitation.PlatformTenantID, optInvitation.ID,
 	); err != nil {
 		logger.ErrorContext(ctx, "failed to delete invitation",
@@ -274,7 +274,7 @@ func (s *authService) Login(
 	}
 
 	// Try to find platform user in the first tenant
-	foundPlatformUser, err := s.platformTenantUserRepo.FindByPlatformTenantIDAndEmail(
+	foundPlatformUser, err := s.platformTenantUserRepo.FindByTenantAndEmail(
 		ctx, tenants[0].ID, user.Email,
 	)
 	if err != nil {

@@ -16,17 +16,17 @@ import (
 // the last run: run nanostack gen repo.
 var _ SchemaRepository = (*schemaRepositoryImpl)(nil)
 
-// FindByPlatformTenantIDAndProductID is derived from its name:
+// FindByTenantAndProduct is derived from its name:
 //
 //	SELECT * FROM license_schemas WHERE platform_tenant_id = $1 AND product_id = $2 LIMIT 2 -- at most one row: license_schemas_product_id_key (product_id); a second row is ErrMoreThanOneRow
-func (r *schemaRepositoryImpl) FindByPlatformTenantIDAndProductID(ctx context.Context, tenantID string, productID string) (functional.Option[license.Schema], error) {
+func (r *schemaRepositoryImpl) FindByTenantAndProduct(ctx context.Context, tenantID string, productID string) (functional.Option[license.Schema], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(tenantID).AND(r.where.ProductID(productID)))
 }
 
-// DeleteByPlatformTenantIDAndProductID is derived from its name:
+// DeleteByTenantAndProduct is derived from its name:
 //
 //	DELETE FROM license_schemas WHERE platform_tenant_id = $1 AND product_id = $2
-func (r *schemaRepositoryImpl) DeleteByPlatformTenantIDAndProductID(ctx context.Context, tenantID string, productID string) error {
+func (r *schemaRepositoryImpl) DeleteByTenantAndProduct(ctx context.Context, tenantID string, productID string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(tenantID).AND(r.where.ProductID(productID)))
 	return err
 }

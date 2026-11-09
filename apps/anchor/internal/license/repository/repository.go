@@ -16,10 +16,10 @@ import (
 // Every method is tenant-scoped. There is no *Internal variant: nothing in the
 // licensing write path runs without an authenticated tenant.
 type SchemaRepository interface {
-	// FindByPlatformTenantIDAndProductID returns the Product's schema, or an
+	// FindByTenantAndProduct returns the Product's schema, or an
 	// absent Option when it has never declared one. Fields are not populated;
 	// use SchemaFieldRepository.
-	FindByPlatformTenantIDAndProductID(
+	FindByTenantAndProduct(
 		ctx context.Context, tenantID string, productID string,
 	) (functional.Option[license.Schema], error)
 	Create(
@@ -28,7 +28,7 @@ type SchemaRepository interface {
 	Update(
 		ctx context.Context, tenantID string, schema license.Schema,
 	) (license.Schema, error)
-	DeleteByPlatformTenantIDAndProductID(
+	DeleteByTenantAndProduct(
 		ctx context.Context, tenantID string, productID string,
 	) error
 }
@@ -101,7 +101,7 @@ type TemplateRepository interface {
 	// check with OrganizationLicenseRepository.CountLicensesForTemplate first;
 	// this exists for the template nobody was ever licensed from. See
 	// docs/adr/0011-unreferenced-license-template-can-be-deleted.md.
-	Delete(
+	DeleteByTenantAndProductAndID(
 		ctx context.Context, tenantID string, productID string, templateID string,
 	) error
 }

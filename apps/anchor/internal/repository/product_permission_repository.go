@@ -39,8 +39,8 @@ type ProductPermissionRepository interface {
 		ctx context.Context, perm permission.ProductPermission,
 	) (permission.ProductPermission, error)
 
-	// DeleteByProductIDAndName deletes a permission by product_id and name.
-	DeleteByProductIDAndName(
+	// DeleteByProductAndName deletes a permission by product_id and name.
+	DeleteByProductAndName(
 		ctx context.Context, productID, name string,
 	) error
 

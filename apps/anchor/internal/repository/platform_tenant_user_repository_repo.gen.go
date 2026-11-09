@@ -22,31 +22,31 @@ import (
 // the last run: run nanostack gen repo.
 var _ PlatformTenantUserRepository = (*platformTenantUserRepositoryImpl)(nil)
 
-// FindByPlatformTenantIDAndUserID is derived from its name:
+// FindByTenantAndUserID is derived from its name:
 //
 //	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND user_id = $2 LIMIT 2 -- at most one row: idx_platform_users_tenant_user (platform_tenant_id, user_id); a second row is ErrMoreThanOneRow
-func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(ctx context.Context, platformTenantID string, userID string) (functional.Option[platform.User], error) {
+func (r *platformTenantUserRepositoryImpl) FindByTenantAndUserID(ctx context.Context, platformTenantID string, userID string) (functional.Option[platform.User], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.UserID(userID)))
 }
 
-// FindByPlatformTenantIDAndID is derived from its name:
+// FindByTenantAndID is derived from its name:
 //
 //	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND id = $2 LIMIT 2 -- at most one row: platform_users_pkey (id); a second row is ErrMoreThanOneRow
-func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) (functional.Option[platform.User], error) {
+func (r *platformTenantUserRepositoryImpl) FindByTenantAndID(ctx context.Context, platformTenantID string, id string) (functional.Option[platform.User], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
 }
 
-// FindByPlatformTenantIDAndEmail is derived from its name:
+// FindByTenantAndEmail is derived from its name:
 //
 //	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND email = $2 LIMIT 2 -- at most one row: idx_platform_users_tenant_email (platform_tenant_id, email); a second row is ErrMoreThanOneRow
-func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[platform.User], error) {
+func (r *platformTenantUserRepositoryImpl) FindByTenantAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[platform.User], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.Email(email)))
 }
 
-// DeleteByPlatformTenantIDAndID is derived from its name:
+// DeleteByTenantAndID is derived from its name:
 //
 //	DELETE FROM platform_users WHERE platform_tenant_id = $1 AND id = $2
-func (r *platformTenantUserRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
+func (r *platformTenantUserRepositoryImpl) DeleteByTenantAndID(ctx context.Context, platformTenantID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
 	return err
 }

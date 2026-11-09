@@ -188,7 +188,7 @@ type Repository interface {
 	MarkAccepted(
 		ctx context.Context, productID, organizationID, invitationID string, acceptedAt time.Time,
 	) (organizationinvitation.Invitation, error)
-	Delete(ctx context.Context, productID, organizationID, invitationID string) error
+	DeleteByProductAndOrgAndID(ctx context.Context, productID, organizationID, invitationID string) error
 	// ExistsPendingForRole reports whether a pending invitation in the product
 	// names the role.
 	ExistsPendingForRole(ctx context.Context, productID, roleID string) (bool, error)
@@ -362,12 +362,6 @@ func (r *repositoryImpl) MarkAccepted(
 		invitationByID(productID, organizationID, invitationID),
 	).RETURNING(table.OrganizationInvitations.AllColumns)
 	return transactor.QueryMap(ctx, r.db, stmt, toDomain(time.Now())).Value()
-}
-
-func (r *repositoryImpl) Delete(ctx context.Context, productID, organizationID, invitationID string) error {
-	stmt := table.OrganizationInvitations.DELETE().
-		WHERE(invitationByID(productID, organizationID, invitationID))
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *repositoryImpl) ExistsPendingForRole(ctx context.Context, productID, roleID string) (bool, error) {

@@ -435,7 +435,7 @@ func (s *service) lockedResource(
 func (s *service) findResource(
 	ctx context.Context, productID, organizationID, resourceType, resourceID string,
 ) (resource.Resource, error) {
-	org, err := s.organizations.FindByProductIDAndID(ctx, productID, organizationID)
+	org, err := s.organizations.FindByProductAndID(ctx, productID, organizationID)
 	if err != nil {
 		return resource.Resource{}, err
 	}

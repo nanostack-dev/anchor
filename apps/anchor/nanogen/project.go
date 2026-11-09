@@ -18,6 +18,11 @@ var Project = project.Project{ //nolint:gochecknoglobals // a declaration nanost
 		// .dagger/modules/anchor/main.dang.
 		Image:  "timescale/timescaledb:2.23.0-pg18",
 		Scopes: []string{"platform_tenant_id", "product_id", "organization_id"},
+		ScopeNames: map[string]string{
+			"platform_tenant_id": "Tenant",
+			"product_id":         "Product",
+			"organization_id":    "Org",
+		},
 	},
 	Env: ".env.example",
 }

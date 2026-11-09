@@ -104,7 +104,7 @@ type presentOrganization struct {
 	repository.OrganizationRepository
 }
 
-func (presentOrganization) FindByProductIDAndID(
+func (presentOrganization) FindByProductAndID(
 	context.Context, string, string,
 ) (functional.Option[organization.Organization], error) {
 	return functional.Some(organization.Organization{}), nil

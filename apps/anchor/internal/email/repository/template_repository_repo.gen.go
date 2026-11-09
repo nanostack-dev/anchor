@@ -22,24 +22,24 @@ import (
 // the last run: run nanostack gen repo.
 var _ TemplateRepository = (*templateRepositoryImpl)(nil)
 
-// FindByPlatformTenantIDAndProductIDAndID is derived from its name:
+// FindByTenantAndProductAndID is derived from its name:
 //
 //	SELECT * FROM email_templates WHERE platform_tenant_id = $1 AND product_id = $2 AND id = $3 LIMIT 2 -- at most one row: email_templates_pkey (id); a second row is ErrMoreThanOneRow
-func (r *templateRepositoryImpl) FindByPlatformTenantIDAndProductIDAndID(ctx context.Context, platformTenantID string, productID string, id string) (functional.Option[email.Template], error) {
+func (r *templateRepositoryImpl) FindByTenantAndProductAndID(ctx context.Context, platformTenantID string, productID string, id string) (functional.Option[email.Template], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.ID(id)))
 }
 
-// FindByPlatformTenantIDAndProductIDAndSlug is derived from its name:
+// FindByTenantAndProductAndSlug is derived from its name:
 //
 //	SELECT * FROM email_templates WHERE platform_tenant_id = $1 AND product_id = $2 AND slug = $3 LIMIT 2 -- at most one row: email_templates_product_id_slug_key (product_id, slug); a second row is ErrMoreThanOneRow
-func (r *templateRepositoryImpl) FindByPlatformTenantIDAndProductIDAndSlug(ctx context.Context, platformTenantID string, productID string, slug string) (functional.Option[email.Template], error) {
+func (r *templateRepositoryImpl) FindByTenantAndProductAndSlug(ctx context.Context, platformTenantID string, productID string, slug string) (functional.Option[email.Template], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.Slug(slug)))
 }
 
-// DeleteByPlatformTenantIDAndProductIDAndID is derived from its name:
+// DeleteByTenantAndProductAndID is derived from its name:
 //
 //	DELETE FROM email_templates WHERE platform_tenant_id = $1 AND product_id = $2 AND id = $3
-func (r *templateRepositoryImpl) DeleteByPlatformTenantIDAndProductIDAndID(ctx context.Context, platformTenantID string, productID string, id string) error {
+func (r *templateRepositoryImpl) DeleteByTenantAndProductAndID(ctx context.Context, platformTenantID string, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.ID(id)))
 	return err
 }

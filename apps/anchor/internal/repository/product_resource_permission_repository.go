@@ -62,9 +62,9 @@ type ProductResourcePermissionRepository interface {
 		ctx context.Context, perm resourcepermission.ProductResourcePermission,
 	) (resourcepermission.ProductResourcePermission, error)
 
-	// DeleteByID deletes a resource permission by Name
-	DeleteByID(
-		ctx context.Context, productID, id string,
+	// DeleteByProductAndName deletes a resource permission by name.
+	DeleteByProductAndName(
+		ctx context.Context, productID, name string,
 	) error
 
 	// SearchByProduct searches resource permissions within a product
@@ -176,17 +176,6 @@ func (r *productResourcePermissionRepository) Update(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).Value()
-}
-
-func (r *productResourcePermissionRepository) DeleteByID(
-	ctx context.Context, productID, name string,
-) error {
-	stmt := table.ProductResourcePermissions.DELETE().WHERE(
-		table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductResourcePermissions.Name.EQ(postgres.String(name))),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productResourcePermissionRepository) GetByRole(

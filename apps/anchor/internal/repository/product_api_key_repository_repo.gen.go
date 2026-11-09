@@ -12,22 +12,34 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/keyset"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-// ProductAPIKeyRepository on *productAPIKeyRepository: 1 derived method on table product_api_keys; the other methods are
+// ProductAPIKeyRepository on *productAPIKeyRepository: 3 derived methods on table product_api_keys; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
-//
-// Hand-written although the name derives (deleting the method switches it
-// to the derived query): GetByProductIDAndName.
 //
 // A compile error on the next line means ProductAPIKeyRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ ProductAPIKeyRepository = (*productAPIKeyRepository)(nil)
 
-// DeleteByProductIDAndID is derived from its name:
+// GetByProductAndID is derived from its name:
+//
+//	SELECT * FROM product_api_keys WHERE product_id = $1 AND id = $2 LIMIT 2 -- at most one row: product_api_keys_pkey (id); a second row is ErrMoreThanOneRow
+func (r *productAPIKeyRepository) GetByProductAndID(ctx context.Context, productID string, id string) (functional.Option[apikey.ProductAPIKey], error) {
+	return r.findOne(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
+}
+
+// GetByProductAndName is derived from its name:
+//
+//	SELECT * FROM product_api_keys WHERE product_id = $1 AND name = $2 LIMIT 2 -- at most one row: product_api_keys_product_id_name_key (product_id, name); a second row is ErrMoreThanOneRow
+func (r *productAPIKeyRepository) GetByProductAndName(ctx context.Context, productID string, name string) (functional.Option[apikey.ProductAPIKey], error) {
+	return r.findOne(ctx, r.where.ProductID(productID).AND(r.where.Name(name)))
+}
+
+// DeleteByProductAndID is derived from its name:
 //
 //	DELETE FROM product_api_keys WHERE product_id = $1 AND id = $2
-func (r *productAPIKeyRepository) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
+func (r *productAPIKeyRepository) DeleteByProductAndID(ctx context.Context, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 	return err
 }

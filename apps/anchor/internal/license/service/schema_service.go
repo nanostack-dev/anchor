@@ -249,7 +249,7 @@ func (s *licenseSchemaService) CreateSchema(
 			}
 			schema.GenerateID()
 
-			existing, err := s.schemaRepo.FindByPlatformTenantIDAndProductID(ctx, in.TenantID, in.ProductID)
+			existing, err := s.schemaRepo.FindByTenantAndProduct(ctx, in.TenantID, in.ProductID)
 			if err != nil {
 				return license.Schema{}, err
 			}
@@ -277,7 +277,7 @@ func (s *licenseSchemaService) GetSchema(
 		return nil, err
 	}
 
-	found, err := s.schemaRepo.FindByPlatformTenantIDAndProductID(ctx, in.TenantID, in.ProductID)
+	found, err := s.schemaRepo.FindByTenantAndProduct(ctx, in.TenantID, in.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func (s *licenseSchemaService) UpdateSchema(
 				fields = declared
 			}
 
-			found, err := s.schemaRepo.FindByPlatformTenantIDAndProductID(ctx, in.TenantID, in.ProductID)
+			found, err := s.schemaRepo.FindByTenantAndProduct(ctx, in.TenantID, in.ProductID)
 			if err != nil {
 				return license.Schema{}, err
 			}
@@ -408,7 +408,7 @@ func (s *licenseSchemaService) DeleteSchema(
 		if err := acquireLicenseWriteLock(ctx, in.TenantID, in.ProductID); err != nil {
 			return err
 		}
-		found, err := s.schemaRepo.FindByPlatformTenantIDAndProductID(ctx, in.TenantID, in.ProductID)
+		found, err := s.schemaRepo.FindByTenantAndProduct(ctx, in.TenantID, in.ProductID)
 		if err != nil {
 			return err
 		}
@@ -417,6 +417,6 @@ func (s *licenseSchemaService) DeleteSchema(
 		}
 
 		// Fields cascade with the envelope; the migration owns that, not this layer.
-		return s.schemaRepo.DeleteByPlatformTenantIDAndProductID(ctx, in.TenantID, in.ProductID)
+		return s.schemaRepo.DeleteByTenantAndProduct(ctx, in.TenantID, in.ProductID)
 	})
 }

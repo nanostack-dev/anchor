@@ -43,7 +43,7 @@ func (s *licenseHistoryService) SearchChanges(
 	ctx context.Context, q licenserepo.OrganizationLicenseChangeSearch,
 ) (search.Result[license.OrganizationLicenseChange], error) {
 	scope := q.Scope()
-	found, err := s.organizations.FindByProductIDAndID(ctx, scope.ProductID, scope.OrganizationID)
+	found, err := s.organizations.FindByProductAndID(ctx, scope.ProductID, scope.OrganizationID)
 	if err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}

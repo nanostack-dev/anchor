@@ -60,7 +60,7 @@ func (s *invitationService) CreateInvitation(
 	if err := validate.ValidateStruct(input); err != nil {
 		return invitation.PlatformInvitation{}, err
 	}
-	foundPlatformUser, err := s.platformUserRepo.FindByPlatformTenantIDAndEmail(
+	foundPlatformUser, err := s.platformUserRepo.FindByTenantAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *invitationService) CreateInvitation(
 				"Check if the person is already a member, or invite a different email address.",
 		)
 	}
-	foundInvitation, err := s.invitationRepo.FindByPlatformTenantIDAndEmail(
+	foundInvitation, err := s.invitationRepo.FindByTenantAndEmail(
 		ctx, input.TenantID, input.Email,
 	)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s *invitationService) CreateInvitation(
 
 	createdEntity, err := s.invitationRepo.Create(ctx, inv)
 	if err != nil {
-		// A concurrent create can win the race after the FindByPlatformTenantIDAndEmail
+		// A concurrent create can win the race after the FindByTenantAndEmail
 		// check above passed, tripping the unique index. The repository reports
 		// that as ErrInvitationExists, which is the same logical condition as the
 		// pre-check, so it gets the same client error rather than a 500.
@@ -153,7 +153,7 @@ func (s *invitationService) DeleteInvitation(
 	if err := validate.ValidateStruct(input); err != nil {
 		return err
 	}
-	err := s.invitationRepo.DeleteByTenantIDAndID(ctx, input.TenantID, input.InvitationID)
+	err := s.invitationRepo.DeleteByTenantAndID(ctx, input.TenantID, input.InvitationID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to delete invitation",
 			slog.String("tenant_id", input.TenantID),

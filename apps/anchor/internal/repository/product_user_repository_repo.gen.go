@@ -21,18 +21,18 @@ import (
 // the last run: run nanostack gen repo.
 var _ ProductUserRepository = (*productUserRepositoryImpl)(nil)
 
-// DeleteByProductIDAndID is derived from its name:
+// DeleteByProductAndID is derived from its name:
 //
 //	DELETE FROM product_users WHERE product_id = $1 AND id = $2
-func (r *productUserRepositoryImpl) DeleteByProductIDAndID(ctx context.Context, productID string, id string) (bool, error) {
+func (r *productUserRepositoryImpl) DeleteByProductAndID(ctx context.Context, productID string, id string) (bool, error) {
 	n, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 	return n > 0, err
 }
 
-// DeleteByProductIDAndExternalID is derived from its name:
+// DeleteByProductAndExternalID is derived from its name:
 //
 //	DELETE FROM product_users WHERE product_id = $1 AND external_id = $2
-func (r *productUserRepositoryImpl) DeleteByProductIDAndExternalID(ctx context.Context, productID string, externalID string) error {
+func (r *productUserRepositoryImpl) DeleteByProductAndExternalID(ctx context.Context, productID string, externalID string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ExternalID(externalID)))
 	return err
 }

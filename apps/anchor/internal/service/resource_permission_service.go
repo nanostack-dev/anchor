@@ -312,7 +312,7 @@ func (s *resourcePermissionService) Delete(
 			return apiKeyDeleteErr
 		}
 
-		if deleteErr := s.resourcePermissionRepo.DeleteByID(
+		if deleteErr := s.resourcePermissionRepo.DeleteByProductAndName(
 			txCtx,
 			input.ProductID,
 			name.Name,

@@ -161,7 +161,7 @@ func (s *productAPIKeyService) GetByID(
 		return nil, err
 	}
 
-	found, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	found, err := s.apiKeyRepo.GetByProductAndID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get API key",
 			slog.String("product_id", input.ProductID),
@@ -191,7 +191,7 @@ func (s *productAPIKeyService) Update(
 		slog.String("product_id", input.ProductID),
 	)
 
-	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	foundAPIKey, err := s.apiKeyRepo.GetByProductAndID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get API key for update",
 			slog.String("product_id", input.ProductID),
@@ -253,7 +253,7 @@ func (s *productAPIKeyService) Update(
 			return replaceErr
 		}
 
-		refetched, fetchErr := s.apiKeyRepo.GetByID(
+		refetched, fetchErr := s.apiKeyRepo.GetByProductAndID(
 			txCtx,
 			input.ProductID,
 			input.ID,
@@ -338,7 +338,7 @@ func (s *productAPIKeyService) Delete(
 		return err
 	}
 
-	foundAPIKey, err := s.apiKeyRepo.GetByID(ctx, input.ProductID, input.ID)
+	foundAPIKey, err := s.apiKeyRepo.GetByProductAndID(ctx, input.ProductID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get API key for deletion",
 			slog.String("product_id", input.ProductID),
@@ -352,7 +352,7 @@ func (s *productAPIKeyService) Delete(
 		return apikey.ErrProductAPIKeyNotFound
 	}
 	existingAPIKey := foundAPIKey.Value()
-	if deleteErr := s.apiKeyRepo.DeleteByProductIDAndID(ctx, input.ProductID, input.ID); deleteErr != nil {
+	if deleteErr := s.apiKeyRepo.DeleteByProductAndID(ctx, input.ProductID, input.ID); deleteErr != nil {
 		logger.ErrorContext(ctx, "failed to delete API key",
 			slog.String("product_id", input.ProductID),
 			slog.String("api_key_id", input.ID),
@@ -493,7 +493,7 @@ func (s *productAPIKeyService) ValidateAPIKeyAndScopes(
 func (s *productAPIKeyService) nameUniqueValidation(
 	ctx context.Context, productID, name, ownKeyID string, logger *slog.Logger,
 ) error {
-	found, err := s.apiKeyRepo.GetByProductIDAndName(ctx, productID, name)
+	found, err := s.apiKeyRepo.GetByProductAndName(ctx, productID, name)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to search for API keys by name",
 			slog.String("product_id", productID),

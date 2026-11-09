@@ -248,7 +248,7 @@ type OrganizationMembershipRepository interface {
 		roleID *string,
 	) (organization.Membership, error)
 
-	DeleteByOrganizationIDAndProductUserID(
+	DeleteByOrgAndProductUserID(
 		ctx context.Context,
 		organizationID string,
 		productUserID string,

@@ -17,7 +17,7 @@ import (
 )
 
 // endpointRepository keeps the model rows: endpointFromModel returns an error,
-// and a nanorepo mapper cannot. DeleteByPlatformTenantIDAndProductID is
+// and a nanorepo mapper cannot. DeleteByTenantAndProduct is
 // derived; the other methods are hand-written. DeleteByProductIDInternal
 // deletes across tenants, and such a delete never derives.
 func _() {
@@ -29,7 +29,7 @@ func _() {
 type EndpointRepository interface {
 	FindByProductIDInternal(ctx context.Context, productID string) (functional.Option[Endpoint], error)
 	Upsert(ctx context.Context, endpoint Endpoint) error
-	DeleteByPlatformTenantIDAndProductID(ctx context.Context, platformTenantID, productID string) error
+	DeleteByTenantAndProduct(ctx context.Context, platformTenantID, productID string) error
 	DeleteByProductIDInternal(ctx context.Context, productID string) error
 	// RecordDeliveryResultInternal updates delivery state from the background worker only.
 	RecordDeliveryResultInternal(ctx context.Context, productID, endpointURL string, succeeded bool) error

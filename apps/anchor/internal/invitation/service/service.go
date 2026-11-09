@@ -155,7 +155,7 @@ func (s *organizationInvitationService) Search(
 	ctx context.Context, q repository.OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 ) (search.Result[organizationinvitation.Invitation], error) {
 	scope := q.Scope()
-	foundOrganization, err := s.organizationRepo.FindByProductIDAndID(ctx, scope.ProductID, scope.OrganizationID)
+	foundOrganization, err := s.organizationRepo.FindByProductAndID(ctx, scope.ProductID, scope.OrganizationID)
 	if err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
@@ -228,7 +228,7 @@ func (s *organizationInvitationService) Delete(
 		if findErr != nil {
 			return findErr
 		}
-		if deleteErr := s.invitationRepo.Delete(
+		if deleteErr := s.invitationRepo.DeleteByProductAndOrgAndID(
 			txCtx, input.ProductID, input.OrganizationID, input.InvitationID,
 		); deleteErr != nil {
 			return deleteErr

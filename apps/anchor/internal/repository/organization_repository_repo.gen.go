@@ -22,17 +22,17 @@ import (
 // the last run: run nanostack gen repo.
 var _ OrganizationRepository = (*organizationRepositoryImpl)(nil)
 
-// FindByProductIDAndID is derived from its name:
+// FindByProductAndID is derived from its name:
 //
 //	SELECT * FROM organizations WHERE product_id = $1 AND id = $2 LIMIT 2 -- at most one row: organizations_pkey (id); a second row is ErrMoreThanOneRow
-func (r *organizationRepositoryImpl) FindByProductIDAndID(ctx context.Context, productID string, id string) (functional.Option[organization.Organization], error) {
+func (r *organizationRepositoryImpl) FindByProductAndID(ctx context.Context, productID string, id string) (functional.Option[organization.Organization], error) {
 	return r.findOne(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 }
 
-// DeleteByProductIDAndID is derived from its name:
+// DeleteByProductAndID is derived from its name:
 //
 //	DELETE FROM organizations WHERE product_id = $1 AND id = $2
-func (r *organizationRepositoryImpl) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
+func (r *organizationRepositoryImpl) DeleteByProductAndID(ctx context.Context, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 	return err
 }

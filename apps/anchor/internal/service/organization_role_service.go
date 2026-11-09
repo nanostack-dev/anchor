@@ -287,7 +287,7 @@ func (s *organizationRoleService) DeleteOrganizationRole(
 }
 
 func (s *organizationRoleService) requireOrganization(ctx context.Context, productID, organizationID string) error {
-	found, err := s.orgRepo.FindByProductIDAndID(ctx, productID, organizationID)
+	found, err := s.orgRepo.FindByProductAndID(ctx, productID, organizationID)
 	if err != nil {
 		return err
 	}

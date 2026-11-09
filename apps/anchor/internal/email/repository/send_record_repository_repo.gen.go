@@ -22,10 +22,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ SendRecordRepository = (*sendRecordRepositoryImpl)(nil)
 
-// FindByPlatformTenantIDAndProductIDAndDedupeKey is derived from its name:
+// FindByTenantAndProductAndDedupeKey is derived from its name:
 //
 //	SELECT * FROM email_send_records WHERE platform_tenant_id = $1 AND product_id = $2 AND dedupe_key = $3 LIMIT 2 -- at most one row: idx_email_send_records_dedupe (product_id, dedupe_key) WHERE (dedupe_key IS NOT NULL); a second row is ErrMoreThanOneRow
-func (r *sendRecordRepositoryImpl) FindByPlatformTenantIDAndProductIDAndDedupeKey(ctx context.Context, platformTenantID string, productID string, dedupeKey string) (functional.Option[email.SendRecord], error) {
+func (r *sendRecordRepositoryImpl) FindByTenantAndProductAndDedupeKey(ctx context.Context, platformTenantID string, productID string, dedupeKey string) (functional.Option[email.SendRecord], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.DedupeKey(dedupeKey)))
 }
 

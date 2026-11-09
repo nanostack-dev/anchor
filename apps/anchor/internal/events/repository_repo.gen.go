@@ -16,10 +16,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ EndpointRepository = (*endpointRepository)(nil)
 
-// DeleteByPlatformTenantIDAndProductID is derived from its name:
+// DeleteByTenantAndProduct is derived from its name:
 //
 //	DELETE FROM product_event_endpoint_configs WHERE platform_tenant_id = $1 AND product_id = $2
-func (r *endpointRepository) DeleteByPlatformTenantIDAndProductID(ctx context.Context, platformTenantID string, productID string) error {
+func (r *endpointRepository) DeleteByTenantAndProduct(ctx context.Context, platformTenantID string, productID string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)))
 	return err
 }

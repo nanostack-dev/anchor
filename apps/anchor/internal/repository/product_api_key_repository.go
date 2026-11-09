@@ -48,16 +48,16 @@ type ProductAPIKeyRepository interface {
 		productID, permissionName string,
 	) error
 
-	// GetByID retrieves a product API key by Name
-	GetByID(ctx context.Context, productID, id string) (functional.Option[apikey.ProductAPIKey], error)
+	// GetByProductAndID retrieves a product API key by product and ID.
+	GetByProductAndID(ctx context.Context, productID, id string) (functional.Option[apikey.ProductAPIKey], error)
 
-	// GetByProductIDAndName retrieves a product API key by product Name and name
-	GetByProductIDAndName(
+	// GetByProductAndName retrieves a product API key by product and name.
+	GetByProductAndName(
 		ctx context.Context, productID, name string,
 	) (functional.Option[apikey.ProductAPIKey], error)
 
-	// DeleteByProductIDAndID deletes a product API key of a product.
-	DeleteByProductIDAndID(ctx context.Context, productID, id string) error
+	// DeleteByProductAndID deletes a product API key of a product.
+	DeleteByProductAndID(ctx context.Context, productID, id string) error
 
 	// SearchByProductId searches for product API keys with filtering, sorting, and pagination
 	SearchByProductID(ctx context.Context, q ProductAPIKeySearch) (search.Result[apikey.ProductAPIKey], error)
@@ -229,21 +229,6 @@ func (r *productAPIKeyRepository) Create(
 		}
 	}
 	return r.mapper.ToDomainWithPermissions(created, permissions), nil
-}
-
-func (r *productAPIKeyRepository) GetByID(
-	ctx context.Context, productID, id string,
-) (functional.Option[apikey.ProductAPIKey], error) {
-	return r.findOne(ctx, table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
-		table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)),
-	))
-}
-
-func (r *productAPIKeyRepository) GetByProductIDAndName(
-	ctx context.Context, productID, name string,
-) (functional.Option[apikey.ProductAPIKey], error) {
-	return r.findOne(ctx, table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)).
-		AND(table.ProductAPIKeys.Name.EQ(postgres.String(name))))
 }
 
 //nolint:dupl // mirrored by organization API key repository with equivalent flow

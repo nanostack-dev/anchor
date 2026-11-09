@@ -619,7 +619,7 @@ func (s *integrationService) DeleteInstance(
 			},
 		)
 
-		return s.instanceRepo.DeleteByPlatformTenantIDAndID(
+		return s.instanceRepo.DeleteByTenantAndID(
 			txCtx, input.TenantID, input.ID,
 		)
 	})

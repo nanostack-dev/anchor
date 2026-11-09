@@ -14,12 +14,20 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
-// TemplateRepository on *templateRepositoryImpl: 0 derived methods on table license_templates; the other methods are
+// TemplateRepository on *templateRepositoryImpl: 1 derived method on table license_templates; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // A compile error on the next line means TemplateRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ TemplateRepository = (*templateRepositoryImpl)(nil)
+
+// DeleteByTenantAndProductAndID is derived from its name:
+//
+//	DELETE FROM license_templates WHERE platform_tenant_id = $1 AND product_id = $2 AND id = $3
+func (r *templateRepositoryImpl) DeleteByTenantAndProductAndID(ctx context.Context, tenantID string, productID string, templateID string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(tenantID).AND(r.where.ProductID(productID)).AND(r.where.ID(templateID)))
+	return err
+}
 
 // Search runs a LicenseTemplateSearch: *templateRepositoryImpl has no hand-written Search.
 func (r *templateRepositoryImpl) Search(ctx context.Context, q LicenseTemplateSearch) (search.Result[license.Template], error) {

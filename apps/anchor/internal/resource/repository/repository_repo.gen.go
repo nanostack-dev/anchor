@@ -13,10 +13,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ Repository = (*repositoryImpl)(nil)
 
-// DeleteByOrganizationIDAndID is derived from its name:
+// DeleteByOrgAndID is derived from its name:
 //
 //	DELETE FROM resources WHERE organization_id = $1 AND id = $2
-func (r *repositoryImpl) DeleteByOrganizationIDAndID(ctx context.Context, organizationID string, id string) error {
+func (r *repositoryImpl) DeleteByOrgAndID(ctx context.Context, organizationID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ID(id)))
 	return err
 }

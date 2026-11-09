@@ -21,10 +21,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ ProductPermissionRepository = (*productPermissionRepositoryImpl)(nil)
 
-// DeleteByProductIDAndName is derived from its name:
+// DeleteByProductAndName is derived from its name:
 //
 //	DELETE FROM product_permissions WHERE product_id = $1 AND name = $2
-func (r *productPermissionRepositoryImpl) DeleteByProductIDAndName(ctx context.Context, productID string, name string) error {
+func (r *productPermissionRepositoryImpl) DeleteByProductAndName(ctx context.Context, productID string, name string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.Name(name)))
 	return err
 }

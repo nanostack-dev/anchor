@@ -344,7 +344,7 @@ func (s *licenseMigrationService) decide(
 	result := license.OrganizationMigrationResult{OrganizationID: organizationID}
 
 	if existing == nil {
-		found, err := s.organizations.FindByProductIDAndID(ctx, run.input.ProductID, organizationID)
+		found, err := s.organizations.FindByProductAndID(ctx, run.input.ProductID, organizationID)
 		if err != nil {
 			return result, license.OrganizationLicense{}, err
 		}

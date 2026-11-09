@@ -469,7 +469,7 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 		if prod.Config.Protected {
 			return product.ErrProductProtected
 		}
-		return s.productRepo.DeleteByPlatformTenantIDAndID(txCtx, input.TenantID, input.ProductID)
+		return s.productRepo.DeleteByTenantAndID(txCtx, input.TenantID, input.ProductID)
 	})
 	if err == nil {
 		if evictErr := s.products.Key(input.TenantID, input.ProductID).Evict(ctx); evictErr != nil {

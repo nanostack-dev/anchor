@@ -211,7 +211,7 @@ func (s *productUserService) Delete(
 			return releaseErr
 		}
 		var delErr error
-		deleted, delErr = s.productUserRepo.DeleteByProductIDAndID(txCtx, input.ProductID, input.ProductUserID)
+		deleted, delErr = s.productUserRepo.DeleteByProductAndID(txCtx, input.ProductID, input.ProductUserID)
 		if delErr != nil {
 			return delErr
 		}

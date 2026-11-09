@@ -342,7 +342,12 @@ func (s *licenseTemplateService) DeleteTemplate(
 			return errLicenseTemplateInUse(licenseCount)
 		}
 
-		if err = s.templateRepo.Delete(ctx, in.TenantID, in.ProductID, in.TemplateID); err != nil {
+		if err = s.templateRepo.DeleteByTenantAndProductAndID(
+			ctx,
+			in.TenantID,
+			in.ProductID,
+			in.TemplateID,
+		); err != nil {
 			if pgerr.IsForeignKeyViolation(err, "fk_organization_licenses_template") {
 				return errLicenseTemplateInUse(1)
 			}
