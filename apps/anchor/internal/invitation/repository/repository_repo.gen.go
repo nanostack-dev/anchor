@@ -5,12 +5,9 @@ package repository
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
-	"anchor/internal/domain/organizationinvitation"
-	"context"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/keyset"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
@@ -20,16 +17,6 @@ import (
 // A compile error on the next line means Repository gained or lost a method since
 // the last run: run nano gen repo.
 var _ Repository = (*repositoryImpl)(nil)
-
-// SearchInOrganization runs an OrganizationInvitationSearch: *repositoryImpl has no hand-written SearchInOrganization.
-func (r *repositoryImpl) SearchInOrganization(ctx context.Context, q OrganizationInvitationSearch) (search.Result[organizationinvitation.Invitation], error) {
-	return r.search(ctx, organizationInvitationSearch, q.Query, invitationToDomain)
-}
-
-// SearchInProduct runs a ProductInvitationSearch: *repositoryImpl has no hand-written SearchInProduct.
-func (r *repositoryImpl) SearchInProduct(ctx context.Context, q ProductInvitationSearch) (search.Result[organizationinvitation.Invitation], error) {
-	return r.search(ctx, productInvitationSearch, q.Query, invitationToDomain)
-}
 
 // OrganizationInvitationSearch is an immutable search of organization_invitations. Start one with NewOrganizationInvitationSearch.
 type OrganizationInvitationSearch struct {
@@ -77,9 +64,6 @@ func NewOrganizationInvitationSearch(scope OrganizationInvitationScope) Organiza
 }
 
 // The filters of OrganizationInvitationSearch: each returns a field of q, whose method returns the filtered copy.
-func (q OrganizationInvitationSearch) Status() searchexec.In[OrganizationInvitationSearch, string] {
-	return searchexec.NewIn(q.Query, invitationStatus(), searchexec.StringLit[string])
-}
 func (q OrganizationInvitationSearch) Email() searchexec.InFold[OrganizationInvitationSearch, string] {
 	return searchexec.NewInFold[string](q.Query, table.OrganizationInvitations.Email)
 }
@@ -123,9 +107,6 @@ func NewProductInvitationSearch(productID string) ProductInvitationSearch {
 }
 
 // The filters of ProductInvitationSearch: each returns a field of q, whose method returns the filtered copy.
-func (q ProductInvitationSearch) Status() searchexec.In[ProductInvitationSearch, string] {
-	return searchexec.NewIn(q.Query, invitationStatus(), searchexec.StringLit[string])
-}
 func (q ProductInvitationSearch) Email() searchexec.InFold[ProductInvitationSearch, string] {
 	return searchexec.NewInFold[string](q.Query, table.OrganizationInvitations.Email)
 }

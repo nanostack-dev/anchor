@@ -28,10 +28,10 @@ type OrganizationInvitationService interface {
 	Create(ctx context.Context, input organizationinvitation.CreateInput) (organizationinvitation.Invitation, error)
 	Get(ctx context.Context, input organizationinvitation.GetInput) (organizationinvitation.Invitation, error)
 	Search(
-		ctx context.Context, q repository.OrganizationInvitationSearch,
+		ctx context.Context, q repository.OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	SearchInProduct(
-		ctx context.Context, q repository.ProductInvitationSearch,
+		ctx context.Context, q repository.ProductInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	Update(ctx context.Context, input organizationinvitation.UpdateInput) (organizationinvitation.Invitation, error)
 	Delete(ctx context.Context, input organizationinvitation.DeleteInput) error
@@ -152,7 +152,7 @@ func (s *organizationInvitationService) Get(
 }
 
 func (s *organizationInvitationService) Search(
-	ctx context.Context, q repository.OrganizationInvitationSearch,
+	ctx context.Context, q repository.OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 ) (search.Result[organizationinvitation.Invitation], error) {
 	scope := q.Scope()
 	foundOrganization, err := s.organizationRepo.FindByProductIDAndID(ctx, scope.ProductID, scope.OrganizationID)
@@ -163,13 +163,13 @@ func (s *organizationInvitationService) Search(
 		return search.Result[organizationinvitation.Invitation]{}, organization.ErrOrganizationNotFound
 	}
 
-	return s.invitationRepo.SearchInOrganization(ctx, q)
+	return s.invitationRepo.SearchInOrganization(ctx, q, statuses)
 }
 
 func (s *organizationInvitationService) SearchInProduct(
-	ctx context.Context, q repository.ProductInvitationSearch,
+	ctx context.Context, q repository.ProductInvitationSearch, statuses []organizationinvitation.Status,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	return s.invitationRepo.SearchInProduct(ctx, q)
+	return s.invitationRepo.SearchInProduct(ctx, q, statuses)
 }
 
 func (s *organizationInvitationService) Update(

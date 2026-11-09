@@ -9,6 +9,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
@@ -27,14 +28,13 @@ func _() {
 
 	// POST /v1/products/{product_id}/organizations/{organization_id}/invitations/search.
 	// full_text_search is accepted and ignored: an invitation has no text column
-	// that the contract names. The status of an invitation is never stored: the
-	// Status filter derives it from accepted_at and expires_at at the moment of
-	// the read.
+	// that the contract names. The status of an invitation is never stored, so the
+	// statuses filter is not a column filter: SearchInOrganization narrows the plan
+	// with statusCondition, on the same Go clock that derives the returned status.
 	nanorepo.Search[model.OrganizationInvitations]("OrganizationInvitation", table.OrganizationInvitations,
 		nanorepo.Map(invitationToDomain),
 		nanorepo.Scope(table.OrganizationInvitations.ProductID),
 		nanorepo.Scope(table.OrganizationInvitations.OrganizationID),
-		nanorepo.FilterExpr("Status", invitationStatus, nanorepo.In),
 		nanorepo.Filter(table.OrganizationInvitations.Email, nanorepo.InFold),
 		nanorepo.Sort(
 			table.OrganizationInvitations.CreatedAt, table.OrganizationInvitations.Email,
@@ -51,7 +51,6 @@ func _() {
 		nanorepo.Scope(table.OrganizationInvitations.ProductID),
 		nanorepo.Unscoped(table.OrganizationInvitations.OrganizationID,
 			"the product-wide search reads the invitations of every organization of the product"),
-		nanorepo.FilterExpr("Status", invitationStatus, nanorepo.In),
 		nanorepo.Filter(table.OrganizationInvitations.Email, nanorepo.InFold),
 		nanorepo.Sort(
 			table.OrganizationInvitations.CreatedAt, table.OrganizationInvitations.Email,
@@ -62,23 +61,79 @@ func _() {
 	)
 }
 
-// The values of the Status filter: an invitation is accepted once it has an
+// The values of the statuses filter: an invitation is accepted once it has an
 // acceptance, expired once its expiry has passed without one, and pending
-// otherwise. It is organizationinvitation.DeriveStatus, evaluated by the
-// database at the moment of the read.
+// otherwise. It is organizationinvitation.DeriveStatus, evaluated at now.
 const (
 	statusPending  = string(organizationinvitation.StatusPending)
 	statusAccepted = string(organizationinvitation.StatusAccepted)
 	statusExpired  = string(organizationinvitation.StatusExpired)
 )
 
-func invitationStatus() postgres.StringExpression {
-	return postgres.StringExp(
-		postgres.CASE().
-			WHEN(table.OrganizationInvitations.AcceptedAt.IS_NOT_NULL()).THEN(postgres.String(statusAccepted)).
-			WHEN(table.OrganizationInvitations.ExpiresAt.LT_EQ(postgres.NOW())).THEN(postgres.String(statusExpired)).
-			ELSE(postgres.String(statusPending)),
-	)
+// statusCondition keeps the invitations whose status at now is one of statuses.
+// A search reads the clock once and passes the same now here and to toDomain, so
+// the filter and the status of a returned row cannot disagree at the expiry
+// boundary. No statuses keep every row.
+func statusCondition(now time.Time, statuses []organizationinvitation.Status) postgres.BoolExpression {
+	if len(statuses) == 0 {
+		return postgres.Bool(true)
+	}
+	at := postgres.TimestampzT(now)
+	var condition postgres.BoolExpression
+	for _, status := range statuses {
+		var one postgres.BoolExpression
+		switch string(status) {
+		case statusAccepted:
+			one = table.OrganizationInvitations.AcceptedAt.IS_NOT_NULL()
+		case statusExpired:
+			one = table.OrganizationInvitations.AcceptedAt.IS_NULL().
+				AND(table.OrganizationInvitations.ExpiresAt.LT_EQ(at))
+		case statusPending:
+			one = table.OrganizationInvitations.AcceptedAt.IS_NULL().
+				AND(table.OrganizationInvitations.ExpiresAt.GT(at))
+		default:
+			one = postgres.Bool(false)
+		}
+		if condition == nil {
+			condition = one
+		} else {
+			condition = condition.OR(one)
+		}
+	}
+	return condition
+}
+
+// SearchInOrganization lists the invitations of one organization whose status
+// is one of statuses.
+func (r *repositoryImpl) SearchInOrganization(
+	ctx context.Context, q OrganizationInvitationSearch, statuses []organizationinvitation.Status,
+) (search.Result[organizationinvitation.Invitation], error) {
+	return runInvitationSearch(ctx, r.db, organizationInvitationSearch, q.Query, statuses)
+}
+
+// SearchInProduct lists the invitations of every organization of the product
+// whose status is one of statuses.
+func (r *repositoryImpl) SearchInProduct(
+	ctx context.Context, q ProductInvitationSearch, statuses []organizationinvitation.Status,
+) (search.Result[organizationinvitation.Invitation], error) {
+	return runInvitationSearch(ctx, r.db, productInvitationSearch, q.Query, statuses)
+}
+
+func runInvitationSearch[Q searchexec.Builder[model.OrganizationInvitations, Q, S, P], S ~string, P comparable](
+	ctx context.Context, db *sql.DB, spec *searchexec.Spec[model.OrganizationInvitations, S, P],
+	q searchexec.Query[model.OrganizationInvitations, Q, S, P], statuses []organizationinvitation.Status,
+) (search.Result[organizationinvitation.Invitation], error) {
+	now := time.Now()
+	plan, err := searchexec.Resolve(ctx, spec, q)
+	if err != nil {
+		return search.Result[organizationinvitation.Invitation]{}, err
+	}
+	plan = plan.And(statusCondition(now, statuses))
+	order, err := plan.Order(nil)
+	if err != nil {
+		return search.Result[organizationinvitation.Invitation]{}, err
+	}
+	return transactor.RunPlan(ctx, db, plan, order, toDomain(now)).Value()
 }
 
 // invitationToDomain is the mapper of a search row: it derives the status at the
@@ -121,11 +176,11 @@ type Repository interface {
 	EmailBelongsToMember(ctx context.Context, productID, organizationID, email string) (bool, error)
 	// SearchInOrganization lists the invitations of one organization.
 	SearchInOrganization(
-		ctx context.Context, q OrganizationInvitationSearch,
+		ctx context.Context, q OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	// SearchInProduct lists the invitations of every organization of the product.
 	SearchInProduct(
-		ctx context.Context, q ProductInvitationSearch,
+		ctx context.Context, q ProductInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	UpdateRoleAndExpiry(
 		ctx context.Context, invitation organizationinvitation.Invitation,

@@ -55,8 +55,8 @@ func (s *AnchorAPI) SearchOrganizationInvitations(
 	); err != nil {
 		return nil, err
 	}
-	q := organizationInvitationSearch(request.ProductId, request.OrganizationId, *request.Body)
-	result, err := s.OrganizationInvitationService.Search(ctx, q)
+	q, statuses := organizationInvitationSearch(request.ProductId, request.OrganizationId, *request.Body)
+	result, err := s.OrganizationInvitationService.Search(ctx, q, statuses)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization invitations",
 			slog.String("product_id", request.ProductId),
@@ -154,8 +154,8 @@ func (s *AnchorAPI) SearchProductOrganizationInvitations(
 	if err := validateProductInvitationsSearch(request.ProductId, *request.Body); err != nil {
 		return nil, err
 	}
-	q := productInvitationSearch(request.ProductId, *request.Body)
-	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, q)
+	q, statuses := productInvitationSearch(request.ProductId, *request.Body)
+	result, err := s.OrganizationInvitationService.SearchInProduct(ctx, q, statuses)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search product organization invitations",
 			slog.String("product_id", request.ProductId),
@@ -201,37 +201,36 @@ func (s *AnchorAPI) AcceptOrganizationInvitation(
 // invitations from the request body. The scope comes from the route, which the
 // authorization middleware checked against the principal; the body never sets
 // it. full_text_search is accepted and ignored: an invitation has no text column
-// that the contract names.
+// that the contract names. The statuses come back beside the search: the
+// repository derives the status on its own clock, so it is not a column filter.
 func organizationInvitationSearch(
 	productID, organizationID string, body SearchOrganizationInvitationsJSONRequestBody,
-) invitationrepo.OrganizationInvitationSearch {
+) (invitationrepo.OrganizationInvitationSearch, []organizationinvitation.Status) {
 	statuses, emails := invitationFilters(body)
 	q := invitationrepo.NewOrganizationInvitationSearch(
 		invitationrepo.OrganizationInvitationScope{ProductID: productID, OrganizationID: organizationID},
 	)
-	q = searchexec.Some(q, q.Status().In, statuses)
 	q = searchexec.Some(q, q.Email().In, emails)
 	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
 		invitationrepo.OrganizationInvitationSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, body.Pagination)
+	return searchexec.APIPage(q.Query, body.Pagination), statuses
 }
 
 // productInvitationSearch builds the search of every invitation of the product
 // from the request body.
 func productInvitationSearch(
 	productID string, body SearchOrganizationInvitationsJSONRequestBody,
-) invitationrepo.ProductInvitationSearch {
+) (invitationrepo.ProductInvitationSearch, []organizationinvitation.Status) {
 	statuses, emails := invitationFilters(body)
 	q := invitationrepo.NewProductInvitationSearch(productID)
-	q = searchexec.Some(q, q.Status().In, statuses)
 	q = searchexec.Some(q, q.Email().In, emails)
 	q = searchexec.APISort(q, q.SortBy, body.SortBy, body.SortDirection,
 		invitationrepo.ProductInvitationSortCreatedAt, search.SortAscending)
-	return searchexec.APIPage(q.Query, body.Pagination)
+	return searchexec.APIPage(q.Query, body.Pagination), statuses
 }
 
 // invitationFilters reads the status and email filters of an invitation search.
-func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]string, []string) {
+func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]organizationinvitation.Status, []string) {
 	var statuses []organizationinvitation.Status
 	var emails []string
 	if body.Filter != nil {
@@ -240,9 +239,7 @@ func invitationFilters(body SearchOrganizationInvitationsJSONRequestBody) ([]str
 			func(email openapi_types.Email) string { return string(email) },
 		)
 	}
-	return functional.Slice(statuses).Map(func(status organizationinvitation.Status) string {
-		return string(status)
-	}), emails
+	return statuses, emails
 }
 
 func mapInvitationToResponse(invitation organizationinvitation.Invitation) OrganizationInvitationResponse {
