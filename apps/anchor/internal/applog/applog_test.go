@@ -58,6 +58,16 @@ func TestLinesHaveTheZerologShape(t *testing.T) {
 		"the time has whole seconds, as zerolog wrote it")
 }
 
+func TestTimeAttributesHaveWholeSeconds(t *testing.T) {
+	var buf bytes.Buffer
+	loggers := newLoggers(&buf)
+	at := time.Date(2026, 11, 8, 1, 32, 43, 123456789, time.UTC)
+	loggers.Component.InfoContext(context.Background(), "scheduled", slog.Time("next_at", at))
+
+	assert.Equal(t, "2026-11-08T01:32:43Z", lines(t, &buf)[0]["next_at"],
+		"a time attribute has whole seconds, as zerolog's time format wrote it")
+}
+
 func TestScopedLinesCarryTheRequestScope(t *testing.T) {
 	var buf bytes.Buffer
 	newLoggers(&buf).Scoped.InfoContext(requestContext(), "scoped")

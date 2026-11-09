@@ -18,7 +18,6 @@ package applog
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/tracing"
@@ -61,9 +60,6 @@ func New(cfg log.Config) Loggers {
 		return attrs
 	}
 	handler := log.NewHandler(cfg)
-	if cfg.Format == log.FormatJSON && cfg.Wire == log.WireLegacy {
-		handler = secondsHandler{handler}
-	}
 	return Loggers{
 		Scoped:    Scoped{slog.New(handler)},
 		Component: slog.New(detachedHandler{handler}),
@@ -98,26 +94,6 @@ func identityAttrs(cfg log.Config) Identity {
 		attrs = append(attrs, slog.String("version", cfg.Version))
 	}
 	return attrs
-}
-
-// secondsHandler writes the time with whole seconds, as zerolog's RFC 3339
-// time field did. core/log's legacy wire keeps slog's fractional seconds,
-// which the golden suite pins as a layout change.
-type secondsHandler struct {
-	slog.Handler
-}
-
-func (h secondsHandler) Handle(ctx context.Context, r slog.Record) error {
-	r.Time = r.Time.Truncate(time.Second)
-	return h.Handler.Handle(ctx, r)
-}
-
-func (h secondsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return secondsHandler{h.Handler.WithAttrs(attrs)}
-}
-
-func (h secondsHandler) WithGroup(name string) slog.Handler {
-	return secondsHandler{h.Handler.WithGroup(name)}
 }
 
 // detachedHandler writes a record without the attributes of its context: no

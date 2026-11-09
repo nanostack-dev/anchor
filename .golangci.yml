@@ -217,7 +217,7 @@ linters:
             - pkg: github.com/rs/zerolog
               desc: Use log/slog through an injected *slog.Logger (internal/applog)
             - pkg: github.com/nanostack-dev/nanostack-framework/pkg/log$
-              desc: Use core/log and internal/applog (LevelFor, Error)
+              desc: Use core/log (log.ErrorTo, log.LevelFor) and internal/applog
             - pkg: github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog
               desc: The request summary is internal/middleware.NewRequestLoggingMiddleware on slog
         # Anchor is wired by nano gen wire (cmd/app/manifest.go) and configured

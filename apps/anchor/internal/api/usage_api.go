@@ -5,8 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
@@ -70,7 +69,7 @@ func (s *AnchorAPI) ReportOrganizationUsage(
 		To:             request.Body.To,
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to report organization usage",
+		log.ErrorTo(ctx, s.logger, err, "failed to report organization usage",
 			slog.String("product_id", request.ProductId),
 			slog.String("organization_id", request.OrganizationId),
 			slog.String("key", request.Body.Key),
@@ -102,7 +101,7 @@ func (s *AnchorAPI) GetOrganizationUsageSeries(
 		Pagination:     usageSeriesPagination(request.Params.Limit, request.Params.Offset),
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to get organization usage series",
+		log.ErrorTo(ctx, s.logger, err, "failed to get organization usage series",
 			slog.String("product_id", request.ProductId),
 			slog.String("organization_id", request.OrganizationId),
 			slog.String("key", request.Params.Key),

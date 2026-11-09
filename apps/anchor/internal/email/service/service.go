@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/domain/email"
 	domainintegration "anchor/internal/domain/integration"
 	"anchor/internal/email/renderer"
@@ -18,6 +16,7 @@ import (
 	"anchor/internal/integration/provider"
 	intrepo "anchor/internal/repository"
 
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -98,10 +97,10 @@ var (
 // and surfaces as a 422 EMAIL_DELIVERY_REJECTED; every other transport failure
 // is a modelled 500 EMAIL_DELIVERY_FAILED. A cancelled context means the caller
 // (or shutdown) went away mid-send, not a delivery fault, so it is returned
-// unchanged to keep the context-cancellation logging policy (applog.LevelFor)
+// unchanged to keep the context-cancellation logging policy (core/log.LevelFor)
 // from surfacing it on error dashboards and alerts.
 func classifyDispatchError(err error) error {
-	if applog.IsContextError(err) {
+	if log.IsContextError(err) {
 		return err
 	}
 	if errors.Is(err, provider.ErrMessageRejected) {
@@ -797,7 +796,7 @@ func (s *emailService) Send(
 		if updErr := s.sendRepo.UpdateStatus(
 			persistCtx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {
-			applog.Error(ctx, s.logger, updErr, "update FAILED status", slog.String("send_id", persisted.ID))
+			log.ErrorTo(ctx, s.logger, updErr, "update FAILED status", slog.String("send_id", persisted.ID))
 		}
 		persisted.Status = email.SendStatusFailed
 		persisted.LastError = &errMsg
@@ -808,7 +807,7 @@ func (s *emailService) Send(
 	if err = s.sendRepo.UpdateStatus(
 		persistCtx, in.TenantID, persisted.ID, email.SendStatusSent, nil, &now,
 	); err != nil {
-		applog.Error(ctx, s.logger, err, "update SENT status", slog.String("send_id", persisted.ID))
+		log.ErrorTo(ctx, s.logger, err, "update SENT status", slog.String("send_id", persisted.ID))
 	}
 	persisted.Status = email.SendStatusSent
 	persisted.SentAt = &now

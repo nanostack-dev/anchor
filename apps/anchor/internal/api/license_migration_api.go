@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"anchor/internal/applog"
-
+	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
 
 	"anchor/internal/domain/license"
@@ -30,7 +29,7 @@ func (s *AnchorAPI) MigrateOrganizationLicenses(
 		OnDifference:    ptr.DerefOr(body.OnDifference, license.CarryForwardDifferences),
 	})
 	if err != nil {
-		applog.Error(ctx, s.logger, err, "failed to migrate organization licenses",
+		log.ErrorTo(ctx, s.logger, err, "failed to migrate organization licenses",
 			slog.String("product_id", request.ProductId),
 			slog.String("license_template_id", body.TemplateId),
 		)

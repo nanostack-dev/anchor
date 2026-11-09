@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"anchor/internal/applog"
-
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
@@ -427,7 +425,7 @@ func (s *productAPIKeyService) validateAPIKey(
 	)
 
 	if err != nil {
-		applog.Error(ctx, logger, err, "failed to validate API key", slog.String("product_id", productID))
+		log.ErrorTo(ctx, logger, err, "failed to validate API key", slog.String("product_id", productID))
 		return apikey.ProductAPIKey{}, fault.ErrUnexpected
 	}
 
