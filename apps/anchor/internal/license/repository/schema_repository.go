@@ -6,16 +6,27 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/license"
 	"anchor/internal/mapper"
 )
 
-var _ SchemaRepository = (*schemaRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[SchemaRepository, schemaRepositoryImpl](
+		table.LicenseSchemas, licenseSchemaToDomain,
+	)
+}
+
+// licenseSchemaToDomain is the mapper of the generated base. The base calls it
+// by name, so it cannot be a method value of the injected mapper.
+func licenseSchemaToDomain(row model.LicenseSchemas) license.Schema {
+	return (&mapper.LicenseSchemaMapper{}).ToDomain(row)
+}
 
 func licenseSchemasUpdatableColumns() postgres.ColumnList {
 	return table.LicenseSchemas.AllColumns.Except(
@@ -24,6 +35,8 @@ func licenseSchemasUpdatableColumns() postgres.ColumnList {
 }
 
 type schemaRepositoryImpl struct {
+	licenseSchemasBase
+
 	db     *sql.DB
 	mapper *mapper.LicenseSchemaMapper
 	logger *slog.Logger
@@ -33,22 +46,11 @@ func NewSchemaRepository(
 	db *sql.DB, m *mapper.LicenseSchemaMapper, logger *slog.Logger,
 ) SchemaRepository {
 	return &schemaRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "license_schema_repository")),
+		licenseSchemasBase: newLicenseSchemasBase(db),
+		db:                 db,
+		mapper:             m,
+		logger:             logger.With(slog.String("component", "license_schema_repository")),
 	}
-}
-
-func (r *schemaRepositoryImpl) FindByProduct(
-	ctx context.Context, tenantID string, productID string,
-) (functional.Option[license.Schema], error) {
-	stmt := table.LicenseSchemas.SELECT(table.LicenseSchemas.AllColumns).
-		FROM(table.LicenseSchemas).
-		WHERE(
-			table.LicenseSchemas.PlatformTenantID.EQ(postgres.String(tenantID)).
-				AND(table.LicenseSchemas.ProductID.EQ(postgres.String(productID))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
 }
 
 func (r *schemaRepositoryImpl) Create(
@@ -87,14 +89,4 @@ func (r *schemaRepositoryImpl) Update(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).Value()
-}
-
-func (r *schemaRepositoryImpl) DeleteByProduct(
-	ctx context.Context, tenantID string, productID string,
-) error {
-	stmt := table.LicenseSchemas.DELETE().WHERE(
-		table.LicenseSchemas.PlatformTenantID.EQ(postgres.String(tenantID)).
-			AND(table.LicenseSchemas.ProductID.EQ(postgres.String(productID))),
-	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }

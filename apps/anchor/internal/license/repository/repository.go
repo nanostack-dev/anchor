@@ -16,9 +16,10 @@ import (
 // Every method is tenant-scoped. There is no *Internal variant: nothing in the
 // licensing write path runs without an authenticated tenant.
 type SchemaRepository interface {
-	// FindByProduct returns the Product's schema, or an absent Option when it
-	// has never declared one. Fields are not populated; use SchemaFieldRepository.
-	FindByProduct(
+	// FindByPlatformTenantIDAndProductID returns the Product's schema, or an
+	// absent Option when it has never declared one. Fields are not populated;
+	// use SchemaFieldRepository.
+	FindByPlatformTenantIDAndProductID(
 		ctx context.Context, tenantID string, productID string,
 	) (functional.Option[license.Schema], error)
 	Create(
@@ -27,7 +28,7 @@ type SchemaRepository interface {
 	Update(
 		ctx context.Context, tenantID string, schema license.Schema,
 	) (license.Schema, error)
-	DeleteByProduct(
+	DeleteByPlatformTenantIDAndProductID(
 		ctx context.Context, tenantID string, productID string,
 	) error
 }
