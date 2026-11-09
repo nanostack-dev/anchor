@@ -118,7 +118,7 @@ func (s *invitationService) CreateInvitation(
 
 	createdEntity, err := s.invitationRepo.Create(ctx, inv)
 	if err != nil {
-		// A concurrent create can win the race after the FindByTenantIDAndEmail
+		// A concurrent create can win the race after the FindByPlatformTenantIDAndEmail
 		// check above passed, tripping the unique index. The repository reports
 		// that as ErrInvitationExists, which is the same logical condition as the
 		// pre-check, so it gets the same client error rather than a 500.
