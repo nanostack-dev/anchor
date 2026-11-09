@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/pgerr"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 
@@ -77,7 +77,7 @@ type OrganizationLicenseService interface {
 	// the license it holds. Usage is not derived — see
 	// [OrganizationLicenseService.GetLicense] for one Organization's full read.
 	Search(
-		ctx context.Context, in license.SearchOrganizationLicensesInput,
+		ctx context.Context, q licenserepo.OrganizationLicenseSearch,
 	) (search.Result[license.OrganizationLicenseSummary], error)
 }
 
@@ -344,17 +344,10 @@ func (s *organizationLicenseService) AdjustValues(
 	return updated, nil
 }
 
-// Search does not read through the license cache. The cache holds one
-// Organization's record at a time, so a page of results would have to be
-// assembled from as many lookups as it has rows, and a miss on any one of them
-// would query the database anyway.
 func (s *organizationLicenseService) Search(
-	ctx context.Context, in license.SearchOrganizationLicensesInput,
+	ctx context.Context, q licenserepo.OrganizationLicenseSearch,
 ) (search.Result[license.OrganizationLicenseSummary], error) {
-	if err := in.Validate(); err != nil {
-		return search.Result[license.OrganizationLicenseSummary]{}, err
-	}
-	return s.licenseRepo.Search(ctx, in)
+	return s.licenseRepo.Search(ctx, q)
 }
 
 func (s *organizationLicenseService) DiffAgainstTemplate(

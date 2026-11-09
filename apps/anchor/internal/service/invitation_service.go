@@ -9,15 +9,14 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/invitation"
 	"anchor/internal/domain/platform"
 	"anchor/internal/mapper"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
 )
 
 const invitationCodeLength = 16
@@ -30,7 +29,7 @@ type InvitationService interface {
 		ctx context.Context, input invitation.DeleteInvitationInput,
 	) error
 	SearchInvitation(
-		ctx context.Context, input invitation.SearchInvitationInput,
+		ctx context.Context, q repository.PlatformInvitationSearch,
 	) (search.Result[invitation.PlatformInvitation], error)
 }
 
@@ -173,18 +172,15 @@ func (s *invitationService) DeleteInvitation(
 }
 
 func (s *invitationService) SearchInvitation(
-	ctx context.Context, input invitation.SearchInvitationInput,
+	ctx context.Context, q repository.PlatformInvitationSearch,
 ) (search.Result[invitation.PlatformInvitation], error) {
 	logger := s.logger.With(slog.String("operation", "SearchInvitation"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[invitation.PlatformInvitation]{}, err
-	}
-	result, err := s.invitationRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
+	result, err := s.invitationRepo.SearchByTenantID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search invitations",
-				slog.String("tenant_id", input.TenantID),
+				slog.String("tenant_id", q.Scope()),
 				log.Err(err),
 			)
 		}

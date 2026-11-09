@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/product"
@@ -43,7 +42,7 @@ type ProductService interface {
 	Create(ctx context.Context, input product.CreateProductInput) (product.Product, error)
 	Update(ctx context.Context, input product.UpdateProductInput) (product.Product, error)
 	Delete(ctx context.Context, input product.DeleteProductInput) error
-	Search(ctx context.Context, input product.SearchProductInput) (
+	Search(ctx context.Context, input repository.ProductSearch) (
 		search.Result[product.Product], error,
 	)
 	EventsCatalog(ctx context.Context) []events.Definition
@@ -484,26 +483,23 @@ func (s *productService) Delete(ctx context.Context, input product.DeleteProduct
 }
 
 func (s *productService) Search(
-	ctx context.Context, input product.SearchProductInput,
+	ctx context.Context, q repository.ProductSearch,
 ) (search.Result[product.Product], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
+	tenantID := q.Scope()
 
-	if err := input.Validate(); err != nil {
-		return search.Result[product.Product]{}, err
-	}
-
-	result, err := s.productRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
+	result, err := s.productRepo.SearchByTenantID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search products",
-				slog.String("tenant_id", input.TenantID),
+				slog.String("tenant_id", tenantID),
 				log.Err(err),
 			)
 		}
 		return search.Result[product.Product]{}, err
 	}
 	for i := range result.Items {
-		s.attachEventsConfig(ctx, input.TenantID, &result.Items[i])
+		s.attachEventsConfig(ctx, tenantID, &result.Items[i])
 	}
 	return result, nil
 }

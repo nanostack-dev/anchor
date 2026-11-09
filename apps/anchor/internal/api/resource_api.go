@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/resource"
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 func mapResourceToResponse(r resource.Resource) ResourceResponse {
@@ -78,7 +78,7 @@ func (s *AnchorAPI) SearchResources(
 			}
 		}).
 		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
+	sortBy, sortDirection := searchvalid.Sort(
 		request.Body.SortBy, request.Body.SortDirection, resource.SortFieldCreatedAt, search.SortAscending,
 	)
 	result, err := s.ResourceService.Search(ctx, resource.SearchInput{

@@ -9,16 +9,15 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	orgapikey "anchor/internal/domain/organization/apikey"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -50,8 +49,7 @@ type OrganizationAPIKeyRepository interface {
 		productID, hashedValue string,
 	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 	SearchByOrganizationID(
-		ctx context.Context,
-		input orgapikey.SearchOrganizationAPIKeysInput,
+		ctx context.Context, q OrganizationAPIKeySearch,
 	) (search.Result[orgapikey.OrganizationAPIKey], error)
 	DeleteByOrganizationIDAndID(
 		ctx context.Context,
@@ -85,6 +83,26 @@ func _() {
 	nanorepo.Implement[OrganizationAPIKeyRepository, organizationAPIKeyRepository](
 		table.OrganizationAPIKeys, organizationAPIKeyToDomain,
 	)
+
+	// POST /v1/products/{product_id}/organizations/{organization_id}/api-keys/search.
+	// last_used_after and last_used_before are exclusive bounds. The permissions of
+	// the page load in one statement.
+	nanorepo.Search[model.OrganizationAPIKeys]("OrganizationAPIKey", table.OrganizationAPIKeys,
+		nanorepo.MapPage((*organizationAPIKeyRows).page),
+		nanorepo.Scope(table.OrganizationAPIKeys.OrganizationID),
+		nanorepo.Filter(table.OrganizationAPIKeys.ID, nanorepo.In),
+		nanorepo.Filter(table.OrganizationAPIKeys.Name, nanorepo.In),
+		nanorepo.Filter(table.OrganizationAPIKeys.Status, nanorepo.In),
+		nanorepo.Filter(table.OrganizationAPIKeys.LastUsedAt,
+			nanorepo.Range("last_used_after", "last_used_before").Exclusive()),
+		nanorepo.FullText(table.OrganizationAPIKeys.Name, table.OrganizationAPIKeys.Description),
+		nanorepo.Sort(
+			table.OrganizationAPIKeys.ID, table.OrganizationAPIKeys.CreatedAt, table.OrganizationAPIKeys.Name,
+			table.OrganizationAPIKeys.Status, table.OrganizationAPIKeys.LastUsedAt,
+		),
+		nanorepo.DefaultSort(table.OrganizationAPIKeys.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(defaultPageLimit),
+	)
 }
 
 func organizationAPIKeysUpdatableColumns() postgres.ColumnList {
@@ -109,6 +127,45 @@ type organizationAPIKeyRepository struct {
 	db     *sql.DB
 	logger *slog.Logger
 	mapper *mapper.OrganizationAPIKeyMapper
+	rows   *organizationAPIKeyRows
+}
+
+// organizationAPIKeyRows maps a page of API key rows with their permissions. It
+// is a field of the implementation because the generated search calls a method
+// of a field.
+type organizationAPIKeyRows struct {
+	db     *sql.DB
+	mapper *mapper.OrganizationAPIKeyMapper
+}
+
+// page reads the permissions of the paged keys in one statement. The page is
+// taken on keys alone, so a LIMIT never cuts a key's permissions.
+func (m *organizationAPIKeyRows) page(
+	ctx context.Context, rows []model.OrganizationAPIKeys,
+) ([]orgapikey.OrganizationAPIKey, error) {
+	if len(rows) == 0 {
+		return []orgapikey.OrganizationAPIKey{}, nil
+	}
+	ids := functional.Slice(rows).Map(func(entity model.OrganizationAPIKeys) string { return entity.ID })
+	// Every row of the page is of the organization that scoped the search.
+	permissions, err := transactor.QueryMapSlice(
+		ctx, m.db,
+		table.OrganizationAPIKeyPermissions.SELECT(table.OrganizationAPIKeyPermissions.AllColumns).WHERE(
+			table.OrganizationAPIKeyPermissions.APIKeyID.IN(jetx.ToStringExpressions(ids)...).AND(
+				table.OrganizationAPIKeyPermissions.OrganizationID.EQ(postgres.String(rows[0].OrganizationID)),
+			),
+		),
+		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions { return entity },
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	byKey := functional.Slice(permissions).GroupBy(
+		func(p model.OrganizationAPIKeyPermissions) string { return p.APIKeyID },
+	)
+	return functional.Slice(rows).Map(func(entity model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
+		return m.mapper.ToDomainWithPermissions(entity, byKey[entity.ID])
+	}), nil
 }
 
 func NewOrganizationAPIKeyRepository(
@@ -121,6 +178,7 @@ func NewOrganizationAPIKeyRepository(
 		db:                      db,
 		logger:                  logger.With(slog.String("component", "organization_api_key_repository")),
 		mapper:                  mapper,
+		rows:                    &organizationAPIKeyRows{db: db, mapper: mapper},
 	}
 }
 
@@ -286,98 +344,6 @@ func (r *organizationAPIKeyRepository) Update(
 	return r.mapper.ToDomainWithPermissions(updated, permissions), nil
 }
 
-//nolint:dupl // mirrors product API key search with organization-scoped tables
-func (r *organizationAPIKeyRepository) SearchByOrganizationID(
-	ctx context.Context,
-	input orgapikey.SearchOrganizationAPIKeysInput,
-) (search.Result[orgapikey.OrganizationAPIKey], error) {
-	whereStmt := table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(input.OrganizationID))
-	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
-	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
-
-	idKey := transactor.StringKey(
-		table.OrganizationAPIKeys.ID, func(row model.OrganizationAPIKeys) string { return row.ID },
-	)
-	order, err := transactor.StrictKeys(
-		input.Request.Sort,
-		map[orgapikey.SortFieldOrganizationAPIKey]transactor.Key[model.OrganizationAPIKeys]{
-			orgapikey.SortFieldOrganizationAPIKeyID: idKey,
-			orgapikey.SortFieldOrganizationAPIKeyCreatedAt: transactor.TimeKey(
-				table.OrganizationAPIKeys.CreatedAt,
-				func(row model.OrganizationAPIKeys) time.Time { return row.CreatedAt },
-			),
-			orgapikey.SortFieldOrganizationAPIKeyUpdatedAt: transactor.TimeKey(
-				table.OrganizationAPIKeys.UpdatedAt,
-				func(row model.OrganizationAPIKeys) time.Time { return row.UpdatedAt },
-			),
-			orgapikey.SortFieldOrganizationAPIKeyName: transactor.StringKey(
-				table.OrganizationAPIKeys.Name, func(row model.OrganizationAPIKeys) string { return row.Name },
-			),
-			orgapikey.SortFieldOrganizationAPIKeyStatus: transactor.StringKey(
-				table.OrganizationAPIKeys.Status, func(row model.OrganizationAPIKeys) string { return row.Status },
-			),
-			orgapikey.SortFieldOrganizationAPIKeyLastUsed: transactor.NullableTimeKey(
-				table.OrganizationAPIKeys.LastUsedAt,
-				func(row model.OrganizationAPIKeys) *time.Time { return row.LastUsedAt },
-			),
-		},
-		idKey,
-	)
-	if err != nil {
-		return search.Result[orgapikey.OrganizationAPIKey]{}, err
-	}
-
-	result, err := transactor.Page(r.db, r.mapper.ToDomain, table.OrganizationAPIKeys.AllColumns).
-		From(table.OrganizationAPIKeys).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Request.Pagination).
-		Value()
-	if err != nil {
-		if !searchx.IsClientError(err) {
-			r.logger.ErrorContext(ctx, "failed to search organization API keys",
-				log.Err(err),
-				slog.String("organization_id", input.OrganizationID),
-			)
-		}
-		return search.Result[orgapikey.OrganizationAPIKey]{}, err
-	}
-
-	if len(result.Items) == 0 {
-		return result, nil
-	}
-
-	apiKeyIDs := functional.Slice(result.Items).Map(func(item orgapikey.OrganizationAPIKey) string {
-		return item.ID
-	})
-
-	permissionEntities, err := r.getPermissionEntitiesByAPIKeyIDs(
-		ctx,
-		input.OrganizationID,
-		apiKeyIDs,
-	)
-	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to load organization API key permissions",
-			log.Err(err),
-			slog.String("organization_id", input.OrganizationID),
-		)
-		return search.Result[orgapikey.OrganizationAPIKey]{}, err
-	}
-
-	permissionsByAPIKeyID := functional.Slice(permissionEntities).GroupBy(
-		func(p model.OrganizationAPIKeyPermissions) string { return p.APIKeyID },
-	)
-
-	result.Items = functional.Slice(result.Items).
-		Map(func(item orgapikey.OrganizationAPIKey) orgapikey.OrganizationAPIKey {
-			item.Permissions = permissionsByAPIKeyID[item.ID].Map(r.mapper.PermissionToDomain)
-
-			return item
-		})
-
-	return result, nil
-}
-
 func (r *organizationAPIKeyRepository) UpdateLastUsedAt(
 	ctx context.Context,
 	organizationID, id string,
@@ -443,82 +409,6 @@ func (r *organizationAPIKeyRepository) getPermissionEntities(
 			return entity
 		},
 	).Value()
-}
-
-func (r *organizationAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
-	ctx context.Context,
-	organizationID string,
-	apiKeyIDs []string,
-) ([]model.OrganizationAPIKeyPermissions, error) {
-	if len(apiKeyIDs) == 0 {
-		return []model.OrganizationAPIKeyPermissions{}, nil
-	}
-
-	apiKeyIDExpressions := jetx.ToStringExpressions(apiKeyIDs)
-	stmt := table.OrganizationAPIKeyPermissions.SELECT(
-		table.OrganizationAPIKeyPermissions.AllColumns,
-	).WHERE(
-		table.OrganizationAPIKeyPermissions.APIKeyID.IN(apiKeyIDExpressions...).AND(
-			table.OrganizationAPIKeyPermissions.OrganizationID.EQ(postgres.String(organizationID)),
-		),
-	)
-
-	return transactor.QueryMapSlice(
-		ctx,
-		r.db,
-		stmt,
-		func(entity model.OrganizationAPIKeyPermissions) model.OrganizationAPIKeyPermissions {
-			return entity
-		},
-	).Value()
-}
-
-//nolint:dupl // mirrors product API key filter logic with organization-scoped fields
-func (r *organizationAPIKeyRepository) applyFilters(
-	whereStmt postgres.BoolExpression,
-	filter *orgapikey.SearchOrganizationAPIKeyFilter,
-) postgres.BoolExpression {
-	if filter == nil {
-		return whereStmt
-	}
-
-	if len(filter.OrganizationAPIKeyIDs) > 0 {
-		expressions := jetx.ToStringExpressions(filter.OrganizationAPIKeyIDs)
-		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.ID.IN(expressions...))
-	}
-
-	if len(filter.Names) > 0 {
-		expressions := jetx.ToStringExpressions(filter.Names)
-		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.Name.IN(expressions...))
-	}
-
-	if len(filter.Status) > 0 {
-		expressions := jetx.ToStringExpressions(filter.Status)
-		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.Status.IN(expressions...))
-	}
-
-	if filter.LastUsedBefore != nil {
-		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.LastUsedAt.LT(postgres.TimestampzT(*filter.LastUsedBefore)))
-	}
-
-	if filter.LastUsedAfter != nil {
-		whereStmt = whereStmt.AND(table.OrganizationAPIKeys.LastUsedAt.GT(postgres.TimestampzT(*filter.LastUsedAfter)))
-	}
-
-	return whereStmt
-}
-
-func (r *organizationAPIKeyRepository) applyFullTextSearch(
-	whereStmt postgres.BoolExpression,
-	fullTextSearch *string,
-) postgres.BoolExpression {
-	if fullTextSearch == nil {
-		return whereStmt
-	}
-
-	return whereStmt.AND(
-		searchx.Contains(*fullTextSearch, table.OrganizationAPIKeys.Name, table.OrganizationAPIKeys.Description),
-	)
 }
 
 // findOne runs the shared row-and-permissions query. Each caller passes its

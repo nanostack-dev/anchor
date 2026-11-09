@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/product/apikey"
+	"anchor/internal/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func mapProductAPIKeyToResponse(productAPIKey apikey.ProductAPIKey) ProductAPIKeyResponse {
@@ -77,14 +80,16 @@ func (s *AnchorAPI) CreateProductAPIKey(
 func (s *AnchorAPI) SearchProductAPIKeys(
 	ctx context.Context, request SearchProductAPIKeysRequestObject,
 ) (SearchProductAPIKeysResponseObject, error) {
-	searchRequest := mapToSearchProductAPIKeyInput(request.Body)
-
-	input := apikey.SearchProductAPIKeysInput{
-		ProductID: request.ProductId,
-		Request:   searchRequest,
+	body := request.Body
+	if body == nil {
+		body = &SearchProductAPIKeysJSONRequestBody{}
 	}
+	if err := validateProductAPIKeysSearch(request.ProductId, body); err != nil {
+		return nil, err
+	}
+	q := productAPIKeySearch(request.ProductId, body)
 
-	result, err := s.ProductAPIKeyService.Search(ctx, input)
+	result, err := s.ProductAPIKeyService.Search(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -155,27 +160,24 @@ func (s *AnchorAPI) DeleteProductAPIKey(
 	return DeleteProductAPIKey204Response{}, nil
 }
 
-func mapToSearchProductAPIKeyInput(
-	searchReqBody *SearchProductAPIKeysJSONRequestBody,
-) search.Request[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f ProductAPIKeyFilter) apikey.SearchProductAPIKeyFilter {
-			result := apikey.SearchProductAPIKeyFilter{
-				ProductAPIKeyIDs: f.Ids,
-				Names:            f.Names,
-			}
-			if f.Status != nil {
-				result.Status = functional.Slice(*f.Status).Map(func(s ProductAPIKeyStatus) string {
-					return string(s)
-				})
-			}
-			return result
-		}).
-		ToPtr()
-	return search.NewRequest[apikey.SearchProductAPIKeyFilter, apikey.SortFieldProductAPIKey]().
-		WithFilter(filter).
-		WithSort(
-			searchReqBody.SortBy,
-			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
+// productAPIKeySearch builds the search from the request body. The product scope
+// comes from the route, which the authorization middleware checked against the
+// principal; the body never sets it. expires_before and expires_after are
+// accepted and ignored: product API keys have no expiry column to filter on.
+func productAPIKeySearch(
+	productID string, body *SearchProductAPIKeysJSONRequestBody,
+) repository.ProductAPIKeySearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	statuses := orEmpty(f.Status)
+	q := repository.NewProductAPIKeySearch(productID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Name().In, f.Names)
+	q = searchexec.Some(q, q.Status().In, functional.Slice(statuses).Map(func(s ProductAPIKeyStatus) string {
+		return string(s)
+	}))
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.ProductAPIKeySortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

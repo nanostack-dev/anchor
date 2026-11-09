@@ -15,11 +15,10 @@ import (
 	"anchor/internal/integration/provider"
 	clerkprovider "anchor/internal/integration/provider/clerk"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
 	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -85,8 +84,7 @@ type IntegrationService interface {
 		input integration.ListInstancesInput,
 	) ([]integration.Instance, error)
 	SearchAuditLogs(
-		ctx context.Context,
-		input integration.SearchAuditLogsInput,
+		ctx context.Context, q repository.IntegrationAuditLogSearch,
 	) (search.Result[integration.AuditLog], error)
 
 	// IngestWebhook validates the webhook, persists the event as PENDING,
@@ -669,36 +667,30 @@ func (s *integrationService) ListInstances(
 }
 
 func (s *integrationService) SearchAuditLogs(
-	ctx context.Context,
-	input integration.SearchAuditLogsInput,
+	ctx context.Context, q repository.IntegrationAuditLogSearch,
 ) (search.Result[integration.AuditLog], error) {
 	logger := s.logger.With(slog.String("operation", "SearchAuditLogs"))
+	scope := q.Scope()
 
-	if valErr := input.Validate(); valErr != nil {
-		return search.Result[integration.AuditLog]{}, valErr
-	}
-
-	found, findErr := s.instanceRepo.FindByID(
-		ctx, input.TenantID, input.IntegrationInstanceID,
-	)
+	found, findErr := s.instanceRepo.FindByID(ctx, scope.PlatformTenantID, scope.IntegrationInstanceID)
 	if findErr != nil {
 		logger.ErrorContext(ctx, "failed to find integration instance for audit logs",
 			log.Err(findErr),
-			slog.String("integration_instance_id", input.IntegrationInstanceID),
+			slog.String("integration_instance_id", scope.IntegrationInstanceID),
 		)
 		return search.Result[integration.AuditLog]{}, findErr
 	}
 
-	if found.IsAbsent() || found.Value().ProductID != input.ProductID {
+	if found.IsAbsent() || found.Value().ProductID != scope.ProductID {
 		return search.Result[integration.AuditLog]{}, ErrIntegrationInstanceNotFound
 	}
 
-	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, input)
+	logs, searchErr := s.auditLogRepo.SearchByInstanceScoped(ctx, q)
 	if searchErr != nil {
-		if !searchx.IsClientError(searchErr) {
+		if !search.IsClientError(searchErr) {
 			logger.ErrorContext(ctx, "failed to search integration audit logs",
 				log.Err(searchErr),
-				slog.String("integration_instance_id", input.IntegrationInstanceID),
+				slog.String("integration_instance_id", scope.IntegrationInstanceID),
 			)
 		}
 		return search.Result[integration.AuditLog]{}, searchErr

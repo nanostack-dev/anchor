@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/resourcetype"
+	rtrepo "anchor/internal/resourcetype/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func mapResourceTypeToResponse(rt resourcetype.ResourceType) ProductResourceTypeResponse {
@@ -69,19 +72,10 @@ func (s *AnchorAPI) ReplaceProductResourceTypes(
 func (s *AnchorAPI) SearchProductResourceTypes(
 	ctx context.Context, request SearchProductResourceTypesRequestObject,
 ) (SearchProductResourceTypesResponseObject, error) {
-	filter := functional.FromPtr(request.Body.Filter).
-		Map(func(f ProductResourceTypeFilter) resourcetype.Filter {
-			return resourcetype.Filter{IDs: f.Ids, Slugs: f.Slugs}
-		}).
-		ToPtr()
-	result, err := s.ResourceTypeService.Search(ctx, resourcetype.SearchInput{
-		ProductID: request.ProductId,
-		Request: search.NewRequest[resourcetype.Filter, resourcetype.SortField]().
-			WithFullTextSearch(request.Body.FullTextSearch).
-			WithFilter(filter).
-			WithSort(request.Body.SortBy, request.Body.SortDirection).
-			WithPagination(request.Body.Pagination),
-	})
+	if err := validateResourceTypesSearch(request.ProductId, request.Body); err != nil {
+		return nil, err
+	}
+	result, err := s.ResourceTypeService.Search(ctx, resourceTypeSearch(request.ProductId, request.Body))
 	if err != nil {
 		return nil, err
 	}
@@ -128,4 +122,21 @@ func (s *AnchorAPI) DeleteProductResourceType(
 		return nil, err
 	}
 	return DeleteProductResourceType204Response{}, nil
+}
+
+// resourceTypeSearch builds the search from the request body. The product
+// scope comes from the route, which the authorization middleware checked
+// against the principal; the body never sets it.
+func resourceTypeSearch(
+	productID string, body *SearchProductResourceTypesJSONRequestBody,
+) rtrepo.ResourceTypeSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := rtrepo.NewResourceTypeSearch(productID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Slug().In, f.Slugs)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		rtrepo.ResourceTypeSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

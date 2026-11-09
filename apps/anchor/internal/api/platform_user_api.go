@@ -3,14 +3,18 @@ package api
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/platform"
+	"anchor/internal/repository"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func (s *AnchorAPI) SearchPlatformUsers(
@@ -21,19 +25,16 @@ func (s *AnchorAPI) SearchPlatformUsers(
 		return nil, err
 	}
 
-	searchReqBody := request.Body
-	if searchReqBody == nil {
-		searchReqBody = &SearchPlatformUsersJSONRequestBody{}
+	body := request.Body
+	if body == nil {
+		body = &SearchPlatformUsersJSONRequestBody{}
 	}
-
-	searchRequest := mapToSearchPlatformUserInput(searchReqBody)
-
-	input := platform.SearchPlatformUsersInput{
-		TenantID: tenantID,
-		Request:  searchRequest,
+	if err = validatePlatformUsersSearch(tenantID, body); err != nil {
+		return nil, err
 	}
+	q := platformUserSearch(tenantID, body)
 
-	result, err := s.PlatformUserService.SearchPlatformUsers(ctx, input)
+	result, err := s.PlatformUserService.SearchPlatformUsers(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search platform users")
 		return nil, err
@@ -134,25 +135,25 @@ func (s *AnchorAPI) GetCurrentUser(
 	return GetCurrentUser200JSONResponse(mapAuthUserToAPIUserResponse(user)), nil
 }
 
-// mapToSearchPlatformUserInput builds a search.Request for platform users.
-func mapToSearchPlatformUserInput(
-	searchReqBody *SearchPlatformUsersJSONRequestBody,
-) search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f PlatformUserFilter) platform.SearchPlatformUserFilter {
-			return platform.SearchPlatformUserFilter{
-				Emails: f.Emails,
-				IDs:    f.Ids,
-				Roles:  f.Roles,
-			}
-		}).
-		ToPtr()
-	return search.NewRequest[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser]().
-		WithFilter(filter).
-		WithSort(
-			searchReqBody.SortBy,
-			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
+// platformUserSearch builds the search from the request body. The tenant scope
+// comes from the authenticated principal; the body never sets it.
+func platformUserSearch(
+	tenantID string, body *SearchPlatformUsersJSONRequestBody,
+) repository.PlatformUserSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	// A role compares without regard to letter case.
+	roles := functional.Slice(f.Roles).Map(func(role platform.TenantRole) string {
+		return strings.ToLower(string(role))
+	})
+	q := repository.NewPlatformUserSearch(tenantID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Email().In, f.Emails)
+	q = searchexec.Some(q, q.Role().In, roles)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.PlatformUserSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func mapPlatformUserToResponse(

@@ -9,15 +9,13 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/product"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -27,6 +25,45 @@ func _() {
 	nanorepo.Implement[ProductRepository, productRepositoryImpl](
 		table.Products, nanorepo.NoMapper[model.Products],
 	)
+
+	// POST /v1/products/search. The product reads the prefix of its API key
+	// config through a LEFT JOIN to one row: a product with no config row has no
+	// prefix, and the mapper applies the default. The config row is the
+	// product's own data (its product_id is the key of the product).
+	nanorepo.Search[productRow]("Product", table.Products,
+		nanorepo.Map(productRowToDomain),
+		nanorepo.From(productsWithTheirConfig),
+		nanorepo.Scope(table.Products.PlatformTenantID),
+		nanorepo.Filter(table.Products.ID, nanorepo.In),
+		nanorepo.Filter(table.Products.Name, nanorepo.In),
+		nanorepo.FullText(table.Products.Name, table.Products.Description),
+		nanorepo.Sort(table.Products.Name, table.Products.CreatedAt, table.Products.UpdatedAt),
+		nanorepo.DefaultSort(table.Products.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(defaultPageLimit),
+	)
+}
+
+// productRow is a product with the prefix of its organization API key config,
+// which is NULL when the product has no config row.
+type productRow struct {
+	model.Products
+	Prefix *string `alias:"product_organization_api_key_configs.prefix"`
+}
+
+func productsWithTheirConfig() postgres.ReadableTable {
+	return table.Products.LEFT_JOIN(
+		table.ProductOrganizationAPIKeyConfigs,
+		table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
+	)
+}
+
+// productRowToDomain is the stateless mapper of a search row.
+func productRowToDomain(row productRow) product.Product {
+	var config model.ProductOrganizationAPIKeyConfigs
+	if row.Prefix != nil {
+		config.Prefix = *row.Prefix
+	}
+	return (&mapper.ProductMapper{}).ToDomain(row.Products, config)
 }
 
 type productWithOrganizationAPIKeyConfig struct {
@@ -64,10 +101,7 @@ type ProductRepository interface {
 		ctx context.Context, tenantID string, product product.Product,
 	) (product.Product, error)
 	DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID, id string) error
-	SearchByTenantID(
-		ctx context.Context, tenantID string,
-		input search.Request[product.SearchProductFilter, product.SortFieldProduct],
-	) (search.Result[product.Product], error)
+	SearchByTenantID(ctx context.Context, q ProductSearch) (search.Result[product.Product], error)
 
 	// FindAllInternal returns all products without tenant scoping.
 	// Allowed only for trusted system-internal paths such as startup reconciliation.
@@ -273,74 +307,6 @@ func (r *productRepositoryImpl) Update(
 			currentProd.Config.WithDefaults().OrganizationAPIKeys,
 		),
 	), nil
-}
-
-func (r *productRepositoryImpl) SearchByTenantID(
-	ctx context.Context, tenantID string,
-	input search.Request[product.SearchProductFilter, product.SortFieldProduct],
-) (search.Result[product.Product], error) {
-	whereStmt := table.Products.PlatformTenantID.EQ(postgres.String(tenantID))
-
-	if input.Filter != nil {
-		if len(input.Filter.IDs) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.IDs)
-			whereStmt = whereStmt.AND(table.Products.ID.IN(expressions...))
-		}
-
-		if len(input.Filter.Names) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Names)
-			whereStmt = whereStmt.AND(table.Products.Name.IN(expressions...))
-		}
-	}
-
-	if input.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(*input.FullTextSearch, table.Products.Name, table.Products.Description),
-		)
-	}
-
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[product.SortFieldProduct]transactor.Key[productWithOrganizationAPIKeyConfig]{
-			product.SortFieldProductCreatedAt: transactor.TimeKey(
-				table.Products.CreatedAt,
-				func(row productWithOrganizationAPIKeyConfig) time.Time { return row.Products.CreatedAt },
-			),
-			product.SortFieldProductUpdatedAt: transactor.TimeKey(
-				table.Products.UpdatedAt,
-				func(row productWithOrganizationAPIKeyConfig) time.Time { return row.Products.UpdatedAt },
-			),
-			product.SortFieldProductName: transactor.StringKey(
-				table.Products.Name,
-				func(row productWithOrganizationAPIKeyConfig) string { return row.Products.Name },
-			),
-		},
-		transactor.StringKey(
-			table.Products.ID,
-			func(row productWithOrganizationAPIKeyConfig) string { return row.Products.ID },
-		),
-	)
-	if err != nil {
-		return search.Result[product.Product]{}, err
-	}
-
-	return transactor.Page(
-		r.db,
-		func(entity productWithOrganizationAPIKeyConfig) product.Product {
-			return r.productMapper.ToDomain(entity.Products, entity.ProductOrganizationAPIKeyConfigs)
-		},
-		table.Products.AllColumns, table.ProductOrganizationAPIKeyConfigs.AllColumns,
-	).
-		From(
-			table.Products.LEFT_JOIN(
-				table.ProductOrganizationAPIKeyConfigs,
-				table.Products.ID.EQ(table.ProductOrganizationAPIKeyConfigs.ProductID),
-			),
-		).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }
 
 func (r *productRepositoryImpl) FindAllInternal(

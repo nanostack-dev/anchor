@@ -17,14 +17,430 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/db/qrm"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
+
+// integrationAuditLogsBase is the generated base of table integration_audit_logs. It holds the table (t),
+// typed predicates (where), helpers that run in the context transaction and
+// return the model rows, and the pkg/db/transactor functions as methods.
+// Embed it in the implementation and set it with newIntegrationAuditLogsBase(db).
+type integrationAuditLogsBase struct {
+	db    qrm.DB
+	t     *table.IntegrationAuditLogsTable
+	where integrationAuditLogsWhere
+}
+
+// newIntegrationAuditLogsBase returns the base of table integration_audit_logs. It runs its statements on the
+// transaction of the context, and on db outside one.
+func newIntegrationAuditLogsBase(db qrm.DB) integrationAuditLogsBase {
+	return integrationAuditLogsBase{db: db, t: table.IntegrationAuditLogs}
+}
+
+// findOne returns the row matching cond: absent when none does, and
+// transactor.ErrMoreThanOneRow when two do. It reads LIMIT 2, so a key that
+// stopped being unique is an error, never a silent first row. To pick one of
+// several rows, use first with an order.
+func (b integrationAuditLogsBase) findOne(ctx context.Context, cond postgres.BoolExpression) (functional.Option[model.IntegrationAuditLogs], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	rows, err := b.queryRows(ctx, stmt.LIMIT(2)).Value()
+	switch {
+	case err != nil:
+		return functional.None[model.IntegrationAuditLogs](), err
+	case len(rows) > 1:
+		return functional.None[model.IntegrationAuditLogs](), fmt.Errorf("%w: integration_audit_logs", transactor.ErrMoreThanOneRow)
+	case len(rows) == 0:
+		return functional.None[model.IntegrationAuditLogs](), nil
+	}
+	return functional.Some(rows[0]), nil
+}
+
+// first returns the first row matching cond in the given order, absent when
+// none does. End the order with a unique column, such as the primary key, so
+// the row it picks is stable.
+func (b integrationAuditLogsBase) first(ctx context.Context, cond postgres.BoolExpression, order postgres.OrderByClause, more ...postgres.OrderByClause) (functional.Option[model.IntegrationAuditLogs], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryRowOptional(ctx, stmt.ORDER_BY(append([]postgres.OrderByClause{order}, more...)...).LIMIT(1))
+}
+
+// findAll returns every row matching cond, every row when cond is nil, in the
+// given order.
+func (b integrationAuditLogsBase) findAll(ctx context.Context, cond postgres.BoolExpression, order ...postgres.OrderByClause) ([]model.IntegrationAuditLogs, error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	if len(order) > 0 {
+		stmt = stmt.ORDER_BY(order...)
+	}
+	return b.queryRows(ctx, stmt).Value()
+}
+
+// exists reports whether a row matches cond, or whether the table has a row
+// when cond is nil. PostgreSQL refuses a row lock on it, which aggregates.
+func (b integrationAuditLogsBase) exists(ctx context.Context, cond postgres.BoolExpression) (bool, error) {
+	found := b.t.SELECT(postgres.Int32(1))
+	if cond != nil {
+		found = found.WHERE(cond)
+	}
+	n, err := b.queryCount(ctx, postgres.SELECT(postgres.COUNT(postgres.STAR)).FROM(found.LIMIT(1).AsTable("found"))).Value()
+	return n > 0, err
+}
+
+// count counts the rows matching cond, every row when cond is nil.
+// PostgreSQL refuses a row lock on it, which aggregates.
+func (b integrationAuditLogsBase) count(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	stmt := b.t.SELECT(postgres.COUNT(postgres.STAR))
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryCount(ctx, stmt).Value()
+}
+
+// deleteWhere deletes the rows matching cond and returns how many it deleted.
+// It refuses a nil cond. A locked context returns transactor.ErrRowLockNotSelect
+// or ErrRowLockOutsideTx without running the DELETE.
+func (b integrationAuditLogsBase) deleteWhere(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("integration_audit_logs: deleteWhere needs a condition")
+	}
+	return b.execAffected(ctx, b.t.DELETE().WHERE(cond)).Value()
+}
+
+// updateWhere applies the assignments, such as b.t.Name.SET(postgres.String(v)),
+// to the rows matching cond and returns how many it updated. It refuses a nil
+// cond, and a locked context, as deleteWhere does.
+func (b integrationAuditLogsBase) updateWhere(ctx context.Context, cond postgres.BoolExpression, set postgres.ColumnAssigment, more ...postgres.ColumnAssigment) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("integration_audit_logs: updateWhere needs a condition")
+	}
+	values := make([]any, len(more))
+	for i, m := range more {
+		values[i] = m
+	}
+	return b.execAffected(ctx, b.t.UPDATE().SET(set, values...).WHERE(cond)).Value()
+}
+
+// query runs stmt and scans its rows into T: a model row, a slice, or a struct
+// of aliased columns. Chain OnUnique, OnForeignKey or OnNoRows before Value.
+func (b integrationAuditLogsBase) query[T any](ctx context.Context, stmt postgres.Statement) transactor.Result[T] {
+	return transactor.Query[T](ctx, b.db, stmt)
+}
+
+// queryOptional runs stmt, which may match no row: then the Option is absent
+// and the error nil.
+func (b integrationAuditLogsBase) queryOptional[T any](ctx context.Context, stmt postgres.Statement) (functional.Option[T], error) {
+	return transactor.QueryOptional[T](ctx, b.db, stmt)
+}
+
+// queryMap runs stmt, scans one T and maps it with mapFunc.
+func (b integrationAuditLogsBase) queryMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[R] {
+	return transactor.QueryMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryOptionalMap is queryOptional, then mapFunc on the row when there is one.
+func (b integrationAuditLogsBase) queryOptionalMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) (functional.Option[R], error) {
+	return transactor.QueryOptionalMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryMapSlice runs stmt and maps every row with mapFunc.
+func (b integrationAuditLogsBase) queryMapSlice[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[[]R] {
+	return transactor.QueryMapSlice(ctx, b.db, stmt, mapFunc)
+}
+
+// queryCount runs a SELECT COUNT statement.
+func (b integrationAuditLogsBase) queryCount(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.QueryCount(ctx, b.db, stmt)
+}
+
+// exec runs a statement that returns no rows. Unwrap it with Err.
+func (b integrationAuditLogsBase) exec(ctx context.Context, stmt postgres.Statement) transactor.Result[struct{}] {
+	return transactor.Exec(ctx, b.db, stmt)
+}
+
+// execAffected runs a statement and returns the number of rows it changed.
+func (b integrationAuditLogsBase) execAffected(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.ExecAffected(ctx, b.db, stmt)
+}
+
+// page starts a paginated query of rows T mapped to R; both come from mapFunc.
+func (b integrationAuditLogsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
+	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b integrationAuditLogsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b integrationAuditLogsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// queryRow runs stmt, which returns one integration_audit_logs row, such as an INSERT or
+// UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
+func (b integrationAuditLogsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.IntegrationAuditLogs] {
+	return b.query[model.IntegrationAuditLogs](ctx, stmt)
+}
+
+// queryRowOptional is queryRow for a statement that may return no row.
+func (b integrationAuditLogsBase) queryRowOptional(ctx context.Context, stmt postgres.Statement) (functional.Option[model.IntegrationAuditLogs], error) {
+	return b.queryOptional[model.IntegrationAuditLogs](ctx, stmt)
+}
+
+// queryRows is queryRow for every row stmt returns; no row is an empty slice.
+func (b integrationAuditLogsBase) queryRows(ctx context.Context, stmt postgres.Statement) transactor.Result[[]model.IntegrationAuditLogs] {
+	return b.queryMapSlice(ctx, stmt, func(row model.IntegrationAuditLogs) model.IntegrationAuditLogs { return row })
+}
+
+// integrationAuditLogsWhere builds predicates on the columns of integration_audit_logs. A string predicate
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on diff_json, metadata_json: compare on b.t.
+type integrationAuditLogsWhere struct{}
+
+// ID is id = v.
+func (integrationAuditLogsWhere) ID(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.ID.EQ(postgres.String(v))
+}
+
+// IDIn is id IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) IDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.ID.IN(exprs...)
+}
+
+// IntegrationInstanceID is integration_instance_id = v.
+func (integrationAuditLogsWhere) IntegrationInstanceID(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.IntegrationInstanceID.EQ(postgres.String(v))
+}
+
+// IntegrationInstanceIDIn is integration_instance_id IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) IntegrationInstanceIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.IntegrationInstanceID.IN(exprs...)
+}
+
+// Action is action = v.
+func (integrationAuditLogsWhere) Action(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.Action.EQ(postgres.String(v))
+}
+
+// ActionIn is action IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) ActionIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.Action.IN(exprs...)
+}
+
+// ActionContains matches action that contain term, ignoring case.
+func (integrationAuditLogsWhere) ActionContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.IntegrationAuditLogs.Action)
+}
+
+// ActionEqualsIgnoreCase is lower(action) = lower(v).
+func (integrationAuditLogsWhere) ActionEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.IntegrationAuditLogs.Action).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// EntityType is entity_type = v.
+func (integrationAuditLogsWhere) EntityType(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.EntityType.EQ(postgres.String(v))
+}
+
+// EntityTypeIn is entity_type IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) EntityTypeIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.EntityType.IN(exprs...)
+}
+
+// EntityTypeContains matches entity_type that contain term, ignoring case.
+func (integrationAuditLogsWhere) EntityTypeContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.IntegrationAuditLogs.EntityType)
+}
+
+// EntityTypeEqualsIgnoreCase is lower(entity_type) = lower(v).
+func (integrationAuditLogsWhere) EntityTypeEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.IntegrationAuditLogs.EntityType).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// ExternalID is external_id = v.
+func (integrationAuditLogsWhere) ExternalID(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.ExternalID.EQ(postgres.String(v))
+}
+
+// ExternalIDIn is external_id IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) ExternalIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.ExternalID.IN(exprs...)
+}
+
+// ExternalIDIsNull is external_id IS NULL.
+func (integrationAuditLogsWhere) ExternalIDIsNull() postgres.BoolExpression {
+	return table.IntegrationAuditLogs.ExternalID.IS_NULL()
+}
+
+// InternalID is internal_id = v.
+func (integrationAuditLogsWhere) InternalID(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.InternalID.EQ(postgres.String(v))
+}
+
+// InternalIDIn is internal_id IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) InternalIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.InternalID.IN(exprs...)
+}
+
+// InternalIDIsNull is internal_id IS NULL.
+func (integrationAuditLogsWhere) InternalIDIsNull() postgres.BoolExpression {
+	return table.IntegrationAuditLogs.InternalID.IS_NULL()
+}
+
+// DiffJSONIsNull is diff_json IS NULL.
+func (integrationAuditLogsWhere) DiffJSONIsNull() postgres.BoolExpression {
+	return table.IntegrationAuditLogs.DiffJSON.IS_NULL()
+}
+
+// CreatedAt is created_at = v.
+func (integrationAuditLogsWhere) CreatedAt(v time.Time) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.CreatedAt.EQ(postgres.TimestampzT(v))
+}
+
+// CreatedAtIn is created_at IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) CreatedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.IntegrationAuditLogs.CreatedAt.IN(exprs...)
+}
+
+// CreatedAtAfter is created_at > v.
+func (integrationAuditLogsWhere) CreatedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.CreatedAt.GT(postgres.TimestampzT(v))
+}
+
+// CreatedAtBefore is created_at < v.
+func (integrationAuditLogsWhere) CreatedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.CreatedAt.LT(postgres.TimestampzT(v))
+}
+
+// Severity is severity = v.
+func (integrationAuditLogsWhere) Severity(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.Severity.EQ(postgres.String(v))
+}
+
+// SeverityIn is severity IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) SeverityIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.Severity.IN(exprs...)
+}
+
+// SeverityContains matches severity that contain term, ignoring case.
+func (integrationAuditLogsWhere) SeverityContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.IntegrationAuditLogs.Severity)
+}
+
+// SeverityEqualsIgnoreCase is lower(severity) = lower(v).
+func (integrationAuditLogsWhere) SeverityEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.IntegrationAuditLogs.Severity).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// Message is message = v.
+func (integrationAuditLogsWhere) Message(v string) postgres.BoolExpression {
+	return table.IntegrationAuditLogs.Message.EQ(postgres.String(v))
+}
+
+// MessageIn is message IN (vs...); no value matches no row.
+func (integrationAuditLogsWhere) MessageIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.IntegrationAuditLogs.Message.IN(exprs...)
+}
+
+// MessageContains matches message that contain term, ignoring case.
+func (integrationAuditLogsWhere) MessageContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.IntegrationAuditLogs.Message)
+}
+
+// MessageEqualsIgnoreCase is lower(message) = lower(v).
+func (integrationAuditLogsWhere) MessageEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.IntegrationAuditLogs.Message).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// MetadataJSONIsNull is metadata_json IS NULL.
+func (integrationAuditLogsWhere) MetadataJSONIsNull() postgres.BoolExpression {
+	return table.IntegrationAuditLogs.MetadataJSON.IS_NULL()
+}
 
 // integrationEventsBase is the generated base of table integration_events. It holds the table (t),
 // typed predicates (where), helpers that run in the context transaction and
@@ -179,6 +595,21 @@ func (b integrationEventsBase) page[T, R any](mapFunc func(T) R, columns ...post
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b integrationEventsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b integrationEventsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one integration_events row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with integrationEventToDomain.
 func (b integrationEventsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[integration.Event] {
@@ -196,8 +627,11 @@ func (b integrationEventsBase) queryRows(ctx context.Context, stmt postgres.Stat
 }
 
 // integrationEventsWhere builds predicates on the columns of integration_events. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on payload_json, headers_json: compare on b.t.
 type integrationEventsWhere struct{}
 
 // ID is id = v.
@@ -270,66 +704,12 @@ func (integrationEventsWhere) EventTypeIn(vs ...string) postgres.BoolExpression 
 
 // EventTypeContains matches event_type that contain term, ignoring case.
 func (integrationEventsWhere) EventTypeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.EventType).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.EventType)
 }
 
 // EventTypeEqualsIgnoreCase is lower(event_type) = lower(v).
 func (integrationEventsWhere) EventTypeEqualsIgnoreCase(v string) postgres.BoolExpression {
 	return postgres.LOWER(table.IntegrationEvents.EventType).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// PayloadJSON is payload_json = v.
-func (integrationEventsWhere) PayloadJSON(v string) postgres.BoolExpression {
-	return table.IntegrationEvents.PayloadJSON.EQ(postgres.String(v))
-}
-
-// PayloadJSONIn is payload_json IN (vs...); no value matches no row.
-func (integrationEventsWhere) PayloadJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationEvents.PayloadJSON.IN(exprs...)
-}
-
-// PayloadJSONContains matches payload_json that contain term, ignoring case.
-func (integrationEventsWhere) PayloadJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.PayloadJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// PayloadJSONEqualsIgnoreCase is lower(payload_json) = lower(v).
-func (integrationEventsWhere) PayloadJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.PayloadJSON).EQ(postgres.LOWER(postgres.String(v)))
-}
-
-// HeadersJSON is headers_json = v.
-func (integrationEventsWhere) HeadersJSON(v string) postgres.BoolExpression {
-	return table.IntegrationEvents.HeadersJSON.EQ(postgres.String(v))
-}
-
-// HeadersJSONIn is headers_json IN (vs...); no value matches no row.
-func (integrationEventsWhere) HeadersJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationEvents.HeadersJSON.IN(exprs...)
-}
-
-// HeadersJSONContains matches headers_json that contain term, ignoring case.
-func (integrationEventsWhere) HeadersJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.HeadersJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// HeadersJSONEqualsIgnoreCase is lower(headers_json) = lower(v).
-func (integrationEventsWhere) HeadersJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.HeadersJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // Status is status = v.
@@ -351,7 +731,7 @@ func (integrationEventsWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (integrationEventsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -378,7 +758,7 @@ func (integrationEventsWhere) ErrorIn(vs ...string) postgres.BoolExpression {
 
 // ErrorContains matches error that contain term, ignoring case.
 func (integrationEventsWhere) ErrorContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationEvents.Error).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationEvents.Error)
 }
 
 // ErrorEqualsIgnoreCase is lower(error) = lower(v).
@@ -630,6 +1010,21 @@ func (b integrationInstancesBase) page[T, R any](mapFunc func(T) R, columns ...p
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b integrationInstancesBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b integrationInstancesBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one integration_instances row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b integrationInstancesBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.IntegrationInstances] {
@@ -647,8 +1042,11 @@ func (b integrationInstancesBase) queryRows(ctx context.Context, stmt postgres.S
 }
 
 // integrationInstancesWhere builds predicates on the columns of integration_instances. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on config_json: compare on b.t.
 type integrationInstancesWhere struct{}
 
 // ID is id = v.
@@ -721,7 +1119,7 @@ func (integrationInstancesWhere) ProviderTypeIn(vs ...string) postgres.BoolExpre
 
 // ProviderTypeContains matches provider_type that contain term, ignoring case.
 func (integrationInstancesWhere) ProviderTypeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ProviderType).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.ProviderType)
 }
 
 // ProviderTypeEqualsIgnoreCase is lower(provider_type) = lower(v).
@@ -748,7 +1146,7 @@ func (integrationInstancesWhere) WebhookSecretIn(vs ...string) postgres.BoolExpr
 
 // WebhookSecretContains matches webhook_secret that contain term, ignoring case.
 func (integrationInstancesWhere) WebhookSecretContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.WebhookSecret).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.WebhookSecret)
 }
 
 // WebhookSecretEqualsIgnoreCase is lower(webhook_secret) = lower(v).
@@ -759,33 +1157,6 @@ func (integrationInstancesWhere) WebhookSecretEqualsIgnoreCase(v string) postgre
 // WebhookSecretIsNull is webhook_secret IS NULL.
 func (integrationInstancesWhere) WebhookSecretIsNull() postgres.BoolExpression {
 	return table.IntegrationInstances.WebhookSecret.IS_NULL()
-}
-
-// ConfigJSON is config_json = v.
-func (integrationInstancesWhere) ConfigJSON(v string) postgres.BoolExpression {
-	return table.IntegrationInstances.ConfigJSON.EQ(postgres.String(v))
-}
-
-// ConfigJSONIn is config_json IN (vs...); no value matches no row.
-func (integrationInstancesWhere) ConfigJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.IntegrationInstances.ConfigJSON.IN(exprs...)
-}
-
-// ConfigJSONContains matches config_json that contain term, ignoring case.
-func (integrationInstancesWhere) ConfigJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ConfigJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// ConfigJSONEqualsIgnoreCase is lower(config_json) = lower(v).
-func (integrationInstancesWhere) ConfigJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.ConfigJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // ConfigVersion is config_version = v.
@@ -834,7 +1205,7 @@ func (integrationInstancesWhere) StatusIn(vs ...string) postgres.BoolExpression 
 
 // StatusContains matches status that contain term, ignoring case.
 func (integrationInstancesWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -932,7 +1303,7 @@ func (integrationInstancesWhere) LastErrorIn(vs ...string) postgres.BoolExpressi
 
 // LastErrorContains matches last_error that contain term, ignoring case.
 func (integrationInstancesWhere) LastErrorContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.IntegrationInstances.LastError).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.IntegrationInstances.LastError)
 }
 
 // LastErrorEqualsIgnoreCase is lower(last_error) = lower(v).
@@ -1098,6 +1469,21 @@ func (b organizationAPIKeysBase) page[T, R any](mapFunc func(T) R, columns ...po
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationAPIKeysBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationAPIKeysBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one organization_api_keys row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with organizationAPIKeyToDomain.
 func (b organizationAPIKeysBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[orgapikey.OrganizationAPIKey] {
@@ -1115,8 +1501,9 @@ func (b organizationAPIKeysBase) queryRows(ctx context.Context, stmt postgres.St
 }
 
 // organizationAPIKeysWhere builds predicates on the columns of organization_api_keys. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type organizationAPIKeysWhere struct{}
 
 // ID is id = v.
@@ -1172,7 +1559,7 @@ func (organizationAPIKeysWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (organizationAPIKeysWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -1199,7 +1586,7 @@ func (organizationAPIKeysWhere) DescriptionIn(vs ...string) postgres.BoolExpress
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (organizationAPIKeysWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -1231,7 +1618,7 @@ func (organizationAPIKeysWhere) HashedValueIn(vs ...string) postgres.BoolExpress
 
 // HashedValueContains matches hashed_value that contain term, ignoring case.
 func (organizationAPIKeysWhere) HashedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.HashedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.HashedValue)
 }
 
 // HashedValueEqualsIgnoreCase is lower(hashed_value) = lower(v).
@@ -1258,7 +1645,7 @@ func (organizationAPIKeysWhere) ObfuscatedValueIn(vs ...string) postgres.BoolExp
 
 // ObfuscatedValueContains matches obfuscated_value that contain term, ignoring case.
 func (organizationAPIKeysWhere) ObfuscatedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.ObfuscatedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.ObfuscatedValue)
 }
 
 // ObfuscatedValueEqualsIgnoreCase is lower(obfuscated_value) = lower(v).
@@ -1285,7 +1672,7 @@ func (organizationAPIKeysWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (organizationAPIKeysWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.OrganizationAPIKeys.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.OrganizationAPIKeys.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -1564,6 +1951,21 @@ func (b organizationMembershipsBase) page[T, R any](mapFunc func(T) R, columns .
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationMembershipsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationMembershipsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one organization_memberships row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b organizationMembershipsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.OrganizationMemberships] {
@@ -1581,8 +1983,9 @@ func (b organizationMembershipsBase) queryRows(ctx context.Context, stmt postgre
 }
 
 // organizationMembershipsWhere builds predicates on the columns of organization_memberships. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type organizationMembershipsWhere struct{}
 
 // OrganizationID is organization_id = v.
@@ -1848,6 +2251,21 @@ func (b organizationsBase) page[T, R any](mapFunc func(T) R, columns ...postgres
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one organizations row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with organizationToDomain.
 func (b organizationsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[organization.Organization] {
@@ -1865,8 +2283,11 @@ func (b organizationsBase) queryRows(ctx context.Context, stmt postgres.Statemen
 }
 
 // organizationsWhere builds predicates on the columns of organizations. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on metadata_json: compare on b.t.
 type organizationsWhere struct{}
 
 // ID is id = v.
@@ -1922,7 +2343,7 @@ func (organizationsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (organizationsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Organizations.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -1949,7 +2370,7 @@ func (organizationsWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (organizationsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Organizations.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -2014,33 +2435,6 @@ func (organizationsWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (organizationsWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.Organizations.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// MetadataJSON is metadata_json = v.
-func (organizationsWhere) MetadataJSON(v string) postgres.BoolExpression {
-	return table.Organizations.MetadataJSON.EQ(postgres.String(v))
-}
-
-// MetadataJSONIn is metadata_json IN (vs...); no value matches no row.
-func (organizationsWhere) MetadataJSONIn(vs ...string) postgres.BoolExpression {
-	if len(vs) == 0 {
-		return postgres.Bool(false)
-	}
-	exprs := make([]postgres.Expression, len(vs))
-	for i, v := range vs {
-		exprs[i] = postgres.String(v)
-	}
-	return table.Organizations.MetadataJSON.IN(exprs...)
-}
-
-// MetadataJSONContains matches metadata_json that contain term, ignoring case.
-func (organizationsWhere) MetadataJSONContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.MetadataJSON).LIKE(postgres.String(nanoContainsPattern(term)))
-}
-
-// MetadataJSONEqualsIgnoreCase is lower(metadata_json) = lower(v).
-func (organizationsWhere) MetadataJSONEqualsIgnoreCase(v string) postgres.BoolExpression {
-	return postgres.LOWER(table.Organizations.MetadataJSON).EQ(postgres.LOWER(postgres.String(v)))
 }
 
 // MetadataJSONIsNull is metadata_json IS NULL.
@@ -2201,6 +2595,21 @@ func (b platformInvitationsBase) page[T, R any](mapFunc func(T) R, columns ...po
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformInvitationsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformInvitationsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one platform_invitations row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with invitationToDomain.
 func (b platformInvitationsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[invitation.PlatformInvitation] {
@@ -2218,8 +2627,9 @@ func (b platformInvitationsBase) queryRows(ctx context.Context, stmt postgres.St
 }
 
 // platformInvitationsWhere builds predicates on the columns of platform_invitations. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformInvitationsWhere struct{}
 
 // ID is id = v.
@@ -2258,7 +2668,7 @@ func (platformInvitationsWhere) CodeIn(vs ...string) postgres.BoolExpression {
 
 // CodeContains matches code that contain term, ignoring case.
 func (platformInvitationsWhere) CodeContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformInvitations.Code).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformInvitations.Code)
 }
 
 // CodeEqualsIgnoreCase is lower(code) = lower(v).
@@ -2285,7 +2695,7 @@ func (platformInvitationsWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (platformInvitationsWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformInvitations.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformInvitations.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -2517,6 +2927,21 @@ func (b platformTenantsBase) page[T, R any](mapFunc func(T) R, columns ...postgr
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformTenantsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformTenantsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one platform_tenants row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with tenantToDomain.
 func (b platformTenantsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[tenant.PlatformTenant] {
@@ -2534,8 +2959,9 @@ func (b platformTenantsBase) queryRows(ctx context.Context, stmt postgres.Statem
 }
 
 // platformTenantsWhere builds predicates on the columns of platform_tenants. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformTenantsWhere struct{}
 
 // ID is id = v.
@@ -2574,7 +3000,7 @@ func (platformTenantsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (platformTenantsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformTenants.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformTenants.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -2601,7 +3027,7 @@ func (platformTenantsWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (platformTenantsWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformTenants.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformTenants.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -2816,6 +3242,21 @@ func (b platformUsersBase) page[T, R any](mapFunc func(T) R, columns ...postgres
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b platformUsersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b platformUsersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one platform_users row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with platformUserToDomain.
 func (b platformUsersBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[platform.User] {
@@ -2833,8 +3274,9 @@ func (b platformUsersBase) queryRows(ctx context.Context, stmt postgres.Statemen
 }
 
 // platformUsersWhere builds predicates on the columns of platform_users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type platformUsersWhere struct{}
 
 // ID is id = v.
@@ -2895,7 +3337,7 @@ func (platformUsersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (platformUsersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -2922,7 +3364,7 @@ func (platformUsersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (platformUsersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -2954,7 +3396,7 @@ func (platformUsersWhere) HashedPasswordIn(vs ...string) postgres.BoolExpression
 
 // HashedPasswordContains matches hashed_password that contain term, ignoring case.
 func (platformUsersWhere) HashedPasswordContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.HashedPassword).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.HashedPassword)
 }
 
 // HashedPasswordEqualsIgnoreCase is lower(hashed_password) = lower(v).
@@ -3015,7 +3457,7 @@ func (platformUsersWhere) RoleIn(vs ...string) postgres.BoolExpression {
 
 // RoleContains matches role that contain term, ignoring case.
 func (platformUsersWhere) RoleContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.PlatformUsers.Role).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.PlatformUsers.Role)
 }
 
 // RoleEqualsIgnoreCase is lower(role) = lower(v).
@@ -3230,6 +3672,21 @@ func (b productAPIKeysBase) page[T, R any](mapFunc func(T) R, columns ...postgre
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productAPIKeysBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productAPIKeysBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one product_api_keys row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with productAPIKeyToDomain.
 func (b productAPIKeysBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[apikey.ProductAPIKey] {
@@ -3247,8 +3704,9 @@ func (b productAPIKeysBase) queryRows(ctx context.Context, stmt postgres.Stateme
 }
 
 // productAPIKeysWhere builds predicates on the columns of product_api_keys. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productAPIKeysWhere struct{}
 
 // ID is id = v.
@@ -3304,7 +3762,7 @@ func (productAPIKeysWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productAPIKeysWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -3331,7 +3789,7 @@ func (productAPIKeysWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productAPIKeysWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -3363,7 +3821,7 @@ func (productAPIKeysWhere) HashedValueIn(vs ...string) postgres.BoolExpression {
 
 // HashedValueContains matches hashed_value that contain term, ignoring case.
 func (productAPIKeysWhere) HashedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.HashedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.HashedValue)
 }
 
 // HashedValueEqualsIgnoreCase is lower(hashed_value) = lower(v).
@@ -3390,7 +3848,7 @@ func (productAPIKeysWhere) ObfuscatedValueIn(vs ...string) postgres.BoolExpressi
 
 // ObfuscatedValueContains matches obfuscated_value that contain term, ignoring case.
 func (productAPIKeysWhere) ObfuscatedValueContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.ObfuscatedValue).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.ObfuscatedValue)
 }
 
 // ObfuscatedValueEqualsIgnoreCase is lower(obfuscated_value) = lower(v).
@@ -3417,7 +3875,7 @@ func (productAPIKeysWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (productAPIKeysWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductAPIKeys.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductAPIKeys.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -3681,6 +4139,21 @@ func (b productPermissionsBase) page[T, R any](mapFunc func(T) R, columns ...pos
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productPermissionsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productPermissionsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one product_permissions row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with productPermissionToDomain.
 func (b productPermissionsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[permission.ProductPermission] {
@@ -3698,8 +4171,9 @@ func (b productPermissionsBase) queryRows(ctx context.Context, stmt postgres.Sta
 }
 
 // productPermissionsWhere builds predicates on the columns of product_permissions. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productPermissionsWhere struct{}
 
 // ProductID is product_id = v.
@@ -3755,7 +4229,7 @@ func (productPermissionsWhere) DescriptionIn(vs ...string) postgres.BoolExpressi
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productPermissionsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductPermissions.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductPermissions.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -3820,6 +4294,365 @@ func (productPermissionsWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpressi
 // UpdatedAtBefore is updated_at < v.
 func (productPermissionsWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.ProductPermissions.UpdatedAt.LT(postgres.TimestampzT(v))
+}
+
+// productResourcePermissionsBase is the generated base of table product_resource_permissions. It holds the table (t),
+// typed predicates (where), helpers that run in the context transaction and
+// return the model rows, and the pkg/db/transactor functions as methods.
+// Embed it in the implementation and set it with newProductResourcePermissionsBase(db).
+type productResourcePermissionsBase struct {
+	db    qrm.DB
+	t     *table.ProductResourcePermissionsTable
+	where productResourcePermissionsWhere
+}
+
+// newProductResourcePermissionsBase returns the base of table product_resource_permissions. It runs its statements on the
+// transaction of the context, and on db outside one.
+func newProductResourcePermissionsBase(db qrm.DB) productResourcePermissionsBase {
+	return productResourcePermissionsBase{db: db, t: table.ProductResourcePermissions}
+}
+
+// findOne returns the row matching cond: absent when none does, and
+// transactor.ErrMoreThanOneRow when two do. It reads LIMIT 2, so a key that
+// stopped being unique is an error, never a silent first row. To pick one of
+// several rows, use first with an order.
+func (b productResourcePermissionsBase) findOne(ctx context.Context, cond postgres.BoolExpression) (functional.Option[model.ProductResourcePermissions], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	rows, err := b.queryRows(ctx, stmt.LIMIT(2)).Value()
+	switch {
+	case err != nil:
+		return functional.None[model.ProductResourcePermissions](), err
+	case len(rows) > 1:
+		return functional.None[model.ProductResourcePermissions](), fmt.Errorf("%w: product_resource_permissions", transactor.ErrMoreThanOneRow)
+	case len(rows) == 0:
+		return functional.None[model.ProductResourcePermissions](), nil
+	}
+	return functional.Some(rows[0]), nil
+}
+
+// first returns the first row matching cond in the given order, absent when
+// none does. End the order with a unique column, such as the primary key, so
+// the row it picks is stable.
+func (b productResourcePermissionsBase) first(ctx context.Context, cond postgres.BoolExpression, order postgres.OrderByClause, more ...postgres.OrderByClause) (functional.Option[model.ProductResourcePermissions], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryRowOptional(ctx, stmt.ORDER_BY(append([]postgres.OrderByClause{order}, more...)...).LIMIT(1))
+}
+
+// findAll returns every row matching cond, every row when cond is nil, in the
+// given order.
+func (b productResourcePermissionsBase) findAll(ctx context.Context, cond postgres.BoolExpression, order ...postgres.OrderByClause) ([]model.ProductResourcePermissions, error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	if len(order) > 0 {
+		stmt = stmt.ORDER_BY(order...)
+	}
+	return b.queryRows(ctx, stmt).Value()
+}
+
+// exists reports whether a row matches cond, or whether the table has a row
+// when cond is nil. PostgreSQL refuses a row lock on it, which aggregates.
+func (b productResourcePermissionsBase) exists(ctx context.Context, cond postgres.BoolExpression) (bool, error) {
+	found := b.t.SELECT(postgres.Int32(1))
+	if cond != nil {
+		found = found.WHERE(cond)
+	}
+	n, err := b.queryCount(ctx, postgres.SELECT(postgres.COUNT(postgres.STAR)).FROM(found.LIMIT(1).AsTable("found"))).Value()
+	return n > 0, err
+}
+
+// count counts the rows matching cond, every row when cond is nil.
+// PostgreSQL refuses a row lock on it, which aggregates.
+func (b productResourcePermissionsBase) count(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	stmt := b.t.SELECT(postgres.COUNT(postgres.STAR))
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryCount(ctx, stmt).Value()
+}
+
+// deleteWhere deletes the rows matching cond and returns how many it deleted.
+// It refuses a nil cond. A locked context returns transactor.ErrRowLockNotSelect
+// or ErrRowLockOutsideTx without running the DELETE.
+func (b productResourcePermissionsBase) deleteWhere(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("product_resource_permissions: deleteWhere needs a condition")
+	}
+	return b.execAffected(ctx, b.t.DELETE().WHERE(cond)).Value()
+}
+
+// updateWhere applies the assignments, such as b.t.Name.SET(postgres.String(v)),
+// to the rows matching cond and returns how many it updated. It refuses a nil
+// cond, and a locked context, as deleteWhere does.
+func (b productResourcePermissionsBase) updateWhere(ctx context.Context, cond postgres.BoolExpression, set postgres.ColumnAssigment, more ...postgres.ColumnAssigment) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("product_resource_permissions: updateWhere needs a condition")
+	}
+	values := make([]any, len(more))
+	for i, m := range more {
+		values[i] = m
+	}
+	return b.execAffected(ctx, b.t.UPDATE().SET(set, values...).WHERE(cond)).Value()
+}
+
+// query runs stmt and scans its rows into T: a model row, a slice, or a struct
+// of aliased columns. Chain OnUnique, OnForeignKey or OnNoRows before Value.
+func (b productResourcePermissionsBase) query[T any](ctx context.Context, stmt postgres.Statement) transactor.Result[T] {
+	return transactor.Query[T](ctx, b.db, stmt)
+}
+
+// queryOptional runs stmt, which may match no row: then the Option is absent
+// and the error nil.
+func (b productResourcePermissionsBase) queryOptional[T any](ctx context.Context, stmt postgres.Statement) (functional.Option[T], error) {
+	return transactor.QueryOptional[T](ctx, b.db, stmt)
+}
+
+// queryMap runs stmt, scans one T and maps it with mapFunc.
+func (b productResourcePermissionsBase) queryMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[R] {
+	return transactor.QueryMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryOptionalMap is queryOptional, then mapFunc on the row when there is one.
+func (b productResourcePermissionsBase) queryOptionalMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) (functional.Option[R], error) {
+	return transactor.QueryOptionalMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryMapSlice runs stmt and maps every row with mapFunc.
+func (b productResourcePermissionsBase) queryMapSlice[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[[]R] {
+	return transactor.QueryMapSlice(ctx, b.db, stmt, mapFunc)
+}
+
+// queryCount runs a SELECT COUNT statement.
+func (b productResourcePermissionsBase) queryCount(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.QueryCount(ctx, b.db, stmt)
+}
+
+// exec runs a statement that returns no rows. Unwrap it with Err.
+func (b productResourcePermissionsBase) exec(ctx context.Context, stmt postgres.Statement) transactor.Result[struct{}] {
+	return transactor.Exec(ctx, b.db, stmt)
+}
+
+// execAffected runs a statement and returns the number of rows it changed.
+func (b productResourcePermissionsBase) execAffected(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.ExecAffected(ctx, b.db, stmt)
+}
+
+// page starts a paginated query of rows T mapped to R; both come from mapFunc.
+func (b productResourcePermissionsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
+	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productResourcePermissionsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productResourcePermissionsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// queryRow runs stmt, which returns one product_resource_permissions row, such as an INSERT or
+// UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
+func (b productResourcePermissionsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.ProductResourcePermissions] {
+	return b.query[model.ProductResourcePermissions](ctx, stmt)
+}
+
+// queryRowOptional is queryRow for a statement that may return no row.
+func (b productResourcePermissionsBase) queryRowOptional(ctx context.Context, stmt postgres.Statement) (functional.Option[model.ProductResourcePermissions], error) {
+	return b.queryOptional[model.ProductResourcePermissions](ctx, stmt)
+}
+
+// queryRows is queryRow for every row stmt returns; no row is an empty slice.
+func (b productResourcePermissionsBase) queryRows(ctx context.Context, stmt postgres.Statement) transactor.Result[[]model.ProductResourcePermissions] {
+	return b.queryMapSlice(ctx, stmt, func(row model.ProductResourcePermissions) model.ProductResourcePermissions { return row })
+}
+
+// productResourcePermissionsWhere builds predicates on the columns of product_resource_permissions. A string predicate
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+type productResourcePermissionsWhere struct{}
+
+// ProductID is product_id = v.
+func (productResourcePermissionsWhere) ProductID(v string) postgres.BoolExpression {
+	return table.ProductResourcePermissions.ProductID.EQ(postgres.String(v))
+}
+
+// ProductIDIn is product_id IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) ProductIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.ProductResourcePermissions.ProductID.IN(exprs...)
+}
+
+// Name is name = v.
+func (productResourcePermissionsWhere) Name(v string) postgres.BoolExpression {
+	return table.ProductResourcePermissions.Name.EQ(postgres.String(v))
+}
+
+// NameIn is name IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) NameIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.ProductResourcePermissions.Name.IN(exprs...)
+}
+
+// Description is description = v.
+func (productResourcePermissionsWhere) Description(v string) postgres.BoolExpression {
+	return table.ProductResourcePermissions.Description.EQ(postgres.String(v))
+}
+
+// DescriptionIn is description IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.ProductResourcePermissions.Description.IN(exprs...)
+}
+
+// DescriptionContains matches description that contain term, ignoring case.
+func (productResourcePermissionsWhere) DescriptionContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.ProductResourcePermissions.Description)
+}
+
+// DescriptionEqualsIgnoreCase is lower(description) = lower(v).
+func (productResourcePermissionsWhere) DescriptionEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.ProductResourcePermissions.Description).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// DescriptionIsNull is description IS NULL.
+func (productResourcePermissionsWhere) DescriptionIsNull() postgres.BoolExpression {
+	return table.ProductResourcePermissions.Description.IS_NULL()
+}
+
+// ScopeModifier is scope_modifier = v.
+func (productResourcePermissionsWhere) ScopeModifier(v string) postgres.BoolExpression {
+	return table.ProductResourcePermissions.ScopeModifier.EQ(postgres.String(v))
+}
+
+// ScopeModifierIn is scope_modifier IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) ScopeModifierIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.ProductResourcePermissions.ScopeModifier.IN(exprs...)
+}
+
+// ScopeModifierContains matches scope_modifier that contain term, ignoring case.
+func (productResourcePermissionsWhere) ScopeModifierContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.ProductResourcePermissions.ScopeModifier)
+}
+
+// ScopeModifierEqualsIgnoreCase is lower(scope_modifier) = lower(v).
+func (productResourcePermissionsWhere) ScopeModifierEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.ProductResourcePermissions.ScopeModifier).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// ScopeModifierIsNull is scope_modifier IS NULL.
+func (productResourcePermissionsWhere) ScopeModifierIsNull() postgres.BoolExpression {
+	return table.ProductResourcePermissions.ScopeModifier.IS_NULL()
+}
+
+// CreatedAt is created_at = v.
+func (productResourcePermissionsWhere) CreatedAt(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.CreatedAt.EQ(postgres.TimestampzT(v))
+}
+
+// CreatedAtIn is created_at IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) CreatedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.ProductResourcePermissions.CreatedAt.IN(exprs...)
+}
+
+// CreatedAtAfter is created_at > v.
+func (productResourcePermissionsWhere) CreatedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.CreatedAt.GT(postgres.TimestampzT(v))
+}
+
+// CreatedAtBefore is created_at < v.
+func (productResourcePermissionsWhere) CreatedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.CreatedAt.LT(postgres.TimestampzT(v))
+}
+
+// UpdatedAt is updated_at = v.
+func (productResourcePermissionsWhere) UpdatedAt(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.UpdatedAt.EQ(postgres.TimestampzT(v))
+}
+
+// UpdatedAtIn is updated_at IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) UpdatedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.ProductResourcePermissions.UpdatedAt.IN(exprs...)
+}
+
+// UpdatedAtAfter is updated_at > v.
+func (productResourcePermissionsWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.UpdatedAt.GT(postgres.TimestampzT(v))
+}
+
+// UpdatedAtBefore is updated_at < v.
+func (productResourcePermissionsWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.ProductResourcePermissions.UpdatedAt.LT(postgres.TimestampzT(v))
+}
+
+// ResourceTypeID is resource_type_id = v.
+func (productResourcePermissionsWhere) ResourceTypeID(v string) postgres.BoolExpression {
+	return table.ProductResourcePermissions.ResourceTypeID.EQ(postgres.String(v))
+}
+
+// ResourceTypeIDIn is resource_type_id IN (vs...); no value matches no row.
+func (productResourcePermissionsWhere) ResourceTypeIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.ProductResourcePermissions.ResourceTypeID.IN(exprs...)
 }
 
 // productUsersBase is the generated base of table product_users. It holds the table (t),
@@ -3975,6 +4808,21 @@ func (b productUsersBase) page[T, R any](mapFunc func(T) R, columns ...postgres.
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productUsersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productUsersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one product_users row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b productUsersBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.ProductUsers] {
@@ -3992,8 +4840,9 @@ func (b productUsersBase) queryRows(ctx context.Context, stmt postgres.Statement
 }
 
 // productUsersWhere builds predicates on the columns of product_users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productUsersWhere struct{}
 
 // ID is id = v.
@@ -4049,7 +4898,7 @@ func (productUsersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (productUsersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -4076,7 +4925,7 @@ func (productUsersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productUsersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4108,7 +4957,7 @@ func (productUsersWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (productUsersWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.ProductUsers.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.ProductUsers.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -4345,6 +5194,21 @@ func (b productsBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Proj
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b productsBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b productsBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one products row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
 func (b productsBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.Products] {
@@ -4362,8 +5226,9 @@ func (b productsBase) queryRows(ctx context.Context, stmt postgres.Statement) tr
 }
 
 // productsWhere builds predicates on the columns of products. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type productsWhere struct{}
 
 // ID is id = v.
@@ -4419,7 +5284,7 @@ func (productsWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (productsWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Products.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Products.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4446,7 +5311,7 @@ func (productsWhere) DescriptionIn(vs ...string) postgres.BoolExpression {
 
 // DescriptionContains matches description that contain term, ignoring case.
 func (productsWhere) DescriptionContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Products.Description).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Products.Description)
 }
 
 // DescriptionEqualsIgnoreCase is lower(description) = lower(v).
@@ -4683,6 +5548,21 @@ func (b usersBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Project
 	return transactor.Page(b.db, mapFunc, columns...)
 }
 
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b usersBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b usersBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
 // queryRow runs stmt, which returns one users row, such as an INSERT or
 // UPDATE ... RETURNING(b.t.AllColumns), and maps it with userToDomain.
 func (b usersBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[auth.User] {
@@ -4700,8 +5580,9 @@ func (b usersBase) queryRows(ctx context.Context, stmt postgres.Statement) trans
 }
 
 // usersWhere builds predicates on the columns of users. A string predicate
-// compares as text. Contains matches a substring case-insensitively and
-// escapes % _ \ in the term, so input never becomes a wildcard.
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
 type usersWhere struct{}
 
 // ID is id = v.
@@ -4758,7 +5639,7 @@ func (usersWhere) EmailIn(vs ...string) postgres.BoolExpression {
 
 // EmailContains matches email that contain term, ignoring case.
 func (usersWhere) EmailContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Email).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Email)
 }
 
 // EmailEqualsIgnoreCase is lower(email) = lower(v).
@@ -4785,7 +5666,7 @@ func (usersWhere) NameIn(vs ...string) postgres.BoolExpression {
 
 // NameContains matches name that contain term, ignoring case.
 func (usersWhere) NameContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Name).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Name)
 }
 
 // NameEqualsIgnoreCase is lower(name) = lower(v).
@@ -4815,7 +5696,7 @@ func (usersWhere) HashedPasswordIn(vs ...string) postgres.BoolExpression {
 
 // HashedPasswordContains matches hashed_password that contain term, ignoring case.
 func (usersWhere) HashedPasswordContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.HashedPassword).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.HashedPassword)
 }
 
 // HashedPasswordEqualsIgnoreCase is lower(hashed_password) = lower(v).
@@ -4842,7 +5723,7 @@ func (usersWhere) StatusIn(vs ...string) postgres.BoolExpression {
 
 // StatusContains matches status that contain term, ignoring case.
 func (usersWhere) StatusContains(term string) postgres.BoolExpression {
-	return postgres.LOWER(table.Users.Status).LIKE(postgres.String(nanoContainsPattern(term)))
+	return searchexec.Contains(term, table.Users.Status)
 }
 
 // StatusEqualsIgnoreCase is lower(status) = lower(v).
@@ -4902,10 +5783,4 @@ func (usersWhere) UpdatedAtAfter(v time.Time) postgres.BoolExpression {
 // UpdatedAtBefore is updated_at < v.
 func (usersWhere) UpdatedAtBefore(v time.Time) postgres.BoolExpression {
 	return table.Users.UpdatedAt.LT(postgres.TimestampzT(v))
-}
-
-// nanoContainsPattern builds a case-insensitive substring LIKE pattern: % _ and \
-// match themselves under PostgreSQL's default LIKE escape character.
-func nanoContainsPattern(term string) string {
-	return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term)) + "%"
 }

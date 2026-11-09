@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/license"
 )
@@ -80,9 +80,7 @@ type TemplateRepository interface {
 	) ([]license.Template, error)
 	// Search pages the Product's templates with a cursor, every status unless
 	// the filter names some.
-	Search(
-		ctx context.Context, in license.SearchTemplatesInput,
-	) (search.Result[license.Template], error)
+	Search(ctx context.Context, q LicenseTemplateSearch) (search.Result[license.Template], error)
 	Create(
 		ctx context.Context, template license.Template,
 	) (license.Template, error)
@@ -159,7 +157,7 @@ type OrganizationLicenseRepository interface {
 	// the license it holds. An Organization holding none is a result with a nil
 	// license, not an absent row.
 	Search(
-		ctx context.Context, in license.SearchOrganizationLicensesInput,
+		ctx context.Context, q OrganizationLicenseSearch,
 	) (search.Result[license.OrganizationLicenseSummary], error)
 	// CountLicensesForTemplate reports how many Organization licenses in this
 	// Product still name the given template. A template delete checks this
@@ -188,7 +186,7 @@ type OrganizationLicenseChangeRepository interface {
 	// first unless the request sorts otherwise. An Organization with no
 	// history reads as an empty page.
 	Search(
-		ctx context.Context, in license.SearchLicenseChangesInput,
+		ctx context.Context, q OrganizationLicenseChangeSearch,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 

@@ -10,10 +10,10 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/resource"
@@ -24,7 +24,6 @@ import (
 	"anchor/internal/resource/repository"
 	rtservice "anchor/internal/resourcetype/service"
 	assignments "anchor/internal/roleassignment/service"
-	"anchor/internal/searchx"
 )
 
 type Service interface {
@@ -423,7 +422,7 @@ func samePointer(a, b *string) bool {
 
 // unexpected passes client errors through and logs anything else once.
 func (s *service) unexpected(err error, productID, operation string) error {
-	if err == nil || searchx.IsClientError(err) {
+	if err == nil || search.IsClientError(err) {
 		return err
 	}
 	if _, isFault := fault.As(err); isFault {

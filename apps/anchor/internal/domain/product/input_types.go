@@ -1,9 +1,9 @@
 package product
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 type CreateProductInput struct {
@@ -47,7 +47,7 @@ type SearchProductInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductCreatedAt,
 		SortFieldProductUpdatedAt,
 		SortFieldProductName)

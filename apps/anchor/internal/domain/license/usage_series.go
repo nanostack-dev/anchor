@@ -3,7 +3,7 @@ package license
 import (
 	"time"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 // UsageGranularity selects a level of the usage-observation continuous

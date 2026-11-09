@@ -3,7 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/product"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // ProductRepository on *productRepositoryImpl: 1 derived method on table products; the other methods are
@@ -19,4 +27,61 @@ var _ ProductRepository = (*productRepositoryImpl)(nil)
 func (r *productRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
 	return err
+}
+
+// SearchByTenantID runs a ProductSearch: *productRepositoryImpl has no hand-written SearchByTenantID.
+func (r *productRepositoryImpl) SearchByTenantID(ctx context.Context, q ProductSearch) (search.Result[product.Product], error) {
+	return r.search(ctx, productSearch, q.Query, productRowToDomain)
+}
+
+// ProductSearch is an immutable search of products. Start one with NewProductSearch.
+type ProductSearch struct {
+	searchexec.Query[productRow, ProductSearch, ProductSort, string]
+}
+
+// ProductSort is a sort of ProductSearch.
+type ProductSort string
+
+const (
+	ProductSortName      ProductSort = "name"
+	ProductSortCreatedAt ProductSort = "created_at"
+	ProductSortUpdatedAt ProductSort = "updated_at"
+)
+
+var productSearch = searchexec.DefineSpec(searchexec.SpecDef[productRow, ProductSort, string]{
+	From: func(string) keyset.Source { return productsWithTheirConfig() },
+	Columns: postgres.ProjectionList{ // the Row is productRow
+		table.Products.AllColumns, table.ProductOrganizationAPIKeyConfigs.Prefix,
+	},
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.Products.PlatformTenantID),
+	},
+	Keys: map[ProductSort]keyset.Key[productRow]{
+		ProductSortName:      keyset.StringKey(table.Products.Name, func(r productRow) string { return r.Products.Name }),
+		ProductSortCreatedAt: keyset.TimeKey(table.Products.CreatedAt, func(r productRow) time.Time { return r.Products.CreatedAt }),
+		ProductSortUpdatedAt: keyset.TimeKey(table.Products.UpdatedAt, func(r productRow) time.Time { return r.Products.UpdatedAt }),
+	},
+	Tiebreak: []keyset.Key[productRow]{ // products_pkey (id)
+		keyset.StringKey(table.Products.ID, func(r productRow) string { return r.Products.ID }),
+	},
+	Default: searchexec.Asc(ProductSortCreatedAt),
+	Limit:   10,
+})
+
+// NewProductSearch starts a ProductSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewProductSearch(platformTenantID string) ProductSearch {
+	return searchexec.New[ProductSearch](productSearch, platformTenantID)
+}
+
+// The filters of ProductSearch: each returns a field of q, whose method returns the filtered copy.
+func (q ProductSearch) ID() searchexec.In[ProductSearch, string] {
+	return searchexec.NewIn(q.Query, table.Products.ID, searchexec.StringLit[string])
+}
+func (q ProductSearch) Name() searchexec.In[ProductSearch, string] {
+	return searchexec.NewIn(q.Query, table.Products.Name, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where name or description contains term (searchexec.Contains). A blank term filters nothing.
+func (q ProductSearch) FullText(term string) ProductSearch {
+	return searchexec.NewText(q.Query, table.Products.Name, table.Products.Description).Contains(term)
 }

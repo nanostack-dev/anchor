@@ -1,9 +1,9 @@
 package organization
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // Include names a related resource a read can ask for alongside the
@@ -73,7 +73,7 @@ type SearchProductOrganizationsInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductOrganizationsInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductOrganizationCreatedAt,
 		SortFieldProductOrganizationUpdatedAt,
 		SortFieldProductOrganizationName)

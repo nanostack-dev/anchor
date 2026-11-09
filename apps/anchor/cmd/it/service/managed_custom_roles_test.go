@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +16,7 @@ import (
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
+	"anchor/internal/repository"
 	rtrepository "anchor/internal/resourcetype/repository"
 )
 
@@ -205,12 +206,9 @@ func TestMembersWithoutARoleWrittenByTheNextRelease(t *testing.T) {
 	t.Run("A member with no role still lists", func(t *testing.T) {
 		fixture := givenAMemberWithoutARole(t)
 
-		found, err := MembershipService.SearchMembers(t.Context(), organization.SearchMembersInput{
-			ProductID: fixture.productID, OrganizationID: fixture.organizationID,
-			Request: search.Request[organization.SearchMembersFilter, organization.SortFieldMember]{
-				Pagination: search.Pagination{Limit: 10},
-			},
-		})
+		found, err := MembershipService.SearchMembers(t.Context(), repository.NewOrganizationMemberSearch(
+			repository.OrganizationMemberScope{ProductID: fixture.productID, OrganizationID: fixture.organizationID},
+		).Limit(10))
 
 		require.NoError(t, err)
 		require.Len(t, found.Items, 1)

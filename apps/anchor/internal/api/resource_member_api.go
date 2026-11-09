@@ -4,13 +4,13 @@ import (
 	"context"
 	"slices"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/roleassignment"
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 	"anchor/internal/security"
 	"anchor/internal/service"
 )
@@ -114,7 +114,7 @@ func (s *AnchorAPI) SearchResourceMembers(
 			return roleassignment.Filter{ProductUserIDs: f.ProductUserIds, RoleIDs: f.RoleIds}
 		}).
 		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
+	sortBy, sortDirection := searchvalid.Sort(
 		request.Body.SortBy, request.Body.SortDirection, roleassignment.SortFieldCreatedAt, search.SortAscending,
 	)
 	result, err := s.RoleAssignmentService.Search(ctx, roleassignment.SearchInput{

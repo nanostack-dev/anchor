@@ -5,12 +5,14 @@ import (
 	"log/slog"
 
 	"anchor/internal/domain/license"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	licenserepo "anchor/internal/license/repository"
+
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 // ---------------------------------------------------------------------------
@@ -103,6 +105,7 @@ func (s *AnchorAPI) ListLicenseTemplates(
 	}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchLicenseTemplates(
 	ctx context.Context, request SearchLicenseTemplatesRequestObject,
 ) (SearchLicenseTemplatesResponseObject, error) {
@@ -116,11 +119,13 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 		body = &SearchLicenseTemplatesJSONRequestBody{}
 	}
 
-	result, err := s.LicenseTemplateService.SearchTemplates(ctx, license.SearchTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   mapToSearchLicenseTemplatesRequest(body),
-	})
+	if err = validateLicenseTemplatesSearch(tenantID, request.ProductId, body); err != nil {
+		return nil, err
+	}
+	q := licenseTemplateSearch(
+		licenserepo.LicenseTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
+	result, err := s.LicenseTemplateService.SearchTemplates(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search license templates",
 			slog.String("product_id", request.ProductId),
@@ -136,23 +141,19 @@ func (s *AnchorAPI) SearchLicenseTemplates(
 	}, nil
 }
 
-func mapToSearchLicenseTemplatesRequest(
-	body *SearchLicenseTemplatesJSONRequestBody,
-) search.Request[license.SearchTemplatesFilter, license.SortFieldTemplate] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f LicenseTemplateFilter) license.SearchTemplatesFilter {
-			return license.SearchTemplatesFilter{Statuses: f.Statuses}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, license.SortFieldTemplateName, search.SortAscending,
-	)
-
-	return search.NewRequest[license.SearchTemplatesFilter, license.SortFieldTemplate]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// licenseTemplateSearch builds the search from the request body. The scope
+// comes from the authenticated principal and the route; the body never sets it.
+func licenseTemplateSearch(
+	scope licenserepo.LicenseTemplateScope, body *SearchLicenseTemplatesJSONRequestBody,
+) licenserepo.LicenseTemplateSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := licenserepo.NewLicenseTemplateSearch(scope)
+	q = searchexec.Some(q, q.Status().In, f.Statuses)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		licenserepo.LicenseTemplateSortName, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) UpdateLicenseTemplate(

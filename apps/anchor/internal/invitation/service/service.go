@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/organization"
@@ -28,10 +28,10 @@ type OrganizationInvitationService interface {
 	Create(ctx context.Context, input organizationinvitation.CreateInput) (organizationinvitation.Invitation, error)
 	Get(ctx context.Context, input organizationinvitation.GetInput) (organizationinvitation.Invitation, error)
 	Search(
-		ctx context.Context, input organizationinvitation.SearchInput,
+		ctx context.Context, q repository.OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	SearchInProduct(
-		ctx context.Context, input organizationinvitation.SearchInProductInput,
+		ctx context.Context, q repository.ProductInvitationSearch, statuses []organizationinvitation.Status,
 	) (search.Result[organizationinvitation.Invitation], error)
 	Update(ctx context.Context, input organizationinvitation.UpdateInput) (organizationinvitation.Invitation, error)
 	Delete(ctx context.Context, input organizationinvitation.DeleteInput) error
@@ -152,13 +152,10 @@ func (s *organizationInvitationService) Get(
 }
 
 func (s *organizationInvitationService) Search(
-	ctx context.Context, input organizationinvitation.SearchInput,
+	ctx context.Context, q repository.OrganizationInvitationSearch, statuses []organizationinvitation.Status,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	if err := input.Validate(); err != nil {
-		return search.Result[organizationinvitation.Invitation]{}, err
-	}
-
-	foundOrganization, err := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, input.OrganizationID)
+	scope := q.Scope()
+	foundOrganization, err := s.organizationRepo.FindByProductIDAndID(ctx, scope.ProductID, scope.OrganizationID)
 	if err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
@@ -166,17 +163,13 @@ func (s *organizationInvitationService) Search(
 		return search.Result[organizationinvitation.Invitation]{}, organization.ErrOrganizationNotFound
 	}
 
-	return s.invitationRepo.Search(ctx, input.ProductID, functional.Some(input.OrganizationID), input.Request)
+	return s.invitationRepo.SearchInOrganization(ctx, q, statuses)
 }
 
 func (s *organizationInvitationService) SearchInProduct(
-	ctx context.Context, input organizationinvitation.SearchInProductInput,
+	ctx context.Context, q repository.ProductInvitationSearch, statuses []organizationinvitation.Status,
 ) (search.Result[organizationinvitation.Invitation], error) {
-	if err := input.Validate(); err != nil {
-		return search.Result[organizationinvitation.Invitation]{}, err
-	}
-
-	return s.invitationRepo.Search(ctx, input.ProductID, functional.None[string](), input.Request)
+	return s.invitationRepo.SearchInProduct(ctx, q, statuses)
 }
 
 func (s *organizationInvitationService) Update(

@@ -152,7 +152,6 @@ func permissionsCursorCase(t *testing.T) cursorCase {
 			defaultField: "created_at",
 			fields: []sortField{
 				{name: "created_at", expr: "created_at"},
-				{name: "updated_at", expr: "updated_at"},
 				{name: "name", expr: "name"},
 				{name: "id", expr: "name"},
 				{name: "resource", expr: "name"},
@@ -387,7 +386,6 @@ func productAPIKeysCursorCase(t *testing.T) cursorCase {
 			defaultField: "created_at",
 			fields: []sortField{
 				{name: "created_at", expr: "created_at"},
-				{name: "updated_at", expr: "updated_at"},
 				{name: "name", expr: "name"},
 				{name: "id", expr: "id"},
 				{name: "status", expr: "status"},
@@ -473,7 +471,6 @@ func organizationAPIKeysCursorCase(t *testing.T) cursorCase {
 			defaultField: "created_at",
 			fields: []sortField{
 				{name: "created_at", expr: "created_at"},
-				{name: "updated_at", expr: "updated_at"},
 				{name: "name", expr: "name"},
 				{name: "id", expr: "id"},
 				{name: "status", expr: "status"},

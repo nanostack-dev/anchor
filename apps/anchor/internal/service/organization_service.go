@@ -12,10 +12,10 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/pglock"
 
@@ -26,7 +26,6 @@ import (
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
 	assignments "anchor/internal/roleassignment/service"
-	"anchor/internal/searchx"
 )
 
 const lockKeyCreateWithMember = "organization:create-with-member:%s:%s"
@@ -99,8 +98,11 @@ type OrganizationService interface {
 		ctx context.Context, input organization.UpdateOrganizationInput,
 	) (organization.Organization, error)
 	Delete(ctx context.Context, input organization.DeleteOrganizationInput) error
+	// Search reads one page of the product's organizations. q carries the
+	// product scope; tenantID is read only when include names a related
+	// resource that is tenant-scoped.
 	Search(
-		ctx context.Context, input organization.SearchProductOrganizationsInput,
+		ctx context.Context, q repository.OrganizationSearch, tenantID string, include []organization.Include,
 	) (search.Result[organization.Organization], error)
 }
 
@@ -681,28 +683,23 @@ func (s *organizationService) Delete(
 }
 
 func (s *organizationService) Search(
-	ctx context.Context, input organization.SearchProductOrganizationsInput,
+	ctx context.Context, q repository.OrganizationSearch, tenantID string, include []organization.Include,
 ) (search.Result[organization.Organization], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
+	productID := q.Scope()
 
-	if err := input.Validate(); err != nil {
-		return search.Result[organization.Organization]{}, err
-	}
-
-	result, err := s.organizationRepo.SearchByProductID(ctx, input.ProductID, input.Request)
+	result, err := s.organizationRepo.SearchByProductID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search organizations",
-				slog.String("product_id", input.ProductID),
+				slog.String("product_id", productID),
 				log.Err(err),
 			)
 		}
 		return search.Result[organization.Organization]{}, err
 	}
 
-	result.Items, err = s.attachIncludes(
-		ctx, input.TenantID, input.ProductID, result.Items, input.Include,
-	)
+	result.Items, err = s.attachIncludes(ctx, tenantID, productID, result.Items, include)
 	if err != nil {
 		return search.Result[organization.Organization]{}, err
 	}

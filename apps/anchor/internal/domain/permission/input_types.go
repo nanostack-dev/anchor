@@ -1,9 +1,9 @@
 package permission
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // CreateProductPermissionInput represents input for creating a new permission.
@@ -57,7 +57,7 @@ type SearchProductPermissionInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductPermissionInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductPermissionID,
 		SortFieldProductPermissionName,
 		SortFieldProductPermissionResource,

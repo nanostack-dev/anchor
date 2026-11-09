@@ -1,11 +1,11 @@
 package resourcepermission
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/resourcetype"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 type CreateProductResourcePermissionInput struct {
@@ -56,7 +56,7 @@ type SearchProductResourcePermissionInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductResourcePermissionInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductResourcePermissionCreatedAt,
 		SortFieldProductResourcePermissionUpdatedAt,
 		SortFieldProductResourcePermissionName)

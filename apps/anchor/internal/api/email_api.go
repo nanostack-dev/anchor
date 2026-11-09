@@ -5,15 +5,17 @@ import (
 	"log/slog"
 
 	"anchor/internal/domain/email"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 
+	emailrepo "anchor/internal/email/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
 func listLimitOffset(ctx context.Context, limit *int64, offset *int64) (string, int64, int64, error) {
@@ -71,15 +73,12 @@ func (s *AnchorAPI) ListEmailTemplates(
 		return nil, err
 	}
 
+	scope := emailrepo.EmailTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}
 	templates, err := legacyListPage(limit, offset,
 		func(pagination search.Pagination) (search.Result[email.Template], error) {
-			return s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
-				TenantID:  tenantID,
-				ProductID: request.ProductId,
-				Request: search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
-					WithSort(new(email.SortFieldTemplateCreatedAt), new(search.SortDescending)).
-					WithPagination(&pagination),
-			})
+			q := emailrepo.NewEmailTemplateSearch(scope).
+				SortBy(emailrepo.EmailTemplateSortCreatedAt, search.SortDescending)
+			return s.EmailService.SearchTemplates(ctx, searchexec.APIPage(q.Query, &pagination))
 		})
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to list email templates",
@@ -92,6 +91,7 @@ func (s *AnchorAPI) ListEmailTemplates(
 	return ListEmailTemplates200JSONResponse(EmailTemplateListResponse{Items: items, Count: int(templates.Total)}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchEmailTemplates(
 	ctx context.Context, request SearchEmailTemplatesRequestObject,
 ) (SearchEmailTemplatesResponseObject, error) {
@@ -105,11 +105,13 @@ func (s *AnchorAPI) SearchEmailTemplates(
 		body = &SearchEmailTemplatesJSONRequestBody{}
 	}
 
-	result, err := s.EmailService.SearchTemplates(ctx, email.SearchTemplatesInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   mapToSearchEmailTemplatesRequest(body),
-	})
+	if err = validateEmailTemplatesSearch(tenantID, request.ProductId, body); err != nil {
+		return nil, err
+	}
+	q := emailTemplateSearch(
+		emailrepo.EmailTemplateScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
+	result, err := s.EmailService.SearchTemplates(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search email templates",
 			slog.String("product_id", request.ProductId),
@@ -125,23 +127,22 @@ func (s *AnchorAPI) SearchEmailTemplates(
 	}, nil
 }
 
-func mapToSearchEmailTemplatesRequest(
-	body *SearchEmailTemplatesJSONRequestBody,
-) search.Request[email.SearchTemplatesFilter, email.SortFieldTemplate] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f EmailTemplateFilter) email.SearchTemplatesFilter {
-			return email.SearchTemplatesFilter{IDs: f.Ids, Slugs: f.Slugs, IsActive: f.IsActive}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, email.SortFieldTemplateCreatedAt, search.SortDescending,
-	)
-
-	return search.NewRequest[email.SearchTemplatesFilter, email.SortFieldTemplate]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// emailTemplateSearch builds the search from the request body. The scope comes
+// from the authenticated principal and the route; the body never sets it.
+func emailTemplateSearch(
+	scope emailrepo.EmailTemplateScope, body *SearchEmailTemplatesJSONRequestBody,
+) emailrepo.EmailTemplateSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := emailrepo.NewEmailTemplateSearch(scope)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Slug().In, f.Slugs)
+	q = searchexec.Opt(q, q.IsActive().Eq, f.IsActive)
+	// full_text_search matches the name and the slug.
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		emailrepo.EmailTemplateSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) GetEmailTemplate(
@@ -436,24 +437,17 @@ func (s *AnchorAPI) ListEmailSends(
 		return nil, err
 	}
 
-	var filter email.SearchSendsFilter
-	if request.Params.TemplateId != nil {
-		filter.TemplateIDs = []string{*request.Params.TemplateId}
-	}
-	if request.Params.Status != nil {
-		filter.Statuses = []email.SendStatus{*request.Params.Status}
-	}
-
+	scope := emailrepo.EmailSendScope{PlatformTenantID: tenantID, ProductID: request.ProductId}
 	records, err := legacyListPage(limit, offset,
 		func(pagination search.Pagination) (search.Result[email.SendRecord], error) {
-			return s.EmailService.SearchSends(ctx, email.SearchSendsInput{
-				TenantID:  tenantID,
-				ProductID: request.ProductId,
-				Request: search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
-					WithFilter(&filter).
-					WithSort(new(email.SortFieldSendCreatedAt), new(search.SortDescending)).
-					WithPagination(&pagination),
-			})
+			q := emailrepo.NewEmailSendSearch(scope).SortBy(emailrepo.EmailSendSortCreatedAt, search.SortDescending)
+			if request.Params.TemplateId != nil {
+				q = q.TemplateID().In(*request.Params.TemplateId)
+			}
+			if request.Params.Status != nil {
+				q = q.Status().In(*request.Params.Status)
+			}
+			return s.EmailService.SearchSends(ctx, searchexec.APIPage(q.Query, &pagination))
 		})
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to list email sends", slog.String("product_id", request.ProductId))
@@ -464,6 +458,7 @@ func (s *AnchorAPI) ListEmailSends(
 	return ListEmailSends200JSONResponse(EmailSendRecordListResponse{Items: items, Count: int(records.Total)}), nil
 }
 
+//nolint:dupl // each search endpoint maps its own body to its own builder
 func (s *AnchorAPI) SearchEmailSends(
 	ctx context.Context, request SearchEmailSendsRequestObject,
 ) (SearchEmailSendsResponseObject, error) {
@@ -477,11 +472,13 @@ func (s *AnchorAPI) SearchEmailSends(
 		body = &SearchEmailSendsJSONRequestBody{}
 	}
 
-	result, err := s.EmailService.SearchSends(ctx, email.SearchSendsInput{
-		TenantID:  tenantID,
-		ProductID: request.ProductId,
-		Request:   mapToSearchEmailSendsRequest(body),
-	})
+	if err = validateEmailSendsSearch(tenantID, request.ProductId, body); err != nil {
+		return nil, err
+	}
+	q := emailSendSearch(
+		emailrepo.EmailSendScope{PlatformTenantID: tenantID, ProductID: request.ProductId}, body,
+	)
+	result, err := s.EmailService.SearchSends(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search email sends",
 			slog.String("product_id", request.ProductId),
@@ -497,21 +494,19 @@ func (s *AnchorAPI) SearchEmailSends(
 	}, nil
 }
 
-func mapToSearchEmailSendsRequest(
-	body *SearchEmailSendsJSONRequestBody,
-) search.Request[email.SearchSendsFilter, email.SortFieldSend] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f EmailSendFilter) email.SearchSendsFilter {
-			return email.SearchSendsFilter{TemplateIDs: f.TemplateIds, Statuses: f.Statuses}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, email.SortFieldSendCreatedAt, search.SortDescending,
-	)
-
-	return search.NewRequest[email.SearchSendsFilter, email.SortFieldSend]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// emailSendSearch builds the search from the request body. The scope comes
+// from the authenticated principal and the route; the body never sets it.
+// full_text_search is accepted and ignored: the send history has no text
+// column that the contract names.
+func emailSendSearch(
+	scope emailrepo.EmailSendScope, body *SearchEmailSendsJSONRequestBody,
+) emailrepo.EmailSendSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := emailrepo.NewEmailSendSearch(scope)
+	q = searchexec.Some(q, q.TemplateID().In, f.TemplateIds)
+	q = searchexec.Some(q, q.Status().In, f.Statuses)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		emailrepo.EmailSendSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }

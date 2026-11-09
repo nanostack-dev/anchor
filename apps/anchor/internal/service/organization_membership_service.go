@@ -13,13 +13,12 @@ import (
 	"anchor/internal/repository"
 	rtservice "anchor/internal/resourcetype/service"
 	assignments "anchor/internal/roleassignment/service"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
@@ -72,8 +71,7 @@ type OrganizationMembershipService interface {
 	GetMember(ctx context.Context, input organization.GetMemberInput) (organization.Membership, error)
 	ListMembers(ctx context.Context, input organization.ListMembersInput) ([]organization.Membership, error)
 	SearchMembers(
-		ctx context.Context,
-		input organization.SearchMembersInput,
+		ctx context.Context, q repository.OrganizationMemberSearch,
 	) (search.Result[organization.Membership], error)
 }
 
@@ -405,23 +403,17 @@ func (s *organizationMembershipService) ListMembers(
 }
 
 func (s *organizationMembershipService) SearchMembers(
-	ctx context.Context, input organization.SearchMembersInput,
+	ctx context.Context, q repository.OrganizationMemberSearch,
 ) (search.Result[organization.Membership], error) {
 	logger := s.logger.With(slog.String("operation", "SearchMembers"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[organization.Membership]{}, err
-	}
-
-	result, err := s.orgMembershipRepo.SearchByOrgID(
-		ctx, input.ProductID, input.OrganizationID, input.Request,
-	)
+	result, err := s.orgMembershipRepo.SearchByOrgID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search members",
 				log.Err(err),
-				slog.String("product_id", input.ProductID),
-				slog.String("organization_id", input.OrganizationID),
+				slog.String("product_id", q.Scope().ProductID),
+				slog.String("organization_id", q.Scope().OrganizationID),
 			)
 		}
 		return search.Result[organization.Membership]{}, err

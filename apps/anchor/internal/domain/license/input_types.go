@@ -3,9 +3,9 @@ package license
 import (
 	"time"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 // FieldDeclaration is one license field as supplied by a caller: the authored
@@ -122,7 +122,7 @@ type SearchTemplatesInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchTemplatesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldTemplateName,
 		SortFieldTemplateStatus,
 		SortFieldTemplateCreatedAt,
@@ -198,7 +198,7 @@ type SearchLicenseChangesInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchLicenseChangesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldChangeChangedAt)
 }
 

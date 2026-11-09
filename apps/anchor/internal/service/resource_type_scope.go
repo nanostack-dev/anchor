@@ -6,15 +6,16 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
 	rtservice "anchor/internal/resourcetype/service"
-	"anchor/internal/searchx"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
 // scopeSlug names the scope a stored role or permission holds.
@@ -79,7 +80,51 @@ func scopedSearch[F any, S ~string, T any](
 	}
 	result, err := run(ctx, productID, request)
 	if err != nil {
-		if searchx.IsClientError(err) {
+		if search.IsClientError(err) {
+			return search.Result[T]{}, err
+		}
+		logger.ErrorContext(ctx, "search failed", slog.String("product_id", productID), log.Err(err))
+		return search.Result[T]{}, fault.ErrUnexpected
+	}
+	result.Items = functional.Slice(result.Items).Map(withScope(tree))
+	return result, nil
+}
+
+// resourceTypeSlugs is the shape the resource_types filter of a search is
+// validated in: at most 50 slugs, none blank.
+type resourceTypeSlugs struct {
+	ResourceTypes []string `validate:"omitempty,max=50,dive,notblank"`
+}
+
+// scopedQuery runs a generated search that filters on resource types: it
+// resolves the request's resource_types slugs against the product's tree, sets
+// the type IDs through withTypes (a slug the product lacks becomes an ID no
+// type has, so it matches nothing instead of widening the search), then names
+// each item's scope.
+func scopedQuery[Q, T any](
+	ctx context.Context, types rtservice.Service, logger *slog.Logger, productID string,
+	slugs []string, q Q,
+	withTypes func(Q, []string) Q,
+	run func(context.Context, Q) (search.Result[T], error),
+	withScope func(resourcetype.Tree) func(T) T,
+) (search.Result[T], error) {
+	if err := validate.ValidateStruct(resourceTypeSlugs{ResourceTypes: slugs}); err != nil {
+		return search.Result[T]{}, err
+	}
+	tree, err := types.Tree(ctx, productID)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to read resource types",
+			slog.String("product_id", productID),
+			log.Err(err),
+		)
+		return search.Result[T]{}, fault.ErrUnexpected
+	}
+	if len(slugs) > 0 {
+		q = withTypes(q, tree.ResolveScopes(slugs).IDs)
+	}
+	result, err := run(ctx, q)
+	if err != nil {
+		if search.IsClientError(err) {
 			return search.Result[T]{}, err
 		}
 		logger.ErrorContext(ctx, "search failed", slog.String("product_id", productID), log.Err(err))

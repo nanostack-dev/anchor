@@ -3,9 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/email"
 	"context"
+	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
@@ -36,4 +42,72 @@ func (r *templateRepositoryImpl) FindByPlatformTenantIDAndProductIDAndSlug(ctx c
 func (r *templateRepositoryImpl) DeleteByPlatformTenantIDAndProductIDAndID(ctx context.Context, platformTenantID string, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.ID(id)))
 	return err
+}
+
+// Search runs an EmailTemplateSearch: *templateRepositoryImpl has no hand-written Search.
+func (r *templateRepositoryImpl) Search(ctx context.Context, q EmailTemplateSearch) (search.Result[email.Template], error) {
+	return r.search(ctx, emailTemplateSearch, q.Query, emailTemplateToDomain)
+}
+
+// EmailTemplateSearch is an immutable search of email_templates. Start one with NewEmailTemplateSearch.
+type EmailTemplateSearch struct {
+	searchexec.Query[model.EmailTemplates, EmailTemplateSearch, EmailTemplateSort, EmailTemplateScope]
+}
+
+// EmailTemplateScope is the tenant of an EmailTemplateSearch. A zero field refuses the search.
+type EmailTemplateScope struct {
+	_                struct{} // keyed fields only
+	PlatformTenantID string   // email_templates.platform_tenant_id
+	ProductID        string   // email_templates.product_id
+}
+
+// EmailTemplateSort is a sort of EmailTemplateSearch.
+type EmailTemplateSort string
+
+const (
+	EmailTemplateSortCreatedAt EmailTemplateSort = "created_at"
+	EmailTemplateSortUpdatedAt EmailTemplateSort = "updated_at"
+	EmailTemplateSortName      EmailTemplateSort = "name"
+	EmailTemplateSortSlug      EmailTemplateSort = "slug"
+)
+
+var emailTemplateSearch = searchexec.DefineSpec(searchexec.SpecDef[model.EmailTemplates, EmailTemplateSort, EmailTemplateScope]{
+	From:    func(EmailTemplateScope) keyset.Source { return table.EmailTemplates },
+	Columns: table.EmailTemplates.AllColumns, // the Row is model.EmailTemplates
+	Scope: []searchexec.ScopeCol[EmailTemplateScope]{
+		searchexec.ScopeEq(func(s EmailTemplateScope) string { return s.PlatformTenantID }, table.EmailTemplates.PlatformTenantID),
+		searchexec.ScopeEq(func(s EmailTemplateScope) string { return s.ProductID }, table.EmailTemplates.ProductID),
+	},
+	Keys: map[EmailTemplateSort]keyset.Key[model.EmailTemplates]{
+		EmailTemplateSortCreatedAt: keyset.TimeKey(table.EmailTemplates.CreatedAt, func(r model.EmailTemplates) time.Time { return r.CreatedAt }),
+		EmailTemplateSortUpdatedAt: keyset.TimeKey(table.EmailTemplates.UpdatedAt, func(r model.EmailTemplates) time.Time { return r.UpdatedAt }),
+		EmailTemplateSortName:      keyset.StringKey(table.EmailTemplates.Name, func(r model.EmailTemplates) string { return r.Name }),
+		EmailTemplateSortSlug:      keyset.StringKey(table.EmailTemplates.Slug, func(r model.EmailTemplates) string { return r.Slug }),
+	},
+	Tiebreak: []keyset.Key[model.EmailTemplates]{ // email_templates_pkey (id)
+		keyset.StringKey(table.EmailTemplates.ID, func(r model.EmailTemplates) string { return r.ID }),
+	},
+	Default: searchexec.Desc(EmailTemplateSortCreatedAt),
+	Limit:   10,
+})
+
+// NewEmailTemplateSearch starts an EmailTemplateSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewEmailTemplateSearch(scope EmailTemplateScope) EmailTemplateSearch {
+	return searchexec.New[EmailTemplateSearch](emailTemplateSearch, scope)
+}
+
+// The filters of EmailTemplateSearch: each returns a field of q, whose method returns the filtered copy.
+func (q EmailTemplateSearch) ID() searchexec.In[EmailTemplateSearch, string] {
+	return searchexec.NewIn(q.Query, table.EmailTemplates.ID, searchexec.StringLit[string])
+}
+func (q EmailTemplateSearch) Slug() searchexec.In[EmailTemplateSearch, string] {
+	return searchexec.NewIn(q.Query, table.EmailTemplates.Slug, searchexec.StringLit[string])
+}
+func (q EmailTemplateSearch) IsActive() searchexec.Eq[EmailTemplateSearch, bool] {
+	return searchexec.NewEq(q.Query, table.EmailTemplates.IsActive, searchexec.BoolLit[bool])
+}
+
+// FullText keeps rows where name or slug contains term (searchexec.Contains). A blank term filters nothing.
+func (q EmailTemplateSearch) FullText(term string) EmailTemplateSearch {
+	return searchexec.NewText(q.Query, table.EmailTemplates.Name, table.EmailTemplates.Slug).Contains(term)
 }

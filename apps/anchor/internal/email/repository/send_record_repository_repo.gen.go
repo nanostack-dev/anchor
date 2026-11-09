@@ -3,9 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/email"
 	"context"
+	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
@@ -21,4 +27,60 @@ var _ SendRecordRepository = (*sendRecordRepositoryImpl)(nil)
 //	SELECT * FROM email_send_records WHERE platform_tenant_id = $1 AND product_id = $2 AND dedupe_key = $3 LIMIT 2 -- at most one row: idx_email_send_records_dedupe (product_id, dedupe_key) WHERE (dedupe_key IS NOT NULL); a second row is ErrMoreThanOneRow
 func (r *sendRecordRepositoryImpl) FindByPlatformTenantIDAndProductIDAndDedupeKey(ctx context.Context, platformTenantID string, productID string, dedupeKey string) (functional.Option[email.SendRecord], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.DedupeKey(dedupeKey)))
+}
+
+// Search runs an EmailSendSearch: *sendRecordRepositoryImpl has no hand-written Search.
+func (r *sendRecordRepositoryImpl) Search(ctx context.Context, q EmailSendSearch) (search.Result[email.SendRecord], error) {
+	return r.search(ctx, emailSendSearch, q.Query, emailSendRecordToDomain)
+}
+
+// EmailSendSearch is an immutable search of email_send_records. Start one with NewEmailSendSearch.
+type EmailSendSearch struct {
+	searchexec.Query[model.EmailSendRecords, EmailSendSearch, EmailSendSort, EmailSendScope]
+}
+
+// EmailSendScope is the tenant of an EmailSendSearch. A zero field refuses the search.
+type EmailSendScope struct {
+	_                struct{} // keyed fields only
+	PlatformTenantID string   // email_send_records.platform_tenant_id
+	ProductID        string   // email_send_records.product_id
+}
+
+// EmailSendSort is a sort of EmailSendSearch.
+type EmailSendSort string
+
+const (
+	EmailSendSortCreatedAt EmailSendSort = "created_at"
+	EmailSendSortStatus    EmailSendSort = "status"
+)
+
+var emailSendSearch = searchexec.DefineSpec(searchexec.SpecDef[model.EmailSendRecords, EmailSendSort, EmailSendScope]{
+	From:    func(EmailSendScope) keyset.Source { return table.EmailSendRecords },
+	Columns: table.EmailSendRecords.AllColumns, // the Row is model.EmailSendRecords
+	Scope: []searchexec.ScopeCol[EmailSendScope]{
+		searchexec.ScopeEq(func(s EmailSendScope) string { return s.PlatformTenantID }, table.EmailSendRecords.PlatformTenantID),
+		searchexec.ScopeEq(func(s EmailSendScope) string { return s.ProductID }, table.EmailSendRecords.ProductID),
+	},
+	Keys: map[EmailSendSort]keyset.Key[model.EmailSendRecords]{
+		EmailSendSortCreatedAt: keyset.TimeKey(table.EmailSendRecords.CreatedAt, func(r model.EmailSendRecords) time.Time { return r.CreatedAt }),
+		EmailSendSortStatus:    keyset.StringKey(table.EmailSendRecords.Status, func(r model.EmailSendRecords) string { return r.Status }),
+	},
+	Tiebreak: []keyset.Key[model.EmailSendRecords]{ // email_send_records_pkey (id)
+		keyset.StringKey(table.EmailSendRecords.ID, func(r model.EmailSendRecords) string { return r.ID }),
+	},
+	Default: searchexec.Desc(EmailSendSortCreatedAt),
+	Limit:   10,
+})
+
+// NewEmailSendSearch starts an EmailSendSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewEmailSendSearch(scope EmailSendScope) EmailSendSearch {
+	return searchexec.New[EmailSendSearch](emailSendSearch, scope)
+}
+
+// The filters of EmailSendSearch: each returns a field of q, whose method returns the filtered copy.
+func (q EmailSendSearch) TemplateID() searchexec.In[EmailSendSearch, string] {
+	return searchexec.NewIn(q.Query, table.EmailSendRecords.TemplateID, searchexec.StringLit[string])
+}
+func (q EmailSendSearch) Status() searchexec.In[EmailSendSearch, email.SendStatus] {
+	return searchexec.NewIn(q.Query, table.EmailSendRecords.Status, searchexec.StringLit[email.SendStatus])
 }

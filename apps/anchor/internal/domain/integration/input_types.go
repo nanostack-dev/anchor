@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateInstanceInput struct {
@@ -86,7 +86,7 @@ type SearchAuditLogsInput struct {
 
 // Validate checks the input, the sort the client named and the actions it filters on.
 func (in SearchAuditLogsInput) Validate() error {
-	if err := searchx.ValidateRequest(in, in.Request,
+	if err := searchvalid.ValidateRequest(in, in.Request,
 		SortFieldAuditLogCreatedAt,
 		SortFieldAuditLogAction,
 		SortFieldAuditLogSeverity); err != nil {
@@ -95,5 +95,5 @@ func (in SearchAuditLogsInput) Validate() error {
 	if in.Request.Filter == nil {
 		return nil
 	}
-	return searchx.ValidateOneOf("filter.actions", in.Request.Filter.Actions, AuditActions())
+	return searchvalid.ValidateOneOf("filter.actions", in.Request.Filter.Actions, AuditActions())
 }

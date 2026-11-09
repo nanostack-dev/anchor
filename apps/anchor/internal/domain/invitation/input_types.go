@@ -1,10 +1,10 @@
 package invitation
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/platform"
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // CreateInvitationInput defines the input structure for creating an invitation.
@@ -42,7 +42,7 @@ type SearchInvitationInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInvitationInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldPlatformInvitationCreatedAt,
 		SortFieldPlatformInvitationUpdatedAt,
 		SortFieldPlatformInvitationEmail)

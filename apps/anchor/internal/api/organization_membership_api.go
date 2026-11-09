@@ -6,13 +6,15 @@ import (
 	"slices"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"anchor/internal/domain/organization"
-	"anchor/internal/searchx"
+	"anchor/internal/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func (s *AnchorAPI) AddOrganizationMember(
@@ -132,45 +134,27 @@ func (s *AnchorAPI) RemoveOrganizationMember(
 	return RemoveOrganizationMember204Response{}, nil
 }
 
-func mapSearchOrganizationMembersRequestToInput(
-	request SearchOrganizationMembersRequestObject,
-) search.Request[organization.SearchMembersFilter, organization.SortFieldMember] {
-	var filter *organization.SearchMembersFilter
-	var req search.Request[organization.SearchMembersFilter, organization.SortFieldMember]
-
-	if request.Body == nil {
-		return req
-	}
-
-	if request.Body.Filter != nil {
-		filter = &organization.SearchMembersFilter{}
-
-		if request.Body.Filter.ProductUserIds != nil {
-			filter.ProductUserIDs = append(filter.ProductUserIDs, *request.Body.Filter.ProductUserIds...)
-		}
-		if request.Body.Filter.ExternalIds != nil {
-			filter.ExternalIDs = *request.Body.Filter.ExternalIds
-		}
-		if request.Body.Filter.Emails != nil {
-			filter.Emails = append(
-				filter.Emails,
-				functional.Slice(*request.Body.Filter.Emails).Map(func(e openapi_types.Email) string {
-					return string(e)
-				})...)
-		}
-		if request.Body.Filter.RoleIds != nil {
-			filter.RoleIDs = append(filter.RoleIDs, *request.Body.Filter.RoleIds...)
-		}
-	}
-
-	sortBy, sortDirection := searchx.Sort(
-		request.Body.SortBy, request.Body.SortDirection,
-		organization.SortFieldMemberJoinedAt, search.SortDescending,
-	)
-
-	return req.WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
+// organizationMemberSearch builds the search from the request body. The
+// organization scope comes from the route, and the product scope from the route,
+// which the authorization middleware checked against the principal; the body
+// never sets them.
+func organizationMemberSearch(
+	productID, organizationID string, body *SearchOrganizationMembersJSONRequestBody,
+) repository.OrganizationMemberSearch {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	emails := functional.Slice(orEmpty(f.Emails)).Map(func(e openapi_types.Email) string { return string(e) })
+	q := repository.NewOrganizationMemberSearch(repository.OrganizationMemberScope{
+		OrganizationID: organizationID, ProductID: productID,
+	})
+	q = searchexec.Some(q, q.ProductUserID().In, orEmpty(f.ProductUserIds))
+	q = searchexec.Some(q, q.ExternalID().In, orEmpty(f.ExternalIds))
+	q = searchexec.Some(q, q.Email().In, emails)
+	q = searchexec.Some(q, q.ProductRoleID().In, orEmpty(f.RoleIds))
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.OrganizationMemberSortJoinedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination)
 }
 
 func (s *AnchorAPI) SearchOrganizationMembers(
@@ -181,13 +165,12 @@ func (s *AnchorAPI) SearchOrganizationMembers(
 		return nil, fault.BadRequest("INVALID_REQUEST", "request body is required")
 	}
 
-	input := organization.SearchMembersInput{
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		Request:        mapSearchOrganizationMembersRequestToInput(request),
+	if err := validateOrganizationMembersSearch(request); err != nil {
+		return nil, err
 	}
-
-	res, err := s.OrganizationMembershipService.SearchMembers(ctx, input)
+	res, err := s.OrganizationMembershipService.SearchMembers(
+		ctx, organizationMemberSearch(request.ProductId, request.OrganizationId, request.Body),
+	)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization members",
 			slog.String("product_id", request.ProductId),

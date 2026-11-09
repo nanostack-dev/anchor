@@ -1,9 +1,9 @@
 package email
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // CreateTemplateInput is the request shape for authoring a new template.
@@ -102,7 +102,7 @@ type SearchTemplatesInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchTemplatesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldTemplateCreatedAt,
 		SortFieldTemplateUpdatedAt,
 		SortFieldTemplateName,
@@ -206,7 +206,7 @@ type SearchSendsInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchSendsInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldSendCreatedAt,
 		SortFieldSendStatus)
 }

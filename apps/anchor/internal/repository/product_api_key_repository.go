@@ -10,12 +10,11 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -61,9 +60,7 @@ type ProductAPIKeyRepository interface {
 	DeleteByProductIDAndID(ctx context.Context, productID, id string) error
 
 	// SearchByProductId searches for product API keys with filtering, sorting, and pagination
-	SearchByProductID(
-		ctx context.Context, input apikey.SearchProductAPIKeysInput,
-	) (search.Result[apikey.ProductAPIKey], error)
+	SearchByProductID(ctx context.Context, q ProductAPIKeySearch) (search.Result[apikey.ProductAPIKey], error)
 
 	// UpdateLastUsedAt updates the last used timestamp for a product API key
 	UpdateLastUsedAt(ctx context.Context, productID, id string) error
@@ -82,6 +79,24 @@ func productAPIKeyToDomain(row model.ProductAPIKeys) apikey.ProductAPIKey {
 func _() {
 	nanorepo.Implement[ProductAPIKeyRepository, productAPIKeyRepository](
 		table.ProductAPIKeys, productAPIKeyToDomain,
+	)
+
+	// POST /v1/products/{product_id}/api-keys/search. The API also accepts
+	// expires_before and expires_after, which have no column: the mapper ignores
+	// them, as it always did. The permissions of the page load in one statement.
+	nanorepo.Search[model.ProductAPIKeys]("ProductAPIKey", table.ProductAPIKeys,
+		nanorepo.MapPage((*productAPIKeyRows).page),
+		nanorepo.Scope(table.ProductAPIKeys.ProductID),
+		nanorepo.Filter(table.ProductAPIKeys.ID, nanorepo.In),
+		nanorepo.Filter(table.ProductAPIKeys.Name, nanorepo.In),
+		nanorepo.Filter(table.ProductAPIKeys.Status, nanorepo.In),
+		nanorepo.FullText(table.ProductAPIKeys.Name, table.ProductAPIKeys.Description),
+		nanorepo.Sort(
+			table.ProductAPIKeys.ID, table.ProductAPIKeys.CreatedAt, table.ProductAPIKeys.Name,
+			table.ProductAPIKeys.Status, table.ProductAPIKeys.LastUsedAt,
+		),
+		nanorepo.DefaultSort(table.ProductAPIKeys.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(defaultPageLimit),
 	)
 }
 
@@ -108,6 +123,43 @@ type productAPIKeyRepository struct {
 	db     *sql.DB
 	logger *slog.Logger
 	mapper *mapper.ProductAPIKeyMapper
+	rows   *productAPIKeyRows
+}
+
+// productAPIKeyRows maps a page of API key rows with their permissions. It is a
+// field of the implementation because the generated search calls a method of a
+// field.
+type productAPIKeyRows struct {
+	db     *sql.DB
+	mapper *mapper.ProductAPIKeyMapper
+}
+
+// page reads the permissions of the paged keys in one statement. The page is
+// taken on keys alone, so a LIMIT never cuts a key's permissions.
+func (m *productAPIKeyRows) page(ctx context.Context, rows []model.ProductAPIKeys) ([]apikey.ProductAPIKey, error) {
+	if len(rows) == 0 {
+		return []apikey.ProductAPIKey{}, nil
+	}
+	ids := functional.Slice(rows).Map(func(entity model.ProductAPIKeys) string { return entity.ID })
+	// Every row of the page is of the product that scoped the search.
+	permissions, err := transactor.QueryMapSlice(
+		ctx, m.db,
+		table.ProductAPIKeyPermissions.SELECT(table.ProductAPIKeyPermissions.AllColumns).WHERE(
+			table.ProductAPIKeyPermissions.APIKeyID.IN(jetx.ToStringExpressions(ids)...).AND(
+				table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(rows[0].ProductID)),
+			),
+		),
+		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions { return entity },
+	).Value()
+	if err != nil {
+		return nil, err
+	}
+	byKey := functional.Slice(permissions).GroupBy(
+		func(p model.ProductAPIKeyPermissions) string { return p.APIKeyID },
+	)
+	return functional.Slice(rows).Map(func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
+		return m.mapper.ToDomainWithPermissions(entity, byKey[entity.ID])
+	}), nil
 }
 
 func NewProductAPIKeyRepository(
@@ -120,6 +172,7 @@ func NewProductAPIKeyRepository(
 		db:                 db,
 		logger:             logger.With(slog.String("component", "product_api_key_repository")),
 		mapper:             mapper,
+		rows:               &productAPIKeyRows{db: db, mapper: mapper},
 	}
 }
 
@@ -264,107 +317,6 @@ func (r *productAPIKeyRepository) DeletePermissionsByName(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-//nolint:dupl // mirrored by organization API key repository with equivalent keyset
-func (r *productAPIKeyRepository) SearchByProductID(
-	ctx context.Context, input apikey.SearchProductAPIKeysInput,
-) (search.Result[apikey.ProductAPIKey], error) {
-	whereStmt := table.ProductAPIKeys.ProductID.EQ(postgres.String(input.ProductID))
-
-	whereStmt = r.applyFilters(whereStmt, input.Request.Filter)
-	whereStmt = r.applyFullTextSearch(whereStmt, input.Request.FullTextSearch)
-
-	idKey := transactor.StringKey(table.ProductAPIKeys.ID, func(row model.ProductAPIKeys) string { return row.ID })
-	order, err := transactor.StrictKeys(
-		input.Request.Sort,
-		map[apikey.SortFieldProductAPIKey]transactor.Key[model.ProductAPIKeys]{
-			apikey.SortFieldProductAPIKeyID: idKey,
-			apikey.SortFieldProductAPIKeyCreatedAt: transactor.TimeKey(
-				table.ProductAPIKeys.CreatedAt, func(row model.ProductAPIKeys) time.Time { return row.CreatedAt },
-			),
-			apikey.SortFieldProductAPIKeyUpdatedAt: transactor.TimeKey(
-				table.ProductAPIKeys.UpdatedAt, func(row model.ProductAPIKeys) time.Time { return row.UpdatedAt },
-			),
-			apikey.SortFieldProductAPIKeyName: transactor.StringKey(
-				table.ProductAPIKeys.Name, func(row model.ProductAPIKeys) string { return row.Name },
-			),
-			apikey.SortFieldProductAPIKeyStatus: transactor.StringKey(
-				table.ProductAPIKeys.Status, func(row model.ProductAPIKeys) string { return row.Status },
-			),
-			apikey.SortFieldProductAPIKeyLastUsed: transactor.NullableTimeKey(
-				table.ProductAPIKeys.LastUsedAt, func(row model.ProductAPIKeys) *time.Time { return row.LastUsedAt },
-			),
-		},
-		idKey,
-	)
-	if err != nil {
-		return search.Result[apikey.ProductAPIKey]{}, err
-	}
-
-	pageResult, err := transactor.Page(
-		r.db,
-		func(entity model.ProductAPIKeys) model.ProductAPIKeys {
-			return entity
-		},
-		table.ProductAPIKeys.AllColumns,
-	).
-		From(table.ProductAPIKeys).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Request.Pagination).
-		Value()
-	if err != nil {
-		if !searchx.IsClientError(err) {
-			r.logger.ErrorContext(ctx, "failed to search product API keys",
-				log.Err(err),
-				slog.String("productID", input.ProductID),
-			)
-		}
-		return search.Result[apikey.ProductAPIKey]{}, err
-	}
-
-	itemEntities := pageResult.Items
-	resultCount := pageResult.Total
-
-	if len(itemEntities) == 0 {
-		return search.Result[apikey.ProductAPIKey]{
-			Items:      []apikey.ProductAPIKey{},
-			Count:      0,
-			Total:      resultCount,
-			NextCursor: pageResult.NextCursor,
-		}, nil
-	}
-
-	apiKeyIDs := functional.Slice(itemEntities).Map(func(entity model.ProductAPIKeys) string {
-		return entity.ID
-	})
-
-	permissionEntities, err := r.getPermissionEntitiesByAPIKeyIDs(
-		ctx, input.ProductID, apiKeyIDs,
-	)
-	if err != nil {
-		r.logger.ErrorContext(ctx, "failed to load product API key permissions",
-			log.Err(err),
-			slog.String("productID", input.ProductID),
-		)
-		return search.Result[apikey.ProductAPIKey]{}, err
-	}
-
-	permissionsByAPIKeyID := functional.Slice(permissionEntities).GroupBy(
-		func(p model.ProductAPIKeyPermissions) string { return p.APIKeyID },
-	)
-
-	items := functional.Slice(itemEntities).Map(func(entity model.ProductAPIKeys) apikey.ProductAPIKey {
-		return r.mapper.ToDomainWithPermissions(entity, permissionsByAPIKeyID[entity.ID])
-	})
-
-	return search.Result[apikey.ProductAPIKey]{
-		Items:      items,
-		Count:      len(items),
-		Total:      resultCount,
-		NextCursor: pageResult.NextCursor,
-	}, nil
-}
-
 func (r *productAPIKeyRepository) UpdateLastUsedAt(
 	ctx context.Context, productID, id string,
 ) error {
@@ -411,78 +363,6 @@ func (r *productAPIKeyRepository) getPermissionEntities(
 			return entity
 		},
 	).Value()
-}
-
-func (r *productAPIKeyRepository) getPermissionEntitiesByAPIKeyIDs(
-	ctx context.Context, productID string, apiKeyIDs []string,
-) ([]model.ProductAPIKeyPermissions, error) {
-	if len(apiKeyIDs) == 0 {
-		return []model.ProductAPIKeyPermissions{}, nil
-	}
-
-	apiKeyIDExpressions := jetx.ToStringExpressions(apiKeyIDs)
-	stmt := table.ProductAPIKeyPermissions.SELECT(
-		table.ProductAPIKeyPermissions.AllColumns,
-	).WHERE(
-		table.ProductAPIKeyPermissions.APIKeyID.IN(apiKeyIDExpressions...).AND(
-			table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	return transactor.QueryMapSlice(
-		ctx, r.db, stmt,
-		func(entity model.ProductAPIKeyPermissions) model.ProductAPIKeyPermissions {
-			return entity
-		},
-	).Value()
-}
-
-//nolint:dupl // mirrored by organization API key repository with equivalent filter semantics
-func (r *productAPIKeyRepository) applyFilters(
-	whereStmt postgres.BoolExpression,
-	filter *apikey.SearchProductAPIKeyFilter,
-) postgres.BoolExpression {
-	if filter == nil {
-		return whereStmt
-	}
-
-	if len(filter.ProductAPIKeyIDs) > 0 {
-		expressions := jetx.ToStringExpressions(filter.ProductAPIKeyIDs)
-		whereStmt = whereStmt.AND(table.ProductAPIKeys.ID.IN(expressions...))
-	}
-
-	if len(filter.Names) > 0 {
-		expressions := jetx.ToStringExpressions(filter.Names)
-		whereStmt = whereStmt.AND(table.ProductAPIKeys.Name.IN(expressions...))
-	}
-
-	if len(filter.Status) > 0 {
-		expressions := jetx.ToStringExpressions(filter.Status)
-		whereStmt = whereStmt.AND(table.ProductAPIKeys.Status.IN(expressions...))
-	}
-
-	if filter.LastUsedBefore != nil {
-		whereStmt = whereStmt.AND(table.ProductAPIKeys.LastUsedAt.LT(postgres.TimestampzT(*filter.LastUsedBefore)))
-	}
-
-	if filter.LastUsedAfter != nil {
-		whereStmt = whereStmt.AND(table.ProductAPIKeys.LastUsedAt.GT(postgres.TimestampzT(*filter.LastUsedAfter)))
-	}
-
-	return whereStmt
-}
-
-func (r *productAPIKeyRepository) applyFullTextSearch(
-	whereStmt postgres.BoolExpression,
-	fullTextSearch *string,
-) postgres.BoolExpression {
-	if fullTextSearch == nil {
-		return whereStmt
-	}
-
-	return whereStmt.AND(
-		searchx.Contains(*fullTextSearch, table.ProductAPIKeys.Name, table.ProductAPIKeys.Description),
-	)
 }
 
 // findOne runs the shared row-and-permissions query. Each caller passes its

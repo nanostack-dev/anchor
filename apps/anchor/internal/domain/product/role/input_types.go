@@ -1,11 +1,11 @@
 package role
 
 import (
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/resourcetype"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 type CreateProductRoleInput struct {
@@ -51,7 +51,7 @@ type SearchProductRolesInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductRolesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductRoleID,
 		SortFieldProductRoleCreatedAt,
 		SortFieldProductRoleUpdatedAt,
@@ -101,7 +101,7 @@ type SearchOrganizationRolesInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchOrganizationRolesInput) Validate() error {
-	if err := searchx.ValidateRequest(in, in.Request,
+	if err := searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductRoleID,
 		SortFieldProductRoleCreatedAt,
 		SortFieldProductRoleUpdatedAt,
@@ -115,7 +115,7 @@ func (in SearchOrganizationRolesInput) Validate() error {
 	for _, t := range in.Request.Filter.Types {
 		types = append(types, string(t))
 	}
-	return searchx.ValidateOneOf("filter.types", types, []string{string(TypeManaged), string(TypeCustom)})
+	return searchvalid.ValidateOneOf("filter.types", types, []string{string(TypeManaged), string(TypeCustom)})
 }
 
 type AssignPermissionToProductRoleInput struct {

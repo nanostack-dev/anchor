@@ -4,22 +4,56 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ IntegrationAuditLogRepository = (*integrationAuditLogRepositoryImpl)(nil)
+// The base returns model rows: the repository maps them with the audit log mapper.
+func _() {
+	nanorepo.Implement[IntegrationAuditLogRepository, integrationAuditLogRepositoryImpl](
+		table.IntegrationAuditLogs, nanorepo.NoMapper[model.IntegrationAuditLogs],
+	)
+
+	// POST /v1/products/{product_id}/integrations/{id}/audit-logs/search, and the
+	// deprecated GET list. The audit log has no tenant column: the join to its
+	// instance carries the tenant and the product, and the route names the
+	// instance. created_after is inclusive and created_before exclusive.
+	nanorepo.Search[model.IntegrationAuditLogs]("IntegrationAuditLog", table.IntegrationAuditLogs,
+		nanorepo.Map((*mapper.IntegrationAuditLogMapper).ToDomain),
+		nanorepo.From(auditLogsOfTheirInstance),
+		nanorepo.Scope(table.IntegrationInstances.PlatformTenantID),
+		nanorepo.Scope(table.IntegrationInstances.ProductID),
+		nanorepo.Scope(table.IntegrationAuditLogs.IntegrationInstanceID),
+		nanorepo.Filter(table.IntegrationAuditLogs.Action, nanorepo.In),
+		nanorepo.FilterAs[integration.AuditSeverity](table.IntegrationAuditLogs.Severity, nanorepo.In),
+		nanorepo.Filter(table.IntegrationAuditLogs.CreatedAt,
+			nanorepo.Range("created_after", "created_before").HalfOpen()),
+		nanorepo.Sort(
+			table.IntegrationAuditLogs.CreatedAt, table.IntegrationAuditLogs.Action,
+			table.IntegrationAuditLogs.Severity,
+		),
+		nanorepo.DefaultSort(table.IntegrationAuditLogs.CreatedAt, nanorepo.Desc),
+		nanorepo.DefaultLimit(defaultPageLimit),
+	)
+}
+
+// auditLogsOfTheirInstance reads the audit logs with the instance that carries
+// their tenant and product.
+func auditLogsOfTheirInstance() postgres.ReadableTable {
+	return table.IntegrationAuditLogs.INNER_JOIN(
+		table.IntegrationInstances,
+		table.IntegrationAuditLogs.IntegrationInstanceID.EQ(table.IntegrationInstances.ID),
+	)
+}
 
 type IntegrationAuditLogRepository interface {
 	Create(
@@ -28,11 +62,13 @@ type IntegrationAuditLogRepository interface {
 	// SearchByInstanceScoped pages the audit logs of one instance of the
 	// tenant's product with a cursor.
 	SearchByInstanceScoped(
-		ctx context.Context, input integration.SearchAuditLogsInput,
+		ctx context.Context, q IntegrationAuditLogSearch,
 	) (search.Result[integration.AuditLog], error)
 }
 
 type integrationAuditLogRepositoryImpl struct {
+	integrationAuditLogsBase
+
 	db     *sql.DB
 	mapper *mapper.IntegrationAuditLogMapper
 	logger *slog.Logger
@@ -42,9 +78,10 @@ func NewIntegrationAuditLogRepository(
 	db *sql.DB, m *mapper.IntegrationAuditLogMapper, logger *slog.Logger,
 ) IntegrationAuditLogRepository {
 	return &integrationAuditLogRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "integration_audit_log_repository")),
+		integrationAuditLogsBase: newIntegrationAuditLogsBase(db),
+		db:                       db,
+		mapper:                   m,
+		logger:                   logger.With(slog.String("component", "integration_audit_log_repository")),
 	}
 }
 
@@ -61,61 +98,4 @@ func (r *integrationAuditLogRepositoryImpl) Create(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).Value()
-}
-
-func (r *integrationAuditLogRepositoryImpl) SearchByInstanceScoped(
-	ctx context.Context, input integration.SearchAuditLogsInput,
-) (search.Result[integration.AuditLog], error) {
-	auditLogsTable := table.IntegrationAuditLogs
-	instancesTable := table.IntegrationInstances
-
-	where := auditLogsTable.IntegrationInstanceID.EQ(postgres.String(input.IntegrationInstanceID)).AND(
-		instancesTable.PlatformTenantID.EQ(postgres.String(input.TenantID)),
-	).AND(
-		instancesTable.ProductID.EQ(postgres.String(input.ProductID)),
-	)
-
-	if filter := input.Request.Filter; filter != nil {
-		if actions := jetx.BuildStringArrayFilter(auditLogsTable.Action, filter.Actions); actions != nil {
-			where = where.AND(actions)
-		}
-		if len(filter.Severities) > 0 {
-			severities := functional.Slice(filter.Severities).Map(func(severity integration.AuditSeverity) string {
-				return string(severity)
-			})
-			where = where.AND(auditLogsTable.Severity.IN(jetx.ToStringExpressions(severities)...))
-		}
-		if filter.CreatedAfter != nil {
-			where = where.AND(auditLogsTable.CreatedAt.GT_EQ(postgres.TimestampzT(*filter.CreatedAfter)))
-		}
-		if filter.CreatedBefore != nil {
-			where = where.AND(auditLogsTable.CreatedAt.LT(postgres.TimestampzT(*filter.CreatedBefore)))
-		}
-	}
-
-	order, err := transactor.StrictKeys(
-		input.Request.Sort,
-		map[integration.SortFieldAuditLog]transactor.Key[model.IntegrationAuditLogs]{
-			integration.SortFieldAuditLogCreatedAt: transactor.TimeKey(
-				auditLogsTable.CreatedAt, func(row model.IntegrationAuditLogs) time.Time { return row.CreatedAt },
-			),
-			integration.SortFieldAuditLogAction: transactor.StringKey(
-				auditLogsTable.Action, func(row model.IntegrationAuditLogs) string { return row.Action },
-			),
-			integration.SortFieldAuditLogSeverity: transactor.StringKey(
-				auditLogsTable.Severity, func(row model.IntegrationAuditLogs) string { return row.Severity },
-			),
-		},
-		transactor.StringKey(auditLogsTable.ID, func(row model.IntegrationAuditLogs) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[integration.AuditLog]{}, err
-	}
-
-	return transactor.Page(r.db, r.mapper.ToDomain, auditLogsTable.AllColumns).
-		From(auditLogsTable.INNER_JOIN(instancesTable, auditLogsTable.IntegrationInstanceID.EQ(instancesTable.ID))).
-		Where(where).
-		Keyset(order).
-		Run(ctx, input.Request.Pagination).
-		Value()
 }

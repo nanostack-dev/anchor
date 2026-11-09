@@ -7,8 +7,8 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/domain/permission"
@@ -137,27 +137,6 @@ func listAllProductPermissions(
 	productID string,
 ) ([]permission.ProductPermission, error) {
 	const pageSize = int32(200)
-	var all []permission.ProductPermission
-
-	request := search.Request[
-		permission.SearchProductPermissionFilter,
-		permission.SortFieldProductPermission,
-	]{
-		Pagination: search.Pagination{Limit: pageSize},
-	}
-
-	for {
-		result, err := permRepo.SearchByProduct(ctx, productID, request)
-		if err != nil {
-			return nil, err
-		}
-
-		all = append(all, result.Items...)
-		if result.NextCursor == "" {
-			break
-		}
-		request = request.WithCursor(result.NextCursor)
-	}
-
-	return all, nil
+	q := repository.NewProductPermissionSearch(productID).Limit(pageSize)
+	return search.All(ctx, q, permRepo.SearchByProduct)
 }

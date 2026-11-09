@@ -3,9 +3,9 @@ package apikey
 import (
 	"time"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 // CreateProductAPIKeyInput represents input for creating a product API key.
@@ -53,7 +53,7 @@ type SearchProductAPIKeysInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchProductAPIKeysInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldProductAPIKeyID,
 		SortFieldProductAPIKeyCreatedAt,
 		SortFieldProductAPIKeyUpdatedAt,

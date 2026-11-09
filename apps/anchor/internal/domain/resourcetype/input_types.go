@@ -3,11 +3,11 @@ package resourcetype
 import (
 	"regexp"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 type CreateInput struct {
@@ -65,7 +65,7 @@ type SearchInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldCreatedAt, SortFieldUpdatedAt, SortFieldSlug, SortFieldName)
 }
 

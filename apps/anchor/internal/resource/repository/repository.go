@@ -10,17 +10,18 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/resource"
 	"anchor/internal/domain/resourcetype"
-	"anchor/internal/searchx"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // The base returns model rows: a resource reads its type and parent through
@@ -373,7 +374,7 @@ func filterCondition(productID, organizationID string, filter resource.Filter) p
 		condition = condition.AND(table.Resources.ExternalID.IN(jetx.ToStringExpressions(filter.IDs)...))
 	}
 	if filter.NameContains != nil {
-		condition = condition.AND(searchx.Contains(*filter.NameContains, table.Resources.Name))
+		condition = condition.AND(searchexec.Contains(*filter.NameContains, table.Resources.Name))
 	}
 	return condition
 }

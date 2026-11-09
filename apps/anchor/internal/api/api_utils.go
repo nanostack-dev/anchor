@@ -3,7 +3,7 @@ package api
 import (
 	"math"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 const (

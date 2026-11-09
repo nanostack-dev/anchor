@@ -7,16 +7,16 @@ import (
 	"errors"
 	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/resourcetype"
-	"anchor/internal/searchx"
 )
 
 var (
@@ -59,6 +59,30 @@ type DeletedInvitation struct {
 	OrganizationID string
 }
 
+// The base returns model rows: a resource type is read with its parent slugs,
+// which the search maps one page at a time.
+func _() {
+	nanorepo.Implement[Repository, repositoryImpl](
+		table.ProductResourceTypes,
+		nanorepo.NoMapper[model.ProductResourceTypes],
+	)
+
+	// POST /v1/products/{product_id}/resource-types/search
+	nanorepo.Search[model.ProductResourceTypes]("ResourceType", table.ProductResourceTypes,
+		nanorepo.MapPage((*parentLoader).withParents),
+		nanorepo.Scope(table.ProductResourceTypes.ProductID),
+		nanorepo.Filter(table.ProductResourceTypes.ID, nanorepo.In),
+		nanorepo.Filter(table.ProductResourceTypes.Slug, nanorepo.In),
+		nanorepo.FullText(table.ProductResourceTypes.Name, table.ProductResourceTypes.Slug),
+		nanorepo.Sort(
+			table.ProductResourceTypes.CreatedAt, table.ProductResourceTypes.UpdatedAt,
+			table.ProductResourceTypes.Slug, table.ProductResourceTypes.Name,
+		),
+		nanorepo.DefaultSort(table.ProductResourceTypes.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(defaultPageLimit),
+	)
+}
+
 type Repository interface {
 	// FindTree returns every type of the product, organization included.
 	FindTree(ctx context.Context, productID string) ([]resourcetype.ResourceType, error)
@@ -70,10 +94,7 @@ type Repository interface {
 	Create(ctx context.Context, rt resourcetype.ResourceType) error
 	Update(ctx context.Context, rt resourcetype.ResourceType) error
 	Delete(ctx context.Context, productID string, ids ...string) error
-	Search(
-		ctx context.Context, productID string,
-		request search.Request[resourcetype.Filter, resourcetype.SortField],
-	) (search.Result[resourcetype.ResourceType], error)
+	Search(ctx context.Context, q ResourceTypeSearch) (search.Result[resourcetype.ResourceType], error)
 	CountUsage(ctx context.Context, productID, id string) (resourcetype.Usage, error)
 	// CountResourcesUnder counts the registered resources of a type whose
 	// parent is of the given type; organization counts those at the top.
@@ -89,11 +110,25 @@ type Repository interface {
 }
 
 type repositoryImpl struct {
+	productResourceTypesBase
+
+	db      *sql.DB
+	parents *parentLoader
+}
+
+// parentLoader fills the parent slugs of resource types. It is a field of its
+// own because the generated search calls a mapper that is a method of a field
+// of the implementation.
+type parentLoader struct {
 	db *sql.DB
 }
 
 func NewRepository(db *sql.DB) Repository {
-	return &repositoryImpl{db: db}
+	return &repositoryImpl{
+		productResourceTypesBase: newProductResourceTypesBase(db),
+		db:                       db,
+		parents:                  &parentLoader{db: db},
+	}
 }
 
 func (r *repositoryImpl) FindTree(ctx context.Context, productID string) ([]resourcetype.ResourceType, error) {
@@ -105,7 +140,7 @@ func (r *repositoryImpl) FindTree(ctx context.Context, productID string) ([]reso
 	if err != nil {
 		return nil, err
 	}
-	return r.withParents(ctx, rows)
+	return r.parents.withParents(ctx, rows)
 }
 
 func (r *repositoryImpl) EnsureOrganization(ctx context.Context, productID string) error {
@@ -202,88 +237,20 @@ func (r *repositoryImpl) Delete(ctx context.Context, productID string, ids ...st
 	return transactor.Exec(ctx, r.db, stmt).OnForeignKey(ErrInUse).Err()
 }
 
-func (r *repositoryImpl) Search(
-	ctx context.Context, productID string,
-	request search.Request[resourcetype.Filter, resourcetype.SortField],
-) (search.Result[resourcetype.ResourceType], error) {
-	where := table.ProductResourceTypes.ProductID.EQ(postgres.String(productID))
-	if request.FullTextSearch != nil {
-		where = where.AND(searchx.Contains(
-			*request.FullTextSearch, table.ProductResourceTypes.Name, table.ProductResourceTypes.Slug,
-		))
-	}
-	if request.Filter != nil {
-		if len(request.Filter.IDs) > 0 {
-			where = where.AND(table.ProductResourceTypes.ID.IN(jetx.ToStringExpressions(request.Filter.IDs)...))
-		}
-		if len(request.Filter.Slugs) > 0 {
-			where = where.AND(table.ProductResourceTypes.Slug.IN(jetx.ToStringExpressions(request.Filter.Slugs)...))
-		}
-	}
-
-	idKey := transactor.StringKey(
-		table.ProductResourceTypes.ID,
-		func(row model.ProductResourceTypes) string { return row.ID },
-	)
-	order, err := transactor.StrictKeys(
-		request.Sort,
-		map[resourcetype.SortField]transactor.Key[model.ProductResourceTypes]{
-			resourcetype.SortFieldCreatedAt: transactor.TimeKey(
-				table.ProductResourceTypes.CreatedAt,
-				func(row model.ProductResourceTypes) time.Time { return row.CreatedAt },
-			),
-			resourcetype.SortFieldUpdatedAt: transactor.TimeKey(
-				table.ProductResourceTypes.UpdatedAt,
-				func(row model.ProductResourceTypes) time.Time { return row.UpdatedAt },
-			),
-			resourcetype.SortFieldSlug: transactor.StringKey(
-				table.ProductResourceTypes.Slug, func(row model.ProductResourceTypes) string { return row.Slug },
-			),
-			resourcetype.SortFieldName: transactor.StringKey(
-				table.ProductResourceTypes.Name, func(row model.ProductResourceTypes) string { return row.Name },
-			),
-		},
-		idKey,
-	)
-	if err != nil {
-		return search.Result[resourcetype.ResourceType]{}, err
-	}
-
-	page, err := transactor.Page(
-		r.db, func(row model.ProductResourceTypes) model.ProductResourceTypes { return row },
-		table.ProductResourceTypes.AllColumns,
-	).
-		From(table.ProductResourceTypes).
-		Where(where).
-		Keyset(order).
-		Run(ctx, request.Pagination).
-		Value()
-	if err != nil {
-		return search.Result[resourcetype.ResourceType]{}, err
-	}
-	items, err := r.withParents(ctx, page.Items)
-	if err != nil {
-		return search.Result[resourcetype.ResourceType]{}, err
-	}
-	return search.Result[resourcetype.ResourceType]{
-		Items: items, Total: page.Total, Count: len(items), NextCursor: page.NextCursor,
-	}, nil
-}
-
 type parentEdge struct {
 	ResourceTypeID string `alias:"product_resource_type_parents.resource_type_id"`
 	ParentSlug     string `alias:"product_resource_types.slug"`
 }
 
 // withParents fills the parent slugs of the given types in one statement.
-func (r *repositoryImpl) withParents(
+func (l *parentLoader) withParents(
 	ctx context.Context, rows []model.ProductResourceTypes,
 ) ([]resourcetype.ResourceType, error) {
 	if len(rows) == 0 {
 		return []resourcetype.ResourceType{}, nil
 	}
 	ids := functional.Slice(rows).Map(func(row model.ProductResourceTypes) string { return row.ID })
-	edges, err := transactor.Query[[]parentEdge](ctx, r.db,
+	edges, err := transactor.Query[[]parentEdge](ctx, l.db,
 		postgres.SELECT(
 			table.ProductResourceTypeParents.ResourceTypeID.AS("product_resource_type_parents.resource_type_id"),
 			table.ProductResourceTypes.Slug.AS("product_resource_types.slug"),

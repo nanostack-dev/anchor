@@ -10,15 +10,14 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"anchor/internal/domain/resourcetype"
 	"anchor/internal/events"
 	"anchor/internal/resourcetype/repository"
-	"anchor/internal/searchx"
 )
 
 type Service interface {
@@ -26,7 +25,7 @@ type Service interface {
 	Get(ctx context.Context, productID, id string) (resourcetype.ResourceType, error)
 	Update(ctx context.Context, input resourcetype.UpdateInput) (resourcetype.ResourceType, error)
 	Delete(ctx context.Context, productID, id string) error
-	Search(ctx context.Context, input resourcetype.SearchInput) (search.Result[resourcetype.ResourceType], error)
+	Search(ctx context.Context, q repository.ResourceTypeSearch) (search.Result[resourcetype.ResourceType], error)
 	ReplaceTree(ctx context.Context, input resourcetype.ReplaceTreeInput) ([]resourcetype.ResourceType, error)
 
 	// Tree reads the product's tree, seeding organization when a product
@@ -250,17 +249,15 @@ func (s *service) Delete(ctx context.Context, productID, id string) error {
 }
 
 func (s *service) Search(
-	ctx context.Context, input resourcetype.SearchInput,
+	ctx context.Context, q repository.ResourceTypeSearch,
 ) (search.Result[resourcetype.ResourceType], error) {
-	if err := input.Validate(); err != nil {
-		return search.Result[resourcetype.ResourceType]{}, err
+	productID := q.Scope()
+	if _, err := s.Tree(ctx, productID); err != nil {
+		return search.Result[resourcetype.ResourceType]{}, s.unexpected(err, productID, "search")
 	}
-	if _, err := s.Tree(ctx, input.ProductID); err != nil {
-		return search.Result[resourcetype.ResourceType]{}, s.unexpected(err, input.ProductID, "search")
-	}
-	result, err := s.repo.Search(ctx, input.ProductID, input.Request)
+	result, err := s.repo.Search(ctx, q)
 	if err != nil {
-		return search.Result[resourcetype.ResourceType]{}, s.unexpected(err, input.ProductID, "search")
+		return search.Result[resourcetype.ResourceType]{}, s.unexpected(err, productID, "search")
 	}
 	return result, nil
 }
@@ -632,7 +629,7 @@ func (s *service) emit(ctx context.Context, eventType events.Type, rt resourcety
 
 // unexpected passes client errors through and logs anything else once.
 func (s *service) unexpected(err error, productID, operation string) error {
-	if err == nil || searchx.IsClientError(err) {
+	if err == nil || search.IsClientError(err) {
 		return err
 	}
 	if _, isFault := fault.As(err); isFault {

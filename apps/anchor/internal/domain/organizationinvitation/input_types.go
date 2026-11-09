@@ -3,9 +3,9 @@ package organizationinvitation
 import (
 	"time"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateInput struct {
@@ -66,7 +66,7 @@ type SearchInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldCreatedAt,
 		SortFieldEmail,
 		SortFieldExpiresAt)
@@ -79,7 +79,7 @@ type SearchInProductInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInProductInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldCreatedAt,
 		SortFieldEmail,
 		SortFieldExpiresAt)

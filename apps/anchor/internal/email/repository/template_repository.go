@@ -10,8 +10,6 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -20,11 +18,27 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/email"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 )
 
 func _() {
 	nanorepo.Implement[TemplateRepository, templateRepositoryImpl](table.EmailTemplates, emailTemplateToDomain)
+
+	// POST /v1/products/{product_id}/email/templates/search and the deprecated GET list.
+	nanorepo.Search[model.EmailTemplates]("EmailTemplate", table.EmailTemplates,
+		nanorepo.Map(emailTemplateToDomain),
+		nanorepo.Scope(table.EmailTemplates.PlatformTenantID),
+		nanorepo.Scope(table.EmailTemplates.ProductID),
+		nanorepo.Filter(table.EmailTemplates.ID, nanorepo.In),
+		nanorepo.Filter(table.EmailTemplates.Slug, nanorepo.In),
+		nanorepo.Filter(table.EmailTemplates.IsActive, nanorepo.Eq),
+		nanorepo.FullText(table.EmailTemplates.Name, table.EmailTemplates.Slug),
+		nanorepo.Sort(
+			table.EmailTemplates.CreatedAt, table.EmailTemplates.UpdatedAt,
+			table.EmailTemplates.Name, table.EmailTemplates.Slug,
+		),
+		nanorepo.DefaultSort(table.EmailTemplates.CreatedAt, nanorepo.Desc),
+		nanorepo.DefaultLimit(defaultPageLimit),
+	)
 }
 
 // emailTemplateToDomain maps the rows that the base returns. EmailTemplateMapper has no state.
@@ -53,57 +67,6 @@ func NewTemplateRepository(
 		mapper:             m,
 		logger:             logger.With(slog.String("component", "email_template_repository")),
 	}
-}
-
-func (r *templateRepositoryImpl) Search(
-	ctx context.Context, in email.SearchTemplatesInput,
-) (search.Result[email.Template], error) {
-	where := table.EmailTemplates.PlatformTenantID.EQ(postgres.String(in.TenantID)).
-		AND(table.EmailTemplates.ProductID.EQ(postgres.String(in.ProductID)))
-
-	if filter := in.Request.Filter; filter != nil {
-		if ids := jetx.BuildIDFilter(table.EmailTemplates.ID, filter.IDs); ids != nil {
-			where = where.AND(ids)
-		}
-		if slugs := jetx.BuildStringArrayFilter(table.EmailTemplates.Slug, filter.Slugs); slugs != nil {
-			where = where.AND(slugs)
-		}
-		if filter.IsActive != nil {
-			where = where.AND(table.EmailTemplates.IsActive.EQ(postgres.Bool(*filter.IsActive)))
-		}
-	}
-	if term := in.Request.FullTextSearch; term != nil && *term != "" {
-		where = where.AND(searchx.Contains(*term, table.EmailTemplates.Name, table.EmailTemplates.Slug))
-	}
-
-	order, err := transactor.StrictKeys(
-		in.Request.Sort,
-		map[email.SortFieldTemplate]transactor.Key[model.EmailTemplates]{
-			email.SortFieldTemplateCreatedAt: transactor.TimeKey(
-				table.EmailTemplates.CreatedAt, func(row model.EmailTemplates) time.Time { return row.CreatedAt },
-			),
-			email.SortFieldTemplateUpdatedAt: transactor.TimeKey(
-				table.EmailTemplates.UpdatedAt, func(row model.EmailTemplates) time.Time { return row.UpdatedAt },
-			),
-			email.SortFieldTemplateName: transactor.StringKey(
-				table.EmailTemplates.Name, func(row model.EmailTemplates) string { return row.Name },
-			),
-			email.SortFieldTemplateSlug: transactor.StringKey(
-				table.EmailTemplates.Slug, func(row model.EmailTemplates) string { return row.Slug },
-			),
-		},
-		transactor.StringKey(table.EmailTemplates.ID, func(row model.EmailTemplates) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[email.Template]{}, err
-	}
-
-	return transactor.Page(r.db, r.mapper.ToDomain, table.EmailTemplates.AllColumns).
-		From(table.EmailTemplates).
-		Where(where).
-		Keyset(order).
-		Run(ctx, in.Request.Pagination).
-		Value()
 }
 
 const emailTemplateSlugUniqueConstraint = "email_templates_product_id_slug_key"

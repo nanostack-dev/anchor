@@ -4,9 +4,10 @@ package gorules
 
 import "github.com/quasilyte/go-ruleguard/dsl"
 
-// searchUsesContains reports a hand-built LIKE outside searchx. A raw LIKE is
+// searchUsesContains reports a hand-built LIKE outside searchexec. A raw LIKE is
 // case-sensitive and reads % and _ in the user's term as wildcards; every free
-// text filter goes through searchx.Contains instead.
+// text filter goes through searchexec.Contains (db/searchexec) instead. The
+// generated *.gen.go files are exempt: the framework generator owns their SQL.
 //
 // The rule matches on syntax only. It does not check that the receiver is a jet
 // expression, and it does not check the file's imports: a file can call LIKE on
@@ -16,9 +17,9 @@ import "github.com/quasilyte/go-ruleguard/dsl"
 // more than five.
 func searchUsesContains(m dsl.Matcher) {
 	m.Match(`$x.LIKE($_)`, `$x.NOT_LIKE($_)`).
-		Where(!m.File().PkgPath.Matches(`/internal/searchx$`)).
-		Report(`use searchx.Contains: a raw LIKE is case-sensitive and treats % and _ in the term as wildcards`)
+		Where(!m.File().Name.Matches(`\.gen\.go$`)).
+		Report(`use searchexec.Contains: a raw LIKE is case-sensitive and treats % and _ in the term as wildcards`)
 
 	m.Match(`$_.BuildSubstringFilter($*_)`).
-		Report(`use searchx.Contains: jetx.BuildSubstringFilter is case-sensitive and treats % and _ as wildcards`)
+		Report(`use searchexec.Contains: jetx.BuildSubstringFilter is case-sensitive and treats % and _ as wildcards`)
 }

@@ -3,9 +3,9 @@ package orgapikey
 import (
 	"time"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateOrganizationAPIKeyInput struct {
@@ -57,7 +57,7 @@ type SearchOrganizationAPIKeysInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchOrganizationAPIKeysInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
+	return searchvalid.ValidateRequest(in, in.Request,
 		SortFieldOrganizationAPIKeyID,
 		SortFieldOrganizationAPIKeyCreatedAt,
 		SortFieldOrganizationAPIKeyUpdatedAt,

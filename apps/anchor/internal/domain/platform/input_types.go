@@ -3,9 +3,9 @@ package platform
 import (
 	"strings"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // DeletePlatformUserInput defines the input structure for deleting a platform user.
@@ -45,7 +45,7 @@ type SearchPlatformUsersInput struct {
 // Validate checks the input, the sort the client named and the roles it filters
 // on. A role compares without regard to letter case, as the search does.
 func (in SearchPlatformUsersInput) Validate() error {
-	if err := searchx.ValidateRequest(in, in.Request,
+	if err := searchvalid.ValidateRequest(in, in.Request,
 		SortFieldPlatformUserCreatedAt,
 		SortFieldPlatformUserUpdatedAt,
 		SortFieldPlatformUserEmail,
@@ -59,7 +59,7 @@ func (in SearchPlatformUsersInput) Validate() error {
 	for i, role := range in.Request.Filter.Roles {
 		roles[i] = strings.ToLower(string(role))
 	}
-	return searchx.ValidateOneOf("filter.roles", roles,
+	return searchvalid.ValidateOneOf("filter.roles", roles,
 		[]string{strings.ToLower(string(TenantRoleOwner)), strings.ToLower(string(TenantRoleAdmin))})
 }
 

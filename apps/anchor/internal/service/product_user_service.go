@@ -11,15 +11,14 @@ import (
 	"anchor/internal/domain/organization"
 	"anchor/internal/domain/product/user"
 	"anchor/internal/events"
-	"anchor/internal/searchx"
 
 	"anchor/internal/repository"
 	assignments "anchor/internal/roleassignment/service"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
@@ -29,13 +28,15 @@ type ProductUserService interface {
 	Create(ctx context.Context, input user.CreateProductUserInput) (user.ProductUser, error)
 	Delete(ctx context.Context, input user.DeleteProductUserInput) error
 	Search(
-		ctx context.Context, input user.SearchProductUserInput,
+		ctx context.Context, q repository.ProductUserSearch,
 	) (search.Result[user.ProductUser], error)
 	ListUserOrganizations(
 		ctx context.Context, input user.ListUserOrganizationsInput,
 	) ([]user.OrganizationMembership, error)
+	// SearchUserOrganizations reads one page of the organizations a product user
+	// belongs to. includePermissions loads the permissions of each role.
 	SearchUserOrganizations(
-		ctx context.Context, input user.SearchUserOrganizationsInput,
+		ctx context.Context, q repository.UserOrganizationSearch, includePermissions bool,
 	) (search.Result[user.OrganizationMembership], error)
 	GetUserOrganization(
 		ctx context.Context, input user.GetUserOrganizationInput,
@@ -249,19 +250,15 @@ func (s *productUserService) Delete(
 }
 
 func (s *productUserService) Search(
-	ctx context.Context, input user.SearchProductUserInput,
+	ctx context.Context, q repository.ProductUserSearch,
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[user.ProductUser]{}, err
-	}
-
-	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
+	result, err := s.productUserRepo.SearchByProductID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search product users",
-				slog.String("product_id", input.ProductID),
+				slog.String("product_id", q.Scope()),
 				log.Err(err),
 			)
 		}
@@ -269,7 +266,7 @@ func (s *productUserService) Search(
 	}
 
 	logger.DebugContext(ctx, "product users search completed",
-		slog.String("product_id", input.ProductID),
+		slog.String("product_id", q.Scope()),
 		slog.Int("total_count", int(result.Total)),
 	)
 
@@ -341,21 +338,16 @@ func (s *productUserService) ListUserOrganizations(
 }
 
 func (s *productUserService) SearchUserOrganizations(
-	ctx context.Context, input user.SearchUserOrganizationsInput,
+	ctx context.Context, q repository.UserOrganizationSearch, includePermissions bool,
 ) (search.Result[user.OrganizationMembership], error) {
 	logger := s.logger.With(slog.String("operation", "SearchUserOrganizations"))
+	scope := q.Scope()
 
-	if err := input.Validate(); err != nil {
-		return search.Result[user.OrganizationMembership]{}, err
-	}
-
-	foundUser, err := s.productUserRepo.FindByProductIDAndID(
-		ctx, input.ProductID, input.ProductUserID,
-	)
+	foundUser, err := s.productUserRepo.FindByProductIDAndID(ctx, scope.ProductID, scope.ProductUserID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to verify product user exists",
-			slog.String("product_id", input.ProductID),
-			slog.String("product_user_id", input.ProductUserID),
+			slog.String("product_id", scope.ProductID),
+			slog.String("product_user_id", scope.ProductUserID),
 			log.Err(err),
 		)
 		return search.Result[user.OrganizationMembership]{}, err
@@ -364,21 +356,50 @@ func (s *productUserService) SearchUserOrganizations(
 		return search.Result[user.OrganizationMembership]{}, user.ErrProductUserNotFound
 	}
 
-	result, err := s.orgMembershipRepo.SearchByProductUserID(
-		ctx, input.ProductID, input.ProductUserID, input.IncludePermissions, input.Request,
-	)
+	result, err := s.orgMembershipRepo.SearchByProductUserID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search user organizations",
-				slog.String("product_id", input.ProductID),
-				slog.String("product_user_id", input.ProductUserID),
+				slog.String("product_id", scope.ProductID),
+				slog.String("product_user_id", scope.ProductUserID),
 				log.Err(err),
 			)
 		}
 		return search.Result[user.OrganizationMembership]{}, err
 	}
+	if includePermissions {
+		if attachErr := s.attachRolePermissions(ctx, result.Items); attachErr != nil {
+			return search.Result[user.OrganizationMembership]{}, attachErr
+		}
+	}
 
 	return result, nil
+}
+
+// attachRolePermissions reads the permissions of the roles that the memberships
+// hold, in one statement, and sets them on each membership.
+func (s *productUserService) attachRolePermissions(
+	ctx context.Context, items []user.OrganizationMembership,
+) error {
+	var roleIDs []string
+	for _, item := range items {
+		if item.Role != nil {
+			roleIDs = append(roleIDs, item.Role.ID)
+		}
+	}
+	if len(roleIDs) == 0 {
+		return nil
+	}
+	permissions, err := s.orgMembershipRepo.RolePermissionsByRoleID(ctx, roleIDs)
+	if err != nil {
+		return err
+	}
+	for i := range items {
+		if held := items[i].Role; held != nil {
+			items[i].RolePermissions = permissions[held.ID]
+		}
+	}
+	return nil
 }
 
 func (s *productUserService) GetUserOrganization(

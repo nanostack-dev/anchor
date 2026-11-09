@@ -1,28 +1,17 @@
-// Package searchx holds the small pieces every search shares that the
-// framework search package leaves to the application.
-package searchx
+// Package searchvalid holds the request checks the hand-written searches share:
+// the sort default, the cursor and sort validation, and the closed-set filters.
+// The generated searches get the same checks from the framework.
+package searchvalid
 
 import (
-	"errors"
 	"net/http"
 	"slices"
 	"strings"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
-	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
-
-// IsClientError reports a mistake in the request that a search repository
-// found: a cursor that does not continue this search, one combined with an
-// offset, or a sort field the search cannot order by. The transport layer
-// answers each with a 400 (INVALID_CURSOR, INVALID_SORT), so a service must
-// pass it through unchanged instead of collapsing it into an unexpected error.
-func IsClientError(err error) bool {
-	return errors.Is(err, search.ErrInvalidCursor) ||
-		errors.Is(err, search.ErrCursorWithOffset) ||
-		errors.Is(err, search.ErrUnknownSort)
-}
 
 // Sort picks the requested sort, or the resource's documented default order
 // when the client sent no sort_by. A client that names a field without a
