@@ -3,7 +3,7 @@
 input format "1"
 input image "timescale/timescaledb:2.23.0-pg18"
 input schema "public"
-input generator gen "v0.23.0-beta.4"
+input generator gen "v0.23.0-beta.5"
 input generator db "v0.23.0-beta.3"
 input migration 000001_init.down.sql "f9d2ef2532121b3bffb351a8484dc1df0a0b4d9c876cfa3e5803334ee4966d8b"
 input migration 000001_init.up.sql "f65b314f4ba39e562a37b23d74a7f60c64426fe9a99fd411e9f9ce7b7e340a53"

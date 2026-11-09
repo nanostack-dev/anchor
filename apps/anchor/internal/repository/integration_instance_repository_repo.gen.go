@@ -2,9 +2,21 @@
 
 package repository
 
-// IntegrationInstanceRepository on *integrationInstanceRepositoryImpl: 0 derived methods on table integration_instances; the other methods are
+import (
+	"context"
+)
+
+// IntegrationInstanceRepository on *integrationInstanceRepositoryImpl: 1 derived method on table integration_instances; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means IntegrationInstanceRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
+
+// DeleteByPlatformTenantIDAndID is derived from its name:
+//
+//	DELETE FROM integration_instances WHERE platform_tenant_id = $1 AND id = $2
+func (r *integrationInstanceRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
+	return err
+}

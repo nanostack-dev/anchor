@@ -2,12 +2,30 @@
 
 package repository
 
-// IntegrationEventRepository on *integrationEventRepositoryImpl: 0 derived methods on table integration_events; the other methods are
+import (
+	"anchor/internal/domain/integration"
+	"context"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
+
+// IntegrationEventRepository on *integrationEventRepositoryImpl: 2 derived methods on table integration_events; the other methods are
 // hand-written (nano gen repo -explain lists each one).
-//
-// Hand-written although the name derives (deleting the method switches it
-// to the derived query): FindByIDInternal.
 //
 // A compile error on the next line means IntegrationEventRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ IntegrationEventRepository = (*integrationEventRepositoryImpl)(nil)
+
+// FindByIDInternal is derived from its name:
+//
+//	SELECT * FROM integration_events WHERE id = $1 LIMIT 2 -- at most one row: integration_events_pkey (id); a second row is ErrMoreThanOneRow
+func (r *integrationEventRepositoryImpl) FindByIDInternal(ctx context.Context, id string) (functional.Option[integration.Event], error) {
+	return r.findOne(ctx, r.where.ID(id))
+}
+
+// FindByIntegrationInstanceIDAndExternalEventIDInternal is derived from its name:
+//
+//	SELECT * FROM integration_events WHERE integration_instance_id = $1 AND external_event_id = $2 LIMIT 2 -- at most one row: integration_events_integration_instance_id_external_event_i_key (integration_instance_id, external_event_id); a second row is ErrMoreThanOneRow
+func (r *integrationEventRepositoryImpl) FindByIntegrationInstanceIDAndExternalEventIDInternal(ctx context.Context, integrationInstanceID string, externalEventID string) (functional.Option[integration.Event], error) {
+	return r.findOne(ctx, r.where.IntegrationInstanceID(integrationInstanceID).AND(r.where.ExternalEventID(externalEventID)))
+}
