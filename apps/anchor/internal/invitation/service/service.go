@@ -158,7 +158,7 @@ func (s *organizationInvitationService) Search(
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}
 
-	foundOrganization, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
+	foundOrganization, err := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		return search.Result[organizationinvitation.Invitation]{}, err
 	}

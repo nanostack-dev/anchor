@@ -117,7 +117,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyExpiresAtInPastError()
 	}
 
-	foundOrg, err := s.organizationRepo.FindByID(ctx, input.ProductID, input.OrganizationID)
+	foundOrg, err := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
@@ -385,7 +385,9 @@ func (s *organizationAPIKeyService) Delete(
 	existingAPIKey := found.Value()
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if deleteErr := s.apiKeyRepo.Delete(txCtx, input.OrganizationID, input.ID); deleteErr != nil {
+		if deleteErr := s.apiKeyRepo.DeleteByOrganizationIDAndID(
+			txCtx, input.OrganizationID, input.ID,
+		); deleteErr != nil {
 			logger.ErrorContext(txCtx, "failed to delete organization API key",
 				slog.String("organization_id", input.OrganizationID),
 				slog.String("api_key_id", input.ID),
@@ -708,7 +710,7 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 	ctx context.Context,
 	productID, organizationID string,
 ) error {
-	found, err := s.organizationRepo.FindByID(ctx, productID, organizationID)
+	found, err := s.organizationRepo.FindByProductIDAndID(ctx, productID, organizationID)
 	if err != nil {
 		return fault.ErrUnexpected
 	}

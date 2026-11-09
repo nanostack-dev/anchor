@@ -143,7 +143,7 @@ type OrganizationMembershipRepository interface {
 		roleID *string,
 	) (organization.Membership, error)
 
-	Delete(
+	DeleteByOrganizationIDAndProductUserID(
 		ctx context.Context,
 		organizationID string,
 		productUserID string,
@@ -421,20 +421,6 @@ func (r *organizationMembershipRepositoryImpl) Update(
 	}
 
 	return found.Value(), nil
-}
-
-func (r *organizationMembershipRepositoryImpl) Delete(
-	ctx context.Context,
-	organizationID string,
-	productUserID string,
-) error {
-	stmt := table.OrganizationMemberships.DELETE().WHERE(
-		table.OrganizationMemberships.OrganizationID.EQ(postgres.String(organizationID)).AND(
-			table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *organizationMembershipRepositoryImpl) buildQuery(includePermissions bool) postgres.SelectStatement {

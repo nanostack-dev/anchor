@@ -2,9 +2,31 @@
 
 package repository
 
-// OrganizationRepository on *organizationRepositoryImpl: 0 derived methods on table organizations; the other methods are
+import (
+	"anchor/internal/domain/organization"
+	"context"
+
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
+)
+
+// OrganizationRepository on *organizationRepositoryImpl: 2 derived methods on table organizations; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means OrganizationRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ OrganizationRepository = (*organizationRepositoryImpl)(nil)
+
+// FindByProductIDAndID is derived from its name:
+//
+//	SELECT * FROM organizations WHERE product_id = $1 AND id = $2 LIMIT 2 -- at most one row: organizations_pkey (id); a second row is ErrMoreThanOneRow
+func (r *organizationRepositoryImpl) FindByProductIDAndID(ctx context.Context, productID string, id string) (functional.Option[organization.Organization], error) {
+	return r.findOne(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
+}
+
+// DeleteByProductIDAndID is derived from its name:
+//
+//	DELETE FROM organizations WHERE product_id = $1 AND id = $2
+func (r *organizationRepositoryImpl) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
+	return err
+}

@@ -380,7 +380,7 @@ func (s *service) holdOrganization(ctx context.Context, productID, organizationI
 }
 
 func (s *service) requireOrganization(ctx context.Context, productID, organizationID string) error {
-	found, err := s.organizations.FindByID(ctx, productID, organizationID)
+	found, err := s.organizations.FindByProductIDAndID(ctx, productID, organizationID)
 	if err != nil {
 		return err
 	}

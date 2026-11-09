@@ -2,7 +2,11 @@
 
 package repository
 
-// OrganizationAPIKeyRepository on *organizationAPIKeyRepository: 0 derived methods on table organization_api_keys; the other methods are
+import (
+	"context"
+)
+
+// OrganizationAPIKeyRepository on *organizationAPIKeyRepository: 1 derived method on table organization_api_keys; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // Hand-written although the name derives (deleting the method switches it
@@ -11,3 +15,11 @@ package repository
 // A compile error on the next line means OrganizationAPIKeyRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ OrganizationAPIKeyRepository = (*organizationAPIKeyRepository)(nil)
+
+// DeleteByOrganizationIDAndID is derived from its name:
+//
+//	DELETE FROM organization_api_keys WHERE organization_id = $1 AND id = $2
+func (r *organizationAPIKeyRepository) DeleteByOrganizationIDAndID(ctx context.Context, organizationID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ID(id)))
+	return err
+}

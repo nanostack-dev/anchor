@@ -2,9 +2,21 @@
 
 package repository
 
-// OrganizationMembershipRepository on *organizationMembershipRepositoryImpl: 0 derived methods on table organization_memberships; the other methods are
+import (
+	"context"
+)
+
+// OrganizationMembershipRepository on *organizationMembershipRepositoryImpl: 1 derived method on table organization_memberships; the other methods are
 // hand-written (nano gen repo -explain lists each one).
 //
 // A compile error on the next line means OrganizationMembershipRepository gained or lost a method since
 // the last run: run nano gen repo.
 var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)(nil)
+
+// DeleteByOrganizationIDAndProductUserID is derived from its name:
+//
+//	DELETE FROM organization_memberships WHERE organization_id = $1 AND product_user_id = $2
+func (r *organizationMembershipRepositoryImpl) DeleteByOrganizationIDAndProductUserID(ctx context.Context, organizationID string, productUserID string) error {
+	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ProductUserID(productUserID)))
+	return err
+}
