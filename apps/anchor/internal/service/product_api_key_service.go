@@ -6,14 +6,13 @@ import (
 	"log/slog"
 	"time"
 
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
 
@@ -40,9 +39,7 @@ type ProductAPIKeyService interface {
 	Delete(
 		ctx context.Context, input apikey.DeleteProductAPIKeyInput,
 	) error
-	Search(
-		ctx context.Context, input apikey.SearchProductAPIKeysInput,
-	) (*search.Result[apikey.ProductAPIKey], error)
+	Search(ctx context.Context, q repository.ProductAPIKeySearch) (*search.Result[apikey.ProductAPIKey], error)
 	ValidateAPIKeyAndScopes(
 		ctx context.Context, input apikey.ValidateAPIKeyScopesInput,
 	) (apikey.ProductAPIKey, error)
@@ -381,21 +378,17 @@ func (s *productAPIKeyService) Delete(
 }
 
 func (s *productAPIKeyService) Search(
-	ctx context.Context, input apikey.SearchProductAPIKeysInput,
+	ctx context.Context, q repository.ProductAPIKeySearch,
 ) (*search.Result[apikey.ProductAPIKey], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
 
-	if err := input.Validate(); err != nil {
-		return nil, err
-	}
-
-	result, err := s.apiKeyRepo.SearchByProductID(ctx, input)
+	result, err := s.apiKeyRepo.SearchByProductID(ctx, q)
 	if err != nil {
-		if searchx.IsClientError(err) {
+		if search.IsClientError(err) {
 			return nil, err
 		}
 		logger.ErrorContext(ctx, "failed to search API keys",
-			slog.String("product_id", input.ProductID),
+			slog.String("product_id", q.Scope()),
 			log.Err(err),
 		)
 		return nil, fault.ErrUnexpected

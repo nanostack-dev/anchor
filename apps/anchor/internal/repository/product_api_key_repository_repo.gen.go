@@ -3,7 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/product/apikey"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // ProductAPIKeyRepository on *productAPIKeyRepository: 1 derived method on table product_api_keys; the other methods are
@@ -22,4 +30,66 @@ var _ ProductAPIKeyRepository = (*productAPIKeyRepository)(nil)
 func (r *productAPIKeyRepository) DeleteByProductIDAndID(ctx context.Context, productID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ID(id)))
 	return err
+}
+
+// SearchByProductID runs a ProductAPIKeySearch: *productAPIKeyRepository has no hand-written SearchByProductID.
+func (r *productAPIKeyRepository) SearchByProductID(ctx context.Context, q ProductAPIKeySearch) (search.Result[apikey.ProductAPIKey], error) {
+	return r.searchPage(ctx, productAPIKeySearch, q.Query, r.rows.page)
+}
+
+// ProductAPIKeySearch is an immutable search of product_api_keys. Start one with NewProductAPIKeySearch.
+type ProductAPIKeySearch struct {
+	searchexec.Query[model.ProductAPIKeys, ProductAPIKeySearch, ProductAPIKeySort, string]
+}
+
+// ProductAPIKeySort is a sort of ProductAPIKeySearch.
+type ProductAPIKeySort string
+
+const (
+	ProductAPIKeySortID         ProductAPIKeySort = "id"
+	ProductAPIKeySortCreatedAt  ProductAPIKeySort = "created_at"
+	ProductAPIKeySortName       ProductAPIKeySort = "name"
+	ProductAPIKeySortStatus     ProductAPIKeySort = "status"
+	ProductAPIKeySortLastUsedAt ProductAPIKeySort = "last_used_at"
+)
+
+var productAPIKeySearch = searchexec.DefineSpec(searchexec.SpecDef[model.ProductAPIKeys, ProductAPIKeySort, string]{
+	From:    func(string) keyset.Source { return table.ProductAPIKeys },
+	Columns: table.ProductAPIKeys.AllColumns, // the Row is model.ProductAPIKeys
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.ProductAPIKeys.ProductID),
+	},
+	Keys: map[ProductAPIKeySort]keyset.Key[model.ProductAPIKeys]{
+		ProductAPIKeySortID:         keyset.StringKey(table.ProductAPIKeys.ID, func(r model.ProductAPIKeys) string { return r.ID }),
+		ProductAPIKeySortCreatedAt:  keyset.TimeKey(table.ProductAPIKeys.CreatedAt, func(r model.ProductAPIKeys) time.Time { return r.CreatedAt }),
+		ProductAPIKeySortName:       keyset.StringKey(table.ProductAPIKeys.Name, func(r model.ProductAPIKeys) string { return r.Name }),
+		ProductAPIKeySortStatus:     keyset.StringKey(table.ProductAPIKeys.Status, func(r model.ProductAPIKeys) string { return r.Status }),
+		ProductAPIKeySortLastUsedAt: keyset.NullableTimeKey(table.ProductAPIKeys.LastUsedAt, func(r model.ProductAPIKeys) *time.Time { return r.LastUsedAt }),
+	},
+	Tiebreak: []keyset.Key[model.ProductAPIKeys]{ // product_api_keys_pkey (id)
+		keyset.StringKey(table.ProductAPIKeys.ID, func(r model.ProductAPIKeys) string { return r.ID }),
+	},
+	Default: searchexec.Asc(ProductAPIKeySortCreatedAt),
+	Limit:   10,
+})
+
+// NewProductAPIKeySearch starts a ProductAPIKeySearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewProductAPIKeySearch(productID string) ProductAPIKeySearch {
+	return searchexec.New[ProductAPIKeySearch](productAPIKeySearch, productID)
+}
+
+// The filters of ProductAPIKeySearch: each returns a field of q, whose method returns the filtered copy.
+func (q ProductAPIKeySearch) ID() searchexec.In[ProductAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductAPIKeys.ID, searchexec.StringLit[string])
+}
+func (q ProductAPIKeySearch) Name() searchexec.In[ProductAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductAPIKeys.Name, searchexec.StringLit[string])
+}
+func (q ProductAPIKeySearch) Status() searchexec.In[ProductAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductAPIKeys.Status, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where name or description contains term (searchexec.Contains). A blank term filters nothing.
+func (q ProductAPIKeySearch) FullText(term string) ProductAPIKeySearch {
+	return searchexec.NewText(q.Query, table.ProductAPIKeys.Name, table.ProductAPIKeys.Description).Contains(term)
 }

@@ -1,13 +1,5 @@
 package apikey
 
-import (
-	"time"
-
-	"anchor/internal/searchx"
-
-	"github.com/nanostack-dev/nanostack-framework/db/search"
-)
-
 // CreateProductAPIKeyInput represents input for creating a product API key.
 type CreateProductAPIKeyInput struct {
 	ProductID   string  `validate:"required,notblank"`
@@ -35,40 +27,9 @@ type DeleteProductAPIKeyInput struct {
 	ID        string `validate:"required"`
 }
 
+// SortFieldProductAPIKey is the sort_by type of POST /api-keys/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldProductAPIKey string
-
-const (
-	SortFieldProductAPIKeyID        SortFieldProductAPIKey = "id"
-	SortFieldProductAPIKeyCreatedAt SortFieldProductAPIKey = "created_at"
-	SortFieldProductAPIKeyUpdatedAt SortFieldProductAPIKey = "updated_at"
-	SortFieldProductAPIKeyName      SortFieldProductAPIKey = "name"
-	SortFieldProductAPIKeyStatus    SortFieldProductAPIKey = "status"
-	SortFieldProductAPIKeyLastUsed  SortFieldProductAPIKey = "last_used_at"
-)
-
-type SearchProductAPIKeysInput struct {
-	ProductID string `validate:"required,notblank"`
-	Request   search.Request[SearchProductAPIKeyFilter, SortFieldProductAPIKey]
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchProductAPIKeysInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldProductAPIKeyID,
-		SortFieldProductAPIKeyCreatedAt,
-		SortFieldProductAPIKeyUpdatedAt,
-		SortFieldProductAPIKeyName,
-		SortFieldProductAPIKeyStatus,
-		SortFieldProductAPIKeyLastUsed)
-}
-
-type SearchProductAPIKeyFilter struct {
-	ProductAPIKeyIDs []string `validate:"omitempty,dive"`
-	Names            []string `validate:"omitempty,dive,min=1"`
-	Status           []string `validate:"omitempty,dive,oneof=ACTIVE INACTIVE"`
-	LastUsedBefore   *time.Time
-	LastUsedAfter    *time.Time
-}
 
 type ValidateAPIKeyScopesInput struct {
 	ProductID   string   `validate:"required,notblank"`

@@ -1,13 +1,5 @@
 package platform
 
-import (
-	"strings"
-
-	"github.com/nanostack-dev/nanostack-framework/db/search"
-
-	"anchor/internal/searchx"
-)
-
 // DeletePlatformUserInput defines the input structure for deleting a platform user.
 type DeletePlatformUserInput struct {
 	TenantID       string `validate:"required,notblank"`
@@ -20,48 +12,9 @@ type GetPlatformUserInput struct {
 	PlatformUserID string `validate:"required,notblank"`
 }
 
-// SearchPlatformUserFilter defines search criteria for platform users.
-type SearchPlatformUserFilter struct {
-	IDs    []string `validate:"omitempty,dive,notblank"`
-	Emails []string `validate:"omitempty,dive,email"`
-	Roles  []TenantRole
-}
-
+// SortFieldPlatformUser is the sort_by type of POST /platform-users/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldPlatformUser string
-
-const (
-	SortFieldPlatformUserCreatedAt SortFieldPlatformUser = "created_at"
-	SortFieldPlatformUserUpdatedAt SortFieldPlatformUser = "updated_at"
-	SortFieldPlatformUserEmail     SortFieldPlatformUser = "email"
-	SortFieldPlatformUserRole      SortFieldPlatformUser = "role"
-)
-
-// SearchPlatformUsersInput defines the input structure for searching platform users.
-type SearchPlatformUsersInput struct {
-	TenantID string                                                          `validate:"required,notblank"`
-	Request  search.Request[SearchPlatformUserFilter, SortFieldPlatformUser] `validate:"required"`
-}
-
-// Validate checks the input, the sort the client named and the roles it filters
-// on. A role compares without regard to letter case, as the search does.
-func (in SearchPlatformUsersInput) Validate() error {
-	if err := searchx.ValidateRequest(in, in.Request,
-		SortFieldPlatformUserCreatedAt,
-		SortFieldPlatformUserUpdatedAt,
-		SortFieldPlatformUserEmail,
-		SortFieldPlatformUserRole); err != nil {
-		return err
-	}
-	if in.Request.Filter == nil {
-		return nil
-	}
-	roles := make([]string, len(in.Request.Filter.Roles))
-	for i, role := range in.Request.Filter.Roles {
-		roles[i] = strings.ToLower(string(role))
-	}
-	return searchx.ValidateOneOf("filter.roles", roles,
-		[]string{strings.ToLower(string(TenantRoleOwner)), strings.ToLower(string(TenantRoleAdmin))})
-}
 
 // GetPlatformUserByUserIDInput defines the input structure for retrieving a platform user by user Name.
 type GetPlatformUserByUserIDInput struct {

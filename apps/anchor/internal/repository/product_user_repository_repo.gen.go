@@ -3,7 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/product/user"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // ProductUserRepository on *productUserRepositoryImpl: 2 derived methods on table product_users; the other methods are
@@ -27,4 +35,72 @@ func (r *productUserRepositoryImpl) DeleteByProductIDAndID(ctx context.Context, 
 func (r *productUserRepositoryImpl) DeleteByProductIDAndExternalID(ctx context.Context, productID string, externalID string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.ExternalID(externalID)))
 	return err
+}
+
+// SearchByProductID runs a ProductUserSearch: *productUserRepositoryImpl has no hand-written SearchByProductID.
+func (r *productUserRepositoryImpl) SearchByProductID(ctx context.Context, q ProductUserSearch) (search.Result[user.ProductUser], error) {
+	return r.searchPage(ctx, productUserSearch, q.Query, r.rows.page)
+}
+
+// ProductUserSearch is an immutable search of product_users. Start one with NewProductUserSearch.
+type ProductUserSearch struct {
+	searchexec.Query[model.ProductUsers, ProductUserSearch, ProductUserSort, string]
+}
+
+// ProductUserSort is a sort of ProductUserSearch.
+type ProductUserSort string
+
+const (
+	ProductUserSortCreatedAt ProductUserSort = "created_at"
+	ProductUserSortUpdatedAt ProductUserSort = "updated_at"
+	ProductUserSortEmail     ProductUserSort = "email"
+	ProductUserSortName      ProductUserSort = "name"
+	ProductUserSortStatus    ProductUserSort = "status"
+)
+
+var productUserSearch = searchexec.DefineSpec(searchexec.SpecDef[model.ProductUsers, ProductUserSort, string]{
+	From:    func(string) keyset.Source { return table.ProductUsers },
+	Columns: table.ProductUsers.AllColumns, // the Row is model.ProductUsers
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.ProductUsers.ProductID),
+	},
+	Keys: map[ProductUserSort]keyset.Key[model.ProductUsers]{
+		ProductUserSortCreatedAt: keyset.TimeKey(table.ProductUsers.CreatedAt, func(r model.ProductUsers) time.Time { return r.CreatedAt }),
+		ProductUserSortUpdatedAt: keyset.TimeKey(table.ProductUsers.UpdatedAt, func(r model.ProductUsers) time.Time { return r.UpdatedAt }),
+		ProductUserSortEmail:     keyset.StringKey(table.ProductUsers.Email, func(r model.ProductUsers) string { return r.Email }),
+		ProductUserSortName:      keyset.NullableStringKey(table.ProductUsers.Name, func(r model.ProductUsers) *string { return r.Name }),
+		ProductUserSortStatus:    keyset.StringKey(table.ProductUsers.Status, func(r model.ProductUsers) string { return r.Status }),
+	},
+	Tiebreak: []keyset.Key[model.ProductUsers]{ // product_users_pkey (id)
+		keyset.StringKey(table.ProductUsers.ID, func(r model.ProductUsers) string { return r.ID }),
+	},
+	Default: searchexec.Asc(ProductUserSortCreatedAt),
+	Limit:   10,
+})
+
+// NewProductUserSearch starts a ProductUserSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewProductUserSearch(productID string) ProductUserSearch {
+	return searchexec.New[ProductUserSearch](productUserSearch, productID)
+}
+
+// The filters of ProductUserSearch: each returns a field of q, whose method returns the filtered copy.
+func (q ProductUserSearch) ID() searchexec.In[ProductUserSearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.ID, searchexec.StringLit[string])
+}
+func (q ProductUserSearch) Email() searchexec.In[ProductUserSearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.Email, searchexec.StringLit[string])
+}
+func (q ProductUserSearch) Name() searchexec.Text[ProductUserSearch] {
+	return searchexec.NewText(q.Query, table.ProductUsers.Name)
+}
+func (q ProductUserSearch) Status() searchexec.In[ProductUserSearch, user.ProductUserStatus] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.Status, searchexec.StringLit[user.ProductUserStatus])
+}
+func (q ProductUserSearch) ExternalID() searchexec.In[ProductUserSearch, string] {
+	return searchexec.NewIn(q.Query, table.ProductUsers.ExternalID, searchexec.StringLit[string])
+}
+
+// FullText keeps rows where name or email contains term (searchexec.Contains). A blank term filters nothing.
+func (q ProductUserSearch) FullText(term string) ProductUserSearch {
+	return searchexec.NewText(q.Query, table.ProductUsers.Name, table.ProductUsers.Email).Contains(term)
 }

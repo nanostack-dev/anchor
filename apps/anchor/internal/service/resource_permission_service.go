@@ -8,10 +8,10 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -38,8 +38,11 @@ type ResourcePermissionService interface {
 		ctx context.Context, input resourcepermission.DeleteProductResourcePermissionInput,
 	) error
 
+	// SearchByProduct reads one page of the product's resource permissions.
+	// resourceTypes are the slugs of the request's resource_types filter; the
+	// service resolves them to type IDs before it searches.
 	SearchByProduct(
-		ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
+		ctx context.Context, q repository.ProductResourcePermissionSearch, resourceTypes []string,
 	) (search.Result[resourcepermission.ProductResourcePermission], error)
 	GetByRole(
 		ctx context.Context, input resourcepermission.GetProductRoleResourcePermissionsInput,
@@ -355,16 +358,14 @@ func (s *resourcePermissionService) Delete(
 }
 
 func (s *resourcePermissionService) SearchByProduct(
-	ctx context.Context, input resourcepermission.SearchProductResourcePermissionInput,
+	ctx context.Context, q repository.ProductResourcePermissionSearch, resourceTypes []string,
 ) (search.Result[resourcepermission.ProductResourcePermission], error) {
 	logger := s.logger.With(slog.String("operation", "SearchByProduct"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[resourcepermission.ProductResourcePermission]{}, err
-	}
-
-	return scopedSearch(ctx, s.resourceTypes, logger, input.ProductID, input.Request,
-		resourcepermission.SearchProductResourcePermissionFilter.WithScopes,
+	return scopedQuery(ctx, s.resourceTypes, logger, q.Scope(), resourceTypes, q,
+		func(q repository.ProductResourcePermissionSearch, ids []string) repository.ProductResourcePermissionSearch {
+			return q.ResourceTypeID().In(ids...)
+		},
 		s.resourcePermissionRepo.SearchByProduct, withPermissionScope)
 }
 

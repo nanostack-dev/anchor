@@ -4,10 +4,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/domain/permission"
+	"anchor/internal/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
+	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
 func mapProductPermissionToResponse(perm permission.ProductPermission) ProductPermissionResponse {
@@ -23,14 +27,12 @@ func mapProductPermissionToResponse(perm permission.ProductPermission) ProductPe
 func (s *AnchorAPI) SearchProductPermissions(
 	ctx context.Context, request SearchProductPermissionsRequestObject,
 ) (SearchProductPermissionsResponseObject, error) {
-	searchRequest := mapToSearchProductPermissionInput(request.Body)
-
-	input := permission.SearchProductPermissionInput{
-		ProductID: request.ProductId,
-		Request:   searchRequest,
+	q, err := productPermissionSearch(request.ProductId, request.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	result, nanostackErr := s.PermissionService.SearchByProductID(ctx, input)
+	result, nanostackErr := s.PermissionService.SearchByProductID(ctx, q)
 	if nanostackErr != nil {
 		return nil, nanostackErr
 	}
@@ -61,22 +63,24 @@ func (s *AnchorAPI) GetProductPermission(
 	return GetProductPermission200JSONResponse(response), nil
 }
 
-func mapToSearchProductPermissionInput(
-	searchReqBody *SearchProductPermissionsJSONRequestBody,
-) search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f ProductPermissionFilter) permission.SearchProductPermissionFilter {
-			return permission.SearchProductPermissionFilter{
-				Names: lowerPermissionNames(f.Names),
-			}
-		}).
-		ToPtr()
-	return search.NewRequest[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission]().
-		WithFilter(filter).
-		WithSort(
-			searchReqBody.SortBy,
-			searchReqBody.SortDirection,
-		).WithFullTextSearch(searchReqBody.FullTextSearch).WithPagination(searchReqBody.Pagination)
+// productPermissionSearch builds the search from the request body. The product
+// scope comes from the route, which the authorization middleware checked
+// against the principal; the body never sets it.
+func productPermissionSearch(
+	productID string, body *SearchProductPermissionsJSONRequestBody,
+) (repository.ProductPermissionSearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	names := lowerPermissionNames(f.Names)
+	if err := validate.ValidateStruct(permission.SearchProductPermissionNames{Names: names}); err != nil {
+		return repository.ProductPermissionSearch{}, err
+	}
+	q := repository.NewProductPermissionSearch(productID)
+	q = searchexec.Some(q, q.Name().In, names)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.ProductPermissionSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }
 
 func lowerPermissionNames(names []string) []string {

@@ -3,7 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
+	orgapikey "anchor/internal/domain/organization/apikey"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // OrganizationAPIKeyRepository on *organizationAPIKeyRepository: 1 derived method on table organization_api_keys; the other methods are
@@ -22,4 +30,69 @@ var _ OrganizationAPIKeyRepository = (*organizationAPIKeyRepository)(nil)
 func (r *organizationAPIKeyRepository) DeleteByOrganizationIDAndID(ctx context.Context, organizationID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ID(id)))
 	return err
+}
+
+// SearchByOrganizationID runs an OrganizationAPIKeySearch: *organizationAPIKeyRepository has no hand-written SearchByOrganizationID.
+func (r *organizationAPIKeyRepository) SearchByOrganizationID(ctx context.Context, q OrganizationAPIKeySearch) (search.Result[orgapikey.OrganizationAPIKey], error) {
+	return r.searchPage(ctx, organizationAPIKeySearch, q.Query, r.rows.page)
+}
+
+// OrganizationAPIKeySearch is an immutable search of organization_api_keys. Start one with NewOrganizationAPIKeySearch.
+type OrganizationAPIKeySearch struct {
+	searchexec.Query[model.OrganizationAPIKeys, OrganizationAPIKeySearch, OrganizationAPIKeySort, string]
+}
+
+// OrganizationAPIKeySort is a sort of OrganizationAPIKeySearch.
+type OrganizationAPIKeySort string
+
+const (
+	OrganizationAPIKeySortID         OrganizationAPIKeySort = "id"
+	OrganizationAPIKeySortCreatedAt  OrganizationAPIKeySort = "created_at"
+	OrganizationAPIKeySortName       OrganizationAPIKeySort = "name"
+	OrganizationAPIKeySortStatus     OrganizationAPIKeySort = "status"
+	OrganizationAPIKeySortLastUsedAt OrganizationAPIKeySort = "last_used_at"
+)
+
+var organizationAPIKeySearch = searchexec.DefineSpec(searchexec.SpecDef[model.OrganizationAPIKeys, OrganizationAPIKeySort, string]{
+	From:    func(string) keyset.Source { return table.OrganizationAPIKeys },
+	Columns: table.OrganizationAPIKeys.AllColumns, // the Row is model.OrganizationAPIKeys
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.OrganizationAPIKeys.OrganizationID),
+	},
+	Keys: map[OrganizationAPIKeySort]keyset.Key[model.OrganizationAPIKeys]{
+		OrganizationAPIKeySortID:         keyset.StringKey(table.OrganizationAPIKeys.ID, func(r model.OrganizationAPIKeys) string { return r.ID }),
+		OrganizationAPIKeySortCreatedAt:  keyset.TimeKey(table.OrganizationAPIKeys.CreatedAt, func(r model.OrganizationAPIKeys) time.Time { return r.CreatedAt }),
+		OrganizationAPIKeySortName:       keyset.StringKey(table.OrganizationAPIKeys.Name, func(r model.OrganizationAPIKeys) string { return r.Name }),
+		OrganizationAPIKeySortStatus:     keyset.StringKey(table.OrganizationAPIKeys.Status, func(r model.OrganizationAPIKeys) string { return r.Status }),
+		OrganizationAPIKeySortLastUsedAt: keyset.NullableTimeKey(table.OrganizationAPIKeys.LastUsedAt, func(r model.OrganizationAPIKeys) *time.Time { return r.LastUsedAt }),
+	},
+	Tiebreak: []keyset.Key[model.OrganizationAPIKeys]{ // organization_api_keys_pkey (id)
+		keyset.StringKey(table.OrganizationAPIKeys.ID, func(r model.OrganizationAPIKeys) string { return r.ID }),
+	},
+	Default: searchexec.Asc(OrganizationAPIKeySortCreatedAt),
+	Limit:   10,
+})
+
+// NewOrganizationAPIKeySearch starts an OrganizationAPIKeySearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewOrganizationAPIKeySearch(organizationID string) OrganizationAPIKeySearch {
+	return searchexec.New[OrganizationAPIKeySearch](organizationAPIKeySearch, organizationID)
+}
+
+// The filters of OrganizationAPIKeySearch: each returns a field of q, whose method returns the filtered copy.
+func (q OrganizationAPIKeySearch) ID() searchexec.In[OrganizationAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationAPIKeys.ID, searchexec.StringLit[string])
+}
+func (q OrganizationAPIKeySearch) Name() searchexec.In[OrganizationAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationAPIKeys.Name, searchexec.StringLit[string])
+}
+func (q OrganizationAPIKeySearch) Status() searchexec.In[OrganizationAPIKeySearch, string] {
+	return searchexec.NewIn(q.Query, table.OrganizationAPIKeys.Status, searchexec.StringLit[string])
+}
+func (q OrganizationAPIKeySearch) LastUsedAt() searchexec.TimeRange[OrganizationAPIKeySearch] {
+	return searchexec.NewTimeRange(q.Query, table.OrganizationAPIKeys.LastUsedAt)
+}
+
+// FullText keeps rows where name or description contains term (searchexec.Contains). A blank term filters nothing.
+func (q OrganizationAPIKeySearch) FullText(term string) OrganizationAPIKeySearch {
+	return searchexec.NewText(q.Query, table.OrganizationAPIKeys.Name, table.OrganizationAPIKeys.Description).Contains(term)
 }

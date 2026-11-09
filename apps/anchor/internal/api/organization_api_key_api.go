@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
+	"anchor/internal/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func mapOrganizationAPIKeyToResponse(
@@ -84,15 +87,12 @@ func (s *AnchorAPI) SearchOrganizationAPIKeys(
 	ctx context.Context,
 	request SearchOrganizationAPIKeysRequestObject,
 ) (SearchOrganizationAPIKeysResponseObject, error) {
-	searchRequest := mapToSearchOrganizationAPIKeyInput(request.Body)
-
-	input := orgapikey.SearchOrganizationAPIKeysInput{
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		Request:        searchRequest,
+	q, err := organizationAPIKeySearch(request.OrganizationId, request.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	result, err := s.OrganizationAPIKeyService.Search(ctx, input)
+	result, err := s.OrganizationAPIKeyService.Search(ctx, request.ProductId, q)
 	if err != nil {
 		return nil, err
 	}
@@ -257,34 +257,29 @@ func (s *AnchorAPI) IntrospectOrganizationAPIKey(
 	}, nil
 }
 
-func mapToSearchOrganizationAPIKeyInput(
-	searchReqBody *SearchOrganizationAPIKeysJSONRequestBody,
-) search.Request[
-	orgapikey.SearchOrganizationAPIKeyFilter,
-	orgapikey.SortFieldOrganizationAPIKey,
-] {
-	filter := functional.FromPtr(searchReqBody.Filter).
-		Map(func(f OrganizationAPIKeyFilter) orgapikey.SearchOrganizationAPIKeyFilter {
-			result := orgapikey.SearchOrganizationAPIKeyFilter{
-				OrganizationAPIKeyIDs: f.Ids,
-				Names:                 f.Names,
-				LastUsedBefore:        f.LastUsedBefore,
-				LastUsedAfter:         f.LastUsedAfter,
-			}
-			if f.Status != nil {
-				result.Status = functional.Slice(*f.Status).Map(func(s OrganizationAPIKeyStatus) string {
-					return string(s)
-				})
-			}
-			return result
-		}).
-		ToPtr()
-
-	return search.NewRequest[
-		orgapikey.SearchOrganizationAPIKeyFilter,
-		orgapikey.SortFieldOrganizationAPIKey,
-	]().WithFilter(filter).
-		WithSort(searchReqBody.SortBy, searchReqBody.SortDirection).
-		WithFullTextSearch(searchReqBody.FullTextSearch).
-		WithPagination(searchReqBody.Pagination)
+// organizationAPIKeySearch builds the search from the request body. The
+// organization scope comes from the route; the service checks that the product
+// of the route owns it, and the body never sets it. last_used_after and
+// last_used_before are exclusive bounds.
+func organizationAPIKeySearch(
+	organizationID string, body *SearchOrganizationAPIKeysJSONRequestBody,
+) (repository.OrganizationAPIKeySearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	statuses := orEmpty(f.Status)
+	if err := requireOneOf("status", statuses, orgapikey.StatusActive, orgapikey.StatusInactive); err != nil {
+		return repository.OrganizationAPIKeySearch{}, err
+	}
+	q := repository.NewOrganizationAPIKeySearch(organizationID)
+	q = searchexec.Some(q, q.ID().In, f.Ids)
+	q = searchexec.Some(q, q.Name().In, f.Names)
+	q = searchexec.Some(q, q.Status().In, functional.Slice(statuses).Map(func(s OrganizationAPIKeyStatus) string {
+		return string(s)
+	}))
+	q = searchexec.Opt(q, q.LastUsedAt().After, f.LastUsedAfter)
+	q = searchexec.Opt(q, q.LastUsedAt().Before, f.LastUsedBefore)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.OrganizationAPIKeySortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }

@@ -7,15 +7,17 @@ import (
 	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/secrets"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider/smtp"
-	"anchor/internal/searchx"
+	"anchor/internal/repository"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // ---------------------------------------------------------------------------
@@ -319,14 +321,13 @@ func (s *AnchorAPI) ListIntegrationAuditLogs(
 		return nil, err
 	}
 
-	logs, err := s.IntegrationService.SearchAuditLogs(ctx, integration.SearchAuditLogsInput{
-		TenantID:              tenantID,
-		ProductID:             request.ProductId,
-		IntegrationInstanceID: request.IntegrationInstanceId,
-		Request: search.NewRequest[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog]().
-			WithSort(new(integration.SortFieldAuditLogCreatedAt), new(search.SortDescending)).
-			WithPagination(&search.Pagination{Limit: legacyAuditLogListLimit}),
-	})
+	scope := repository.IntegrationAuditLogScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, IntegrationInstanceID: request.IntegrationInstanceId,
+	}
+	q := repository.NewIntegrationAuditLogSearch(scope).
+		SortBy(repository.IntegrationAuditLogSortCreatedAt, search.SortDescending).
+		Limit(legacyAuditLogListLimit)
+	logs, err := s.IntegrationService.SearchAuditLogs(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to list integration audit logs",
 			slog.String("product_id", request.ProductId),
@@ -359,12 +360,13 @@ func (s *AnchorAPI) SearchIntegrationAuditLogs(
 		body = &SearchIntegrationAuditLogsJSONRequestBody{}
 	}
 
-	result, err := s.IntegrationService.SearchAuditLogs(ctx, integration.SearchAuditLogsInput{
-		TenantID:              tenantID,
-		ProductID:             request.ProductId,
-		IntegrationInstanceID: request.IntegrationInstanceId,
-		Request:               mapToSearchIntegrationAuditLogsRequest(body),
-	})
+	q, err := integrationAuditLogSearch(repository.IntegrationAuditLogScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, IntegrationInstanceID: request.IntegrationInstanceId,
+	}, body)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.IntegrationService.SearchAuditLogs(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search integration audit logs",
 			slog.String("product_id", request.ProductId),
@@ -381,28 +383,31 @@ func (s *AnchorAPI) SearchIntegrationAuditLogs(
 	}, nil
 }
 
-func mapToSearchIntegrationAuditLogsRequest(
-	body *SearchIntegrationAuditLogsJSONRequestBody,
-) search.Request[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f IntegrationAuditLogFilter) integration.SearchAuditLogsFilter {
-			return integration.SearchAuditLogsFilter{
-				Actions:       f.Actions,
-				Severities:    f.Severities,
-				CreatedAfter:  f.CreatedAfter,
-				CreatedBefore: f.CreatedBefore,
-			}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, integration.SortFieldAuditLogCreatedAt, search.SortDescending,
-	)
-
-	return search.NewRequest[integration.SearchAuditLogsFilter, integration.SortFieldAuditLog]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// integrationAuditLogSearch builds the search from the request body. The scope
+// comes from the authenticated principal and the route; the body never sets it.
+// created_after is inclusive and created_before exclusive. full_text_search is
+// accepted and ignored: an audit entry has no text column that the contract names.
+func integrationAuditLogSearch(
+	scope repository.IntegrationAuditLogScope, body *SearchIntegrationAuditLogsJSONRequestBody,
+) (repository.IntegrationAuditLogSearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	if err := requireOneOf("filter.actions", f.Actions, integration.AuditActions()...); err != nil {
+		return repository.IntegrationAuditLogSearch{}, err
+	}
+	if err := requireOneOf("severities", f.Severities,
+		integration.AuditSeverityInfo, integration.AuditSeveritySuccess,
+		integration.AuditSeverityWarning, integration.AuditSeverityError); err != nil {
+		return repository.IntegrationAuditLogSearch{}, err
+	}
+	q := repository.NewIntegrationAuditLogSearch(scope)
+	q = searchexec.Some(q, q.Action().In, f.Actions)
+	q = searchexec.Some(q, q.Severity().In, f.Severities)
+	q = searchexec.Opt(q, q.CreatedAt().Since, f.CreatedAfter)
+	q = searchexec.Opt(q, q.CreatedAt().Before, f.CreatedBefore)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.IntegrationAuditLogSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }
 
 // ---------------------------------------------------------------------------

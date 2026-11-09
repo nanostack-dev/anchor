@@ -8,13 +8,12 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/permission"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
 )
 
 type PermissionService interface {
@@ -31,7 +30,7 @@ type PermissionService interface {
 		ctx context.Context, input permission.FindProductPermissionInput,
 	) (permission.ProductPermission, error)
 	SearchByProductID(
-		ctx context.Context, input permission.SearchProductPermissionInput,
+		ctx context.Context, q repository.ProductPermissionSearch,
 	) (search.Result[permission.ProductPermission], error)
 	CheckPermissionExists(
 		ctx context.Context, productID string, permissions []string,
@@ -244,21 +243,17 @@ func (s *permissionService) FindByProductAndPermissionName(
 }
 
 func (s *permissionService) SearchByProductID(
-	ctx context.Context, input permission.SearchProductPermissionInput,
+	ctx context.Context, q repository.ProductPermissionSearch,
 ) (search.Result[permission.ProductPermission], error) {
 	logger := s.logger.With(slog.String("operation", "SearchByProductID"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[permission.ProductPermission]{}, err
-	}
-
-	result, err := s.permissionRepo.SearchByProduct(ctx, input.ProductID, input.Request)
+	result, err := s.permissionRepo.SearchByProduct(ctx, q)
 	if err != nil {
-		if searchx.IsClientError(err) {
+		if search.IsClientError(err) {
 			return search.Result[permission.ProductPermission]{}, err
 		}
 		logger.ErrorContext(ctx, "failed to search permissions",
-			slog.String("product_id", input.ProductID),
+			slog.String("product_id", q.Scope()),
 			log.Err(err),
 		)
 		return search.Result[permission.ProductPermission]{}, fault.ErrUnexpected

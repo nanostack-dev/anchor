@@ -8,10 +8,10 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
@@ -696,16 +696,9 @@ func (s *productRoleService) resolveRolePermissions(
 		return nil, err
 	}
 
-	searchReq := search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
-		WithFilter(&resourcepermission.SearchProductResourcePermissionFilter{
-			Names: permissionNames,
-		}).
-		WithPagination(&search.Pagination{
-			Limit: int32(len(permissionNames)), //nolint:gosec // Checked by validation
-		})
-
+	q := repository.NewProductResourcePermissionSearch(productID)
 	result, err := s.productResourcePermissionRepo.SearchByProduct(
-		ctx, productID, searchReq,
+		ctx, q.Name().In(permissionNames...).Limit(int32(len(permissionNames))), //nolint:gosec // Checked by validation
 	)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to search resource permissions",

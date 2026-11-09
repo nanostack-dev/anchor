@@ -5,13 +5,15 @@ import (
 	"log/slog"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ptr"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/domain/license"
-	"anchor/internal/searchx"
+	licenserepo "anchor/internal/license/repository"
 	"anchor/internal/security"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // defaultLicenseHistoryLimit mirrors the openapi.yaml `limit` default for
@@ -144,17 +146,13 @@ func (s *AnchorAPI) GetOrganizationLicenseHistory(
 		return nil, err
 	}
 
-	result, err := s.LicenseHistoryService.SearchChanges(ctx, license.SearchLicenseChangesInput{
-		TenantID:       tenantID,
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		Request: search.NewRequest[license.SearchLicenseChangesFilter, license.SortFieldChange]().
-			WithSort(new(license.SortFieldChangeChangedAt), new(search.SortDescending)).
-			WithPagination(&search.Pagination{
-				Limit:  ptr.DerefOr(request.Params.Limit, defaultLicenseHistoryLimit),
-				Offset: ptr.DerefOr(request.Params.Offset, int32(0)),
-			}),
-	})
+	q := licenserepo.NewOrganizationLicenseChangeSearch(licenserepo.OrganizationLicenseChangeScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, OrganizationID: request.OrganizationId,
+	}).
+		SortBy(licenserepo.OrganizationLicenseChangeSortChangedAt, search.SortDescending).
+		Limit(ptr.DerefOr(request.Params.Limit, defaultLicenseHistoryLimit)).
+		Offset(ptr.DerefOr(request.Params.Offset, int32(0)))
+	result, err := s.LicenseHistoryService.SearchChanges(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to get organization license history",
 			slog.String("product_id", request.ProductId),
@@ -184,12 +182,13 @@ func (s *AnchorAPI) SearchOrganizationLicenseHistory(
 		body = &SearchOrganizationLicenseHistoryJSONRequestBody{}
 	}
 
-	result, err := s.LicenseHistoryService.SearchChanges(ctx, license.SearchLicenseChangesInput{
-		TenantID:       tenantID,
-		ProductID:      request.ProductId,
-		OrganizationID: request.OrganizationId,
-		Request:        mapToSearchLicenseChangesRequest(body),
-	})
+	q, err := licenseChangeSearch(licenserepo.OrganizationLicenseChangeScope{
+		PlatformTenantID: tenantID, ProductID: request.ProductId, OrganizationID: request.OrganizationId,
+	}, body)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.LicenseHistoryService.SearchChanges(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search organization license history",
 			slog.String("product_id", request.ProductId),
@@ -206,25 +205,25 @@ func (s *AnchorAPI) SearchOrganizationLicenseHistory(
 	}), nil
 }
 
-func mapToSearchLicenseChangesRequest(
-	body *SearchOrganizationLicenseHistoryJSONRequestBody,
-) search.Request[license.SearchLicenseChangesFilter, license.SortFieldChange] {
-	filter := functional.FromPtr(body.Filter).
-		Map(func(f OrganizationLicenseHistoryFilter) license.SearchLicenseChangesFilter {
-			return license.SearchLicenseChangesFilter{
-				Types:         f.Types,
-				ChangedAfter:  f.ChangedAfter,
-				ChangedBefore: f.ChangedBefore,
-			}
-		}).
-		ToPtr()
-	sortBy, sortDirection := searchx.Sort(
-		body.SortBy, body.SortDirection, license.SortFieldChangeChangedAt, search.SortDescending,
-	)
-
-	return search.NewRequest[license.SearchLicenseChangesFilter, license.SortFieldChange]().
-		WithFilter(filter).
-		WithSort(sortBy, sortDirection).
-		WithFullTextSearch(body.FullTextSearch).
-		WithPagination(body.Pagination)
+// licenseChangeSearch builds the search from the request body. The scope comes
+// from the authenticated principal and the route; the body never sets it.
+// changed_after is inclusive and changed_before exclusive. full_text_search is
+// accepted and ignored: a history entry has no text column that the contract names.
+func licenseChangeSearch(
+	scope licenserepo.OrganizationLicenseChangeScope, body *SearchOrganizationLicenseHistoryJSONRequestBody,
+) (licenserepo.OrganizationLicenseChangeSearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	if err := requireOneOf("types", f.Types,
+		license.ChangeInstantiated, license.ChangeAdjusted, license.ChangeSet, license.ChangeTemplateSynced,
+	); err != nil {
+		return licenserepo.OrganizationLicenseChangeSearch{}, err
+	}
+	q := licenserepo.NewOrganizationLicenseChangeSearch(scope)
+	q = searchexec.Some(q, q.ChangeType().In, f.Types)
+	q = searchexec.Opt(q, q.ChangedAt().Since, f.ChangedAfter)
+	q = searchexec.Opt(q, q.ChangedAt().Before, f.ChangedBefore)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		licenserepo.OrganizationLicenseChangeSortChangedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }

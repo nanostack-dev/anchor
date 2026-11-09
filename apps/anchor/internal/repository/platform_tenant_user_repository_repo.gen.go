@@ -3,9 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/platform"
 	"context"
+	"time"
 
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
@@ -36,4 +42,64 @@ func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx co
 func (r *platformTenantUserRepositoryImpl) DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID string, id string) error {
 	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
 	return err
+}
+
+// SearchByTenantID runs a PlatformUserSearch: *platformTenantUserRepositoryImpl has no hand-written SearchByTenantID.
+func (r *platformTenantUserRepositoryImpl) SearchByTenantID(ctx context.Context, q PlatformUserSearch) (search.Result[platform.User], error) {
+	return r.search(ctx, platformUserSearch, q.Query, platformUserToDomain)
+}
+
+// PlatformUserSearch is an immutable search of platform_users. Start one with NewPlatformUserSearch.
+type PlatformUserSearch struct {
+	searchexec.Query[model.PlatformUsers, PlatformUserSearch, PlatformUserSort, string]
+}
+
+// PlatformUserSort is a sort of PlatformUserSearch.
+type PlatformUserSort string
+
+const (
+	PlatformUserSortCreatedAt PlatformUserSort = "created_at"
+	PlatformUserSortUpdatedAt PlatformUserSort = "updated_at"
+	PlatformUserSortEmail     PlatformUserSort = "email"
+	PlatformUserSortRole      PlatformUserSort = "role"
+)
+
+var platformUserSearch = searchexec.DefineSpec(searchexec.SpecDef[model.PlatformUsers, PlatformUserSort, string]{
+	From:    func(string) keyset.Source { return table.PlatformUsers },
+	Columns: table.PlatformUsers.AllColumns, // the Row is model.PlatformUsers
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.PlatformUsers.PlatformTenantID),
+	},
+	Keys: map[PlatformUserSort]keyset.Key[model.PlatformUsers]{
+		PlatformUserSortCreatedAt: keyset.TimeKey(table.PlatformUsers.CreatedAt, func(r model.PlatformUsers) time.Time { return r.CreatedAt }),
+		PlatformUserSortUpdatedAt: keyset.TimeKey(table.PlatformUsers.UpdatedAt, func(r model.PlatformUsers) time.Time { return r.UpdatedAt }),
+		PlatformUserSortEmail:     keyset.StringKey(table.PlatformUsers.Email, func(r model.PlatformUsers) string { return r.Email }),
+		PlatformUserSortRole:      keyset.StringKey(table.PlatformUsers.Role, func(r model.PlatformUsers) string { return r.Role }),
+	},
+	Tiebreak: []keyset.Key[model.PlatformUsers]{ // platform_users_pkey (id)
+		keyset.StringKey(table.PlatformUsers.ID, func(r model.PlatformUsers) string { return r.ID }),
+	},
+	Default: searchexec.Asc(PlatformUserSortCreatedAt),
+	Limit:   10,
+})
+
+// NewPlatformUserSearch starts a PlatformUserSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewPlatformUserSearch(platformTenantID string) PlatformUserSearch {
+	return searchexec.New[PlatformUserSearch](platformUserSearch, platformTenantID)
+}
+
+// The filters of PlatformUserSearch: each returns a field of q, whose method returns the filtered copy.
+func (q PlatformUserSearch) ID() searchexec.In[PlatformUserSearch, string] {
+	return searchexec.NewIn(q.Query, table.PlatformUsers.ID, searchexec.StringLit[string])
+}
+func (q PlatformUserSearch) Email() searchexec.In[PlatformUserSearch, string] {
+	return searchexec.NewIn(q.Query, table.PlatformUsers.Email, searchexec.StringLit[string])
+}
+func (q PlatformUserSearch) Role() searchexec.InFold[PlatformUserSearch, string] {
+	return searchexec.NewInFold[string](q.Query, table.PlatformUsers.Role)
+}
+
+// FullText keeps rows where email or name contains term (searchexec.Contains). A blank term filters nothing.
+func (q PlatformUserSearch) FullText(term string) PlatformUserSearch {
+	return searchexec.NewText(q.Query, table.PlatformUsers.Email, table.PlatformUsers.Name).Contains(term)
 }

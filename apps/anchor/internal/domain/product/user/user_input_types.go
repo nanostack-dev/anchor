@@ -38,38 +38,9 @@ type DeleteProductUserInput struct {
 	ProductUserID string `validate:"required,notblank"`
 }
 
-type SearchProductUserFilter struct {
-	IDs         []string            `validate:"omitempty,dive,notblank"`
-	Emails      []string            `validate:"omitempty,dive,email"`
-	Names       []string            `validate:"omitempty,dive,notblank"`
-	Statuses    []ProductUserStatus `validate:"omitempty,dive,oneof=active invited suspended"`
-	ExternalIDs []string            `validate:"omitempty,dive,notblank"`
-}
-
+// SortFieldProductUser is the sort_by type of POST /product-users/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldProductUser string
-
-const (
-	SortFieldProductUserCreatedAt SortFieldProductUser = "created_at"
-	SortFieldProductUserUpdatedAt SortFieldProductUser = "updated_at"
-	SortFieldProductUserEmail     SortFieldProductUser = "email"
-	SortFieldProductUserName      SortFieldProductUser = "name"
-	SortFieldProductUserStatus    SortFieldProductUser = "status"
-)
-
-type SearchProductUserInput struct {
-	ProductID string                                                        `validate:"required,notblank"`
-	Request   search.Request[SearchProductUserFilter, SortFieldProductUser] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchProductUserInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldProductUserCreatedAt,
-		SortFieldProductUserUpdatedAt,
-		SortFieldProductUserEmail,
-		SortFieldProductUserName,
-		SortFieldProductUserStatus)
-}
 
 // ListUserOrganizationsInput is the input for listing organizations a user belongs to.
 type ListUserOrganizationsInput struct {

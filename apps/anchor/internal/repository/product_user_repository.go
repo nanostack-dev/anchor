@@ -10,11 +10,9 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/product/user"
-	"anchor/internal/searchx"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
@@ -27,6 +25,24 @@ import (
 func _() {
 	nanorepo.Implement[ProductUserRepository, productUserRepositoryImpl](
 		table.ProductUsers, nanorepo.NoMapper[model.ProductUsers],
+	)
+
+	// POST /v1/products/{product_id}/product-users/search
+	nanorepo.Search[model.ProductUsers]("ProductUser", table.ProductUsers,
+		nanorepo.MapPage((*productUserRows).page),
+		nanorepo.Scope(table.ProductUsers.ProductID),
+		nanorepo.Filter(table.ProductUsers.ID, nanorepo.In),
+		nanorepo.Filter(table.ProductUsers.Email, nanorepo.In),
+		nanorepo.Filter(table.ProductUsers.Name, nanorepo.ContainsAny),
+		nanorepo.FilterAs[user.ProductUserStatus](table.ProductUsers.Status, nanorepo.In),
+		nanorepo.Filter(table.ProductUsers.ExternalID, nanorepo.In),
+		nanorepo.FullText(table.ProductUsers.Name, table.ProductUsers.Email),
+		nanorepo.Sort(
+			table.ProductUsers.CreatedAt, table.ProductUsers.UpdatedAt, table.ProductUsers.Email,
+			table.ProductUsers.Name, table.ProductUsers.Status,
+		),
+		nanorepo.DefaultSort(table.ProductUsers.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
 	)
 }
 
@@ -67,11 +83,7 @@ type ProductUserRepository interface {
 	// DeleteByProductIDAndID returns true when it deleted the row.
 	DeleteByProductIDAndID(ctx context.Context, productID string, id string) (bool, error)
 	DeleteByProductIDAndExternalID(ctx context.Context, productID string, externalID string) error
-	SearchByProductID(
-		ctx context.Context,
-		productID string,
-		request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-	) (search.Result[user.ProductUser], error)
+	SearchByProductID(ctx context.Context, q ProductUserSearch) (search.Result[user.ProductUser], error)
 }
 
 type productUserRepositoryImpl struct {
@@ -79,7 +91,26 @@ type productUserRepositoryImpl struct {
 
 	db                *sql.DB
 	productUserMapper *mapper.ProductUserMapper
+	rows              *productUserRows
 	logger            *slog.Logger
+}
+
+// productUserRows maps rows of product users. The mapper can fail on a row, and
+// the generated search calls a method of a field of the implementation.
+type productUserRows struct {
+	mapper *mapper.ProductUserMapper
+}
+
+func (m *productUserRows) page(_ context.Context, rows []model.ProductUsers) ([]user.ProductUser, error) {
+	mapped := make([]user.ProductUser, 0, len(rows))
+	for _, row := range rows {
+		item, err := m.mapper.ToDomain(row)
+		if err != nil {
+			return nil, err
+		}
+		mapped = append(mapped, item)
+	}
+	return mapped, nil
 }
 
 func NewProductUserRepository(
@@ -91,6 +122,7 @@ func NewProductUserRepository(
 		productUsersBase:  newProductUsersBase(db),
 		db:                db,
 		productUserMapper: productUserMapper,
+		rows:              &productUserRows{mapper: productUserMapper},
 		logger:            logger.With(slog.String("component", "product_user_repository")),
 	}
 }
@@ -129,7 +161,7 @@ func (r *productUserRepositoryImpl) FindByProductID(
 	if err != nil {
 		return nil, err
 	}
-	return r.many(rows)
+	return r.rows.page(ctx, rows)
 }
 
 func (r *productUserRepositoryImpl) FindByExternalID(
@@ -252,98 +284,6 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 	return updated, false, nil
 }
 
-func (r *productUserRepositoryImpl) SearchByProductID(
-	ctx context.Context,
-	productID string,
-	request search.Request[user.SearchProductUserFilter, user.SortFieldProductUser],
-) (search.Result[user.ProductUser], error) {
-	whereStmt := table.ProductUsers.ProductID.EQ(postgres.String(productID))
-
-	if request.Filter != nil { //nolint:nestif // standard filter mapping pattern
-		if len(request.Filter.IDs) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.IDs)
-			whereStmt = whereStmt.AND(table.ProductUsers.ID.IN(expressions...))
-		}
-
-		if len(request.Filter.Emails) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.Emails)
-			whereStmt = whereStmt.AND(table.ProductUsers.Email.IN(expressions...))
-		}
-
-		// Names keeps users whose name contains any of the terms, each matched
-		// as a case-insensitive, literal substring. A user without a name never
-		// matches. Validation refuses a blank term, which would match every
-		// named user.
-		if len(request.Filter.Names) > 0 {
-			terms := functional.Slice(request.Filter.Names).Map(
-				func(term string) postgres.BoolExpression {
-					return searchx.Contains(term, table.ProductUsers.Name)
-				},
-			)
-			whereStmt = whereStmt.AND(postgres.OR(terms...))
-		}
-
-		if len(request.Filter.Statuses) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.Statuses)
-			whereStmt = whereStmt.AND(table.ProductUsers.Status.IN(expressions...))
-		}
-
-		if len(request.Filter.ExternalIDs) > 0 {
-			expressions := jetx.ToStringExpressions(request.Filter.ExternalIDs)
-			whereStmt = whereStmt.AND(table.ProductUsers.ExternalID.IN(expressions...))
-		}
-	}
-
-	if request.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(*request.FullTextSearch, table.ProductUsers.Name, table.ProductUsers.Email),
-		)
-	}
-
-	order, err := transactor.StrictKeys(
-		request.Sort,
-		map[user.SortFieldProductUser]transactor.Key[model.ProductUsers]{
-			user.SortFieldProductUserCreatedAt: transactor.TimeKey(
-				table.ProductUsers.CreatedAt, func(row model.ProductUsers) time.Time { return row.CreatedAt },
-			),
-			user.SortFieldProductUserUpdatedAt: transactor.TimeKey(
-				table.ProductUsers.UpdatedAt, func(row model.ProductUsers) time.Time { return row.UpdatedAt },
-			),
-			user.SortFieldProductUserEmail: transactor.StringKey(
-				table.ProductUsers.Email, func(row model.ProductUsers) string { return row.Email },
-			),
-			user.SortFieldProductUserName: transactor.NullableStringKey(
-				table.ProductUsers.Name, func(row model.ProductUsers) *string { return row.Name },
-			),
-			user.SortFieldProductUserStatus: transactor.StringKey(
-				table.ProductUsers.Status, func(row model.ProductUsers) string { return row.Status },
-			),
-		},
-		transactor.StringKey(table.ProductUsers.ID, func(row model.ProductUsers) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[user.ProductUser]{}, err
-	}
-
-	page, err := transactor.Page(r.db, func(row model.ProductUsers) model.ProductUsers { return row },
-		table.ProductUsers.AllColumns).
-		From(table.ProductUsers).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, request.Pagination).
-		Value()
-	if err != nil {
-		return search.Result[user.ProductUser]{}, err
-	}
-	items, err := r.many(page.Items)
-	if err != nil {
-		return search.Result[user.ProductUser]{}, err
-	}
-	return search.Result[user.ProductUser]{
-		Items: items, Total: page.Total, Count: page.Count, NextCursor: page.NextCursor,
-	}, nil
-}
-
 // one maps a row the query returned. The mapper rejects a status outside the
 // contract enum, so a bad row fails the read instead of reaching a response.
 func (r *productUserRepositoryImpl) one(row model.ProductUsers, err error) (user.ProductUser, error) {
@@ -366,14 +306,3 @@ func (r *productUserRepositoryImpl) optional(
 	return functional.Some(mapped), nil
 }
 
-func (r *productUserRepositoryImpl) many(rows []model.ProductUsers) ([]user.ProductUser, error) {
-	mapped := make([]user.ProductUser, 0, len(rows))
-	for _, row := range rows {
-		item, err := r.productUserMapper.ToDomain(row)
-		if err != nil {
-			return nil, err
-		}
-		mapped = append(mapped, item)
-	}
-	return mapped, nil
-}

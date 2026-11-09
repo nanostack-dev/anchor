@@ -2,10 +2,6 @@ package orgapikey
 
 import (
 	"time"
-
-	"anchor/internal/searchx"
-
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 )
 
 type CreateOrganizationAPIKeyInput struct {
@@ -38,41 +34,9 @@ type DeleteOrganizationAPIKeyInput struct {
 	ID             string `validate:"required,notblank"`
 }
 
+// SortFieldOrganizationAPIKey is the sort_by type of POST /organizations/{id}/api-keys/search.
+// The generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldOrganizationAPIKey string
-
-const (
-	SortFieldOrganizationAPIKeyID        SortFieldOrganizationAPIKey = "id"
-	SortFieldOrganizationAPIKeyCreatedAt SortFieldOrganizationAPIKey = "created_at"
-	SortFieldOrganizationAPIKeyUpdatedAt SortFieldOrganizationAPIKey = "updated_at"
-	SortFieldOrganizationAPIKeyName      SortFieldOrganizationAPIKey = "name"
-	SortFieldOrganizationAPIKeyStatus    SortFieldOrganizationAPIKey = "status"
-	SortFieldOrganizationAPIKeyLastUsed  SortFieldOrganizationAPIKey = "last_used_at"
-)
-
-type SearchOrganizationAPIKeysInput struct {
-	ProductID      string `validate:"required,notblank"`
-	OrganizationID string `validate:"required,notblank"`
-	Request        search.Request[SearchOrganizationAPIKeyFilter, SortFieldOrganizationAPIKey]
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchOrganizationAPIKeysInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldOrganizationAPIKeyID,
-		SortFieldOrganizationAPIKeyCreatedAt,
-		SortFieldOrganizationAPIKeyUpdatedAt,
-		SortFieldOrganizationAPIKeyName,
-		SortFieldOrganizationAPIKeyStatus,
-		SortFieldOrganizationAPIKeyLastUsed)
-}
-
-type SearchOrganizationAPIKeyFilter struct {
-	OrganizationAPIKeyIDs []string `validate:"omitempty,dive"`
-	Names                 []string `validate:"omitempty,dive,min=1"`
-	Status                []string `validate:"omitempty,dive,oneof=ACTIVE INACTIVE"`
-	LastUsedBefore        *time.Time
-	LastUsedAfter         *time.Time
-}
 
 type ValidateOrganizationAPIKeyScopesInput struct {
 	ProductID      string   `validate:"required,notblank"`

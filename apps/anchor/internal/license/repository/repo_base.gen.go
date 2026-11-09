@@ -718,3 +718,420 @@ func (licenseTemplatesWhere) StatusContains(term string) postgres.BoolExpression
 func (licenseTemplatesWhere) StatusEqualsIgnoreCase(v string) postgres.BoolExpression {
 	return postgres.LOWER(table.LicenseTemplates.Status).EQ(postgres.LOWER(postgres.String(v)))
 }
+
+// organizationLicenseChangesBase is the generated base of table organization_license_changes. It holds the table (t),
+// typed predicates (where), helpers that run in the context transaction and
+// return the model rows, and the pkg/db/transactor functions as methods.
+// Embed it in the implementation and set it with newOrganizationLicenseChangesBase(db).
+type organizationLicenseChangesBase struct {
+	db    qrm.DB
+	t     *table.OrganizationLicenseChangesTable
+	where organizationLicenseChangesWhere
+}
+
+// newOrganizationLicenseChangesBase returns the base of table organization_license_changes. It runs its statements on the
+// transaction of the context, and on db outside one.
+func newOrganizationLicenseChangesBase(db qrm.DB) organizationLicenseChangesBase {
+	return organizationLicenseChangesBase{db: db, t: table.OrganizationLicenseChanges}
+}
+
+// findOne returns the row matching cond: absent when none does, and
+// transactor.ErrMoreThanOneRow when two do. It reads LIMIT 2, so a key that
+// stopped being unique is an error, never a silent first row. To pick one of
+// several rows, use first with an order.
+func (b organizationLicenseChangesBase) findOne(ctx context.Context, cond postgres.BoolExpression) (functional.Option[model.OrganizationLicenseChanges], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	rows, err := b.queryRows(ctx, stmt.LIMIT(2)).Value()
+	switch {
+	case err != nil:
+		return functional.None[model.OrganizationLicenseChanges](), err
+	case len(rows) > 1:
+		return functional.None[model.OrganizationLicenseChanges](), fmt.Errorf("%w: organization_license_changes", transactor.ErrMoreThanOneRow)
+	case len(rows) == 0:
+		return functional.None[model.OrganizationLicenseChanges](), nil
+	}
+	return functional.Some(rows[0]), nil
+}
+
+// first returns the first row matching cond in the given order, absent when
+// none does. End the order with a unique column, such as the primary key, so
+// the row it picks is stable.
+func (b organizationLicenseChangesBase) first(ctx context.Context, cond postgres.BoolExpression, order postgres.OrderByClause, more ...postgres.OrderByClause) (functional.Option[model.OrganizationLicenseChanges], error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryRowOptional(ctx, stmt.ORDER_BY(append([]postgres.OrderByClause{order}, more...)...).LIMIT(1))
+}
+
+// findAll returns every row matching cond, every row when cond is nil, in the
+// given order.
+func (b organizationLicenseChangesBase) findAll(ctx context.Context, cond postgres.BoolExpression, order ...postgres.OrderByClause) ([]model.OrganizationLicenseChanges, error) {
+	stmt := b.t.SELECT(b.t.AllColumns)
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	if len(order) > 0 {
+		stmt = stmt.ORDER_BY(order...)
+	}
+	return b.queryRows(ctx, stmt).Value()
+}
+
+// exists reports whether a row matches cond, or whether the table has a row
+// when cond is nil. PostgreSQL refuses a row lock on it, which aggregates.
+func (b organizationLicenseChangesBase) exists(ctx context.Context, cond postgres.BoolExpression) (bool, error) {
+	found := b.t.SELECT(postgres.Int32(1))
+	if cond != nil {
+		found = found.WHERE(cond)
+	}
+	n, err := b.queryCount(ctx, postgres.SELECT(postgres.COUNT(postgres.STAR)).FROM(found.LIMIT(1).AsTable("found"))).Value()
+	return n > 0, err
+}
+
+// count counts the rows matching cond, every row when cond is nil.
+// PostgreSQL refuses a row lock on it, which aggregates.
+func (b organizationLicenseChangesBase) count(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	stmt := b.t.SELECT(postgres.COUNT(postgres.STAR))
+	if cond != nil {
+		stmt = stmt.WHERE(cond)
+	}
+	return b.queryCount(ctx, stmt).Value()
+}
+
+// deleteWhere deletes the rows matching cond and returns how many it deleted.
+// It refuses a nil cond. A locked context returns transactor.ErrRowLockNotSelect
+// or ErrRowLockOutsideTx without running the DELETE.
+func (b organizationLicenseChangesBase) deleteWhere(ctx context.Context, cond postgres.BoolExpression) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("organization_license_changes: deleteWhere needs a condition")
+	}
+	return b.execAffected(ctx, b.t.DELETE().WHERE(cond)).Value()
+}
+
+// updateWhere applies the assignments, such as b.t.Name.SET(postgres.String(v)),
+// to the rows matching cond and returns how many it updated. It refuses a nil
+// cond, and a locked context, as deleteWhere does.
+func (b organizationLicenseChangesBase) updateWhere(ctx context.Context, cond postgres.BoolExpression, set postgres.ColumnAssigment, more ...postgres.ColumnAssigment) (int64, error) {
+	if cond == nil {
+		return 0, errors.New("organization_license_changes: updateWhere needs a condition")
+	}
+	values := make([]any, len(more))
+	for i, m := range more {
+		values[i] = m
+	}
+	return b.execAffected(ctx, b.t.UPDATE().SET(set, values...).WHERE(cond)).Value()
+}
+
+// query runs stmt and scans its rows into T: a model row, a slice, or a struct
+// of aliased columns. Chain OnUnique, OnForeignKey or OnNoRows before Value.
+func (b organizationLicenseChangesBase) query[T any](ctx context.Context, stmt postgres.Statement) transactor.Result[T] {
+	return transactor.Query[T](ctx, b.db, stmt)
+}
+
+// queryOptional runs stmt, which may match no row: then the Option is absent
+// and the error nil.
+func (b organizationLicenseChangesBase) queryOptional[T any](ctx context.Context, stmt postgres.Statement) (functional.Option[T], error) {
+	return transactor.QueryOptional[T](ctx, b.db, stmt)
+}
+
+// queryMap runs stmt, scans one T and maps it with mapFunc.
+func (b organizationLicenseChangesBase) queryMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[R] {
+	return transactor.QueryMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryOptionalMap is queryOptional, then mapFunc on the row when there is one.
+func (b organizationLicenseChangesBase) queryOptionalMap[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) (functional.Option[R], error) {
+	return transactor.QueryOptionalMap(ctx, b.db, stmt, mapFunc)
+}
+
+// queryMapSlice runs stmt and maps every row with mapFunc.
+func (b organizationLicenseChangesBase) queryMapSlice[T, R any](ctx context.Context, stmt postgres.Statement, mapFunc func(T) R) transactor.Result[[]R] {
+	return transactor.QueryMapSlice(ctx, b.db, stmt, mapFunc)
+}
+
+// queryCount runs a SELECT COUNT statement.
+func (b organizationLicenseChangesBase) queryCount(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.QueryCount(ctx, b.db, stmt)
+}
+
+// exec runs a statement that returns no rows. Unwrap it with Err.
+func (b organizationLicenseChangesBase) exec(ctx context.Context, stmt postgres.Statement) transactor.Result[struct{}] {
+	return transactor.Exec(ctx, b.db, stmt)
+}
+
+// execAffected runs a statement and returns the number of rows it changed.
+func (b organizationLicenseChangesBase) execAffected(ctx context.Context, stmt postgres.Statement) transactor.Result[int64] {
+	return transactor.ExecAffected(ctx, b.db, stmt)
+}
+
+// page starts a paginated query of rows T mapped to R; both come from mapFunc.
+func (b organizationLicenseChangesBase) page[T, R any](mapFunc func(T) R, columns ...postgres.Projection) *transactor.PageBuilder[T, R] {
+	return transactor.Page(b.db, mapFunc, columns...)
+}
+
+// search runs a declared search in the context transaction and maps each row
+// with toDomain.
+func (b organizationLicenseChangesBase) search[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(T) R,
+) (search.Result[R], error) {
+	return transactor.Search(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// searchPage is search with a mapper that maps the whole page in one call.
+func (b organizationLicenseChangesBase) searchPage[T any, Q searchexec.Builder[T, Q, S, P], S ~string, P comparable, R any](
+	ctx context.Context, spec *searchexec.Spec[T, S, P], q searchexec.Query[T, Q, S, P], toDomain func(context.Context, []T) ([]R, error),
+) (search.Result[R], error) {
+	return transactor.SearchPage(ctx, b.db, spec, q, toDomain).Value()
+}
+
+// queryRow runs stmt, which returns one organization_license_changes row, such as an INSERT or
+// UPDATE ... RETURNING(b.t.AllColumns), and returns the row.
+func (b organizationLicenseChangesBase) queryRow(ctx context.Context, stmt postgres.Statement) transactor.Result[model.OrganizationLicenseChanges] {
+	return b.query[model.OrganizationLicenseChanges](ctx, stmt)
+}
+
+// queryRowOptional is queryRow for a statement that may return no row.
+func (b organizationLicenseChangesBase) queryRowOptional(ctx context.Context, stmt postgres.Statement) (functional.Option[model.OrganizationLicenseChanges], error) {
+	return b.queryOptional[model.OrganizationLicenseChanges](ctx, stmt)
+}
+
+// queryRows is queryRow for every row stmt returns; no row is an empty slice.
+func (b organizationLicenseChangesBase) queryRows(ctx context.Context, stmt postgres.Statement) transactor.Result[[]model.OrganizationLicenseChanges] {
+	return b.queryMapSlice(ctx, stmt, func(row model.OrganizationLicenseChanges) model.OrganizationLicenseChanges { return row })
+}
+
+// organizationLicenseChangesWhere builds predicates on the columns of organization_license_changes. A string predicate
+// compares as text. Contains is searchexec.Contains: it trims the term,
+// matches a substring without case, and % _ ! in the term match
+// themselves. A blank term matches every row.
+//
+// No equality predicate on old_value_json, new_value_json: compare on b.t.
+type organizationLicenseChangesWhere struct{}
+
+// ID is id = v.
+func (organizationLicenseChangesWhere) ID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ID.EQ(postgres.String(v))
+}
+
+// IDIn is id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) IDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.ID.IN(exprs...)
+}
+
+// PlatformTenantID is platform_tenant_id = v.
+func (organizationLicenseChangesWhere) PlatformTenantID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.PlatformTenantID.EQ(postgres.String(v))
+}
+
+// PlatformTenantIDIn is platform_tenant_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) PlatformTenantIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.PlatformTenantID.IN(exprs...)
+}
+
+// ProductID is product_id = v.
+func (organizationLicenseChangesWhere) ProductID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ProductID.EQ(postgres.String(v))
+}
+
+// ProductIDIn is product_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) ProductIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.ProductID.IN(exprs...)
+}
+
+// OrganizationID is organization_id = v.
+func (organizationLicenseChangesWhere) OrganizationID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.OrganizationID.EQ(postgres.String(v))
+}
+
+// OrganizationIDIn is organization_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) OrganizationIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.OrganizationID.IN(exprs...)
+}
+
+// LicenseID is license_id = v.
+func (organizationLicenseChangesWhere) LicenseID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.LicenseID.EQ(postgres.String(v))
+}
+
+// LicenseIDIn is license_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) LicenseIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.LicenseID.IN(exprs...)
+}
+
+// ChangeType is change_type = v.
+func (organizationLicenseChangesWhere) ChangeType(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ChangeType.EQ(postgres.String(v))
+}
+
+// ChangeTypeIn is change_type IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) ChangeTypeIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.ChangeType.IN(exprs...)
+}
+
+// ChangeTypeContains matches change_type that contain term, ignoring case.
+func (organizationLicenseChangesWhere) ChangeTypeContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.OrganizationLicenseChanges.ChangeType)
+}
+
+// ChangeTypeEqualsIgnoreCase is lower(change_type) = lower(v).
+func (organizationLicenseChangesWhere) ChangeTypeEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.OrganizationLicenseChanges.ChangeType).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// TemplateID is template_id = v.
+func (organizationLicenseChangesWhere) TemplateID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.TemplateID.EQ(postgres.String(v))
+}
+
+// TemplateIDIn is template_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) TemplateIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.TemplateID.IN(exprs...)
+}
+
+// TemplateIDIsNull is template_id IS NULL.
+func (organizationLicenseChangesWhere) TemplateIDIsNull() postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.TemplateID.IS_NULL()
+}
+
+// Field is field = v.
+func (organizationLicenseChangesWhere) Field(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.Field.EQ(postgres.String(v))
+}
+
+// FieldIn is field IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) FieldIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.Field.IN(exprs...)
+}
+
+// FieldContains matches field that contain term, ignoring case.
+func (organizationLicenseChangesWhere) FieldContains(term string) postgres.BoolExpression {
+	return searchexec.Contains(term, table.OrganizationLicenseChanges.Field)
+}
+
+// FieldEqualsIgnoreCase is lower(field) = lower(v).
+func (organizationLicenseChangesWhere) FieldEqualsIgnoreCase(v string) postgres.BoolExpression {
+	return postgres.LOWER(table.OrganizationLicenseChanges.Field).EQ(postgres.LOWER(postgres.String(v)))
+}
+
+// FieldIsNull is field IS NULL.
+func (organizationLicenseChangesWhere) FieldIsNull() postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.Field.IS_NULL()
+}
+
+// OldValueJSONIsNull is old_value_json IS NULL.
+func (organizationLicenseChangesWhere) OldValueJSONIsNull() postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.OldValueJSON.IS_NULL()
+}
+
+// NewValueJSONIsNull is new_value_json IS NULL.
+func (organizationLicenseChangesWhere) NewValueJSONIsNull() postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.NewValueJSON.IS_NULL()
+}
+
+// ChangedAt is changed_at = v.
+func (organizationLicenseChangesWhere) ChangedAt(v time.Time) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ChangedAt.EQ(postgres.TimestampzT(v))
+}
+
+// ChangedAtIn is changed_at IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) ChangedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.OrganizationLicenseChanges.ChangedAt.IN(exprs...)
+}
+
+// ChangedAtAfter is changed_at > v.
+func (organizationLicenseChangesWhere) ChangedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ChangedAt.GT(postgres.TimestampzT(v))
+}
+
+// ChangedAtBefore is changed_at < v.
+func (organizationLicenseChangesWhere) ChangedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.ChangedAt.LT(postgres.TimestampzT(v))
+}
+
+// PreviousTemplateID is previous_template_id = v.
+func (organizationLicenseChangesWhere) PreviousTemplateID(v string) postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.PreviousTemplateID.EQ(postgres.String(v))
+}
+
+// PreviousTemplateIDIn is previous_template_id IN (vs...); no value matches no row.
+func (organizationLicenseChangesWhere) PreviousTemplateIDIn(vs ...string) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.String(v)
+	}
+	return table.OrganizationLicenseChanges.PreviousTemplateID.IN(exprs...)
+}
+
+// PreviousTemplateIDIsNull is previous_template_id IS NULL.
+func (organizationLicenseChangesWhere) PreviousTemplateIDIsNull() postgres.BoolExpression {
+	return table.OrganizationLicenseChanges.PreviousTemplateID.IS_NULL()
+}

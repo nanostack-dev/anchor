@@ -10,15 +10,14 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/permission"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -46,10 +45,7 @@ type ProductPermissionRepository interface {
 	) error
 
 	// SearchByProduct searches permissions within a product
-	SearchByProduct(
-		ctx context.Context, productID string,
-		input search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission],
-	) (search.Result[permission.ProductPermission], error)
+	SearchByProduct(ctx context.Context, q ProductPermissionSearch) (search.Result[permission.ProductPermission], error)
 
 	// CountRoleAssignments counts how many roles use this permission
 	CountAPIKeyAssignments(
@@ -68,6 +64,20 @@ func productPermissionToDomain(row model.ProductPermissions) permission.ProductP
 func _() {
 	nanorepo.Implement[ProductPermissionRepository, productPermissionRepositoryImpl](
 		table.ProductPermissions, productPermissionToDomain,
+	)
+
+	// POST /v1/products/{product_id}/permissions/search, and the startup sync.
+	// id and resource are aliases of name: the API orders by the permission name,
+	// whose resource:action form groups permissions by resource.
+	nanorepo.Search[model.ProductPermissions]("ProductPermission", table.ProductPermissions,
+		nanorepo.Map(productPermissionToDomain),
+		nanorepo.Scope(table.ProductPermissions.ProductID),
+		nanorepo.Filter(table.ProductPermissions.Name, nanorepo.InFold),
+		nanorepo.FullText(table.ProductPermissions.Name, table.ProductPermissions.Description),
+		nanorepo.SortKey(table.ProductPermissions.Name).API("name", "id", "resource"),
+		nanorepo.Sort(table.ProductPermissions.CreatedAt),
+		nanorepo.DefaultSort(table.ProductPermissions.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
 	)
 }
 
@@ -164,63 +174,6 @@ func (r *productPermissionRepositoryImpl) Update(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
 	).Value()
-}
-
-func (r *productPermissionRepositoryImpl) SearchByProduct(
-	ctx context.Context, productID string,
-	input search.Request[permission.SearchProductPermissionFilter, permission.SortFieldProductPermission],
-) (search.Result[permission.ProductPermission], error) {
-	whereStmt := table.ProductPermissions.ProductID.EQ(postgres.String(productID))
-
-	if input.Filter != nil {
-		if len(input.Filter.Names) > 0 {
-			lowerNames := functional.Slice(input.Filter.Names).Map(strings.ToLower)
-			expressions := jetx.ToStringExpressions(lowerNames)
-			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductPermissions.Name).IN(expressions...))
-		}
-	}
-
-	if input.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(
-				*input.FullTextSearch,
-				table.ProductPermissions.Name,
-				table.ProductPermissions.Description,
-			),
-		)
-	}
-
-	nameKey := transactor.StringKey(
-		table.ProductPermissions.Name,
-		func(row model.ProductPermissions) string { return row.Name },
-	)
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[permission.SortFieldProductPermission]transactor.Key[model.ProductPermissions]{
-			permission.SortFieldProductPermissionCreatedAt: transactor.TimeKey(
-				table.ProductPermissions.CreatedAt,
-				func(row model.ProductPermissions) time.Time { return row.CreatedAt },
-			),
-			permission.SortFieldProductPermissionUpdatedAt: transactor.TimeKey(
-				table.ProductPermissions.UpdatedAt,
-				func(row model.ProductPermissions) time.Time { return row.UpdatedAt },
-			),
-			permission.SortFieldProductPermissionName:     nameKey,
-			permission.SortFieldProductPermissionID:       nameKey,
-			permission.SortFieldProductPermissionResource: nameKey,
-		},
-		nameKey,
-	)
-	if err != nil {
-		return search.Result[permission.ProductPermission]{}, err
-	}
-
-	return transactor.Page(r.db, r.productPermissionMapper.ToDomain, table.ProductPermissions.AllColumns).
-		From(table.ProductPermissions).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }
 
 func (r *productPermissionRepositoryImpl) CountAPIKeyAssignments(

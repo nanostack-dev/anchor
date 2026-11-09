@@ -1,13 +1,5 @@
 package license
 
-import (
-	"time"
-
-	"anchor/internal/searchx"
-
-	"github.com/nanostack-dev/nanostack-framework/db/search"
-)
-
 // FieldDeclaration is one license field as supplied by a caller: the authored
 // shape, before an ID or timestamps exist.
 type FieldDeclaration struct {
@@ -145,33 +137,9 @@ type GetLicenseInput struct {
 	OrganizationID string `validate:"required,notblank"`
 }
 
-// SortFieldChange names a column a license history search may order by.
+// SortFieldChange is the sort_by type of POST /license/history/search. The
+// generated search owns the values; this type gives the OpenAPI schema its Go type.
 type SortFieldChange string
-
-const (
-	SortFieldChangeChangedAt SortFieldChange = "changed_at"
-)
-
-// SearchLicenseChangesFilter narrows one Organization's license history.
-type SearchLicenseChangesFilter struct {
-	Types         []ChangeType `validate:"omitempty,dive,oneof=INSTANTIATED ADJUSTED SET TEMPLATE_SYNCED"`
-	ChangedAfter  *time.Time
-	ChangedBefore *time.Time
-}
-
-// SearchLicenseChangesInput searches one Organization's license history.
-type SearchLicenseChangesInput struct {
-	TenantID       string                                                      `validate:"required,notblank"`
-	ProductID      string                                                      `validate:"required,notblank"`
-	OrganizationID string                                                      `validate:"required,notblank"`
-	Request        search.Request[SearchLicenseChangesFilter, SortFieldChange] `validate:"required"`
-}
-
-// Validate checks the input and the sort the client named.
-func (in SearchLicenseChangesInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request,
-		SortFieldChangeChangedAt)
-}
 
 // AdjustLicenseInput adjusts one Organization's license without touching the
 // template. Values are merged, not replaced — the opposite of

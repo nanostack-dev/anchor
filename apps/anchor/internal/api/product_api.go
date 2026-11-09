@@ -11,9 +11,12 @@ import (
 	"anchor/internal/searchx"
 	"anchor/internal/security"
 
+	"anchor/internal/repository"
+
 	"github.com/nanostack-dev/nanostack-framework/core/log"
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
 func mapToSearchProductInput(request *SearchProductsRequestObject) search.
@@ -247,45 +250,32 @@ func (s *AnchorAPI) GetProductEventsCatalog(
 	}, nil
 }
 
-// Product User helper functions.
-func mapToSearchProductUserInput(
-	request *SearchProductUsersRequestObject,
-) search.Request[user.SearchProductUserFilter,
-	user.SortFieldProductUser] {
-	var req search.Request[user.SearchProductUserFilter, user.SortFieldProductUser]
-
-	if request.Body == nil {
-		return req
+// productUserSearch builds the search from the request body. The product scope
+// comes from the route, which the authorization middleware checked against the
+// principal; the body never sets it.
+func productUserSearch(
+	productID string, body *SearchProductUsersJSONRequestBody,
+) (repository.ProductUserSearch, error) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	statuses := functional.Slice(orEmpty(f.Statuses)).Map(foldProductUserStatus)
+	if err := requireOneOf("statuses", statuses,
+		user.ProductUserStatusActive, user.ProductUserStatusInvited, user.ProductUserStatusSuspended); err != nil {
+		return repository.ProductUserSearch{}, err
 	}
-
-	// Map filter fields based on the consistent OpenAPI spec structure
-	filter := functional.FromPtr(request.Body.Filter).Map(func(f ProductUserFilter) user.SearchProductUserFilter {
-		result := user.SearchProductUserFilter{}
-
-		if f.Ids != nil {
-			result.IDs = functional.Slice(*f.Ids).Map(func(id Ksuid) string { return id })
-		}
-		if f.Emails != nil {
-			result.Emails = f.Emails
-		}
-		if f.Names != nil {
-			result.Names = *f.Names
-		}
-		if f.Statuses != nil {
-			result.Statuses = functional.Slice(*f.Statuses).Map(foldProductUserStatus)
-		}
-		if f.ExternalIds != nil {
-			result.ExternalIDs = f.ExternalIds
-		}
-
-		return result
-	}).ToPtr()
-
-	return req.WithFilter(filter).
-		WithSort(
-			request.Body.SortBy,
-			request.Body.SortDirection,
-		).WithFullTextSearch(request.Body.FullTextSearch).WithPagination(request.Body.Pagination)
+	if err := requireNotBlank("names", orEmpty(f.Names)); err != nil {
+		return repository.ProductUserSearch{}, err
+	}
+	q := repository.NewProductUserSearch(productID)
+	q = searchexec.Some(q, q.ID().In, orEmpty(f.Ids))
+	q = searchexec.Some(q, q.Email().In, f.Emails)
+	q = searchexec.Some(q, q.Name().ContainsAny, orEmpty(f.Names))
+	q = searchexec.Some(q, q.Status().In, statuses)
+	q = searchexec.Some(q, q.ExternalID().In, f.ExternalIds)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.ProductUserSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), nil
 }
 
 // foldProductUserStatus ignores the letter case of a requested status: Anchor
@@ -341,14 +331,12 @@ func (s *AnchorAPI) CreateProductUser(
 func (s *AnchorAPI) SearchProductUsers(
 	ctx context.Context, request SearchProductUsersRequestObject,
 ) (SearchProductUsersResponseObject, error) {
-	searchRequest := mapToSearchProductUserInput(&request)
-
-	input := user.SearchProductUserInput{
-		ProductID: request.ProductId,
-		Request:   searchRequest,
+	q, err := productUserSearch(request.ProductId, request.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	result, err := s.ProductUserService.Search(ctx, input)
+	result, err := s.ProductUserService.Search(ctx, q)
 	if err != nil {
 		log.ErrorTo(ctx, s.logger, err, "failed to search product users",
 			slog.String("product_id", request.ProductId),

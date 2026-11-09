@@ -7,14 +7,13 @@ import (
 	"log/slog"
 	"time"
 
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
 
@@ -39,9 +38,10 @@ type OrganizationAPIKeyService interface {
 		ctx context.Context,
 		input orgapikey.UpdateOrganizationAPIKeyInput,
 	) (orgapikey.OrganizationAPIKey, error)
+	// Search reads one page of the organization's API keys. The organization is
+	// the scope of q; productID is the product the route names, which must own it.
 	Search(
-		ctx context.Context,
-		input orgapikey.SearchOrganizationAPIKeysInput,
+		ctx context.Context, productID string, q repository.OrganizationAPIKeySearch,
 	) (*search.Result[orgapikey.OrganizationAPIKey], error)
 	Delete(
 		ctx context.Context,
@@ -329,25 +329,21 @@ func (s *organizationAPIKeyService) Update(
 }
 
 func (s *organizationAPIKeyService) Search(
-	ctx context.Context,
-	input orgapikey.SearchOrganizationAPIKeysInput,
+	ctx context.Context, productID string, q repository.OrganizationAPIKeySearch,
 ) (*search.Result[orgapikey.OrganizationAPIKey], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
 
-	if err := input.Validate(); err != nil {
-		return nil, err
-	}
-	if err := s.ensureOrganizationBelongsToProduct(ctx, input.ProductID, input.OrganizationID); err != nil {
+	if err := s.ensureOrganizationBelongsToProduct(ctx, productID, q.Scope()); err != nil {
 		return nil, err
 	}
 
-	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, input)
+	result, err := s.apiKeyRepo.SearchByOrganizationID(ctx, q)
 	if err != nil {
-		if searchx.IsClientError(err) {
+		if search.IsClientError(err) {
 			return nil, err
 		}
 		logger.ErrorContext(ctx, "failed to search organization API keys",
-			slog.String("organization_id", input.OrganizationID),
+			slog.String("organization_id", q.Scope()),
 			log.Err(err),
 		)
 		return nil, fault.ErrUnexpected

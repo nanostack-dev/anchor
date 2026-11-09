@@ -17,7 +17,7 @@ import (
 // such Organization.
 type LicenseHistoryService interface {
 	SearchChanges(
-		ctx context.Context, in license.SearchLicenseChangesInput,
+		ctx context.Context, q licenserepo.OrganizationLicenseChangeSearch,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 
@@ -40,13 +40,10 @@ func NewLicenseHistoryService(
 }
 
 func (s *licenseHistoryService) SearchChanges(
-	ctx context.Context, in license.SearchLicenseChangesInput,
+	ctx context.Context, q licenserepo.OrganizationLicenseChangeSearch,
 ) (search.Result[license.OrganizationLicenseChange], error) {
-	if err := in.Validate(); err != nil {
-		return search.Result[license.OrganizationLicenseChange]{}, err
-	}
-
-	found, err := s.organizations.FindByProductIDAndID(ctx, in.ProductID, in.OrganizationID)
+	scope := q.Scope()
+	found, err := s.organizations.FindByProductIDAndID(ctx, scope.ProductID, scope.OrganizationID)
 	if err != nil {
 		return search.Result[license.OrganizationLicenseChange]{}, err
 	}
@@ -54,5 +51,5 @@ func (s *licenseHistoryService) SearchChanges(
 		return search.Result[license.OrganizationLicenseChange]{}, organization.ErrOrganizationNotFound
 	}
 
-	return s.changes.Search(ctx, in)
+	return s.changes.Search(ctx, q)
 }

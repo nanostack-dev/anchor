@@ -34,3 +34,33 @@ func requireOneOf[T ~string](field string, values []T, allowed ...T) error {
 	}
 	return nil
 }
+
+// orEmpty reads an optional list property: a property that was not sent filters
+// nothing, like an empty list.
+func orEmpty[T any](list *[]T) []T {
+	if list == nil {
+		return nil
+	}
+	return *list
+}
+
+// requireNotBlank refuses a blank term of a substring filter. A blank term
+// matches every row, so a client that sends one by mistake would read the whole
+// set instead of the rows it named.
+func requireNotBlank(field string, terms []string) error {
+	for _, term := range terms {
+		if strings.TrimSpace(term) != "" {
+			continue
+		}
+		return fault.NewWithDetails([]fault.Detail{{
+			Code:    "VALIDATION_ERROR",
+			Message: field + " must not contain a blank term",
+			Metadata: map[string]any{
+				"field": field,
+				"rule":  "notblank",
+				"value": term,
+			},
+		}}, http.StatusBadRequest)
+	}
+	return nil
+}

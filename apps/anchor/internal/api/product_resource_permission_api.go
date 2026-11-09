@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	resourcepermission "anchor/internal/domain/product/resource_permission"
+	"anchor/internal/repository"
+
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 func mapProductResourcePermissionToResponse(
@@ -46,22 +49,21 @@ func mapToUpdateProductResourcePermissionInput(
 	}
 }
 
-func mapToSearchProductResourcePermissionInput(
-	req *ProductResourcePermissionSearchRequest,
-) search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission] {
-	filter := functional.FromPtr(req.Filter).
-		Map(func(f ProductResourcePermissionFilter) resourcepermission.SearchProductResourcePermissionFilter {
-			return resourcepermission.SearchProductResourcePermissionFilter{
-				Names:         f.Names,
-				ResourceTypes: f.ResourceTypes,
-			}
-		}).
-		ToPtr()
-	return search.NewRequest[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission]().
-		WithFullTextSearch(req.FullTextSearch).
-		WithFilter(filter).
-		WithSort(req.SortBy, req.SortDirection).
-		WithPagination(req.Pagination)
+// productResourcePermissionSearch builds the search from the request body. The
+// product scope comes from the route, which the authorization middleware
+// checked against the principal; the body never sets it. The resource_types
+// slugs go to the service, which resolves them to type IDs.
+func productResourcePermissionSearch(
+	productID string, body *ProductResourcePermissionSearchRequest,
+) (repository.ProductResourcePermissionSearch, []string) {
+	b := searchexec.OrZero(body)
+	f := searchexec.OrZero(b.Filter)
+	q := repository.NewProductResourcePermissionSearch(productID)
+	q = searchexec.Some(q, q.Name().In, f.Names)
+	q = searchexec.Opt(q, q.FullText, b.FullTextSearch)
+	q = searchexec.APISort(q, q.SortBy, b.SortBy, b.SortDirection,
+		repository.ProductResourcePermissionSortCreatedAt, search.SortAscending)
+	return searchexec.APIPage(q.Query, b.Pagination), f.ResourceTypes
 }
 
 func (s *AnchorAPI) CreateProductResourcePermission(
@@ -81,14 +83,9 @@ func (s *AnchorAPI) CreateProductResourcePermission(
 func (s *AnchorAPI) SearchProductResourcePermissions(
 	ctx context.Context, request SearchProductResourcePermissionsRequestObject,
 ) (SearchProductResourcePermissionsResponseObject, error) {
-	searchRequest := mapToSearchProductResourcePermissionInput(request.Body)
+	q, resourceTypes := productResourcePermissionSearch(request.ProductId, request.Body)
 
-	input := resourcepermission.SearchProductResourcePermissionInput{
-		ProductID: request.ProductId,
-		Request:   searchRequest,
-	}
-
-	result, err := s.ResourcePermissionService.SearchByProduct(ctx, input)
+	result, err := s.ResourcePermissionService.SearchByProduct(ctx, q, resourceTypes)
 	if err != nil {
 		return nil, err
 	}

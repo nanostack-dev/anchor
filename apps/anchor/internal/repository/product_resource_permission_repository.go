@@ -6,22 +6,45 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	resourcepermission "anchor/internal/domain/product/resource_permission"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
+
+// The base returns model rows: every method maps them with the permission mapper.
+func _() {
+	nanorepo.Implement[ProductResourcePermissionRepository, productResourcePermissionRepository](
+		table.ProductResourcePermissions, nanorepo.NoMapper[model.ProductResourcePermissions],
+	)
+
+	// POST /v1/products/{product_id}/resource-permissions/search. The service
+	// resolves the resource_types slugs of the request to type IDs and sets
+	// ResourceTypeID; the API never offers that filter.
+	nanorepo.Search[model.ProductResourcePermissions]("ProductResourcePermission", table.ProductResourcePermissions,
+		nanorepo.Map((*mapper.ProductResourcePermissionMapper).ToDomain),
+		nanorepo.Scope(table.ProductResourcePermissions.ProductID),
+		nanorepo.Filter(table.ProductResourcePermissions.Name, nanorepo.InFold),
+		nanorepo.GoOnly(nanorepo.Filter(table.ProductResourcePermissions.ResourceTypeID, nanorepo.In)),
+		nanorepo.FullText(table.ProductResourcePermissions.Name, table.ProductResourcePermissions.Description),
+		nanorepo.Sort(
+			table.ProductResourcePermissions.CreatedAt, table.ProductResourcePermissions.UpdatedAt,
+			table.ProductResourcePermissions.Name,
+		),
+		nanorepo.DefaultSort(table.ProductResourcePermissions.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
+	)
+}
 
 type ProductResourcePermissionRepository interface {
 	// Create creates a new resource permission
@@ -46,8 +69,7 @@ type ProductResourcePermissionRepository interface {
 
 	// SearchByProduct searches resource permissions within a product
 	SearchByProduct(
-		ctx context.Context, productID string,
-		input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
+		ctx context.Context, q ProductResourcePermissionSearch,
 	) (search.Result[resourcepermission.ProductResourcePermission], error)
 	// GetByRole gets resource permissions assigned to a role
 	GetByRole(
@@ -72,6 +94,8 @@ func productResourcePermissionsUpdatableColumns() postgres.ColumnList {
 }
 
 type productResourcePermissionRepository struct {
+	productResourcePermissionsBase
+
 	db     *sql.DB
 	logger *slog.Logger
 	mapper *mapper.ProductResourcePermissionMapper
@@ -83,9 +107,10 @@ func NewProductResourcePermissionRepository(
 	logger *slog.Logger,
 ) ProductResourcePermissionRepository {
 	return &productResourcePermissionRepository{
-		db:     db,
-		logger: logger,
-		mapper: mapper,
+		productResourcePermissionsBase: newProductResourcePermissionsBase(db),
+		db:                             db,
+		logger:                         logger,
+		mapper:                         mapper,
 	}
 }
 
@@ -162,68 +187,6 @@ func (r *productResourcePermissionRepository) DeleteByID(
 	)
 
 	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *productResourcePermissionRepository) SearchByProduct(
-	ctx context.Context,
-	productID string,
-	input search.Request[resourcepermission.SearchProductResourcePermissionFilter, resourcepermission.SortFieldProductResourcePermission],
-) (search.Result[resourcepermission.ProductResourcePermission], error) {
-	whereStmt := table.ProductResourcePermissions.ProductID.EQ(postgres.String(productID))
-	if input.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(searchx.Contains(
-			*input.FullTextSearch,
-			table.ProductResourcePermissions.Name, table.ProductResourcePermissions.Description,
-		))
-	}
-
-	if input.Filter != nil {
-		if len(input.Filter.Names) > 0 {
-			expressions := jetx.ToStringExpressions(lowerResourcePermissionStrings(input.Filter.Names))
-			whereStmt = whereStmt.AND(postgres.LOWER(table.ProductResourcePermissions.Name).IN(expressions...))
-		}
-
-		if len(input.Filter.ScopeModifiers) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.ScopeModifiers)
-			whereStmt = whereStmt.AND(table.ProductResourcePermissions.ScopeModifier.IN(expressions...))
-		}
-
-		if input.Filter.Scopes.Active() {
-			whereStmt = whereStmt.AND(
-				scopeCondition(table.ProductResourcePermissions.ResourceTypeID, input.Filter.Scopes),
-			)
-		}
-	}
-
-	nameKey := transactor.StringKey(
-		table.ProductResourcePermissions.Name,
-		func(row model.ProductResourcePermissions) string { return row.Name },
-	)
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[resourcepermission.SortFieldProductResourcePermission]transactor.Key[model.ProductResourcePermissions]{
-			resourcepermission.SortFieldProductResourcePermissionCreatedAt: transactor.TimeKey(
-				table.ProductResourcePermissions.CreatedAt,
-				func(row model.ProductResourcePermissions) time.Time { return row.CreatedAt },
-			),
-			resourcepermission.SortFieldProductResourcePermissionUpdatedAt: transactor.TimeKey(
-				table.ProductResourcePermissions.UpdatedAt,
-				func(row model.ProductResourcePermissions) time.Time { return row.UpdatedAt },
-			),
-			resourcepermission.SortFieldProductResourcePermissionName: nameKey,
-		},
-		nameKey,
-	)
-	if err != nil {
-		return search.Result[resourcepermission.ProductResourcePermission]{}, err
-	}
-
-	return transactor.Page(r.db, r.mapper.ToDomain, table.ProductResourcePermissions.AllColumns).
-		From(table.ProductResourcePermissions).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }
 
 func (r *productResourcePermissionRepository) GetByRole(

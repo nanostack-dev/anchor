@@ -186,7 +186,7 @@ type OrganizationLicenseChangeRepository interface {
 	// first unless the request sorts otherwise. An Organization with no
 	// history reads as an empty page.
 	Search(
-		ctx context.Context, in license.SearchLicenseChangesInput,
+		ctx context.Context, q OrganizationLicenseChangeSearch,
 	) (search.Result[license.OrganizationLicenseChange], error)
 }
 

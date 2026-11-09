@@ -3,7 +3,15 @@
 package repository
 
 import (
+	"anchor/internal/db/gen/anchor/public/model"
+	"anchor/internal/db/gen/anchor/public/table"
+	"anchor/internal/domain/permission"
 	"context"
+	"time"
+
+	"github.com/nanostack-dev/nanostack-framework/db/keyset"
+	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 // ProductPermissionRepository on *productPermissionRepositoryImpl: 1 derived method on table product_permissions; the other methods are
@@ -19,4 +27,59 @@ var _ ProductPermissionRepository = (*productPermissionRepositoryImpl)(nil)
 func (r *productPermissionRepositoryImpl) DeleteByProductIDAndName(ctx context.Context, productID string, name string) error {
 	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.Name(name)))
 	return err
+}
+
+// SearchByProduct runs a ProductPermissionSearch: *productPermissionRepositoryImpl has no hand-written SearchByProduct.
+func (r *productPermissionRepositoryImpl) SearchByProduct(ctx context.Context, q ProductPermissionSearch) (search.Result[permission.ProductPermission], error) {
+	return r.search(ctx, productPermissionSearch, q.Query, productPermissionToDomain)
+}
+
+// ProductPermissionSearch is an immutable search of product_permissions. Start one with NewProductPermissionSearch.
+type ProductPermissionSearch struct {
+	searchexec.Query[model.ProductPermissions, ProductPermissionSearch, ProductPermissionSort, string]
+}
+
+// ProductPermissionSort is a sort of ProductPermissionSearch.
+type ProductPermissionSort string
+
+const (
+	ProductPermissionSortName      ProductPermissionSort = "name"
+	ProductPermissionSortID        ProductPermissionSort = "id"
+	ProductPermissionSortResource  ProductPermissionSort = "resource"
+	ProductPermissionSortCreatedAt ProductPermissionSort = "created_at"
+)
+
+var productPermissionSearch = searchexec.DefineSpec(searchexec.SpecDef[model.ProductPermissions, ProductPermissionSort, string]{
+	From:    func(string) keyset.Source { return table.ProductPermissions },
+	Columns: table.ProductPermissions.AllColumns, // the Row is model.ProductPermissions
+	Scope: []searchexec.ScopeCol[string]{
+		searchexec.ScopeEq(searchexec.Value[string], table.ProductPermissions.ProductID),
+	},
+	Keys: map[ProductPermissionSort]keyset.Key[model.ProductPermissions]{
+		ProductPermissionSortName:      keyset.StringKey(table.ProductPermissions.Name, func(r model.ProductPermissions) string { return r.Name }),
+		ProductPermissionSortID:        keyset.StringKey(table.ProductPermissions.Name, func(r model.ProductPermissions) string { return r.Name }),
+		ProductPermissionSortResource:  keyset.StringKey(table.ProductPermissions.Name, func(r model.ProductPermissions) string { return r.Name }),
+		ProductPermissionSortCreatedAt: keyset.TimeKey(table.ProductPermissions.CreatedAt, func(r model.ProductPermissions) time.Time { return r.CreatedAt }),
+	},
+	Tiebreak: []keyset.Key[model.ProductPermissions]{ // product_permissions_pkey (product_id, name)
+		keyset.StringKey(table.ProductPermissions.ProductID, func(r model.ProductPermissions) string { return r.ProductID }),
+		keyset.StringKey(table.ProductPermissions.Name, func(r model.ProductPermissions) string { return r.Name }),
+	},
+	Default: searchexec.Asc(ProductPermissionSortCreatedAt),
+	Limit:   10,
+})
+
+// NewProductPermissionSearch starts a ProductPermissionSearch of one tenant. Only a query built here runs: Resolve and Run compare the spec.
+func NewProductPermissionSearch(productID string) ProductPermissionSearch {
+	return searchexec.New[ProductPermissionSearch](productPermissionSearch, productID)
+}
+
+// The filters of ProductPermissionSearch: each returns a field of q, whose method returns the filtered copy.
+func (q ProductPermissionSearch) Name() searchexec.InFold[ProductPermissionSearch, string] {
+	return searchexec.NewInFold[string](q.Query, table.ProductPermissions.Name)
+}
+
+// FullText keeps rows where name or description contains term (searchexec.Contains). A blank term filters nothing.
+func (q ProductPermissionSearch) FullText(term string) ProductPermissionSearch {
+	return searchexec.NewText(q.Query, table.ProductPermissions.Name, table.ProductPermissions.Description).Contains(term)
 }

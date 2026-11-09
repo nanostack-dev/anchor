@@ -16,10 +16,10 @@ import (
 	"anchor/internal/repository"
 	assignments "anchor/internal/roleassignment/service"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
 
@@ -29,7 +29,7 @@ type ProductUserService interface {
 	Create(ctx context.Context, input user.CreateProductUserInput) (user.ProductUser, error)
 	Delete(ctx context.Context, input user.DeleteProductUserInput) error
 	Search(
-		ctx context.Context, input user.SearchProductUserInput,
+		ctx context.Context, q repository.ProductUserSearch,
 	) (search.Result[user.ProductUser], error)
 	ListUserOrganizations(
 		ctx context.Context, input user.ListUserOrganizationsInput,
@@ -249,19 +249,15 @@ func (s *productUserService) Delete(
 }
 
 func (s *productUserService) Search(
-	ctx context.Context, input user.SearchProductUserInput,
+	ctx context.Context, q repository.ProductUserSearch,
 ) (search.Result[user.ProductUser], error) {
 	logger := s.logger.With(slog.String("operation", "Search"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[user.ProductUser]{}, err
-	}
-
-	result, err := s.productUserRepo.SearchByProductID(ctx, input.ProductID, input.Request)
+	result, err := s.productUserRepo.SearchByProductID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search product users",
-				slog.String("product_id", input.ProductID),
+				slog.String("product_id", q.Scope()),
 				log.Err(err),
 			)
 		}
@@ -269,7 +265,7 @@ func (s *productUserService) Search(
 	}
 
 	logger.DebugContext(ctx, "product users search completed",
-		slog.String("product_id", input.ProductID),
+		slog.String("product_id", q.Scope()),
 		slog.Int("total_count", int(result.Total)),
 	)
 

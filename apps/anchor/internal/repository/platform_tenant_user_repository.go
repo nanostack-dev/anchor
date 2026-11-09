@@ -4,22 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"strings"
-	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/platform"
 	"anchor/internal/mapper"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
@@ -33,6 +29,22 @@ func platformUserToDomain(row model.PlatformUsers) platform.User {
 func _() {
 	nanorepo.Implement[PlatformTenantUserRepository, platformTenantUserRepositoryImpl](
 		table.PlatformUsers, platformUserToDomain,
+	)
+
+	// POST /v1/platform-users/search
+	nanorepo.Search[model.PlatformUsers]("PlatformUser", table.PlatformUsers,
+		nanorepo.Map(platformUserToDomain),
+		nanorepo.Scope(table.PlatformUsers.PlatformTenantID),
+		nanorepo.Filter(table.PlatformUsers.ID, nanorepo.In),
+		nanorepo.Filter(table.PlatformUsers.Email, nanorepo.In),
+		nanorepo.Filter(table.PlatformUsers.Role, nanorepo.InFold),
+		nanorepo.FullText(table.PlatformUsers.Email, table.PlatformUsers.Name),
+		nanorepo.Sort(
+			table.PlatformUsers.CreatedAt, table.PlatformUsers.UpdatedAt,
+			table.PlatformUsers.Email, table.PlatformUsers.Role,
+		),
+		nanorepo.DefaultSort(table.PlatformUsers.CreatedAt, nanorepo.Asc),
+		nanorepo.DefaultLimit(10),
 	)
 }
 
@@ -62,10 +74,7 @@ type PlatformTenantUserRepository interface {
 	DeleteByPlatformTenantIDAndID(
 		ctx context.Context, platformTenantID string, id string,
 	) error
-	SearchByTenantID(
-		ctx context.Context, tenantID string,
-		input search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser],
-	) (search.Result[platform.User], error)
+	SearchByTenantID(ctx context.Context, q PlatformUserSearch) (search.Result[platform.User], error)
 }
 
 type platformTenantUserRepositoryImpl struct {
@@ -111,66 +120,6 @@ func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(
 		r.where.PlatformTenantID(platformTenantID).AND(r.where.UserID(userID)),
 		r.t.CreatedAt.ASC(), r.t.ID.ASC(),
 	)
-}
-
-func (r *platformTenantUserRepositoryImpl) SearchByTenantID(
-	ctx context.Context, tenantID string,
-	input search.Request[platform.SearchPlatformUserFilter, platform.SortFieldPlatformUser],
-) (search.Result[platform.User], error) {
-	whereStmt := table.PlatformUsers.PlatformTenantID.EQ(postgres.String(tenantID))
-
-	if input.Filter != nil {
-		if len(input.Filter.IDs) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.IDs)
-			whereStmt = whereStmt.AND(table.PlatformUsers.ID.IN(expressions...))
-		}
-
-		if len(input.Filter.Emails) > 0 {
-			expressions := jetx.ToStringExpressions(input.Filter.Emails)
-			whereStmt = whereStmt.AND(table.PlatformUsers.Email.IN(expressions...))
-		}
-
-		if len(input.Filter.Roles) > 0 {
-			roles := functional.Slice(input.Filter.Roles).Map(func(role platform.TenantRole) string {
-				return strings.ToLower(string(role))
-			})
-			expressions := jetx.ToStringExpressions(roles)
-			whereStmt = whereStmt.AND(postgres.LOWER(table.PlatformUsers.Role).IN(expressions...))
-		}
-	}
-	if input.FullTextSearch != nil {
-		whereStmt = whereStmt.AND(
-			searchx.Contains(*input.FullTextSearch, table.PlatformUsers.Email, table.PlatformUsers.Name),
-		)
-	}
-	order, err := transactor.StrictKeys(
-		input.Sort,
-		map[platform.SortFieldPlatformUser]transactor.Key[model.PlatformUsers]{
-			platform.SortFieldPlatformUserCreatedAt: transactor.TimeKey(
-				table.PlatformUsers.CreatedAt, func(row model.PlatformUsers) time.Time { return row.CreatedAt },
-			),
-			platform.SortFieldPlatformUserUpdatedAt: transactor.TimeKey(
-				table.PlatformUsers.UpdatedAt, func(row model.PlatformUsers) time.Time { return row.UpdatedAt },
-			),
-			platform.SortFieldPlatformUserEmail: transactor.StringKey(
-				table.PlatformUsers.Email, func(row model.PlatformUsers) string { return row.Email },
-			),
-			platform.SortFieldPlatformUserRole: transactor.StringKey(
-				table.PlatformUsers.Role, func(row model.PlatformUsers) string { return row.Role },
-			),
-		},
-		transactor.StringKey(table.PlatformUsers.ID, func(row model.PlatformUsers) string { return row.ID }),
-	)
-	if err != nil {
-		return search.Result[platform.User]{}, err
-	}
-
-	return transactor.Page(r.db, r.platformUserMapper.ToDomain, table.PlatformUsers.AllColumns).
-		From(table.PlatformUsers).
-		Where(whereStmt).
-		Keyset(order).
-		Run(ctx, input.Pagination).
-		Value()
 }
 
 func NewPlatformTenantUserRepository(

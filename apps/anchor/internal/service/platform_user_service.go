@@ -6,19 +6,18 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
-	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/db/search"
+	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
 	"anchor/internal/domain/platform"
 	"anchor/internal/repository"
-	"anchor/internal/searchx"
 	"anchor/internal/security"
 )
 
 type PlatformUserService interface {
 	SearchPlatformUsers(
-		ctx context.Context, input platform.SearchPlatformUsersInput,
+		ctx context.Context, q repository.PlatformUserSearch,
 	) (search.Result[platform.User], error)
 	GetPlatformUser(
 		ctx context.Context, input platform.GetPlatformUserInput,
@@ -47,18 +46,15 @@ func NewPlatformUserService(
 }
 
 func (s *platformUserService) SearchPlatformUsers(
-	ctx context.Context, input platform.SearchPlatformUsersInput,
+	ctx context.Context, q repository.PlatformUserSearch,
 ) (search.Result[platform.User], error) {
 	logger := s.logger.With(slog.String("operation", "SearchPlatformUsers"))
 
-	if err := input.Validate(); err != nil {
-		return search.Result[platform.User]{}, err
-	}
-	result, err := s.platformUserRepo.SearchByTenantID(ctx, input.TenantID, input.Request)
+	result, err := s.platformUserRepo.SearchByTenantID(ctx, q)
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			logger.ErrorContext(ctx, "failed to search platform users",
-				slog.String("tenant_id", input.TenantID),
+				slog.String("tenant_id", q.Scope()),
 				log.Err(err),
 			)
 		}
