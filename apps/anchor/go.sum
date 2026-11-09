@@ -265,8 +265,6 @@ github.com/nanostack-dev/nanostack-framework v0.23.0-beta.3 h1:3vK04MZlIRq2WIjXs
 github.com/nanostack-dev/nanostack-framework v0.23.0-beta.3/go.mod h1:LAavfBZDys34eelo2npFpPLI6OtfGDCq97DnnoYSO0w=
 github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.3 h1:w9Vbv1lJ0ohw8eFZxB2lQ7CE8wxuaJKw0lg4wjClynA=
 github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.3/go.mod h1:k0NtRltMfosF++ZNaQQNhyUW3uhEoq4NzKBezAvc0ow=
-github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.4 h1:7WDguwQtx+FnM+mY6kFJcygFUSgSi6cH4c9avL2NvVs=
-github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.4/go.mod h1:QZsdqOOWo6urmsPqBNdd2vymqcU+Hy+DIKon5oZgPiw=
 github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.5 h1:VTjttaVkPPYe1UxPja0hcCygG+qBB3XJbjLnzQL+zvM=
 github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.5/go.mod h1:QZsdqOOWo6urmsPqBNdd2vymqcU+Hy+DIKon5oZgPiw=
 github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1 h1:jdcC2VYEnVtnXmZdy7fsnUk2CGw0YcQ+NVy9o3d6cIo=
