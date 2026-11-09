@@ -118,7 +118,7 @@ func syncProductPermissions(
 		if _, ok := desired[name]; ok {
 			continue
 		}
-		deleteErr := permRepo.DeleteByID(ctx, prod.ID, name)
+		deleteErr := permRepo.DeleteByProductIDAndName(ctx, prod.ID, name)
 		if deleteErr != nil {
 			return deleteErr
 		}

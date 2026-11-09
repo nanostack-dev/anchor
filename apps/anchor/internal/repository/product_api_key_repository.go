@@ -57,8 +57,8 @@ type ProductAPIKeyRepository interface {
 		ctx context.Context, productID, name string,
 	) (functional.Option[apikey.ProductAPIKey], error)
 
-	// Delete deletes a product API key by Name
-	Delete(ctx context.Context, productID, id string) error
+	// DeleteByProductIDAndID deletes a product API key of a product.
+	DeleteByProductIDAndID(ctx context.Context, productID, id string) error
 
 	// SearchByProductId searches for product API keys with filtering, sorting, and pagination
 	SearchByProductID(
@@ -74,8 +74,6 @@ type ProductAPIKeyRepository interface {
 	) (functional.Option[apikey.ProductAPIKey], error)
 }
 
-// productAPIKeyToDomain is the stateless mapper that the generated base calls.
-//
 // productAPIKeyToDomain is the stateless mapper that the generated base calls.
 func productAPIKeyToDomain(row model.ProductAPIKeys) apikey.ProductAPIKey {
 	return (&mapper.ProductAPIKeyMapper{}).ToDomain(row)
@@ -260,18 +258,6 @@ func (r *productAPIKeyRepository) DeletePermissionsByName(
 	stmt := table.ProductAPIKeyPermissions.DELETE().WHERE(
 		table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(productID)).AND(
 			table.ProductAPIKeyPermissions.PermissionName.EQ(postgres.String(permissionName)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *productAPIKeyRepository) Delete(
-	ctx context.Context, productID, id string,
-) error {
-	stmt := table.ProductAPIKeys.DELETE().WHERE(
-		table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
-			table.ProductAPIKeys.ProductID.EQ(postgres.String(productID)),
 		),
 	)
 

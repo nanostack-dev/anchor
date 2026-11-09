@@ -40,8 +40,8 @@ type ProductPermissionRepository interface {
 		ctx context.Context, perm permission.ProductPermission,
 	) (permission.ProductPermission, error)
 
-	// DeleteByID deletes a permission by product_id and name
-	DeleteByID(
+	// DeleteByProductIDAndName deletes a permission by product_id and name.
+	DeleteByProductIDAndName(
 		ctx context.Context, productID, name string,
 	) error
 
@@ -60,8 +60,6 @@ type ProductPermissionRepository interface {
 	) ([]permission.ProductPermission, error)
 }
 
-// productPermissionToDomain is the stateless mapper that the generated base calls.
-//
 // productPermissionToDomain is the stateless mapper that the generated base calls.
 func productPermissionToDomain(row model.ProductPermissions) permission.ProductPermission {
 	return (&mapper.ProductPermissionMapper{}).ToDomain(row)
@@ -166,17 +164,6 @@ func (r *productPermissionRepositoryImpl) Update(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.productPermissionMapper.ToDomain,
 	).Value()
-}
-
-func (r *productPermissionRepositoryImpl) DeleteByID(
-	ctx context.Context, productID, name string,
-) error {
-	stmt := table.ProductPermissions.DELETE().WHERE(
-		table.ProductPermissions.ProductID.EQ(postgres.String(productID)).
-			AND(table.ProductPermissions.Name.EQ(postgres.String(name))),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productPermissionRepositoryImpl) SearchByProduct(

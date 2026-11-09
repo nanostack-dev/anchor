@@ -355,7 +355,7 @@ func (s *productAPIKeyService) Delete(
 		return apikey.ErrProductAPIKeyNotFound
 	}
 	existingAPIKey := foundAPIKey.Value()
-	if deleteErr := s.apiKeyRepo.Delete(ctx, input.ProductID, input.ID); deleteErr != nil {
+	if deleteErr := s.apiKeyRepo.DeleteByProductIDAndID(ctx, input.ProductID, input.ID); deleteErr != nil {
 		logger.ErrorContext(ctx, "failed to delete API key",
 			slog.String("product_id", input.ProductID),
 			slog.String("api_key_id", input.ID),

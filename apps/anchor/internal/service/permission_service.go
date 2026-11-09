@@ -201,7 +201,7 @@ func (s *permissionService) Delete(
 		)
 	}
 
-	err = s.permissionRepo.DeleteByID(ctx, input.ProductID, exists.Name)
+	err = s.permissionRepo.DeleteByProductIDAndName(ctx, input.ProductID, exists.Name)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to delete permission",
 			slog.String("product_id", input.ProductID),
