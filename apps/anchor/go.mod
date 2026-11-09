@@ -17,7 +17,7 @@ require (
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
 	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.3
 	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.3
-	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.4
+	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.5
 	github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1
 	github.com/nanostack-dev/pgkit v0.0.46
 	github.com/oapi-codegen/nethttp-middleware v1.2.0

@@ -64,8 +64,9 @@ type ProductUserRepository interface {
 	UpsertByExternalID(
 		ctx context.Context, entity user.ProductUser,
 	) (user.ProductUser, bool, error)
-	DeleteByID(ctx context.Context, productID string, id string) (bool, error)
-	DeleteByExternalID(ctx context.Context, productID string, externalID string) error
+	// DeleteByProductIDAndID returns true when it deleted the row.
+	DeleteByProductIDAndID(ctx context.Context, productID string, id string) (bool, error)
+	DeleteByProductIDAndExternalID(ctx context.Context, productID string, externalID string) error
 	SearchByProductID(
 		ctx context.Context,
 		productID string,
@@ -204,28 +205,6 @@ func (r *productUserRepositoryImpl) Update(
 	return r.one(transactor.Query[model.ProductUsers](ctx, r.db, updateStmt).Value())
 }
 
-func (r *productUserRepositoryImpl) DeleteByID(
-	ctx context.Context,
-	productID string,
-	id string,
-) (bool, error) {
-	stmt := table.ProductUsers.DELETE().WHERE(
-		table.ProductUsers.ID.EQ(postgres.String(id)).AND(
-			table.ProductUsers.ProductID.EQ(postgres.String(productID)),
-		),
-	)
-
-	result, err := stmt.ExecContext(ctx, transactor.Executor(ctx, r.db))
-	if err != nil {
-		return false, err
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return false, err
-	}
-	return affected > 0, nil
-}
-
 var ErrProductUserExternalIDMissing = errors.New("product user upsert requires an external ID")
 
 func (r *productUserRepositoryImpl) UpsertByExternalID(
@@ -271,20 +250,6 @@ func (r *productUserRepositoryImpl) UpsertByExternalID(
 	}
 
 	return updated, false, nil
-}
-
-func (r *productUserRepositoryImpl) DeleteByExternalID(
-	ctx context.Context,
-	productID string,
-	externalID string,
-) error {
-	stmt := table.ProductUsers.DELETE().WHERE(
-		table.ProductUsers.ProductID.EQ(postgres.String(productID)).AND(
-			table.ProductUsers.ExternalID.EQ(postgres.String(externalID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 func (r *productUserRepositoryImpl) SearchByProductID(
