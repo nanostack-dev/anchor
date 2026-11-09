@@ -147,6 +147,7 @@ type Anchor {
     container
       .from("python:3.13-bookworm")
       .withDirectory("/repo", source(ws))
+      .withDirectory("/repo", ws.directory("/", include: [".dagger/modules/anchor/main.dang"]))
       .withWorkdir("/repo")
       .withExec(["python3", "scripts/test_lint.py"])
       .sync
