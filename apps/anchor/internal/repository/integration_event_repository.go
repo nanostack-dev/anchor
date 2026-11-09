@@ -15,10 +15,20 @@ import (
 	"anchor/internal/domain/integration"
 	"anchor/internal/mapper"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
-var _ IntegrationEventRepository = (*integrationEventRepositoryImpl)(nil)
+// integrationEventToDomain is the stateless mapper that the generated base calls.
+//
+//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
+var integrationEventToDomain = (&mapper.IntegrationEventMapper{}).ToDomain
+
+func _() {
+	nanorepo.Implement[IntegrationEventRepository, integrationEventRepositoryImpl](
+		table.IntegrationEvents, integrationEventToDomain,
+	)
+}
 
 func integrationEventsUpdatableColumns() postgres.ColumnList {
 	return table.IntegrationEvents.AllColumns.Except(
@@ -58,6 +68,8 @@ type IntegrationEventRepository interface {
 }
 
 type integrationEventRepositoryImpl struct {
+	integrationEventsBase
+
 	db     *sql.DB
 	mapper *mapper.IntegrationEventMapper
 	logger *slog.Logger
@@ -67,9 +79,10 @@ func NewIntegrationEventRepository(
 	db *sql.DB, m *mapper.IntegrationEventMapper, logger *slog.Logger,
 ) IntegrationEventRepository {
 	return &integrationEventRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "integration_event_repository")),
+		integrationEventsBase: newIntegrationEventsBase(db),
+		db:                    db,
+		mapper:                m,
+		logger:                logger.With(slog.String("component", "integration_event_repository")),
 	}
 }
 

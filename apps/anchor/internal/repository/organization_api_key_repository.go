@@ -20,6 +20,7 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
@@ -75,7 +76,16 @@ type OrganizationAPIKeyRepository interface {
 	) (functional.Option[orgapikey.OrganizationAPIKey], error)
 }
 
-var _ OrganizationAPIKeyRepository = (*organizationAPIKeyRepository)(nil)
+// organizationAPIKeyToDomain is the stateless mapper that the generated base calls.
+//
+//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
+var organizationAPIKeyToDomain = (&mapper.OrganizationAPIKeyMapper{}).ToDomain
+
+func _() {
+	nanorepo.Implement[OrganizationAPIKeyRepository, organizationAPIKeyRepository](
+		table.OrganizationAPIKeys, organizationAPIKeyToDomain,
+	)
+}
 
 func organizationAPIKeysUpdatableColumns() postgres.ColumnList {
 	return table.OrganizationAPIKeys.AllColumns.Except(
@@ -94,6 +104,8 @@ type organizationAPIKeyWithPermissions struct {
 }
 
 type organizationAPIKeyRepository struct {
+	organizationAPIKeysBase
+
 	db     *sql.DB
 	logger *slog.Logger
 	mapper *mapper.OrganizationAPIKeyMapper
@@ -105,9 +117,10 @@ func NewOrganizationAPIKeyRepository(
 	logger *slog.Logger,
 ) OrganizationAPIKeyRepository {
 	return &organizationAPIKeyRepository{
-		db:     db,
-		logger: logger.With(slog.String("component", "organization_api_key_repository")),
-		mapper: mapper,
+		organizationAPIKeysBase: newOrganizationAPIKeysBase(db),
+		db:                      db,
+		logger:                  logger.With(slog.String("component", "organization_api_key_repository")),
+		mapper:                  mapper,
 	}
 }
 

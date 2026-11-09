@@ -21,6 +21,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/product/apikey"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
@@ -73,7 +74,16 @@ type ProductAPIKeyRepository interface {
 	) (functional.Option[apikey.ProductAPIKey], error)
 }
 
-var _ ProductAPIKeyRepository = (*productAPIKeyRepository)(nil)
+// productAPIKeyToDomain is the stateless mapper that the generated base calls.
+//
+//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
+var productAPIKeyToDomain = (&mapper.ProductAPIKeyMapper{}).ToDomain
+
+func _() {
+	nanorepo.Implement[ProductAPIKeyRepository, productAPIKeyRepository](
+		table.ProductAPIKeys, productAPIKeyToDomain,
+	)
+}
 
 func productAPIKeysUpdatableColumns() postgres.ColumnList {
 	return table.ProductAPIKeys.AllColumns.Except(
@@ -93,6 +103,8 @@ type productAPIKeyWithPermissions struct {
 }
 
 type productAPIKeyRepository struct {
+	productAPIKeysBase
+
 	db     *sql.DB
 	logger *slog.Logger
 	mapper *mapper.ProductAPIKeyMapper
@@ -104,9 +116,10 @@ func NewProductAPIKeyRepository(
 	logger *slog.Logger,
 ) ProductAPIKeyRepository {
 	return &productAPIKeyRepository{
-		db:     db,
-		logger: logger.With(slog.String("component", "product_api_key_repository")),
-		mapper: mapper,
+		productAPIKeysBase: newProductAPIKeysBase(db),
+		db:                 db,
+		logger:             logger.With(slog.String("component", "product_api_key_repository")),
+		mapper:             mapper,
 	}
 }
 

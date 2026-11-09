@@ -17,13 +17,18 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 )
 
-var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[OrganizationMembershipRepository, organizationMembershipRepositoryImpl](
+		table.OrganizationMemberships, nanorepo.NoMapper[model.OrganizationMemberships],
+	)
+}
 
 // userOrgMembershipRow is the composite struct for scanning the joined query result
 // from the product user's perspective.
@@ -146,6 +151,8 @@ type OrganizationMembershipRepository interface {
 }
 
 type organizationMembershipRepositoryImpl struct {
+	organizationMembershipsBase
+
 	db     *sql.DB
 	logger *slog.Logger
 }
@@ -155,8 +162,9 @@ func NewOrganizationMembershipRepository(
 	logger *slog.Logger,
 ) OrganizationMembershipRepository {
 	return &organizationMembershipRepositoryImpl{
-		db:     db,
-		logger: logger.With(slog.String("component", "organization_membership_repository")),
+		organizationMembershipsBase: newOrganizationMembershipsBase(db),
+		db:                          db,
+		logger:                      logger.With(slog.String("component", "organization_membership_repository")),
 	}
 }
 

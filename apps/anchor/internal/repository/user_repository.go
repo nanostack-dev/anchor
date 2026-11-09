@@ -12,6 +12,7 @@ import (
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/auth"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 
 	"anchor/internal/mapper"
@@ -24,7 +25,16 @@ func usersUpdatableColumns() postgres.ColumnList {
 	)
 }
 
-var _ UserRepository = (*userRepositoryImpl)(nil)
+// userToDomain is the stateless mapper that the generated base calls.
+//
+//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
+var userToDomain = (&mapper.UserMapper{}).ToDomain
+
+func _() {
+	nanorepo.Implement[UserRepository, userRepositoryImpl](
+		table.Users, userToDomain,
+	)
+}
 
 type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (functional.Option[auth.User], error)
@@ -36,6 +46,8 @@ type UserRepository interface {
 }
 
 type userRepositoryImpl struct {
+	usersBase
+
 	db               *sql.DB
 	userMapper       *mapper.UserMapper
 	tenantMapper     *mapper.TenantMapper
@@ -93,6 +105,7 @@ func NewUserRepository(
 	logger *slog.Logger,
 ) UserRepository {
 	return &userRepositoryImpl{
+		usersBase:        newUsersBase(db),
 		db:               db,
 		userMapper:       userMapper,
 		tenantMapper:     tenantMapper,

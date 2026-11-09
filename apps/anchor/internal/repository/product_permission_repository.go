@@ -20,6 +20,7 @@ import (
 	"anchor/internal/mapper"
 	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 )
 
@@ -59,7 +60,16 @@ type ProductPermissionRepository interface {
 	) ([]permission.ProductPermission, error)
 }
 
-var _ ProductPermissionRepository = (*productPermissionRepositoryImpl)(nil)
+// productPermissionToDomain is the stateless mapper that the generated base calls.
+//
+//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
+var productPermissionToDomain = (&mapper.ProductPermissionMapper{}).ToDomain
+
+func _() {
+	nanorepo.Implement[ProductPermissionRepository, productPermissionRepositoryImpl](
+		table.ProductPermissions, productPermissionToDomain,
+	)
+}
 
 func productPermissionsUpdatableColumns() postgres.ColumnList {
 	return table.ProductPermissions.AllColumns.Except(
@@ -68,6 +78,8 @@ func productPermissionsUpdatableColumns() postgres.ColumnList {
 }
 
 type productPermissionRepositoryImpl struct {
+	productPermissionsBase
+
 	db                      *sql.DB
 	productPermissionMapper *mapper.ProductPermissionMapper
 	logger                  *slog.Logger
@@ -79,6 +91,7 @@ func NewProductPermissionRepository(
 	logger *slog.Logger,
 ) ProductPermissionRepository {
 	return &productPermissionRepositoryImpl{
+		productPermissionsBase:  newProductPermissionsBase(db),
 		db:                      db,
 		productPermissionMapper: productPermissionMapper,
 		logger:                  logger.With(slog.String("component", "product_permission_repository")),
