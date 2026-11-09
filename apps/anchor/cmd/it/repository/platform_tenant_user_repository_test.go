@@ -134,25 +134,29 @@ func TestPlatformTenantUserRepositoryFindByPlatformTenantIDAndUserIDScopesToTena
 	assert.Equal(t, rowB.ID, got.Value().ID)
 }
 
-// (platform_tenant_id, user_id) is not unique, so the finder orders by
-// (created_at, id) and returns the oldest row.
-func TestPlatformTenantUserRepositoryFindByPlatformTenantIDAndUserIDPicksOldest(t *testing.T) {
+// idx_platform_users_tenant_user keeps one platform user per user in a tenant,
+// so FindByPlatformTenantIDAndUserID never has to pick between rows.
+func TestPlatformTenantUserRepositoryRefusesASecondRowForTheSameTenantAndUser(t *testing.T) {
 	ctx := context.Background()
 	tenantID := createTenant(t)
 	userID := createAuthUser(t)
-	base := time.Now().Add(-time.Hour)
-	newer := createPlatformUserFor(t, tenantID, userID, base.Add(2*time.Minute))
-	oldest := createPlatformUserFor(t, tenantID, userID, base)
+	first := createPlatformUserFor(t, tenantID, userID, time.Now().Add(-time.Hour))
+
+	second := platform.User{
+		PlatformTenantID: tenantID,
+		UserID:           userID,
+		Name:             uniqueName(t, "Test Platform User"),
+		Email:            uniqueName(t, "platform-user") + "@example.com",
+		HashedPassword:   "hashed-password",
+		Role:             platform.TenantRoleAdmin,
+	}
+	second.GenerateID()
+	_, err := repoCtx.PlatformTenantUserRepository.Create(ctx, second)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "idx_platform_users_tenant_user")
 
 	got, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
 	require.NoError(t, err)
 	require.True(t, got.IsPresent())
-	assert.Equal(t, oldest.ID, got.Value().ID)
-
-	require.NoError(t, repoCtx.PlatformTenantUserRepository.DeleteByPlatformTenantIDAndID(ctx, tenantID, oldest.ID))
-
-	got, err = repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
-	require.NoError(t, err)
-	require.True(t, got.IsPresent())
-	assert.Equal(t, newer.ID, got.Value().ID)
+	assert.Equal(t, first.ID, got.Value().ID)
 }

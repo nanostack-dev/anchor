@@ -15,12 +15,19 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-// PlatformTenantUserRepository on *platformTenantUserRepositoryImpl: 3 derived methods on table platform_users; the other methods are
+// PlatformTenantUserRepository on *platformTenantUserRepositoryImpl: 4 derived methods on table platform_users; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // A compile error on the next line means PlatformTenantUserRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ PlatformTenantUserRepository = (*platformTenantUserRepositoryImpl)(nil)
+
+// FindByPlatformTenantIDAndUserID is derived from its name:
+//
+//	SELECT * FROM platform_users WHERE platform_tenant_id = $1 AND user_id = $2 LIMIT 2 -- at most one row: idx_platform_users_tenant_user (platform_tenant_id, user_id); a second row is ErrMoreThanOneRow
+func (r *platformTenantUserRepositoryImpl) FindByPlatformTenantIDAndUserID(ctx context.Context, platformTenantID string, userID string) (functional.Option[platform.User], error) {
+	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.UserID(userID)))
+}
 
 // FindByPlatformTenantIDAndID is derived from its name:
 //
