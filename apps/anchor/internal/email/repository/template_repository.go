@@ -13,6 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -22,7 +23,14 @@ import (
 	"anchor/internal/searchx"
 )
 
-var _ TemplateRepository = (*templateRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[TemplateRepository, templateRepositoryImpl](table.EmailTemplates, emailTemplateToDomain)
+}
+
+// emailTemplateToDomain maps the rows that the base returns. EmailTemplateMapper has no state.
+func emailTemplateToDomain(row model.EmailTemplates) email.Template {
+	return (&mapper.EmailTemplateMapper{}).ToDomain(row)
+}
 
 func emailTemplatesUpdatableColumns() postgres.ColumnList {
 	return table.EmailTemplates.AllColumns.Except(
@@ -31,7 +39,8 @@ func emailTemplatesUpdatableColumns() postgres.ColumnList {
 }
 
 type templateRepositoryImpl struct {
-	db     *sql.DB
+	emailTemplatesBase
+
 	mapper *mapper.EmailTemplateMapper
 	logger *slog.Logger
 }
@@ -40,54 +49,10 @@ func NewTemplateRepository(
 	db *sql.DB, m *mapper.EmailTemplateMapper, logger *slog.Logger,
 ) TemplateRepository {
 	return &templateRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "email_template_repository")),
+		emailTemplatesBase: newEmailTemplatesBase(db),
+		mapper:             m,
+		logger:             logger.With(slog.String("component", "email_template_repository")),
 	}
-}
-
-func (r *templateRepositoryImpl) FindByID(
-	ctx context.Context, tenantID string, productID string, id string,
-) (functional.Option[email.Template], error) {
-	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
-		FROM(table.EmailTemplates).
-		WHERE(
-			table.EmailTemplates.ID.EQ(postgres.String(id)).
-				AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
-				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *templateRepositoryImpl) FindBySlug(
-	ctx context.Context, tenantID string, productID string, slug string,
-) (functional.Option[email.Template], error) {
-	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
-		FROM(table.EmailTemplates).
-		WHERE(
-			table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID)).
-				AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))).
-				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *templateRepositoryImpl) FindBySlugInternal(
-	ctx context.Context, productID string, slug string,
-) (functional.Option[email.Template], error) {
-	stmt := table.EmailTemplates.SELECT(table.EmailTemplates.AllColumns).
-		FROM(table.EmailTemplates).
-		WHERE(
-			table.EmailTemplates.ProductID.EQ(postgres.String(productID)).
-				AND(table.EmailTemplates.Slug.EQ(postgres.String(slug))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
 }
 
 func (r *templateRepositoryImpl) Search(
@@ -184,7 +149,7 @@ func (r *templateRepositoryImpl) Update(
 		entity.IsActive = *in.IsActive
 	}
 	if len(columns) == 0 {
-		return r.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+		return r.FindByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.ID)
 	}
 	stmt := table.EmailTemplates.UPDATE(columns).MODEL(entity).WHERE(
 		table.EmailTemplates.ID.EQ(postgres.String(in.ID)).
@@ -243,17 +208,6 @@ func (r *templateRepositoryImpl) SetVersionPointers(
 	).MODEL(entity).WHERE(
 		table.EmailTemplates.ID.EQ(postgres.String(templateID)).
 			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))),
-	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *templateRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, productID string, id string,
-) error {
-	stmt := table.EmailTemplates.DELETE().WHERE(
-		table.EmailTemplates.ID.EQ(postgres.String(id)).
-			AND(table.EmailTemplates.PlatformTenantID.EQ(postgres.String(tenantID))).
-			AND(table.EmailTemplates.ProductID.EQ(postgres.String(productID))),
 	)
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }

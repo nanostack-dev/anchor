@@ -16,18 +16,14 @@ import (
 //
 // The interface lives in this package so the email service can be wired
 // and unit-tested with mocks; the Postgres implementation is next to it.
+// Methods without a hand-written body are derived from their name by
+// go tool nano gen (template_repository_repo.gen.go).
 type TemplateRepository interface {
-	FindByID(
-		ctx context.Context, tenantID string, productID string, id string,
+	FindByPlatformTenantIDAndProductIDAndID(
+		ctx context.Context, platformTenantID string, productID string, id string,
 	) (functional.Option[email.Template], error)
-	FindBySlug(
-		ctx context.Context, tenantID string, productID string, slug string,
-	) (functional.Option[email.Template], error)
-	// FindBySlugInternal is reserved for trusted system-internal paths that
-	// dispatch transactional emails via product API key (no authenticated
-	// tenant context). Must NOT be called from tenant-facing API handlers.
-	FindBySlugInternal(
-		ctx context.Context, productID string, slug string,
+	FindByPlatformTenantIDAndProductIDAndSlug(
+		ctx context.Context, platformTenantID string, productID string, slug string,
 	) (functional.Option[email.Template], error)
 	Search(
 		ctx context.Context, in email.SearchTemplatesInput,
@@ -52,8 +48,8 @@ type TemplateRepository interface {
 	SetVersionPointers(
 		ctx context.Context, tenantID string, templateID string, draftVersionID *string, publishedVersionID *string,
 	) error
-	DeleteByID(
-		ctx context.Context, tenantID string, productID string, id string,
+	DeleteByPlatformTenantIDAndProductIDAndID(
+		ctx context.Context, platformTenantID string, productID string, id string,
 	) error
 }
 
@@ -61,6 +57,10 @@ type TemplateRepository interface {
 // (subject, bodies, variables) attached to a Template. Each Template owns
 // at most one DRAFT row and one PUBLISHED row at any time; older PUBLISHED
 // rows are moved to ARCHIVED on republish.
+//
+// email_template_versions has no tenant column: FindByID reads any tenant's
+// row, so the caller loads the version only through a template that it
+// found with the tenant and product first.
 type TemplateVersionRepository interface {
 	FindByID(
 		ctx context.Context, id string,
@@ -76,9 +76,6 @@ type TemplateVersionRepository interface {
 	FindCurrentPublished(
 		ctx context.Context, templateID string,
 	) (functional.Option[email.TemplateVersion], error)
-	List(
-		ctx context.Context, templateID string, limit int64, offset int64,
-	) ([]email.TemplateVersion, error)
 	Create(
 		ctx context.Context, version email.TemplateVersion,
 	) (email.TemplateVersion, error)
@@ -110,37 +107,18 @@ type SendRecordRepository interface {
 	Create(
 		ctx context.Context, tenantID string, productID string, record email.SendRecord,
 	) (email.SendRecord, error)
-	// UpdateStatusInternal updates the send record status by ID without tenant
-	// scoping; used by async dispatchers where no tenant context exists.
-	UpdateStatusInternal(
-		ctx context.Context, id string, status email.SendStatus, lastError *string, sentAt *time.Time,
-	) error
 	// UpdateStatus updates the status of a send record, scoped to the tenant.
 	UpdateStatus(
 		ctx context.Context, tenantID string, id string, status email.SendStatus, lastError *string, sentAt *time.Time,
 	) error
-	// FindByDedupeKeyInternal looks up a send by dedupe key without tenant
-	// scoping; used by async dispatchers.
-	FindByDedupeKeyInternal(
-		ctx context.Context, productID string, dedupeKey string,
-	) (functional.Option[email.SendRecord], error)
-	// FindByDedupeKey returns a send record matching the dedupe key within the
-	// specified tenant and product.
-	FindByDedupeKey(
-		ctx context.Context, tenantID string, productID string, dedupeKey string,
-	) (functional.Option[email.SendRecord], error)
-	FindByID(
-		ctx context.Context, tenantID string, productID string, id string,
+	// FindByPlatformTenantIDAndProductIDAndDedupeKey returns the send record
+	// with the dedupe key within the tenant and product.
+	FindByPlatformTenantIDAndProductIDAndDedupeKey(
+		ctx context.Context, platformTenantID string, productID string, dedupeKey string,
 	) (functional.Option[email.SendRecord], error)
 	Search(
 		ctx context.Context, input email.SearchSendsInput,
 	) (search.Result[email.SendRecord], error)
-	// CountSinceInternal returns the number of sends for a product since the
-	// given timestamp. Used by the rate limiter; bypasses tenant scoping
-	// because the rate-limit decision is keyed on (product_id, since).
-	CountSinceInternal(
-		ctx context.Context, productID string, since time.Time,
-	) (int64, error)
 	// CountSince returns the number of sends for a product and tenant since
 	// the given timestamp.
 	CountSince(

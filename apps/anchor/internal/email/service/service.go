@@ -219,7 +219,7 @@ func (s *emailService) resolveTemplate(
 	ctx context.Context, tenantID, productID string, idPtr, slugPtr *string,
 ) (*email.Template, error) {
 	if idPtr != nil && strings.TrimSpace(*idPtr) != "" {
-		found, err := s.templateRepo.FindByID(ctx, tenantID, productID, *idPtr)
+		found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(ctx, tenantID, productID, *idPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +229,7 @@ func (s *emailService) resolveTemplate(
 		return found.ToPtr(), nil
 	}
 	if slugPtr != nil && strings.TrimSpace(*slugPtr) != "" {
-		found, err := s.templateRepo.FindBySlug(ctx, tenantID, productID, *slugPtr)
+		found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndSlug(ctx, tenantID, productID, *slugPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +272,7 @@ func (s *emailService) CreateTemplate(
 		return email.Template{}, err
 	}
 
-	existing, err := s.templateRepo.FindBySlug(ctx, in.TenantID, in.ProductID, in.Slug)
+	existing, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndSlug(ctx, in.TenantID, in.ProductID, in.Slug)
 	if err != nil {
 		return email.Template{}, err
 	}
@@ -343,7 +343,7 @@ func (s *emailService) UpdateTemplate(
 func (s *emailService) lockTemplate(
 	txCtx context.Context, tenantID string, productID string, templateID string,
 ) (*email.Template, error) {
-	found, err := s.templateRepo.FindByID(
+	found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(
 		transactor.ForNoKeyUpdate(txCtx), tenantID, productID, templateID,
 	)
 	if err != nil {
@@ -555,7 +555,7 @@ func (s *emailService) PublishTemplate(
 func (s *emailService) GetTemplate(
 	ctx context.Context, in email.GetTemplateInput,
 ) (*email.Template, error) {
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -574,7 +574,7 @@ func (s *emailService) SearchTemplates(
 func (s *emailService) DeleteTemplate(
 	ctx context.Context, in email.DeleteTemplateInput,
 ) error {
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.ID)
+	found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.ID)
 	if err != nil {
 		return err
 	}
@@ -582,13 +582,13 @@ func (s *emailService) DeleteTemplate(
 		return ErrEmailTemplateNotFound
 	}
 
-	return s.templateRepo.DeleteByID(ctx, in.TenantID, in.ProductID, in.ID)
+	return s.templateRepo.DeleteByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.ID)
 }
 
 func (s *emailService) SaveTemplateExamples(
 	ctx context.Context, in email.SaveTemplateExamplesInput,
 ) ([]email.TemplateExample, error) {
-	found, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	found, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.TemplateID)
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +604,12 @@ func (s *emailService) SaveTemplateExamples(
 func (s *emailService) Preview(
 	ctx context.Context, in email.PreviewInput,
 ) (email.PreviewResult, error) {
-	foundTpl, err := s.templateRepo.FindByID(ctx, in.TenantID, in.ProductID, in.TemplateID)
+	foundTpl, err := s.templateRepo.FindByPlatformTenantIDAndProductIDAndID(
+		ctx,
+		in.TenantID,
+		in.ProductID,
+		in.TemplateID,
+	)
 	if err != nil {
 		return email.PreviewResult{}, err
 	}
@@ -662,7 +667,12 @@ func (s *emailService) Send(
 	// status (queued/sending/sent) is a genuine duplicate and short-circuits.
 	var retryRecord *email.SendRecord
 	if in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != "" {
-		found, err := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+		found, err := s.sendRepo.FindByPlatformTenantIDAndProductIDAndDedupeKey(
+			ctx,
+			in.TenantID,
+			in.ProductID,
+			*in.DedupeKey,
+		)
 		if err != nil {
 			return email.SendRecord{}, err
 		}
@@ -848,7 +858,12 @@ func (s *emailService) createSendRecord(
 		return email.SendRecord{}, false, err
 	}
 
-	found, findErr := s.sendRepo.FindByDedupeKey(ctx, in.TenantID, in.ProductID, *in.DedupeKey)
+	found, findErr := s.sendRepo.FindByPlatformTenantIDAndProductIDAndDedupeKey(
+		ctx,
+		in.TenantID,
+		in.ProductID,
+		*in.DedupeKey,
+	)
 	if findErr != nil {
 		return email.SendRecord{}, false, findErr
 	}

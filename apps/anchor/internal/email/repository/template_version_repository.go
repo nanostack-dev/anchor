@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -17,7 +18,17 @@ import (
 	"anchor/internal/mapper"
 )
 
-var _ TemplateVersionRepository = (*templateVersionRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[TemplateVersionRepository, templateVersionRepositoryImpl](
+		table.EmailTemplateVersions,
+		emailTemplateVersionToDomain,
+	)
+}
+
+// emailTemplateVersionToDomain maps the rows that the base returns. EmailTemplateVersionMapper has no state.
+func emailTemplateVersionToDomain(row model.EmailTemplateVersions) email.TemplateVersion {
+	return (&mapper.EmailTemplateVersionMapper{}).ToDomain(row)
+}
 
 func emailTemplateVersionsUpdatableColumns() postgres.ColumnList {
 	return table.EmailTemplateVersions.AllColumns.Except(
@@ -26,7 +37,8 @@ func emailTemplateVersionsUpdatableColumns() postgres.ColumnList {
 }
 
 type templateVersionRepositoryImpl struct {
-	db     *sql.DB
+	emailTemplateVersionsBase
+
 	mapper *mapper.EmailTemplateVersionMapper
 	logger *slog.Logger
 }
@@ -35,22 +47,10 @@ func NewTemplateVersionRepository(
 	db *sql.DB, m *mapper.EmailTemplateVersionMapper, logger *slog.Logger,
 ) TemplateVersionRepository {
 	return &templateVersionRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "email_template_version_repository")),
+		emailTemplateVersionsBase: newEmailTemplateVersionsBase(db),
+		mapper:                    m,
+		logger:                    logger.With(slog.String("component", "email_template_version_repository")),
 	}
-}
-
-func (r *templateVersionRepositoryImpl) FindByID(
-	ctx context.Context, id string,
-) (functional.Option[email.TemplateVersion], error) {
-	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
-		FROM(table.EmailTemplateVersions).
-		WHERE(table.EmailTemplateVersions.ID.EQ(postgres.String(id))).
-		LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
 }
 
 func (r *templateVersionRepositoryImpl) FindCurrentDraft(
@@ -77,20 +77,6 @@ func (r *templateVersionRepositoryImpl) findByStatus(
 	return transactor.QueryOptionalMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	)
-}
-
-func (r *templateVersionRepositoryImpl) List(
-	ctx context.Context, templateID string, limit int64, offset int64,
-) ([]email.TemplateVersion, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	stmt := table.EmailTemplateVersions.SELECT(table.EmailTemplateVersions.AllColumns).
-		FROM(table.EmailTemplateVersions).
-		WHERE(table.EmailTemplateVersions.TemplateID.EQ(postgres.String(templateID))).
-		ORDER_BY(table.EmailTemplateVersions.VersionNumber.DESC()).
-		LIMIT(limit).OFFSET(offset)
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *templateVersionRepositoryImpl) Create(
