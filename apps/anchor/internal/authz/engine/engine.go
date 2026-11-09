@@ -46,8 +46,8 @@ const (
 	migrationLockKey = "openfga-migrations"
 	maxOpenConns     = 10
 	connMaxIdleTime  = 5 * time.Minute
-	retryMin         = time.Second
-	retryMax         = 30 * time.Second
+	minRetry         = time.Second
+	maxRetry         = 30 * time.Second
 	retryGrowth      = 2
 )
 
@@ -106,7 +106,7 @@ func (p *provider) Run(ctx context.Context) error {
 }
 
 func (p *provider) startWithRetry(ctx context.Context) {
-	backoff := retryMin
+	backoff := minRetry
 	for {
 		err := p.start(ctx)
 		if err == nil {
@@ -119,7 +119,7 @@ func (p *provider) startWithRetry(ctx context.Context) {
 			return
 		case <-time.After(backoff):
 		}
-		backoff = min(retryGrowth*backoff, retryMax)
+		backoff = min(retryGrowth*backoff, maxRetry)
 	}
 }
 

@@ -16,8 +16,8 @@ import (
 const (
 	// A sync waits this long, at most, for another sync of its Product.
 	lockWait     = 3 * time.Second
-	lockRetryMin = 10 * time.Millisecond
-	lockRetryMax = 200 * time.Millisecond
+	minLockRetry = 10 * time.Millisecond
+	maxLockRetry = 200 * time.Millisecond
 	// lockRetryGrowth multiplies the wait after each busy attempt.
 	lockRetryGrowth = 2
 	maxNameLength   = 64
@@ -347,7 +347,7 @@ func (s *Syncer) keyLocked(ctx context.Context, scope Scope, fn func(context.Con
 // transaction, until the wait runs out.
 func (s *Syncer) retryLock(ctx context.Context, try func() (bool, error)) error {
 	deadline := time.Now().Add(s.timing.lockWait)
-	backoff := s.timing.lockRetryMin
+	backoff := s.timing.minLockRetry
 	for {
 		acquired, err := try()
 		if err != nil || acquired {
@@ -361,7 +361,7 @@ func (s *Syncer) retryLock(ctx context.Context, try func() (bool, error)) error 
 			return ctx.Err()
 		case <-time.After(backoff):
 		}
-		backoff = min(lockRetryGrowth*backoff, s.timing.lockRetryMax)
+		backoff = min(lockRetryGrowth*backoff, s.timing.maxLockRetry)
 	}
 }
 

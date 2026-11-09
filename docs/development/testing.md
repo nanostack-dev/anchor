@@ -18,7 +18,7 @@ Read [implementation rules](agent-rules.md) for parallel CT isolation and [engin
 
 ## Go lint
 
-The repository lint script owns backend lint: it runs in `apps/anchor` with the repository-root `.golangci.yml`, even when invoked by absolute path from another directory. Local commands and backend CI use the exact version in [`.golangci-lint-version`](../../.golangci-lint-version). Installation is in [setup](setup.md#go-linter).
+The repository lint script owns backend lint: it runs in `apps/anchor` with the repository-root `.golangci.yml`, even when invoked by absolute path from another directory. Local commands and backend CI run the same build of the version pinned in [`apps/anchor/tools/golangci-lint/go.mod`](../../apps/anchor/tools/golangci-lint/go.mod), with a 15 m timeout. Details are in [setup](setup.md#go-linter).
 
 | Stage | Command from the repository root |
 | --- | --- |

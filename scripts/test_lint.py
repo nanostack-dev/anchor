@@ -4,6 +4,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import subprocess
@@ -14,6 +15,27 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
+TOOL_MODFILE = "tools/golangci-lint/go.mod"
+TOOL_MODULE = ROOT / "apps/anchor" / TOOL_MODFILE
+PIN_REQUIREMENT = re.compile(r"^\s*github\.com/golangci/golangci-lint/v2 (v\S+)", re.MULTILINE)
+
+
+def pinned_version():
+    return PIN_REQUIREMENT.findall(TOOL_MODULE.read_text())[0]
+
+
+# Stands in for `go tool -modfile=... -n golangci-lint`: records the call and
+# prints the fake linter's path, as the real command prints the built binary's.
+FAKE_GO = """import json, os, sys
+with open(os.environ['LINT_TEST_GO_CALLS'], 'a') as log:
+    log.write(json.dumps({'cwd': os.getcwd(), 'args': sys.argv[1:], 'gowork': os.environ.get('GOWORK')}) + '\\n')
+if os.environ.get('LINT_TEST_GO_EXIT'):
+    sys.exit(int(os.environ['LINT_TEST_GO_EXIT']))
+if sys.argv[1:] == ['tool', '-modfile=""" + TOOL_MODFILE + """', '-n', 'golangci-lint']:
+    print(os.environ['LINT_TEST_LINTER'])
+else:
+    sys.exit(98)
+"""
 FAKE_LINTER = """import json, os, pathlib, sys, time
 args = sys.argv[1:]
 with open(os.environ['LINT_TEST_CALLS'], 'a') as log:
@@ -49,27 +71,36 @@ class LintCommandTest(unittest.TestCase):
         shutil.copyfile(ROOT / "scripts/lint.sh", self.root / "scripts/lint.sh")
         (self.root / "scripts/lint.sh").chmod(0o755)
         shutil.copyfile(ROOT / "lint-fix.sh", self.root / "lint-fix.sh")
-        shutil.copyfile(ROOT / ".golangci-lint-version", self.root / ".golangci-lint-version")
+        self.tool_module = self.backend / TOOL_MODFILE
+        self.tool_module.parent.mkdir(parents=True)
+        shutil.copyfile(TOOL_MODULE, self.tool_module)
         (self.root / ".golangci.yml").write_text('version: "2"\n')
         (self.backend / "go.mod").write_text("module fixture\n")
         (self.sdk / "go.mod").write_text("module fixture/clients/go\n")
         self.bin = Path(self.temp.name) / "bin"
         self.bin.mkdir()
-        fake = self.bin / "golangci-lint"
-        fake.write_text(f"#!{sys.executable}\n{FAKE_LINTER}")
-        fake.chmod(0o755)
-        # Shadows a host go (CI has /usr/bin/go) so no test installs the real linter.
-        failing_go = self.bin / "go"
-        failing_go.write_text("#!/bin/sh\nexit 1\n")
-        failing_go.chmod(0o755)
+        self.linter = Path(self.temp.name) / "go-build/golangci-lint"
+        self.linter.parent.mkdir()
+        self.linter.write_text(f"#!{sys.executable}\n{FAKE_LINTER}")
+        self.linter.chmod(0o755)
+        # A global binary on PATH is never used: only the tool module's build runs.
+        stale = self.bin / "golangci-lint"
+        stale.write_text("#!/bin/sh\nexit 99\n")
+        stale.chmod(0o755)
+        # Shadows a host go so no test builds the real linter.
+        fake_go = self.bin / "go"
+        fake_go.write_text(f"#!{sys.executable}\n{FAKE_GO}")
+        fake_go.chmod(0o755)
         self.calls_file = Path(self.temp.name) / "calls.jsonl"
+        self.go_calls_file = Path(self.temp.name) / "go-calls.jsonl"
         self.env = {
             **os.environ,
             "PATH": f"{self.bin}:/usr/bin:/bin",
             "TMPDIR": self.temp.name,
             "LINT_TEST_CALLS": str(self.calls_file),
-            "ANCHOR_TOOL_CACHE": str(Path(self.temp.name) / "tool-cache"),
-            "LINT_TEST_VERSION": (ROOT / ".golangci-lint-version").read_text().strip().removeprefix("v"),
+            "LINT_TEST_GO_CALLS": str(self.go_calls_file),
+            "LINT_TEST_LINTER": str(self.linter),
+            "LINT_TEST_VERSION": pinned_version().removeprefix("v"),
         }
         self.write_file("apps/anchor/backend.go", "package fixture\n")
         self.write_file("apps/anchor/internal/flows/first.go", "package flows\n")
@@ -94,7 +125,7 @@ class LintCommandTest(unittest.TestCase):
 
     def targets(self):
         args = self.calls()[-1]["args"]
-        marker = "--diff" if args[0] == "fmt" else "5m"
+        marker = "--diff" if args[0] == "fmt" else "--allow-serial-runners"
         return args[args.index(marker) + 1:]
 
     def run_lint(self, *args, **env):
@@ -112,6 +143,11 @@ class LintCommandTest(unittest.TestCase):
             return []
         return [json.loads(line) for line in self.calls_file.read_text().splitlines()]
 
+    def go_calls(self):
+        if not self.go_calls_file.exists():
+            return []
+        return [json.loads(line) for line in self.go_calls_file.read_text().splitlines()]
+
     def test_backend_and_root_config_resolve_from_an_unrelated_directory(self):
         result = self.run_lint("backend")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -119,7 +155,7 @@ class LintCommandTest(unittest.TestCase):
         self.assertEqual(Path(call["cwd"]), self.backend)
         self.assertEqual(call["args"], [
             "run", "--config", str(self.root / ".golangci.yml"),
-            "--path-mode=abs", "--timeout", "5m", "./...",
+            "--path-mode=abs", "--timeout", "15m", "--allow-serial-runners", "./...",
         ])
         self.assertFalse((self.backend / "fixed").exists())
 
@@ -198,46 +234,50 @@ class LintCommandTest(unittest.TestCase):
         self.assertIn("reason: setup_error", result.stdout)
         self.assertEqual(len(self.calls()), 1)
 
-    def test_pin_requires_an_exact_version(self):
-        for pin in ["latest\n", "v2.13\n", "v2.13.0\nextra\n"]:
-            with self.subTest(pin=pin):
-                (self.root / ".golangci-lint-version").write_text(pin)
+    def test_pin_requires_one_exact_version(self):
+        for module in [
+            "module tools\n",
+            "module tools\nrequire github.com/golangci/golangci-lint/v2 v2.13 // indirect\n",
+            "module tools\nrequire (\n\tgithub.com/golangci/golangci-lint/v2 v2.13.0\n\tgithub.com/golangci/golangci-lint/v2 v2.14.0\n)\n",
+        ]:
+            with self.subTest(module=module):
+                self.tool_module.write_text(module)
                 result = self.run_lint("backend")
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("reason: setup_error", result.stdout)
                 self.assertEqual(self.calls(), [])
+                self.assertEqual(self.go_calls(), [])
 
-    def test_missing_binary_reports_installation(self):
-        (self.bin / "golangci-lint").unlink()
+    def test_missing_tool_module_stops_before_building(self):
+        self.tool_module.unlink()
+        result = self.run_lint("backend")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("reason: setup_error", result.stdout)
+        self.assertEqual(self.go_calls(), [])
+
+    def test_pinned_tool_builds_from_the_tool_module_outside_any_workspace(self):
+        result = self.run_lint("backend")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.go_calls(), [{
+            "cwd": str(self.backend),
+            "args": ["tool", f"-modfile={TOOL_MODFILE}", "-n", "golangci-lint"],
+            "gowork": "off",
+        }])
+
+    def test_failed_tool_build_reports_tool_missing(self):
+        result = self.run_lint("backend", LINT_TEST_GO_EXIT="1")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("reason: tool_missing", result.stdout)
+        self.assertEqual(self.calls(), [])
+
+    def test_missing_go_reports_tool_missing(self):
+        if shutil.which("go", path="/usr/bin:/bin"):
+            self.skipTest("a host go is on the fixture PATH")
+        (self.bin / "go").unlink()
         result = self.run_lint("backend")
         self.assertEqual(result.returncode, 2)
         self.assertIn("reason: tool_missing", result.stdout)
-
-    def test_missing_binary_installs_the_pin_into_the_cache_when_go_exists(self):
-        (self.bin / "golangci-lint").unlink()
-        fake_go = self.bin / "go"
-        fake_go.write_text(
-            f"#!{sys.executable}\nimport os, pathlib, sys\n"
-            "target = pathlib.Path(os.environ['GOBIN'], 'golangci-lint')\n"
-            "target.parent.mkdir(parents=True, exist_ok=True)\n"
-            f"target.write_text({f'#!{sys.executable}' + chr(10) + FAKE_LINTER!r})\n"
-            "target.chmod(0o755)\n"
-        )
-        fake_go.chmod(0o755)
-        result = self.run_lint("backend")
-        self.assertEqual(result.returncode, 0, result.stdout)
-        version = (ROOT / ".golangci-lint-version").read_text().strip()
-        self.assertTrue((Path(self.temp.name) / "tool-cache/golangci-lint" / version / "golangci-lint").exists())
-
-    def test_cached_pin_wins_over_a_stale_binary_on_path(self):
-        version = (ROOT / ".golangci-lint-version").read_text().strip()
-        cached = Path(self.temp.name) / "tool-cache/golangci-lint" / version / "golangci-lint"
-        cached.parent.mkdir(parents=True)
-        shutil.copyfile(self.bin / "golangci-lint", cached)
-        cached.chmod(0o755)
-        (self.bin / "golangci-lint").write_text("#!/bin/sh\nexit 99\n")
-        result = self.run_lint("backend")
-        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.calls(), [])
 
     def test_usage_and_help_do_not_start_the_linter(self):
         for args in [[], ["other"], ["backend", "--timeout"], ["backend", "--fix", "extra"],
@@ -359,7 +399,7 @@ class LintCommandTest(unittest.TestCase):
         for path, content in [
             ("apps/anchor/go.mod", "module fixture\n// Changed.\n"),
             (".golangci.yml", 'version: "2"\n# Changed.\n'),
-            (".golangci-lint-version", (ROOT / ".golangci-lint-version").read_text() + "\n"),
+            (f"apps/anchor/{TOOL_MODFILE}", TOOL_MODULE.read_text() + "\n"),
             ("scripts/generate.sh", "echo generator\n"),
             ("apps/anchor/gorules/project.go", "package gorules\n"),
             ("apps/anchor/cmd/http/openapi.yaml", "openapi: 3.0.0\n"),
@@ -443,6 +483,26 @@ class LintCommandTest(unittest.TestCase):
                 process.kill()
                 process.communicate()
 
+
+
+class ToolPinTest(unittest.TestCase):
+    """The tool module is the only golangci-lint pin; CI builds from it too."""
+
+    def test_tool_module_pins_one_exact_version_as_a_tool(self):
+        text = TOOL_MODULE.read_text()
+        self.assertRegex(text, r"(?m)^tool github\.com/golangci/golangci-lint/v2/cmd/golangci-lint$")
+        versions = PIN_REQUIREMENT.findall(text)
+        self.assertEqual(len(versions), 1, versions)
+        self.assertRegex(versions[0], r"^v\d+\.\d+\.\d+$")
+
+    def test_ci_lint_runs_the_tool_module_build(self):
+        module_path = ROOT / ".dagger/modules/anchor/main.dang"
+        if not module_path.exists():
+            self.skipTest("the lint-tooling check's source excludes .dagger")
+        module = module_path.read_text()
+        self.assertIn(f'"go", "tool", "-modfile={TOOL_MODFILE}", "golangci-lint", "run"', module)
+        self.assertNotIn("golangci-lint/releases/download", module)
+        self.assertFalse((ROOT / ".golangci-lint-version").exists())
 
 if __name__ == "__main__":
     unittest.main()

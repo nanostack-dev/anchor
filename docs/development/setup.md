@@ -23,16 +23,16 @@ The root `pnpm-workspace.yaml` and `pnpm-lock.yaml` own frontend resolution. Run
 
 ## Go linter
 
-Install the exact version in [`.golangci-lint-version`](../../.golangci-lint-version) with a Go toolchain compatible with `apps/anchor/go.mod`:
+golangci-lint is a Go tool dependency of its own module, [`apps/anchor/tools/golangci-lint/go.mod`](../../apps/anchor/tools/golangci-lint/go.mod), so its dependencies never change the application's. Nothing to install: Go builds the pinned version on first use and keeps it in the build cache.
 
 ```sh
 # From the repository root:
-(cd apps/anchor && go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat ../../.golangci-lint-version)")
-export PATH="$(go env GOPATH)/bin:$PATH"
-./scripts/lint.sh backend
+make lint        # same as ./scripts/lint.sh backend
+# The pinned linter directly:
+(cd apps/anchor && go tool -modfile=tools/golangci-lint/go.mod golangci-lint version)
 ```
 
-The lint script runs only the pinned version. It prefers `${XDG_CACHE_HOME:-~/.cache}/anchor/golangci-lint/<version>/` (override with `ANCHOR_TOOL_CACHE`), then a matching binary on `PATH`; when neither exists and `go` is on `PATH`, it installs the pin into that cache. A stale global binary is never used. The default checks without editing source; fixes are explicit. [Go lint](testing.md#go-lint) owns full/iteration commands, comparison bases, fallbacks and failure handling.
+The lint script, the edit hook and CI (`dag://anchor/lint`) all run that build, with the toolchain the tool module names; a global `golangci-lint` on `PATH` is never used. It is not interchangeable with the release binary, which is built with `-trimpath`: on the same code and version, the release reported 0 revive `time-naming` findings where this build reported 2. To change the version, run `go get -tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint@<version>` in a fresh tool module (a downgrade in place keeps newer dependencies, and the build fails). The default checks without editing source; fixes are explicit. [Go lint](testing.md#go-lint) owns full/iteration commands, comparison bases, fallbacks and failure handling.
 
 ## Recommended disposable app
 

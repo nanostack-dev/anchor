@@ -31,12 +31,12 @@ const (
 // timing holds the waits a test may shorten.
 type timing struct {
 	lockWait     time.Duration
-	lockRetryMin time.Duration
-	lockRetryMax time.Duration
+	minLockRetry time.Duration
+	maxLockRetry time.Duration
 }
 
 func defaultTiming() timing {
-	return timing{lockWait: lockWait, lockRetryMin: lockRetryMin, lockRetryMax: lockRetryMax}
+	return timing{lockWait: lockWait, minLockRetry: minLockRetry, maxLockRetry: maxLockRetry}
 }
 
 // Replay syncs what a request marked, right after its transaction committed. It
