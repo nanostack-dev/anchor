@@ -29,7 +29,7 @@ import (
 	"anchor/internal/session"
 )
 
-// App is anchor's manifest: nano gen wire reads it and writes wire.gen.go.
+// App is anchor's manifest: nanostack gen wire reads it and writes wire.gen.go.
 var App = nano.Manifest("anchor",
 	applog.Module,
 	nanotrace.Module,

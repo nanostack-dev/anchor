@@ -280,7 +280,7 @@ func setupRedis(ctx context.Context, testLogger *slog.Logger) testcontainers.Con
 }
 
 // populate copies the built values into the TestConfig targets, as
-// fx.Populate did. Components are named by nano gen wire (cmd/app/wire.gen.go).
+// fx.Populate did. Components are named by nanostack gen wire (cmd/app/wire.gen.go).
 func populate(config TestConfig, c *app.Components) {
 	if config.PopulateRepositories {
 		set(config.APIKeyService, c.ProductAPIKeyService)

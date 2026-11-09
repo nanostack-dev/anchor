@@ -220,17 +220,17 @@ linters:
               desc: Use core/log (log.ErrorTo, log.LevelFor) and internal/applog
             - pkg: github.com/nanostack-dev/nanostack-framework/pkg/httputil/requestlog
               desc: The request summary is internal/middleware.NewRequestLoggingMiddleware on slog
-        # Anchor is wired by nano gen wire (cmd/app/manifest.go) and configured
-        # by nano gen config (cmd/app.Config). fx and the framework packages
+        # Anchor is wired by nanostack gen wire (cmd/app/manifest.go) and configured
+        # by nanostack gen config (cmd/app.Config). fx and the framework packages
         # built on it are deprecated (ADR 0013).
         "nano only":
           files:
             - "$all"
           deny:
             - pkg: go.uber.org/fx
-              desc: Add a provider to a nano.Module and run go tool nano gen from apps/anchor
+              desc: Add a provider to a nano.Module and run go tool nanostack gen from apps/anchor
             - pkg: go.uber.org/dig
-              desc: Add a provider to a nano.Module and run go tool nano gen from apps/anchor
+              desc: Add a provider to a nano.Module and run go tool nanostack gen from apps/anchor
             - pkg: github.com/nanostack-dev/nanostack-framework/modules/
               desc: Use the nano module (pg/nanopg, pg/nanomigrate, redis/nanocache, otel/nanotrace, http/nanoserver, http/nanoapisec)
             - pkg: github.com/nanostack-dev/nanostack-framework/app$

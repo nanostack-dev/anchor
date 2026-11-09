@@ -135,19 +135,19 @@ type Anchor {
 
   """
   Wiring tests (apps/anchor/cmd/app): the generated wiring and config binder
-  match the manifest and Config (nano gen wire/config -check), and the
+  match the manifest and Config (nanostack gen wire/config -check), and the
   committed YAML layers bind.
   """
   wiringTests(ws: Workspace!): Void @check { goTests(ws, "cmd/app") }
 
   """
-  Generated code (apps/anchor): every file that nano gen writes matches its
+  Generated code (apps/anchor): every file that nanostack gen writes matches its
   inputs. -fresh ignores nanogen.sum and applies the migrations to a new
   database, so the go-jet models are proven against the migrations, not only
   against the recorded checksums.
 
   The database is a service of the image that nanogen/project.go declares,
-  named by NANO_GEN_DATABASE_URL. nano gen does not start its own container
+  named by NANO_GEN_DATABASE_URL. nanostack gen does not start its own container
   here: timescaledb-tune reads the container's memory.max, which a nested
   Docker daemon does not provide, and Postgres exits with code 2.
   NO_TS_TUNE skips the tuning, as cmd/it/shared/test_setup.go does.
@@ -168,7 +168,7 @@ type Anchor {
       .withServiceBinding("db", db)
       .withEnvVariable("GOWORK", "off")
       .withEnvVariable("NANO_GEN_DATABASE_URL", "postgres://postgres:nanogen@db:5432/postgres?sslmode=disable")
-      .withExec(["go", "tool", "nano", "gen", "-check", "-fresh", "-diff"])
+      .withExec(["go", "tool", "nanostack", "gen", "-check", "-fresh", "-diff"])
       .sync
     null
   }
