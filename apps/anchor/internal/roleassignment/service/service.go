@@ -26,7 +26,6 @@ import (
 	resourcerepository "anchor/internal/resource/repository"
 	rtservice "anchor/internal/resourcetype/service"
 	"anchor/internal/roleassignment/repository"
-	"anchor/internal/searchx"
 )
 
 type Service interface {
@@ -493,7 +492,7 @@ func scopeSlug(tree resourcetype.Tree, typeID string) string {
 
 // unexpected passes client errors through and logs anything else once.
 func (s *service) unexpected(err error, productID, operation string) error {
-	if err == nil || searchx.IsClientError(err) {
+	if err == nil || search.IsClientError(err) {
 		return err
 	}
 	if _, isFault := fault.As(err); isFault {

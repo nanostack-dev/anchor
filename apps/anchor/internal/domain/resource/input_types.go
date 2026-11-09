@@ -4,7 +4,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // PutInput creates, renames or moves one resource. Parent is always named:
@@ -53,5 +53,5 @@ type SearchInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldName)
+	return searchvalid.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldName)
 }

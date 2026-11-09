@@ -4,7 +4,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 // Target names one member on one registered resource, as the path does.
@@ -60,5 +60,5 @@ type SearchInput struct {
 
 // Validate checks the input and the sort the client named.
 func (in SearchInput) Validate() error {
-	return searchx.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldProductUserID)
+	return searchvalid.ValidateRequest(in, in.Request, SortFieldCreatedAt, SortFieldProductUserID)
 }

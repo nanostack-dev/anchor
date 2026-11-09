@@ -13,17 +13,17 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/product/role"
-	"anchor/internal/searchx"
 
+	"github.com/nanostack-dev/nanostack-framework/db/search"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
-	"github.com/nanostack-dev/nanostack-framework/db/search"
 
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/mapper"
 
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
+	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
 var _ ProductRoleRepository = (*productRoleRepositoryImpl)(nil)
@@ -517,7 +517,7 @@ func (r *productRoleRepositoryImpl) search(
 	whereStmt := inProduct(productID).AND(visible)
 	if input.FullTextSearch != nil {
 		whereStmt = whereStmt.AND(
-			searchx.Contains(*input.FullTextSearch, table.ProductRoles.Name, table.ProductRoles.Description),
+			searchexec.Contains(*input.FullTextSearch, table.ProductRoles.Name, table.ProductRoles.Description),
 		)
 	}
 
@@ -563,7 +563,7 @@ func (r *productRoleRepositoryImpl) search(
 		Run(ctx, input.Pagination).
 		Value()
 	if err != nil {
-		if !searchx.IsClientError(err) {
+		if !search.IsClientError(err) {
 			r.logger.ErrorContext(ctx, "failed to search product roles",
 				log.Err(err),
 				slog.String("productID", productID),
@@ -637,13 +637,13 @@ func roleSearchFilterCondition(
 	if len(filter.NameSubstrings) > 0 {
 		substrings := functional.Slice(filter.NameSubstrings).Map(
 			func(name string) postgres.BoolExpression {
-				return searchx.Contains(name, table.ProductRoles.Name)
+				return searchexec.Contains(name, table.ProductRoles.Name)
 			},
 		)
 		condition = condition.AND(postgres.OR(substrings...))
 	}
 	if filter.NameContains != nil {
-		condition = condition.AND(searchx.Contains(*filter.NameContains, table.ProductRoles.Name))
+		condition = condition.AND(searchexec.Contains(*filter.NameContains, table.ProductRoles.Name))
 	}
 	if filter.Scopes.Active() {
 		condition = condition.AND(scopeCondition(table.ProductRoles.ResourceTypeID, filter.Scopes))

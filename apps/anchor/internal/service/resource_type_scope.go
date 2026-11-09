@@ -14,7 +14,6 @@ import (
 	"anchor/internal/domain/product/role"
 	"anchor/internal/domain/resourcetype"
 	rtservice "anchor/internal/resourcetype/service"
-	"anchor/internal/searchx"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 )
@@ -81,7 +80,7 @@ func scopedSearch[F any, S ~string, T any](
 	}
 	result, err := run(ctx, productID, request)
 	if err != nil {
-		if searchx.IsClientError(err) {
+		if search.IsClientError(err) {
 			return search.Result[T]{}, err
 		}
 		logger.ErrorContext(ctx, "search failed", slog.String("product_id", productID), log.Err(err))

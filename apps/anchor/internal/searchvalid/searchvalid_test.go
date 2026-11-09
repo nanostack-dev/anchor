@@ -1,8 +1,6 @@
-package searchx_test
+package searchvalid_test
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -10,22 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"anchor/internal/searchx"
+	"anchor/internal/searchvalid"
 )
 
 type sortField string
-
-func TestIsClientError(t *testing.T) {
-	t.Parallel()
-
-	assert.True(t, searchx.IsClientError(search.ErrInvalidCursor))
-	assert.True(t, searchx.IsClientError(search.ErrCursorWithOffset))
-	assert.True(t, searchx.IsClientError(search.ErrUnknownSort))
-	assert.True(t, searchx.IsClientError(fmt.Errorf("%w: sparkle", search.ErrUnknownSort)))
-	assert.True(t, searchx.IsClientError(fmt.Errorf("repository: %w", search.ErrInvalidCursor)))
-	assert.False(t, searchx.IsClientError(errors.New("connection refused")))
-	assert.False(t, searchx.IsClientError(nil))
-}
 
 func TestSort(t *testing.T) {
 	t.Parallel()
@@ -36,7 +22,7 @@ func TestSort(t *testing.T) {
 
 	t.Run("an omitted sort_by takes the default field and direction", func(t *testing.T) {
 		t.Parallel()
-		field, direction := searchx.Sort(nil, nil, sortField("created_at"), desc)
+		field, direction := searchvalid.Sort(nil, nil, sortField("created_at"), desc)
 		require.NotNil(t, field)
 		require.NotNil(t, direction)
 		assert.Equal(t, sortField("created_at"), *field)
@@ -45,14 +31,14 @@ func TestSort(t *testing.T) {
 
 	t.Run("an omitted sort_by keeps the direction the client named", func(t *testing.T) {
 		t.Parallel()
-		field, direction := searchx.Sort(nil, &asc, sortField("created_at"), desc)
+		field, direction := searchvalid.Sort(nil, &asc, sortField("created_at"), desc)
 		assert.Equal(t, sortField("created_at"), *field)
 		assert.Equal(t, asc, *direction)
 	})
 
 	t.Run("a named sort_by without a direction stays ascending", func(t *testing.T) {
 		t.Parallel()
-		field, direction := searchx.Sort(&name, nil, sortField("created_at"), desc)
+		field, direction := searchvalid.Sort(&name, nil, sortField("created_at"), desc)
 		assert.Equal(t, name, *field)
 		assert.Nil(t, direction, "search.Request.WithSort sorts it ascending")
 	})
@@ -71,7 +57,7 @@ func TestValidateRequest(t *testing.T) {
 		return validatedInput{Request: request}
 	}
 	validate := func(in validatedInput) error {
-		return searchx.ValidateRequest(in, in.Request, created)
+		return searchvalid.ValidateRequest(in, in.Request, created)
 	}
 
 	t.Run("accepts a request that names a mapped sort", func(t *testing.T) {
