@@ -103,6 +103,9 @@ func (r *flowRun) executeWebhookWait(node *flowNode) nodeState {
 					return statePassed
 				}
 			}
+			if reason := backendDown(); reason != "" {
+				return r.fail(node, "not waited: "+reason)
+			}
 			if time.Now().After(deadline) {
 				return r.fail(node, fmt.Sprintf("no delivery matched within %dms (%d received)",
 					data.TimeoutMs, len(r.webhook.snapshot())))
@@ -117,6 +120,9 @@ func (r *flowRun) executeWebhookWait(node *flowNode) nodeState {
 			if counts[i] < minimum(e) {
 				met = false
 			}
+		}
+		if reason := backendDown(); reason != "" {
+			return r.fail(node, "not waited: "+reason)
 		}
 		if met || time.Now().After(deadline) {
 			break

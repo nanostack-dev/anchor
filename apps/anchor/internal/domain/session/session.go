@@ -9,7 +9,9 @@ import (
 // ReuseGrace is how long a rotated refresh token is still exchanged without
 // revoking its session. Browser tabs that restore together each refresh with
 // the same cookie, and a client retries after a lost response; both present a
-// token another request just rotated.
+// token another request just rotated. PresentedAt reads it through
+// reuseGrace, which only the contract suite's build can shorten
+// (grace_contract.go).
 const ReuseGrace = 10 * time.Second
 
 type Session struct {
@@ -50,7 +52,7 @@ func (t *RefreshToken) PresentedAt(now time.Time) Presentation {
 	if t.RotatedAt == nil {
 		return FirstUse
 	}
-	if now.Sub(*t.RotatedAt) <= ReuseGrace {
+	if now.Sub(*t.RotatedAt) <= reuseGrace {
 		return RepeatWithinGrace
 	}
 	return Replay

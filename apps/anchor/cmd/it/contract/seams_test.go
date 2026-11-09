@@ -62,6 +62,14 @@ func (s *seamRun) do(c seamCase) *response {
 	requestID := "ct/seams/" + c.name
 	resp, err := rawDo(s.t.Context(), c.method, suite.baseURL+path, headers, body, requestID)
 	if err != nil {
+		checkBackend(requestID, nil, nil, err)
+		s.t.Fatalf("%s: %v", c.name, err)
+	}
+	lines, err := suite.logs.linesFor(requestID)
+	if reason, down := checkBackend(requestID, resp, lines, nil); down {
+		s.t.Fatal(reason)
+	}
+	if err != nil {
 		s.t.Fatalf("%s: %v", c.name, err)
 	}
 	for name, jsonPath := range c.capture {
@@ -72,10 +80,6 @@ func (s *seamRun) do(c seamCase) *response {
 		}
 		s.scope[name] = str
 		s.norm.register(str, "{{"+name+"}}")
-	}
-	lines, err := suite.logs.linesFor(requestID)
-	if err != nil {
-		s.t.Fatalf("%s: %v", c.name, err)
 	}
 	recorded := *resp
 	if c.hashBody {
@@ -126,6 +130,9 @@ func (s *seamRun) headers(kind string, extra ...string) map[string]string {
 //
 //nolint:maintidx // one flat table of cases reads better than helpers
 func TestFrameworkSeams(t *testing.T) {
+	if reason := backendDown(); reason != "" {
+		t.Fatal("not run: " + reason)
+	}
 	s := newSeamRun(t)
 	big := strings.Repeat("x", 2<<20)
 	cases := []seamCase{

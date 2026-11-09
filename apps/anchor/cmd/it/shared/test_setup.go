@@ -310,8 +310,10 @@ func set[T any](target *T, value T) {
 }
 
 // startApp binds the configuration of the suite's application.yaml, builds
-// the App as cmd/main.go does and runs it until stop is called.
-func startApp(testLogger *slog.Logger, config TestConfig) func() {
+// the App as cmd/main.go does and runs it until the returned stop is called.
+// The returned channel is closed when the App stops, on stop or on an error of
+// its own.
+func startApp(testLogger *slog.Logger, config TestConfig) (func(), <-chan struct{}) {
 	ctx := context.Background()
 	cfg, err := app.LoadConfig(ctx)
 	if err != nil {
@@ -336,7 +338,7 @@ func startApp(testLogger *slog.Logger, config TestConfig) func() {
 	return func() {
 		cancel()
 		<-done
-	}
+	}, done
 }
 
 func setupAppServer(testLogger *slog.Logger, config TestConfig) func() {
@@ -346,13 +348,21 @@ func setupAppServer(testLogger *slog.Logger, config TestConfig) func() {
 	}
 	testLogger.Info("Assigned app server port", slog.String("port", randomAppPort))
 
-	stop := startApp(testLogger, config)
+	stop, exited := startApp(testLogger, config)
 
 	ServerURL = "http://localhost:" + os.Getenv("SERVER_PORT")
 	testLogger.Info("Waiting for server health check...", slog.String("url", ServerURL))
 
 	ok := false
 	for range 120 {
+		select {
+		case <-exited:
+			// Fail now instead of polling /health for two minutes: the App
+			// stopped (a database starting or refusing connections, a bad
+			// config), and its error is in the log above.
+			panic("Anchor application stopped before its health check passed")
+		default:
+		}
 		req, reqErr := http.NewRequestWithContext(
 			context.Background(), http.MethodGet, ServerURL+"/health", nil,
 		)

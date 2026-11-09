@@ -17,7 +17,7 @@ the production ones.
 From `apps/anchor` (Docker must be running):
 
 ```sh
-go test -tags contract -count=1 ./cmd/it/contract/                      # compare with the goldens (~3.5 min)
+go test -tags contract -count=1 ./cmd/it/contract/                      # compare with the goldens (~1.5 min)
 go test -tags contract -count=1 ./cmd/it/contract/ -update              # rewrite the goldens and the table below
 go test -tags contract -count=1 ./cmd/it/contract/ -run TestFrameworkSeams   # seams only (~15 s)
 go test -tags contract -count=1 ./cmd/it/contract/ -run 'TestGateFlows/^auth$'
@@ -48,6 +48,25 @@ flows use; the runner's string comparison operators. It runs the nodes one at
 a time in a stable order, so the goldens do not depend on scheduling. A local
 receiver stands in for the run's webhook endpoint, so the product-event
 deliveries and their `webhook-signature` header are checked too.
+
+A delay node that waits out a server-side duration does not sleep the
+production delay (`gateShortWaits` in `waits_test.go`). The 60 s expiries of
+`invitations` and `organization-api-key` resolve to an expiry 2-3 s after
+their first use, and the suite's build shortens the 10 s refresh-token reuse
+grace to 1 s (`session.SetReuseGraceForContract`, compiled only with the
+`contract` tag). Each such delay then waits until the shorter duration has run
+out plus the margin the flow keeps (1 s of the 61 s delays, 2 s of the 12 s
+one). The requests, their order and the state each flow observes stay the
+same, and so do the goldens: `{{$isoTimestamp:+60s}}` renders as its template.
+`product-event-delivery/settle` (1 s) and the webhook_wait settle times still
+run in full.
+
+The suite stops at the first request that fails because the database is
+starting or stopping (SQLSTATE `57P01`-`57P03`) or a connection is refused,
+in the transport error or in the 5xx response and its log lines: that node
+fails without writing its golden, and every later flow and seam test fails at
+once with the same reason instead of waiting out its 30 s webhook timeout. The harness also stops polling
+`/health` as soon as the server exits during boot.
 
 - Every gate assertion must hold, except the skipped nodes listed below.
 - Every request node writes a golden, successes included:
