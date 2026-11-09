@@ -25,13 +25,6 @@ type IntegrationAuditLogRepository interface {
 	Create(
 		ctx context.Context, log integration.AuditLog,
 	) (integration.AuditLog, error)
-	// ListByInstanceInternal lists audit logs by instance ID without tenant
-	// scoping. Reserved for trusted system-internal paths where no
-	// authenticated tenant context exists. Must NOT be called from
-	// tenant-facing API handlers. Use SearchByInstanceScoped for API paths.
-	ListByInstanceInternal(
-		ctx context.Context, instanceID string, limit int64,
-	) ([]integration.AuditLog, error)
 	// SearchByInstanceScoped pages the audit logs of one instance of the
 	// tenant's product with a cursor.
 	SearchByInstanceScoped(
@@ -68,22 +61,6 @@ func (r *integrationAuditLogRepositoryImpl) Create(
 	return transactor.QueryMap(
 		ctx, r.db, stmt, r.mapper.ToDomain,
 	).Value()
-}
-
-func (r *integrationAuditLogRepositoryImpl) ListByInstanceInternal(
-	ctx context.Context, instanceID string, limit int64,
-) ([]integration.AuditLog, error) {
-	stmt := table.IntegrationAuditLogs.SELECT(
-		table.IntegrationAuditLogs.AllColumns,
-	).FROM(
-		table.IntegrationAuditLogs,
-	).WHERE(
-		table.IntegrationAuditLogs.IntegrationInstanceID.EQ(postgres.String(instanceID)),
-	).ORDER_BY(
-		table.IntegrationAuditLogs.CreatedAt.DESC(),
-	).LIMIT(limit)
-
-	return transactor.QueryMapSlice(ctx, r.db, stmt, r.mapper.ToDomain).Value()
 }
 
 func (r *integrationAuditLogRepositoryImpl) SearchByInstanceScoped(

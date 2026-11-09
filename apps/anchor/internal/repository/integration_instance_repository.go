@@ -74,8 +74,8 @@ type IntegrationInstanceRepository interface {
 	UpdateOptional(
 		ctx context.Context, tenantID string, instance integration.Instance,
 	) (functional.Option[integration.Instance], error)
-	DeleteByID(
-		ctx context.Context, tenantID string, id string,
+	DeleteByPlatformTenantIDAndID(
+		ctx context.Context, platformTenantID string, id string,
 	) error
 }
 
@@ -270,16 +270,4 @@ func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 	).RETURNING(table.IntegrationInstances.AllColumns)
 
 	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
-}
-
-func (r *integrationInstanceRepositoryImpl) DeleteByID(
-	ctx context.Context, tenantID string, id string,
-) error {
-	stmt := table.IntegrationInstances.DELETE().WHERE(
-		table.IntegrationInstances.ID.EQ(postgres.String(id)).AND(
-			table.IntegrationInstances.PlatformTenantID.EQ(postgres.String(tenantID)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
