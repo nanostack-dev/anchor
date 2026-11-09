@@ -2,7 +2,7 @@
 # Regenerates every generated file of apps/anchor and the anchor-ui client.
 # Run it from apps/anchor: every path in it is relative to that directory.
 #
-# go tool nano gen runs the db, repo, config and wire steps. Its db step reads no
+# go tool nanostack gen runs the db, repo, config and wire steps. Its db step reads no
 # database while the migrations, the image and the generated files match
 # internal/db/gen/anchor/nanogen.sum. Otherwise it applies the migrations to a
 # container that it starts with Docker, or to the empty server that
@@ -31,8 +31,8 @@ generate_api() {
 }
 
 generate_nano() {
-  echo "Running nano gen (database models, repository bases, config and wiring)..."
-  go tool nano gen
+  echo "Running nanostack gen (database models, repository bases, config and wiring)..."
+  go tool nanostack gen
 }
 
 generate_client_frontend() {

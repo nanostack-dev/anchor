@@ -3,7 +3,7 @@
 // the generated Build). Regenerate both after a module changes a provider or
 // a config field, from apps/anchor:
 //
-//	go tool nano gen
+//	go tool nanostack gen
 package app
 
 import (

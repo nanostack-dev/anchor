@@ -53,7 +53,7 @@ type AnchorAPI struct { //nolint:dupl // NewAPI takes each field as a parameter,
 	logger                        *slog.Logger
 }
 
-// NewAPI builds the handlers of every operation. nano gen wire passes each
+// NewAPI builds the handlers of every operation. nanostack gen wire passes each
 // dependency as a parameter, so the list mirrors the AnchorAPI fields.
 //
 //nolint:dupl // see AnchorAPI

@@ -13,9 +13,9 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 - Contract: `apps/anchor/cmd/http/openapi.yaml`.
 - Regenerate the oapi server, the Go SDK types, the go-jet models, the config and wiring files, and the `anchor-ui/src/client` client: `cd apps/anchor && ./generate_anchor.sh`.
   - Needs `go` and `pnpm` on PATH. The script no longer starts its own database.
-  - Runs `go tool oapi-codegen` (server, then the two `clients/go` files), then `go tool nano gen` (db, repo, config and wire steps; `Postgres.Scopes` and the db image are declared in `apps/anchor/nanogen/project.go`), then `pnpm run openapi-ts` in `anchor-ui`.
-  - `nano gen db` reads no database while the migrations, the image and the generated files match `internal/db/gen/anchor/nanogen.sum`. Otherwise it applies `apps/anchor/migrations` to a `timescale/timescaledb` container that it starts with Docker, or to the empty server that `NANO_GEN_DATABASE_URL` names. The first run after a framework bump changes a version line in `nanogen.sum`, so that run needs Docker.
-  - CI runs `go tool nano gen -check -fresh` (`dag://anchor/generated-code`): it fails when a committed generated file does not match the migrations, the `nanorepo.Implement` declarations, the manifest or Config.
+  - Runs `go tool oapi-codegen` (server, then the two `clients/go` files), then `go tool nanostack gen` (db, repo, config and wire steps; `Postgres.Scopes` and the db image are declared in `apps/anchor/nanogen/project.go`), then `pnpm run openapi-ts` in `anchor-ui`.
+  - `nanostack gen db` reads no database while the migrations, the image and the generated files match `internal/db/gen/anchor/nanogen.sum`. Otherwise it applies `apps/anchor/migrations` to a `timescale/timescaledb` container that it starts with Docker, or to the empty server that `NANO_GEN_DATABASE_URL` names. The first run after a framework bump changes a version line in `nanogen.sum`, so that run needs Docker.
+  - CI runs `go tool nanostack gen -check -fresh` (`dag://anchor/generated-code`): it fails when a committed generated file does not match the migrations, the `nanorepo.Implement` declarations, the manifest or Config.
   - Run it from `apps/anchor`: every path in it is relative to that directory.
 - Regenerate the Go SDK in `clients/go`: `make generate-client` from the repo root.
 - Component tests (CTs): `cd apps/anchor && go test ./cmd/it/ct/... -count=1`. Needs Docker (testcontainers). Add `-run <TestName>` to narrow.
@@ -29,7 +29,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 - Every exported service method validates its input via `nanostack-framework/pkg/validate` before any repository or transaction call.
 - Business rules live in the service layer, never in SQL. New migrations must not add `CHECK` constraints or business triggers — the DB keeps PK/FK/UNIQUE/NOT NULL/defaults and the `updated_at` trigger only. One exception: time-series aggregation is delegated to TimescaleDB (`time_bucket`, continuous aggregates, retention and compression policies) — see `docs/adr/0005-timescaledb-for-usage-history.md`. Interpreting a series is still service-layer work.
-- New subsystems get their own package tree with a `nano.Module` (`internal/email/`, `internal/license/`), not another file in the flat `internal/service` and `internal/repository` packages. List the module in `apps/anchor/cmd/app/manifest.go`, and run `go tool nano gen` from `apps/anchor` after a change to a provider, a config field, or the method set of a repository bound with `nanorepo.Implement`: `cmd/app`'s tests fail on stale generated files. Background work is a type with `Start`, `Stop` or `Run` (`nano.Starter`, `Stopper`, `Runner`), never a goroutine started from a constructor. API handler methods stay in `internal/api` because the generated `StrictServerInterface` is implemented by one struct. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
+- New subsystems get their own package tree with a `nano.Module` (`internal/email/`, `internal/license/`), not another file in the flat `internal/service` and `internal/repository` packages. List the module in `apps/anchor/cmd/app/manifest.go`, and run `go tool nanostack gen` from `apps/anchor` after a change to a provider, a config field, or the method set of a repository bound with `nanorepo.Implement`: `cmd/app`'s tests fail on stale generated files. Background work is a type with `Start`, `Stop` or `Run` (`nano.Starter`, `Stopper`, `Runner`), never a goroutine started from a constructor. API handler methods stay in `internal/api` because the generated `StrictServerInterface` is implemented by one struct. See `docs/adr/0007-first-feature-slice-in-anchor.md`.
 - Tenant-facing paths stay tenant-scoped at the repository/service boundary. Methods that bypass tenant scope must be named `*Internal`, documented, and never called from tenant-facing handlers. [Repositories](#repositories) gives the naming rules for a repository bound with `nanorepo.Implement`.
 - Public IDs are KSUIDs.
 - Log through log/slog with an injected `*slog.Logger` and a context (`logger.InfoContext(ctx, ...)`); zerolog and `pkg/log` are banned by depguard. Log an error from a request path with core/log's `log.ErrorTo(ctx, logger, err, msg, ...)` so the level follows the error: a cancelled request (a cancelled PostgreSQL statement included) logs at warn, a caller fault (a 4xx fault, a client search error) at debug, anything else at error.
@@ -62,7 +62,7 @@ Shared cross-repo engineering rules: `docs/engineering-best-practices.md` (sourc
 
 ## Repositories
 
-A repository is an interface and its implementation struct. `nanorepo.Implement` binds them to one go-jet table. The repo step of `go tool nano gen` derives each interface method that has no hand-written body from its name, and writes the method to `<file>_repo.gen.go`. The framework reference is [Repositories: `nano gen repo`](https://github.com/nanostack-dev/nanostack-framework/blob/v0.23.0-beta.3/docs/generation.md#repositories-nano-gen-repo) (v0.23.0-beta.3). The examples below come from `apps/anchor/internal/repository`. For the output of a derived method, see `apps/anchor/internal/email/repository/template_repository_repo.gen.go`.
+A repository is an interface and its implementation struct. `nanorepo.Implement` binds them to one go-jet table. The repo step of `go tool nanostack gen` derives each interface method that has no hand-written body from its name, and writes the method to `<file>_repo.gen.go`. The framework reference is [Repositories: `nanostack gen repo`](https://github.com/nanostack-dev/nanostack-framework/blob/v0.23.0-beta.3/docs/generation.md#repositories-nano-gen-repo) (v0.23.0-beta.3). The examples below come from `apps/anchor/internal/repository`. For the output of a derived method, see `apps/anchor/internal/email/repository/template_repository_repo.gen.go`.
 
 - Each repository file has one `func _()` declaration. It binds the interfaces of that file, and it stays next to them (`internal/repository/tenant_repository.go`):
 
@@ -96,7 +96,7 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
 - Before you write a body, run the repo step with `-explain` from `apps/anchor`. Pass the scope columns of `nanogen/project.go`, because the single step does not read them:
 
   ```sh
-  go tool nano gen repo -dir internal/repository \
+  go tool nanostack gen repo -dir internal/repository \
     -scopes platform_tenant_id,product_id,organization_id -explain UserRepository
   ```
 
@@ -109,8 +109,8 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
 
   When a note says that the name would not derive, it gives the reason. Fix the name, or keep the body on the base helpers (`r.findOne`, `r.first`, `r.findAll`, `r.where`).
 - Do not give the implementation a method with the name of a base helper: `findOne`, `first`, `findAll`, `exists`, `count`, `deleteWhere`, `updateWhere`, `page`, `query*` or `exec*`. Your method hides the helper. Derived methods then call your method, and their SQL comment no longer shows the query that runs. `organizationAPIKeyRepository` and `productAPIKeyRepository` do this today: their `findOne` adds a join on the permissions table. Rename that helper (for example `findOneWithPermissions`) before a method of those repositories derives.
-- A hand-written method that uses the base (`r.t`, `r.where` or a helper) on a scoped table with no predicate on a scope column gets a warning from `nano gen`, unless its name ends in `Internal`. Add the scope predicate. Do not ignore the warning: it does not fail the run.
-- After you add, remove or rename a method, run `go tool nano gen` from `apps/anchor`. CI runs `go tool nano gen -check -fresh`, which fails on a stale `<file>_repo.gen.go`.
+- A hand-written method that uses the base (`r.t`, `r.where` or a helper) on a scoped table with no predicate on a scope column gets a warning from `nanostack gen`, unless its name ends in `Internal`. Add the scope predicate. Do not ignore the warning: it does not fail the run.
+- After you add, remove or rename a method, run `go tool nanostack gen` from `apps/anchor`. CI runs `go tool nanostack gen -check -fresh`, which fails on a stale `<file>_repo.gen.go`.
 - In review, read the SQL comment of each derived method in `<file>_repo.gen.go`, and check that the implementation hides no base helper. In `repo_base.gen.go`, read only the predicate list (the `<table>Where` methods) of each table that the change binds. The generator writes the rest of that file in the same way for each table.
 
 ## Pull requests

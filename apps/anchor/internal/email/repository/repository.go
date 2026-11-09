@@ -17,7 +17,7 @@ import (
 // The interface lives in this package so the email service can be wired
 // and unit-tested with mocks; the Postgres implementation is next to it.
 // Methods without a hand-written body are derived from their name by
-// go tool nano gen (template_repository_repo.gen.go).
+// go tool nanostack gen (template_repository_repo.gen.go).
 type TemplateRepository interface {
 	FindByPlatformTenantIDAndProductIDAndID(
 		ctx context.Context, platformTenantID string, productID string, id string,

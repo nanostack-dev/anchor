@@ -75,7 +75,7 @@ func (r *tenantRepositoryImpl) Create(
 }
 
 // Count is hand-written on the base: when Count is the only derived method of
-// the file, nano gen repo (gen v0.23.0-beta.4) writes a file that does not compile.
+// the file, nanostack gen repo (gen v0.23.0-beta.4) writes a file that does not compile.
 // The body gives the derived SQL, SELECT COUNT(*) FROM platform_tenants.
 func (r *tenantRepositoryImpl) Count(ctx context.Context) (int64, error) {
 	return r.count(ctx, nil)

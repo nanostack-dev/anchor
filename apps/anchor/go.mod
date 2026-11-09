@@ -17,7 +17,7 @@ require (
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
 	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.4
 	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.4
-	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.6
+	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.8
 	github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1
 	github.com/nanostack-dev/pgkit v0.0.46
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
@@ -180,6 +180,6 @@ require (
 replace github.com/nanostack-dev/anchor/clients/go => ../../clients/go
 
 tool (
-	github.com/nanostack-dev/nanostack-framework/gen/cmd/nano
+	github.com/nanostack-dev/nanostack-framework/gen/cmd/nanostack
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 )
