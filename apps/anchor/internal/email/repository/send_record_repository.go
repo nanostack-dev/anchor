@@ -11,6 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/jetx"
 	"github.com/nanostack-dev/nanostack-framework/pkg/search"
 
+	"github.com/nanostack-dev/nanostack-framework/db/nanorepo"
 	"github.com/nanostack-dev/nanostack-framework/db/postgres"
 
 	"anchor/internal/db/gen/anchor/public/model"
@@ -19,7 +20,14 @@ import (
 	"anchor/internal/mapper"
 )
 
-var _ SendRecordRepository = (*sendRecordRepositoryImpl)(nil)
+func _() {
+	nanorepo.Implement[SendRecordRepository, sendRecordRepositoryImpl](table.EmailSendRecords, emailSendRecordToDomain)
+}
+
+// emailSendRecordToDomain maps the rows that the base returns. EmailSendRecordMapper has no state.
+func emailSendRecordToDomain(row model.EmailSendRecords) email.SendRecord {
+	return (&mapper.EmailSendRecordMapper{}).ToDomain(row)
+}
 
 func emailSendRecordsUpdatableColumns() postgres.ColumnList {
 	return table.EmailSendRecords.AllColumns.Except(
@@ -28,7 +36,8 @@ func emailSendRecordsUpdatableColumns() postgres.ColumnList {
 }
 
 type sendRecordRepositoryImpl struct {
-	db     *sql.DB
+	emailSendRecordsBase
+
 	mapper *mapper.EmailSendRecordMapper
 	logger *slog.Logger
 }
@@ -37,9 +46,9 @@ func NewSendRecordRepository(
 	db *sql.DB, m *mapper.EmailSendRecordMapper, logger *slog.Logger,
 ) SendRecordRepository {
 	return &sendRecordRepositoryImpl{
-		db:     db,
-		mapper: m,
-		logger: logger.With(slog.String("component", "email_send_record_repository")),
+		emailSendRecordsBase: newEmailSendRecordsBase(db),
+		mapper:               m,
+		logger:               logger.With(slog.String("component", "email_send_record_repository")),
 	}
 }
 
@@ -95,76 +104,6 @@ func (r *sendRecordRepositoryImpl) UpdateStatus(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *sendRecordRepositoryImpl) UpdateStatusInternal(
-	ctx context.Context,
-	id string,
-	status email.SendStatus,
-	lastError *string,
-	sentAt *time.Time,
-) error {
-	now := time.Now()
-	entity := model.EmailSendRecords{
-		Status:    string(status),
-		LastError: lastError,
-		SentAt:    sentAt,
-		UpdatedAt: now,
-	}
-	cols := postgres.ColumnList{
-		table.EmailSendRecords.Status,
-		table.EmailSendRecords.LastError,
-		table.EmailSendRecords.SentAt,
-		table.EmailSendRecords.UpdatedAt,
-	}
-	stmt := table.EmailSendRecords.UPDATE(cols).MODEL(entity).WHERE(
-		table.EmailSendRecords.ID.EQ(postgres.String(id)),
-	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
-}
-
-func (r *sendRecordRepositoryImpl) FindByDedupeKey(
-	ctx context.Context, tenantID string, productID string, dedupeKey string,
-) (functional.Option[email.SendRecord], error) {
-	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
-		FROM(table.EmailSendRecords).
-		WHERE(
-			table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID)).
-				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
-				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *sendRecordRepositoryImpl) FindByDedupeKeyInternal(
-	ctx context.Context, productID string, dedupeKey string,
-) (functional.Option[email.SendRecord], error) {
-	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
-		FROM(table.EmailSendRecords).
-		WHERE(
-			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
-				AND(table.EmailSendRecords.DedupeKey.EQ(postgres.String(dedupeKey))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
-func (r *sendRecordRepositoryImpl) FindByID(
-	ctx context.Context, tenantID string, productID string, id string,
-) (functional.Option[email.SendRecord], error) {
-	stmt := table.EmailSendRecords.SELECT(table.EmailSendRecords.AllColumns).
-		FROM(table.EmailSendRecords).
-		WHERE(
-			table.EmailSendRecords.ID.EQ(postgres.String(id)).
-				AND(table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID))).
-				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))),
-		).LIMIT(1)
-	return transactor.QueryOptionalMap(
-		ctx, r.db, stmt, r.mapper.ToDomain,
-	)
-}
-
 func (r *sendRecordRepositoryImpl) Search(
 	ctx context.Context, input email.SearchSendsInput,
 ) (search.Result[email.SendRecord], error) {
@@ -215,18 +154,6 @@ func (r *sendRecordRepositoryImpl) CountSince(
 		WHERE(
 			table.EmailSendRecords.PlatformTenantID.EQ(postgres.String(tenantID)).
 				AND(table.EmailSendRecords.ProductID.EQ(postgres.String(productID))).
-				AND(table.EmailSendRecords.CreatedAt.GT_EQ(postgres.TimestampzT(since))),
-		)
-	return transactor.QueryCount(ctx, r.db, stmt).Value()
-}
-
-func (r *sendRecordRepositoryImpl) CountSinceInternal(
-	ctx context.Context, productID string, since time.Time,
-) (int64, error) {
-	stmt := postgres.SELECT(postgres.COUNT(postgres.STAR).AS("count_result.count")).
-		FROM(table.EmailSendRecords).
-		WHERE(
-			table.EmailSendRecords.ProductID.EQ(postgres.String(productID)).
 				AND(table.EmailSendRecords.CreatedAt.GT_EQ(postgres.TimestampzT(since))),
 		)
 	return transactor.QueryCount(ctx, r.db, stmt).Value()
