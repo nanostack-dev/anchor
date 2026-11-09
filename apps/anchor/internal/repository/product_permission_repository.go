@@ -62,8 +62,10 @@ type ProductPermissionRepository interface {
 
 // productPermissionToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var productPermissionToDomain = (&mapper.ProductPermissionMapper{}).ToDomain
+// productPermissionToDomain is the stateless mapper that the generated base calls.
+func productPermissionToDomain(row model.ProductPermissions) permission.ProductPermission {
+	return (&mapper.ProductPermissionMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[ProductPermissionRepository, productPermissionRepositoryImpl](

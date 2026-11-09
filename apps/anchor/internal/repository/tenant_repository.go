@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/tenant"
 	"anchor/internal/mapper"
@@ -17,8 +18,10 @@ import (
 
 // tenantToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var tenantToDomain = (&mapper.TenantMapper{}).ToDomain
+// tenantToDomain is the stateless mapper that the generated base calls.
+func tenantToDomain(row model.PlatformTenants) tenant.PlatformTenant {
+	return (&mapper.TenantMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[TenantRepository, tenantRepositoryImpl](

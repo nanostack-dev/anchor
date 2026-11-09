@@ -21,8 +21,10 @@ import (
 
 // integrationEventToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var integrationEventToDomain = (&mapper.IntegrationEventMapper{}).ToDomain
+// integrationEventToDomain is the stateless mapper that the generated base calls.
+func integrationEventToDomain(row model.IntegrationEvents) integration.Event {
+	return (&mapper.IntegrationEventMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[IntegrationEventRepository, integrationEventRepositoryImpl](

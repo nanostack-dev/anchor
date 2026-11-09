@@ -25,8 +25,10 @@ import (
 
 // invitationToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var invitationToDomain = (&mapper.InvitationMapper{}).ToDomain
+// invitationToDomain is the stateless mapper that the generated base calls.
+func invitationToDomain(row model.PlatformInvitations) invitation.PlatformInvitation {
+	return (&mapper.InvitationMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[InvitationRepository, invitationRepositoryImpl](

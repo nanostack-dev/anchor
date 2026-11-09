@@ -27,8 +27,10 @@ import (
 
 // platformUserToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var platformUserToDomain = (&mapper.PlatformUserMapper{}).ToDomain
+// platformUserToDomain is the stateless mapper that the generated base calls.
+func platformUserToDomain(row model.PlatformUsers) platform.User {
+	return (&mapper.PlatformUserMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[PlatformTenantUserRepository, platformTenantUserRepositoryImpl](

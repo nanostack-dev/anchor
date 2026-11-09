@@ -78,8 +78,10 @@ type OrganizationAPIKeyRepository interface {
 
 // organizationAPIKeyToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var organizationAPIKeyToDomain = (&mapper.OrganizationAPIKeyMapper{}).ToDomain
+// organizationAPIKeyToDomain is the stateless mapper that the generated base calls.
+func organizationAPIKeyToDomain(row model.OrganizationAPIKeys) orgapikey.OrganizationAPIKey {
+	return (&mapper.OrganizationAPIKeyMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[OrganizationAPIKeyRepository, organizationAPIKeyRepository](

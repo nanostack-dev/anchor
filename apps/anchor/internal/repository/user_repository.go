@@ -9,6 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
+	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 	"anchor/internal/domain/auth"
 
@@ -27,8 +28,10 @@ func usersUpdatableColumns() postgres.ColumnList {
 
 // userToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var userToDomain = (&mapper.UserMapper{}).ToDomain
+// userToDomain is the stateless mapper that the generated base calls.
+func userToDomain(row model.Users) auth.User {
+	return (&mapper.UserMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[UserRepository, userRepositoryImpl](

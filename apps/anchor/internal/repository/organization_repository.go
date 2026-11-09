@@ -24,8 +24,10 @@ import (
 
 // organizationToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var organizationToDomain = (&mapper.OrganizationMapper{}).ToDomain
+// organizationToDomain is the stateless mapper that the generated base calls.
+func organizationToDomain(row model.Organizations) organization.Organization {
+	return (&mapper.OrganizationMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[OrganizationRepository, organizationRepositoryImpl](

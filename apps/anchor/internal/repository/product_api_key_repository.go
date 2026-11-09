@@ -76,8 +76,10 @@ type ProductAPIKeyRepository interface {
 
 // productAPIKeyToDomain is the stateless mapper that the generated base calls.
 //
-//nolint:gochecknoglobals // nano gen repo reads the mapper from source.
-var productAPIKeyToDomain = (&mapper.ProductAPIKeyMapper{}).ToDomain
+// productAPIKeyToDomain is the stateless mapper that the generated base calls.
+func productAPIKeyToDomain(row model.ProductAPIKeys) apikey.ProductAPIKey {
+	return (&mapper.ProductAPIKeyMapper{}).ToDomain(row)
+}
 
 func _() {
 	nanorepo.Implement[ProductAPIKeyRepository, productAPIKeyRepository](

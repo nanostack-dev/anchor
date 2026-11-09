@@ -45,7 +45,7 @@ The Go verification workflow runs for pull requests against any base branch, inc
 ## Regenerate contracts and database models
 
 1. Change `apps/anchor/cmd/http/openapi.yaml` before generated server/client code. Schema changes are migrations, never hot database edits.
-2. From `apps/anchor`, run `./generate_anchor.sh` (Go and pnpm required). It generates the server, the go-jet models, the config and wiring files and the frontend client. The script no longer starts its own database: `nano gen db` uses Docker, or the server that `NANO_GEN_DATABASE_URL` names, only when the migrations or the framework version changed since `internal/db/gen/anchor/nanogen.sum`.
+2. From `apps/anchor`, run `./generate_anchor.sh` (Go and pnpm required). It generates the server, the go-jet models, the repository bases, the config and wiring files and the frontend client. The script no longer starts its own database: `nano gen db` uses Docker, or the server that `NANO_GEN_DATABASE_URL` names, only when the migrations or the framework version changed since `internal/db/gen/anchor/nanogen.sum`.
 3. From the repository root, run `make generate-client` for the separate `clients/go` SDK. Verify intended generated diffs and relevant builds/tests.
 4. Update the route-security golden only for an intentional policy change: from `apps/anchor`, `UPDATE_ROUTE_SECURITY=1 go test ./internal/security/ -run TestContractSecurityIsUnchanged`, then review `internal/security/testdata`.
 
