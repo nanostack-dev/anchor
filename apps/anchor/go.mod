@@ -15,14 +15,13 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/moby/moby/api v1.56.1
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
-	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.2
-	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.1
-	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.2
+	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.3
+	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.3
+	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.3
 	github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1
 	github.com/nanostack-dev/pgkit v0.0.46
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
 	github.com/oapi-codegen/nullable v1.1.0
-	github.com/oapi-codegen/oapi-codegen/v2 v2.8.2
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/openfga/api/proto v0.0.0-20260319214821-f153694bfc20
 	github.com/openfga/language/pkg/go v0.3.2
@@ -116,6 +115,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/natefinch/wrap v0.2.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/oapi-codegen/oapi-codegen/v2 v2.8.2 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/oklog/ulid/v2 v2.1.2 // indirect
@@ -179,4 +179,7 @@ require (
 
 replace github.com/nanostack-dev/anchor/clients/go => ../../clients/go
 
-tool github.com/nanostack-dev/nanostack-framework/gen/cmd/nano
+tool (
+	github.com/nanostack-dev/nanostack-framework/gen/cmd/nano
+	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
+)

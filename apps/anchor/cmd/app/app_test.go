@@ -15,7 +15,7 @@ import (
 
 // TestGeneratedFilesAreFresh fails when wire.gen.go, config.gen.go,
 // CONFIG.md or .env.example no longer match the manifest and Config: run
-// go generate ./cmd/app.
+// go tool nano gen from apps/anchor.
 func TestGeneratedFilesAreFresh(t *testing.T) {
 	require.NoError(t, wire.Run(wire.Options{Dir: ".", Out: ".", Check: true}))
 	require.NoError(t, genconfig.Run(genconfig.Options{Dir: ".", EnvExample: "../../.env.example", Check: true}))

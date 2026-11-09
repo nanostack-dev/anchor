@@ -10,7 +10,7 @@ Approve the repository through the client's normal one-time trust flow before pr
 
 ## Prerequisites and install
 
-Use Go 1.27 (`apps/anchor/go.mod`), Node 24 and pnpm 11.1.0 (`anchor-ui/package.json` and the [application E2E workflow](../../.github/workflows/e2e-app.yml)). Docker with Compose and an accessible daemon are required for integration/browser runtime. API/database generation also requires `migrate` and `openssl` on PATH.
+Use Go 1.27 (`apps/anchor/go.mod`), Node 24 and pnpm 11.1.0 (`anchor-ui/package.json` and the [application E2E workflow](../../.github/workflows/e2e-app.yml)). Docker with Compose and an accessible daemon are required for integration/browser runtime. Database model generation (`go tool nano gen`) needs Docker only when the migrations or the framework version changed, or a server named by `NANO_GEN_DATABASE_URL`.
 
 ```sh
 # From the repository root:

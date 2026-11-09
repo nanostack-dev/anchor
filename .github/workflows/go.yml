@@ -9,6 +9,7 @@ on:
       - '**/go.sum'
       - 'Dockerfile'
       - 'apps/anchor/migrations/**'
+      - 'apps/anchor/**/nanogen.sum'
       - 'apps/anchor/application.yaml'
       - 'apps/anchor/**/application.yaml'
       - 'apps/anchor/*codegen*.yaml'
@@ -78,6 +79,7 @@ jobs:
         **/go.sum
         Dockerfile
         apps/anchor/migrations/**
+        apps/anchor/**/nanogen.sum
         apps/anchor/application.yaml
         apps/anchor/**/application.yaml
         apps/anchor/*codegen*.yaml
@@ -135,7 +137,7 @@ jobs:
           DAGGER_CHECK_PARALLEL: '2'
         run: |
           set -euo pipefail
-          dagger check --progress=report 'dag://anchor/lint' 'dag://anchor/*-tests' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
+          dagger check --progress=report 'dag://anchor/lint' 'dag://anchor/*-tests' 'dag://anchor/generated-code' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
   # preview dispatches gate on dagger-backend. A pull request builds when it

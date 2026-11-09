@@ -1,143 +1,56 @@
 #!/usr/bin/env bash
-set -eo pipefail # Exit on error, pipefail ensures pipeline errors are caught
+# Regenerates every generated file of apps/anchor and the anchor-ui client.
+# Run it from apps/anchor: every path in it is relative to that directory.
+#
+# go tool nano gen runs the db, config and wire steps. Its db step reads no
+# database while the migrations, the image and the generated files match
+# internal/db/gen/anchor/nanogen.sum. Otherwise it applies the migrations to a
+# container that it starts with Docker, or to the empty server that
+# NANO_GEN_DATABASE_URL names.
+set -euo pipefail
 
 CURRENT_DIR=$(pwd)
-APP_NAME=anchor
-ANCHOR_DB_PORT=25895
-ANCHOR_DB_PASSWORD=$(openssl rand -base64 32 | tr -d /=+ | cut -c1-32)
-POSTGRES_CONTAINER="temp-postgres"
+CLEANED_SPEC=./cmd/http/openapi-cleaned.yaml
 
-export ANCHOR_DB_PORT
-export ANCHOR_DB_PASSWORD
-
-# Clean up function to ensure we always remove the container
-cleanup() {
-  echo "Cleaning up resources..."
-  docker stop ${POSTGRES_CONTAINER} 2>/dev/null || true
-  docker rm ${POSTGRES_CONTAINER} 2>/dev/null || true
-}
-
-# Ensure cleanup runs even if script fails
-trap cleanup EXIT
-
-# Check required tools are installed
 check_dependencies() {
-  for cmd in docker migrate go; do
-    if ! command -v $cmd &>/dev/null; then
+  for cmd in go pnpm; do
+    if ! command -v "$cmd" &>/dev/null; then
       echo "Error: $cmd is required but not installed. Please install it first."
       exit 1
     fi
   done
 }
 
-# Start a PostgreSQL container and wait for it to be ready
-#
-# TimescaleDB, not plain Postgres: the usage migration creates a hypertable.
-# Keep this image equal to docker-compose.yml and cmd/it/shared/test_setup.go.
-start_postgres() {
-  echo "Starting PostgreSQL container on port ${ANCHOR_DB_PORT}..."
-  cleanup # Ensure no old container exists
-
-  docker run --name ${POSTGRES_CONTAINER} \
-    -e POSTGRES_PASSWORD=${ANCHOR_DB_PASSWORD} \
-    -p ${ANCHOR_DB_PORT}:5432 \
-    -d timescale/timescaledb:2.23.0-pg18
-
-  # Wait for PostgreSQL to be ready
-  echo "Waiting for PostgreSQL to be ready..."
-  for i in {1..30}; do
-    if docker exec ${POSTGRES_CONTAINER} pg_isready -U postgres &>/dev/null; then
-      echo "PostgreSQL is ready!"
-      sleep 2 # Give it a moment more to fully initialize
-      return 0
-    fi
-    echo -n "."
-    sleep 1
-  done
-
-  echo "Error: PostgreSQL failed to start in time"
-  exit 1
+generate_api() {
+  echo "Generating the OpenAPI server and clients..."
+  ../../scripts/client-spec.sh ./cmd/http/openapi.yaml "$CLEANED_SPEC"
+  trap 'rm -f "$CURRENT_DIR/$CLEANED_SPEC"' EXIT
+  go tool oapi-codegen --config=codegen.yaml ./cmd/http/openapi.yaml
+  go tool oapi-codegen --config=client-types-codegen.yaml "$CLEANED_SPEC"
+  go tool oapi-codegen --config=client-codegen.yaml "$CLEANED_SPEC"
 }
 
-# Create database
-create_database() {
-  echo "Creating database 'anchor'..."
-  docker exec ${POSTGRES_CONTAINER} createdb -U postgres anchor || {
-    echo "Error: Failed to create database"
-    exit 1
-  }
+generate_nano() {
+  echo "Running nano gen (database models, config and wiring)..."
+  go tool nano gen
 }
 
-run_migrations() {
-  local folder="."
-  if [ -d "$folder/migrations" ]; then
-    MODULE_NAME=$(basename "$folder")
-    echo "===== Processing module: $MODULE_NAME ====="
-    # Check if migrations directory has files
-    if [ -z "$(ls -A $folder/migrations 2>/dev/null)" ]; then
-      echo "No migration files found in $folder/migrations, skipping..."
-      return 0
-    fi
-
-    echo "Running migrations from: $folder/migrations"
-    migrate -path $folder/migrations \
-      -database "postgres://postgres:${ANCHOR_DB_PASSWORD}@localhost:${ANCHOR_DB_PORT}/anchor?sslmode=disable" up || {
-      echo "Error: Migration failed for $MODULE_NAME"
-      exit 1
-    }
-
-    echo "✓ Completed migrations for: $MODULE_NAME"
-  fi
-}
-
-# Generate code and client
-generate_code() {
-  echo "===== Running code generation steps ====="
-
-  ../../scripts/client-spec.sh ./cmd/http/openapi.yaml ./cmd/http/openapi-cleaned.yaml
-
-  go generate tools.go
-
-  # OAPI Codegen
-  echo "Generating OpenAPI code..."
-  go generate tools.go || {
-    echo "Error: Failed to generate OAPI code"
-    exit 1
-  }
-
-  # Database code generation
-  echo "Running database code generation..."
-  go run dbgen.go || {
-    echo "Error: Failed to run dbgen.go"
-    exit 1
-  }
-}
-
-generate_client_frontend () {
-  echo "Generating client frontend code..."
-  CLIENT_DIR="../../anchor-ui"
-  if [ -d "$CLIENT_DIR" ]; then
-    cd "$CLIENT_DIR"
-    pnpm run openapi-ts || {
-      echo "Error: Failed to generate client frontend"
-      exit 1
-    }
-    cd "$CURRENT_DIR"
+generate_client_frontend() {
+  echo "Generating the anchor-ui client..."
+  local client_dir="../../anchor-ui"
+  if [ -d "$client_dir" ]; then
+    (cd "$client_dir" && pnpm run openapi-ts)
   else
-    echo "Warning: Client frontend directory not found at $CLIENT_DIR"
+    echo "Warning: client frontend directory not found at $client_dir"
   fi
 }
-# Main execution
-main() {
-  echo "🚀 Starting build process for $APP_NAME"
-  check_dependencies
-  start_postgres
-  create_database
-  run_migrations
-  generate_code
-  generate_client_frontend
 
-  echo "✅ Build process completed successfully!"
+main() {
+  check_dependencies
+  generate_api
+  generate_nano
+  generate_client_frontend
+  echo "Generation completed."
 }
 
 main

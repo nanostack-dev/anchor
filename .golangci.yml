@@ -228,9 +228,9 @@ linters:
             - "$all"
           deny:
             - pkg: go.uber.org/fx
-              desc: Add a provider to a nano.Module and run go generate ./cmd/app
+              desc: Add a provider to a nano.Module and run go tool nano gen from apps/anchor
             - pkg: go.uber.org/dig
-              desc: Add a provider to a nano.Module and run go generate ./cmd/app
+              desc: Add a provider to a nano.Module and run go tool nano gen from apps/anchor
             - pkg: github.com/nanostack-dev/nanostack-framework/modules/
               desc: Use the nano module (pg/nanopg, pg/nanomigrate, redis/nanocache, otel/nanotrace, http/nanoserver, http/nanoapisec)
             - pkg: github.com/nanostack-dev/nanostack-framework/app$
@@ -501,13 +501,6 @@ linters:
         linters:
           - ALL
       - path: '.*_gen\.go$'
-        linters:
-          - ALL
-      - path: '.*dbgen\.go$'
-        linters:
-          - ALL
-          - noctx
-      - path: 'tools\.go$'
         linters:
           - ALL
       # gosec G117 flags many DTO/domain field names (Password/APIKey/Token)

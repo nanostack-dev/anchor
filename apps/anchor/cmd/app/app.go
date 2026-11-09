@@ -1,13 +1,10 @@
 // Package app wires anchor: its configuration (Config, bound by the
 // generated Bind) and its components (the manifest in manifest.go, built by
 // the generated Build). Regenerate both after a module changes a provider or
-// a config field:
+// a config field, from apps/anchor:
 //
-//	go generate ./cmd/app
+//	go tool nano gen
 package app
-
-//go:generate go tool nano gen config -dir . -env ../../.env.example
-//go:generate go tool nano gen wire -dir . -out .
 
 import (
 	_ "embed"

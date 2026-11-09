@@ -14,9 +14,8 @@ import (
 // + draft/published version pointers). Authoring content lives on
 // TemplateVersionRepository so PUBLISHED rows are immutable.
 //
-// Concrete implementation lands once `dbgen` regenerates jet models against
-// migration 000014. The interface lives here so the email service can be
-// wired and unit-tested with mocks before the impl exists.
+// The interface lives in this package so the email service can be wired
+// and unit-tested with mocks; the Postgres implementation is next to it.
 type TemplateRepository interface {
 	FindByID(
 		ctx context.Context, tenantID string, productID string, id string,
