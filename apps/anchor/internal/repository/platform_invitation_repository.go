@@ -56,7 +56,7 @@ type InvitationRepository interface {
 	Create(
 		ctx context.Context, inv invitation.PlatformInvitation,
 	) (invitation.PlatformInvitation, error)
-	FindByPlatformTenantIDAndEmail(
+	FindByTenantAndEmail(
 		ctx context.Context, platformTenantID string, email string,
 	) (functional.Option[invitation.PlatformInvitation], error)
 	// FindByCodeAndEmailInternal reads across tenants: a user accepts an
@@ -64,8 +64,8 @@ type InvitationRepository interface {
 	FindByCodeAndEmailInternal(
 		ctx context.Context, code string, email string,
 	) (functional.Option[invitation.PlatformInvitation], error)
-	DeleteByTenantIDAndID(
-		ctx context.Context, tenantID string, code string,
+	DeleteByTenantAndID(
+		ctx context.Context, tenantID string, id string,
 	) error
 	SearchByTenantID(
 		ctx context.Context,
@@ -119,16 +119,4 @@ func (r *invitationRepositoryImpl) Create(
 	return transactor.QueryMap(ctx, r.db, stmt, r.mapper.ToDomain).
 		OnUnique(ErrInvitationExists, invitationTenantEmailUniqueIndex).
 		Value()
-}
-
-func (r *invitationRepositoryImpl) DeleteByTenantIDAndID(
-	ctx context.Context, tenantID string, invitationID string,
-) error {
-	stmt := table.PlatformInvitations.DELETE().
-		WHERE(
-			table.PlatformInvitations.PlatformTenantID.EQ(postgres.String(tenantID)).
-				AND(table.PlatformInvitations.ID.EQ(postgres.String(invitationID))),
-		)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }

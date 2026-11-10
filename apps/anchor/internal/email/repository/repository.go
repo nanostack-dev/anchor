@@ -19,10 +19,10 @@ import (
 // Methods without a hand-written body are derived from their name by
 // go tool nanostack gen (template_repository_repo.gen.go).
 type TemplateRepository interface {
-	FindByPlatformTenantIDAndProductIDAndID(
+	FindByTenantAndProductAndID(
 		ctx context.Context, platformTenantID string, productID string, id string,
 	) (functional.Option[email.Template], error)
-	FindByPlatformTenantIDAndProductIDAndSlug(
+	FindByTenantAndProductAndSlug(
 		ctx context.Context, platformTenantID string, productID string, slug string,
 	) (functional.Option[email.Template], error)
 	Search(ctx context.Context, q EmailTemplateSearch) (search.Result[email.Template], error)
@@ -46,7 +46,7 @@ type TemplateRepository interface {
 	SetVersionPointers(
 		ctx context.Context, tenantID string, templateID string, draftVersionID *string, publishedVersionID *string,
 	) error
-	DeleteByPlatformTenantIDAndProductIDAndID(
+	DeleteByTenantAndProductAndID(
 		ctx context.Context, platformTenantID string, productID string, id string,
 	) error
 }
@@ -109,9 +109,9 @@ type SendRecordRepository interface {
 	UpdateStatus(
 		ctx context.Context, tenantID string, id string, status email.SendStatus, lastError *string, sentAt *time.Time,
 	) error
-	// FindByPlatformTenantIDAndProductIDAndDedupeKey returns the send record
+	// FindByTenantAndProductAndDedupeKey returns the send record
 	// with the dedupe key within the tenant and product.
-	FindByPlatformTenantIDAndProductIDAndDedupeKey(
+	FindByTenantAndProductAndDedupeKey(
 		ctx context.Context, platformTenantID string, productID string, dedupeKey string,
 	) (functional.Option[email.SendRecord], error)
 	Search(ctx context.Context, q EmailSendSearch) (search.Result[email.SendRecord], error)

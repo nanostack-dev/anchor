@@ -100,7 +100,7 @@ type ProductRepository interface {
 	Update(
 		ctx context.Context, tenantID string, product product.Product,
 	) (product.Product, error)
-	DeleteByPlatformTenantIDAndID(ctx context.Context, platformTenantID, id string) error
+	DeleteByTenantAndID(ctx context.Context, platformTenantID, id string) error
 	SearchByTenantID(ctx context.Context, q ProductSearch) (search.Result[product.Product], error)
 
 	// FindAllInternal returns all products without tenant scoping.

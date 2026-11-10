@@ -50,7 +50,7 @@ func organizationsUpdatableColumns() postgres.ColumnList {
 }
 
 type OrganizationRepository interface {
-	FindByProductIDAndID(
+	FindByProductAndID(
 		ctx context.Context, productID string, id string,
 	) (functional.Option[organization.Organization], error)
 	Create(ctx context.Context, org organization.Organization) (
@@ -59,7 +59,7 @@ type OrganizationRepository interface {
 	Update(
 		ctx context.Context, productID string, organization organization.Organization,
 	) (organization.Organization, error)
-	DeleteByProductIDAndID(ctx context.Context, productID string, id string) error
+	DeleteByProductAndID(ctx context.Context, productID string, id string) error
 	SearchByProductID(ctx context.Context, q OrganizationSearch) (search.Result[organization.Organization], error)
 }
 

@@ -74,8 +74,8 @@ type IntegrationInstanceRepository interface {
 	UpdateOptional(
 		ctx context.Context, tenantID string, instance integration.Instance,
 	) (functional.Option[integration.Instance], error)
-	DeleteByPlatformTenantIDAndID(
-		ctx context.Context, platformTenantID string, id string,
+	DeleteByTenantAndProductAndID(
+		ctx context.Context, platformTenantID string, productID string, id string,
 	) error
 }
 

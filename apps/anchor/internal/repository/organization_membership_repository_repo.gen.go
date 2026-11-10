@@ -22,10 +22,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ OrganizationMembershipRepository = (*organizationMembershipRepositoryImpl)(nil)
 
-// DeleteByOrganizationIDAndProductUserID is derived from its name:
+// DeleteByOrgAndProductUserID is derived from its name:
 //
 //	DELETE FROM organization_memberships WHERE organization_id = $1 AND product_user_id = $2
-func (r *organizationMembershipRepositoryImpl) DeleteByOrganizationIDAndProductUserID(ctx context.Context, organizationID string, productUserID string) error {
+func (r *organizationMembershipRepositoryImpl) DeleteByOrgAndProductUserID(ctx context.Context, organizationID string, productUserID string) error {
 	_, err := r.deleteWhere(ctx, r.where.OrganizationID(organizationID).AND(r.where.ProductUserID(productUserID)))
 	return err
 }

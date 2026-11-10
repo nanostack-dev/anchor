@@ -32,11 +32,11 @@ type OrganizationAPIKeyRepository interface {
 		ctx context.Context,
 		apiKey orgapikey.OrganizationAPIKey,
 	) (orgapikey.OrganizationAPIKey, error)
-	GetByID(
+	GetByOrgAndID(
 		ctx context.Context,
 		organizationID, id string,
 	) (functional.Option[orgapikey.OrganizationAPIKey], error)
-	GetByOrganizationIDAndName(
+	GetByOrgAndName(
 		ctx context.Context,
 		organizationID, name string,
 	) (functional.Option[orgapikey.OrganizationAPIKey], error)
@@ -51,7 +51,7 @@ type OrganizationAPIKeyRepository interface {
 	SearchByOrganizationID(
 		ctx context.Context, q OrganizationAPIKeySearch,
 	) (search.Result[orgapikey.OrganizationAPIKey], error)
-	DeleteByOrganizationIDAndID(
+	DeleteByOrgAndID(
 		ctx context.Context,
 		organizationID, id string,
 	) error
@@ -239,31 +239,6 @@ func (r *organizationAPIKeyRepository) Create(
 	}
 
 	return r.mapper.ToDomainWithPermissions(created, permissions), nil
-}
-
-func (r *organizationAPIKeyRepository) GetByID(
-	ctx context.Context,
-	organizationID, id string,
-) (functional.Option[orgapikey.OrganizationAPIKey], error) {
-	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)).AND(
-		table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)),
-	))
-}
-
-func (r *organizationAPIKeyRepository) GetByIDInternal(
-	ctx context.Context,
-	id string,
-) (functional.Option[orgapikey.OrganizationAPIKey], error) {
-	return r.findOne(ctx, table.OrganizationAPIKeys.ID.EQ(postgres.String(id)))
-}
-
-func (r *organizationAPIKeyRepository) GetByOrganizationIDAndName(
-	ctx context.Context,
-	organizationID, name string,
-) (functional.Option[orgapikey.OrganizationAPIKey], error) {
-	return r.findOne(ctx, table.OrganizationAPIKeys.OrganizationID.EQ(postgres.String(organizationID)).AND(
-		table.OrganizationAPIKeys.Name.EQ(postgres.String(name)),
-	))
 }
 
 func (r *organizationAPIKeyRepository) GetByOrganizationIDAndHashedValue(

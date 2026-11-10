@@ -15,17 +15,17 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
 
-// InvitationRepository on *invitationRepositoryImpl: 2 derived methods on table platform_invitations; the other methods are
+// InvitationRepository on *invitationRepositoryImpl: 3 derived methods on table platform_invitations; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // A compile error on the next line means InvitationRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ InvitationRepository = (*invitationRepositoryImpl)(nil)
 
-// FindByPlatformTenantIDAndEmail is derived from its name:
+// FindByTenantAndEmail is derived from its name:
 //
 //	SELECT * FROM platform_invitations WHERE platform_tenant_id = $1 AND email = $2 LIMIT 2 -- at most one row: idx_platform_tenant_email (platform_tenant_id, email); a second row is ErrMoreThanOneRow
-func (r *invitationRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[invitation.PlatformInvitation], error) {
+func (r *invitationRepositoryImpl) FindByTenantAndEmail(ctx context.Context, platformTenantID string, email string) (functional.Option[invitation.PlatformInvitation], error) {
 	return r.findOne(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.Email(email)))
 }
 
@@ -36,6 +36,14 @@ func (r *invitationRepositoryImpl) FindByPlatformTenantIDAndEmail(ctx context.Co
 // UNSCOPED: the name ends in Internal, so it does not filter on platform_tenant_id.
 func (r *invitationRepositoryImpl) FindByCodeAndEmailInternal(ctx context.Context, code string, email string) (functional.Option[invitation.PlatformInvitation], error) {
 	return r.findOne(ctx, r.where.Code(code).AND(r.where.Email(email)))
+}
+
+// DeleteByTenantAndID is derived from its name:
+//
+//	DELETE FROM platform_invitations WHERE platform_tenant_id = $1 AND id = $2
+func (r *invitationRepositoryImpl) DeleteByTenantAndID(ctx context.Context, tenantID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(tenantID).AND(r.where.ID(id)))
+	return err
 }
 
 // SearchByTenantID runs a PlatformInvitationSearch: *invitationRepositoryImpl has no hand-written SearchByTenantID.

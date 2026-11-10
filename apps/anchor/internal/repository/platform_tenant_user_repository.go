@@ -59,16 +59,16 @@ type PlatformTenantUserRepository interface {
 	Create(
 		ctx context.Context, platformUser platform.User,
 	) (platform.User, error)
-	FindByPlatformTenantIDAndUserID(
+	FindByTenantAndUserID(
 		ctx context.Context, platformTenantID string, userID string,
 	) (functional.Option[platform.User], error)
-	FindByPlatformTenantIDAndID(
+	FindByTenantAndID(
 		ctx context.Context, platformTenantID string, id string,
 	) (functional.Option[platform.User], error)
-	FindByPlatformTenantIDAndEmail(
+	FindByTenantAndEmail(
 		ctx context.Context, platformTenantID string, email string,
 	) (functional.Option[platform.User], error)
-	DeleteByPlatformTenantIDAndID(
+	DeleteByTenantAndID(
 		ctx context.Context, platformTenantID string, id string,
 	) error
 	SearchByTenantID(ctx context.Context, q PlatformUserSearch) (search.Result[platform.User], error)

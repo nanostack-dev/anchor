@@ -211,7 +211,7 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 // whyNotAMember tells a missing organization from a missing membership; it
 // costs a query only on that deny path.
 func (e *evaluator) whyNotAMember(ctx context.Context, request Request) (reach, error) {
-	organization, err := e.organizations.FindByProductIDAndID(ctx, request.ProductID, request.Organization())
+	organization, err := e.organizations.FindByProductAndID(ctx, request.ProductID, request.Organization())
 	if err != nil {
 		return reach{}, e.unexpected(ctx, err, request, "organization")
 	}

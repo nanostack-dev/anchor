@@ -71,7 +71,7 @@ func (s *platformUserService) GetPlatformUserByUserID(
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
-	found, err := s.platformUserRepo.FindByPlatformTenantIDAndUserID(ctx, input.TenantID, input.UserID)
+	found, err := s.platformUserRepo.FindByTenantAndUserID(ctx, input.TenantID, input.UserID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find platform user by user ID",
 			slog.String("tenant_id", input.TenantID),
@@ -91,7 +91,7 @@ func (s *platformUserService) GetPlatformUser(
 	if err := validate.ValidateStruct(input); err != nil {
 		return nil, err
 	}
-	found, err := s.platformUserRepo.FindByPlatformTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
+	found, err := s.platformUserRepo.FindByTenantAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find platform user",
 			slog.String("tenant_id", input.TenantID),
@@ -134,7 +134,7 @@ func (s *platformUserService) DeletePlatformUser(
 		)
 	}
 
-	target, err := s.platformUserRepo.FindByPlatformTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
+	target, err := s.platformUserRepo.FindByTenantAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (s *platformUserService) DeletePlatformUser(
 		return fault.Forbidden("OWNER_DELETION_NOT_ALLOWED", "Only an owner can delete the tenant owner.")
 	}
 
-	err = s.platformUserRepo.DeleteByPlatformTenantIDAndID(ctx, input.TenantID, input.PlatformUserID)
+	err = s.platformUserRepo.DeleteByTenantAndID(ctx, input.TenantID, input.PlatformUserID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to delete platform user",
 			slog.String("tenant_id", input.TenantID),

@@ -41,7 +41,7 @@ func (p *Provider) executeDeleteUser(
 				return releaseErr
 			}
 		}
-		if delErr := p.productUserRepo.DeleteByProductIDAndExternalID(
+		if delErr := p.productUserRepo.DeleteByProductAndExternalID(
 			txCtx, instance.ProductID, deleteData.ExternalID,
 		); delErr != nil {
 			return delErr

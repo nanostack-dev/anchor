@@ -112,7 +112,7 @@ func (r *templateRepositoryImpl) Update(
 		entity.IsActive = *in.IsActive
 	}
 	if len(columns) == 0 {
-		return r.FindByPlatformTenantIDAndProductIDAndID(ctx, in.TenantID, in.ProductID, in.ID)
+		return r.FindByTenantAndProductAndID(ctx, in.TenantID, in.ProductID, in.ID)
 	}
 	stmt := table.EmailTemplates.UPDATE(columns).MODEL(entity).WHERE(
 		table.EmailTemplates.ID.EQ(postgres.String(in.ID)).

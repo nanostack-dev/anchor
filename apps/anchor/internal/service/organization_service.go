@@ -212,7 +212,7 @@ func (s *organizationService) Find(
 		return organization.Organization{}, err
 	}
 
-	foundOrg, err := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, input.OrganizationID)
+	foundOrg, err := s.organizationRepo.FindByProductAndID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to find organization",
 			slog.String("product_id", input.ProductID),
@@ -519,7 +519,7 @@ func (s *organizationService) findExistingOrganizationWithMember(
 	// caller input caused an absence here, so a miss is a server invariant,
 	// not a 404: see PublishTemplate's second guard in
 	// docs/engineering-best-practices.md.
-	foundOrg, errGetOrg := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, existing.OrganizationID)
+	foundOrg, errGetOrg := s.organizationRepo.FindByProductAndID(ctx, input.ProductID, existing.OrganizationID)
 	if errGetOrg != nil {
 		return functional.None[organization.OrganizationWithMemberResult](), errGetOrg
 	}
@@ -572,7 +572,7 @@ func (s *organizationService) Update(
 		return organization.Organization{}, err
 	}
 
-	optOrg, err := s.organizationRepo.FindByProductIDAndID(
+	optOrg, err := s.organizationRepo.FindByProductAndID(
 		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
@@ -632,7 +632,7 @@ func (s *organizationService) Delete(
 		return err
 	}
 
-	optOrg, err := s.organizationRepo.FindByProductIDAndID(
+	optOrg, err := s.organizationRepo.FindByProductAndID(
 		ctx, input.ProductID, input.OrganizationID,
 	)
 	if err != nil {
@@ -659,7 +659,7 @@ func (s *organizationService) Delete(
 		); releaseErr != nil {
 			return releaseErr
 		}
-		if delErr := s.organizationRepo.DeleteByProductIDAndID(
+		if delErr := s.organizationRepo.DeleteByProductAndID(
 			txCtx, input.ProductID, input.OrganizationID,
 		); delErr != nil {
 			return delErr

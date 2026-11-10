@@ -5,18 +5,27 @@ package repository
 import (
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
+	"context"
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/db/keyset"
 	"github.com/nanostack-dev/nanostack-framework/db/searchexec"
 )
 
-// Repository on *repositoryImpl: 0 derived methods on table organization_invitations; the other methods are
+// Repository on *repositoryImpl: 1 derived method on table organization_invitations; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // A compile error on the next line means Repository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ Repository = (*repositoryImpl)(nil)
+
+// DeleteByProductAndOrgAndID is derived from its name:
+//
+//	DELETE FROM organization_invitations WHERE product_id = $1 AND organization_id = $2 AND id = $3
+func (r *repositoryImpl) DeleteByProductAndOrgAndID(ctx context.Context, productID string, organizationID string, invitationID string) error {
+	_, err := r.deleteWhere(ctx, r.where.ProductID(productID).AND(r.where.OrganizationID(organizationID)).AND(r.where.ID(invitationID)))
+	return err
+}
 
 // OrganizationInvitationSearch is an immutable search of organization_invitations. Start one with NewOrganizationInvitationSearch.
 type OrganizationInvitationSearch struct {

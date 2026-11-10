@@ -2,12 +2,23 @@
 
 package repository
 
-// TenantRepository on *tenantRepositoryImpl: 0 derived methods on table platform_tenants; the other methods are
+import (
+	"context"
+)
+
+// TenantRepository on *tenantRepositoryImpl: 1 derived method on table platform_tenants; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
 // Hand-written although the name derives (deleting the method switches it
-// to the derived query): Count, FindAll.
+// to the derived query): FindAll.
 //
 // A compile error on the next line means TenantRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ TenantRepository = (*tenantRepositoryImpl)(nil)
+
+// Count is derived from its name:
+//
+//	SELECT COUNT(*) FROM platform_tenants
+func (r *tenantRepositoryImpl) Count(ctx context.Context) (int64, error) {
+	return r.count(ctx, nil)
+}

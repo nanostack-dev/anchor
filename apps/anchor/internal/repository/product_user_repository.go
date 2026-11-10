@@ -80,9 +80,9 @@ type ProductUserRepository interface {
 	UpsertByExternalID(
 		ctx context.Context, entity user.ProductUser,
 	) (user.ProductUser, bool, error)
-	// DeleteByProductIDAndID returns true when it deleted the row.
-	DeleteByProductIDAndID(ctx context.Context, productID string, id string) (bool, error)
-	DeleteByProductIDAndExternalID(ctx context.Context, productID string, externalID string) error
+	// DeleteByProductAndID returns true when it deleted the row.
+	DeleteByProductAndID(ctx context.Context, productID string, id string) (bool, error)
+	DeleteByProductAndExternalID(ctx context.Context, productID string, externalID string) error
 	SearchByProductID(ctx context.Context, q ProductUserSearch) (search.Result[user.ProductUser], error)
 }
 

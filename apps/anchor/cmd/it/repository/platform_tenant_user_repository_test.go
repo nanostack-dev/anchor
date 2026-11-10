@@ -46,7 +46,7 @@ func createAuthUser(t *testing.T) string {
 
 // createPlatformUser inserts a platform user fixture under tenantID and
 // returns the created domain value. Email is disambiguated via uniqueName
-// since it is unique per tenant (see FindByPlatformTenantIDAndEmail).
+// since it is unique per tenant (see FindByTenantAndEmail).
 func createPlatformUser(t *testing.T, tenantID string) platform.User {
 	t.Helper()
 
@@ -93,7 +93,7 @@ func createPlatformUserFor(t *testing.T, tenantID, userID string, createdAt time
 	return created
 }
 
-// The auth middleware calls FindByPlatformTenantIDAndUserID on each platform
+// The auth middleware calls FindByTenantAndUserID on each platform
 // bearer request. A user removed from tenant A must not resolve through the
 // row of tenant B.
 func TestPlatformTenantUserRepositoryFindByPlatformTenantIDAndUserIDScopesToTenant(t *testing.T) {
@@ -104,38 +104,38 @@ func TestPlatformTenantUserRepositoryFindByPlatformTenantIDAndUserIDScopesToTena
 	rowB := createPlatformUserFor(t, tenantB, userID, base)
 	rowA := createPlatformUserFor(t, tenantA, userID, base.Add(time.Minute))
 
-	got, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantA, userID)
+	got, err := repoCtx.PlatformTenantUserRepository.FindByTenantAndUserID(ctx, tenantA, userID)
 	require.NoError(t, err)
 	require.True(t, got.IsPresent())
 	assert.Equal(t, rowA.ID, got.Value().ID)
 
 	// The derived finders and the derived delete do not cross tenants.
-	cross, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndID(ctx, tenantA, rowB.ID)
+	cross, err := repoCtx.PlatformTenantUserRepository.FindByTenantAndID(ctx, tenantA, rowB.ID)
 	require.NoError(t, err)
 	assert.True(t, cross.IsAbsent())
-	cross, err = repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndEmail(ctx, tenantA, rowB.Email)
+	cross, err = repoCtx.PlatformTenantUserRepository.FindByTenantAndEmail(ctx, tenantA, rowB.Email)
 	require.NoError(t, err)
 	assert.True(t, cross.IsAbsent())
-	require.NoError(t, repoCtx.PlatformTenantUserRepository.DeleteByPlatformTenantIDAndID(ctx, tenantA, rowB.ID))
-	still, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndID(ctx, tenantB, rowB.ID)
+	require.NoError(t, repoCtx.PlatformTenantUserRepository.DeleteByTenantAndID(ctx, tenantA, rowB.ID))
+	still, err := repoCtx.PlatformTenantUserRepository.FindByTenantAndID(ctx, tenantB, rowB.ID)
 	require.NoError(t, err)
 	assert.True(t, still.IsPresent())
 
 	// Remove the user from tenant A.
-	require.NoError(t, repoCtx.PlatformTenantUserRepository.DeleteByPlatformTenantIDAndID(ctx, tenantA, rowA.ID))
+	require.NoError(t, repoCtx.PlatformTenantUserRepository.DeleteByTenantAndID(ctx, tenantA, rowA.ID))
 
-	got, err = repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantA, userID)
+	got, err = repoCtx.PlatformTenantUserRepository.FindByTenantAndUserID(ctx, tenantA, userID)
 	require.NoError(t, err)
 	assert.True(t, got.IsAbsent())
 
-	got, err = repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantB, userID)
+	got, err = repoCtx.PlatformTenantUserRepository.FindByTenantAndUserID(ctx, tenantB, userID)
 	require.NoError(t, err)
 	require.True(t, got.IsPresent())
 	assert.Equal(t, rowB.ID, got.Value().ID)
 }
 
 // idx_platform_users_tenant_user keeps one platform user per user in a tenant,
-// so FindByPlatformTenantIDAndUserID never has to pick between rows.
+// so FindByTenantAndUserID never has to pick between rows.
 func TestPlatformTenantUserRepositoryRefusesASecondRowForTheSameTenantAndUser(t *testing.T) {
 	ctx := context.Background()
 	tenantID := createTenant(t)
@@ -154,7 +154,7 @@ func TestPlatformTenantUserRepositoryRefusesASecondRowForTheSameTenantAndUser(t 
 	_, err := repoCtx.PlatformTenantUserRepository.Create(ctx, second)
 	require.ErrorContains(t, err, "idx_platform_users_tenant_user")
 
-	got, err := repoCtx.PlatformTenantUserRepository.FindByPlatformTenantIDAndUserID(ctx, tenantID, userID)
+	got, err := repoCtx.PlatformTenantUserRepository.FindByTenantAndUserID(ctx, tenantID, userID)
 	require.NoError(t, err)
 	require.True(t, got.IsPresent())
 	assert.Equal(t, first.ID, got.Value().ID)

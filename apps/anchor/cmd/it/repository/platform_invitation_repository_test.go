@@ -35,11 +35,11 @@ func TestPlatformInvitationRepositoryFindByPlatformTenantIDAndEmailScopesToTenan
 	tenantA, tenantB := createTenant(t), createTenant(t)
 	created := createInvitation(t, tenantB)
 
-	cross, err := repoCtx.InvitationRepository.FindByPlatformTenantIDAndEmail(ctx, tenantA, created.Email)
+	cross, err := repoCtx.InvitationRepository.FindByTenantAndEmail(ctx, tenantA, created.Email)
 	require.NoError(t, err)
 	assert.True(t, cross.IsAbsent())
 
-	own, err := repoCtx.InvitationRepository.FindByPlatformTenantIDAndEmail(ctx, tenantB, created.Email)
+	own, err := repoCtx.InvitationRepository.FindByTenantAndEmail(ctx, tenantB, created.Email)
 	require.NoError(t, err)
 	require.True(t, own.IsPresent())
 	assert.Equal(t, created.ID, own.Value().ID)

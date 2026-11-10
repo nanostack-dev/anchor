@@ -117,7 +117,7 @@ func (s *organizationAPIKeyService) Create(
 		return orgapikey.OrganizationAPIKey{}, "", NewOrganizationAPIKeyExpiresAtInPastError()
 	}
 
-	foundOrg, err := s.organizationRepo.FindByProductIDAndID(ctx, input.ProductID, input.OrganizationID)
+	foundOrg, err := s.organizationRepo.FindByProductAndID(ctx, input.ProductID, input.OrganizationID)
 	if err != nil {
 		return orgapikey.OrganizationAPIKey{}, "", fault.ErrUnexpected
 	}
@@ -237,7 +237,7 @@ func (s *organizationAPIKeyService) GetByID(
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
-	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	found, err := s.apiKeyRepo.GetByOrgAndID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get organization API key",
 			slog.String("organization_id", input.OrganizationID),
@@ -263,7 +263,7 @@ func (s *organizationAPIKeyService) Update(
 		return orgapikey.OrganizationAPIKey{}, err
 	}
 
-	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	found, err := s.apiKeyRepo.GetByOrgAndID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get organization API key for update",
 			slog.String("organization_id", input.OrganizationID),
@@ -365,7 +365,7 @@ func (s *organizationAPIKeyService) Delete(
 		return err
 	}
 
-	found, err := s.apiKeyRepo.GetByID(ctx, input.OrganizationID, input.ID)
+	found, err := s.apiKeyRepo.GetByOrgAndID(ctx, input.OrganizationID, input.ID)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to get organization API key for deletion",
 			slog.String("organization_id", input.OrganizationID),
@@ -381,7 +381,7 @@ func (s *organizationAPIKeyService) Delete(
 	existingAPIKey := found.Value()
 
 	return s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		if deleteErr := s.apiKeyRepo.DeleteByOrganizationIDAndID(
+		if deleteErr := s.apiKeyRepo.DeleteByOrgAndID(
 			txCtx, input.OrganizationID, input.ID,
 		); deleteErr != nil {
 			logger.ErrorContext(txCtx, "failed to delete organization API key",
@@ -687,7 +687,7 @@ func (s *organizationAPIKeyService) nameUniqueValidation(
 	organizationID, name, ownKeyID string,
 	logger *slog.Logger,
 ) error {
-	found, err := s.apiKeyRepo.GetByOrganizationIDAndName(ctx, organizationID, name)
+	found, err := s.apiKeyRepo.GetByOrgAndName(ctx, organizationID, name)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to search for organization API keys by name",
 			slog.String("organization_id", organizationID),
@@ -706,7 +706,7 @@ func (s *organizationAPIKeyService) ensureOrganizationBelongsToProduct(
 	ctx context.Context,
 	productID, organizationID string,
 ) error {
-	found, err := s.organizationRepo.FindByProductIDAndID(ctx, productID, organizationID)
+	found, err := s.organizationRepo.FindByProductAndID(ctx, productID, organizationID)
 	if err != nil {
 		return fault.ErrUnexpected
 	}
