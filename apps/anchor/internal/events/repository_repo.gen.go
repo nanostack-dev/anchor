@@ -9,9 +9,6 @@ import (
 // EndpointRepository on *endpointRepository: 1 derived method on table product_event_endpoint_configs; the other methods are
 // hand-written (nanostack gen repo -explain lists each one).
 //
-// Hand-written although the name derives (deleting the method switches it
-// to the derived query): DeleteByProductIDInternal.
-//
 // A compile error on the next line means EndpointRepository gained or lost a method since
 // the last run: run nanostack gen repo.
 var _ EndpointRepository = (*endpointRepository)(nil)

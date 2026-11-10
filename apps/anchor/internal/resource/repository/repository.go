@@ -64,9 +64,9 @@ type Repository interface {
 	// SubtreeHeight is how many levels sit below the resource: 0 for a leaf.
 	SubtreeHeight(ctx context.Context, organizationID, rowID string) (int, error)
 	CountChildren(ctx context.Context, organizationID, rowID string) (int, error)
-	// DeleteByOrgAndID removes the resource; its descendants go
+	// DeleteByProductAndOrgAndID removes the resource; its descendants go
 	// with it through the parent foreign key.
-	DeleteByOrgAndID(ctx context.Context, organizationID, id string) error
+	DeleteByProductAndOrgAndID(ctx context.Context, productID, organizationID, id string) error
 	Search(
 		ctx context.Context, productID, organizationID string,
 		request search.Request[resource.Filter, resource.SortField],

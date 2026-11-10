@@ -13,10 +13,10 @@ import (
 // the last run: run nanostack gen repo.
 var _ IntegrationInstanceRepository = (*integrationInstanceRepositoryImpl)(nil)
 
-// DeleteByTenantAndID is derived from its name:
+// DeleteByTenantAndProductAndID is derived from its name:
 //
-//	DELETE FROM integration_instances WHERE platform_tenant_id = $1 AND id = $2
-func (r *integrationInstanceRepositoryImpl) DeleteByTenantAndID(ctx context.Context, platformTenantID string, id string) error {
-	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ID(id)))
+//	DELETE FROM integration_instances WHERE platform_tenant_id = $1 AND product_id = $2 AND id = $3
+func (r *integrationInstanceRepositoryImpl) DeleteByTenantAndProductAndID(ctx context.Context, platformTenantID string, productID string, id string) error {
+	_, err := r.deleteWhere(ctx, r.where.PlatformTenantID(platformTenantID).AND(r.where.ProductID(productID)).AND(r.where.ID(id)))
 	return err
 }

@@ -619,8 +619,8 @@ func (s *integrationService) DeleteInstance(
 			},
 		)
 
-		return s.instanceRepo.DeleteByTenantAndID(
-			txCtx, input.TenantID, input.ID,
+		return s.instanceRepo.DeleteByTenantAndProductAndID(
+			txCtx, input.TenantID, existing.ProductID, input.ID,
 		)
 	})
 	if delErr != nil {
