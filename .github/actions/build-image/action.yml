@@ -21,7 +21,7 @@ runs:
   steps:
     - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       id: buildx
-    # The Dockerfile's Go cache mounts, saved under the commit on main and
+    # The Dockerfile's Go build cache mount, saved under the commit on main and
     # restored from the newest; a pull request saves only when it found none
     # (the repository has 10 GB of cache). The save is actions/cache's post
     # step, which runs after buildkit-cache-dance's post step copied the
@@ -32,10 +32,10 @@ runs:
       with:
         path: image-go-cache
         lookup-only: true
-        key: anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-${{ github.sha }}
+        key: anchor-image-gobuild-${{ hashFiles('apps/anchor/go.sum') }}-${{ github.sha }}
         restore-keys: |
-          anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-
-          anchor-image-go-
+          anchor-image-gobuild-${{ hashFiles('apps/anchor/go.sum') }}-
+          anchor-image-gobuild-
     - id: save
       shell: bash
       env:
@@ -53,14 +53,13 @@ runs:
         path: image-go-cache
         key: ${{ steps.save.outputs.key }}
         restore-keys: |
-          anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-
-          anchor-image-go-
+          anchor-image-gobuild-${{ hashFiles('apps/anchor/go.sum') }}-
+          anchor-image-gobuild-
     - uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
       with:
         builder: ${{ steps.buildx.outputs.name }}
         cache-map: |
           {
-            "image-go-cache/mod": "/go/pkg/mod",
             "image-go-cache/build": "/root/.cache/go-build"
           }
         skip-extraction: ${{ steps.save.outputs.save != 'true' }}

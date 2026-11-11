@@ -21,16 +21,16 @@ COPY clients/go/ /clients/go/
 COPY apps/anchor/go.mod apps/anchor/go.sum ./
 
 # Download dependencies
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN go mod download
 
 # Copy source code
 COPY apps/anchor/ ./
 
-# Build the Go application with build info. The cache mounts keep Go's module
-# and build caches between builds, so a rebuild compiles only what changed
-# (`-a` used to force every package to recompile).
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
+# Build the Go application with build info. The cache mount keeps Go's build
+# cache between builds, so a rebuild compiles only what changed (`-a` used to
+# force every package to recompile). The modules stay in the layer above,
+# cached while go.sum does not change.
+RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-w -s -X anchor/internal/buildinfo.Version=${VERSION} -X anchor/internal/buildinfo.CommitSHA=${COMMIT_SHA} -X anchor/internal/buildinfo.BuildDate=${BUILD_DATE}" \
     -o anchor ./cmd/main.go
