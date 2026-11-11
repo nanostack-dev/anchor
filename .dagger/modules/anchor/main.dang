@@ -136,21 +136,31 @@ type Anchor {
   }
 
   """
-  Component tests (apps/anchor/cmd/it/ct), part 1 of 3: the suite is the
+  Component tests (apps/anchor/cmd/it/ct), part 1 of 5: the suite is the
   longest check (4m35s on a cold 4 vCPU runner), so CI runs each part on its
   own runner. Together the parts run every test.
   """
-  componentTestsA(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "0", "3") }
+  componentTestsA(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "0", "5") }
 
   """
-  Component tests (apps/anchor/cmd/it/ct), part 2 of 3.
+  Component tests (apps/anchor/cmd/it/ct), part 2 of 5.
   """
-  componentTestsB(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "1", "3") }
+  componentTestsB(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "1", "5") }
 
   """
-  Component tests (apps/anchor/cmd/it/ct), part 3 of 3.
+  Component tests (apps/anchor/cmd/it/ct), part 3 of 5.
   """
-  componentTestsC(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "2", "3") }
+  componentTestsC(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "2", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 4 of 5.
+  """
+  componentTestsD(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "3", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 5 of 5.
+  """
+  componentTestsE(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "4", "5") }
 
   """
   Service tests (apps/anchor/cmd/it/service).

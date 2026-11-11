@@ -136,13 +136,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The component suite is the longest: its three parts get a runner each.
+          # The component suite is the longest: its five parts get a runner
+          # each. With three parts each took 265-293 s; lint (about 225 s) is
+          # the next floor.
           - group: component-tests-a
             checks: dag://anchor/component-tests-a
           - group: component-tests-b
             checks: dag://anchor/component-tests-b
           - group: component-tests-c
             checks: dag://anchor/component-tests-c
+          - group: component-tests-d
+            checks: dag://anchor/component-tests-d
+          - group: component-tests-e
+            checks: dag://anchor/component-tests-e
           - group: lint
             checks: dag://anchor/lint
           - group: generated-code
