@@ -100,25 +100,56 @@ jobs:
         apps/anchor/cmd/http/openapi.yaml
         .github/workflows/go.yml
 
-  # The checks are Dagger checks (dagger.toml, .dagger/modules/anchor):
-  # `dagger check` runs them the same way on a laptop. Two jobs, so a flaky
-  # Storybook or Playwright step never holds the backend deploy, as before.
-  # This public repository stays on GitHub-hosted runners: each job starts a
-  # cold engine.
-  dagger-frontend:
-    name: dagger-frontend
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  # The frontend checks, natively, in parallel parts that keep pnpm's store
+  # and Playwright's browser between runs: a cold Dagger engine took 136-145 s,
+  # Storybook alone 2 min. The same checks run in Dagger for `dagger check`
+  # on a laptop. A job of its own, so a flaky Storybook or Playwright step
+  # never holds the backend deploy.
+  frontend:
+    name: frontend (${{ matrix.part }})
+    # Playwright 1.60 cannot install Chromium's system deps on Ubuntu 26.04
+    # (ubuntu-latest), as in e2e-app.yml.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: lint, types and API client
+            run: pnpm check && pnpm typecheck && pnpm openapi-ts && git diff --exit-code -- src/client
+          - part: unit tests and build
+            run: pnpm test && pnpm build
+          - part: storybook 1/2
+            run: pnpm test-storybook --shard=1/2
+            browser: true
+          - part: storybook 2/2
+            run: pnpm test-storybook --shard=2/2
+            browser: true
+    defaults:
+      run:
+        working-directory: anchor-ui
+    env:
+      CI: 'true'
+      VITE_API_BASE_URL: https://apidev.tryanchor.dev
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
-      - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
-      - name: Run the frontend checks
-        run: |
-          set -euo pipefail
-          dagger check --progress=report 'dag://anchor/frontend-*' 'dag://anchor/storybook-test' 'dag://anchor/api-client/stale'
+      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788 # v6.0.6
+        with:
+          version: 11.1.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - if: matrix.browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run ${{ matrix.part }}
+        env:
+          RUN: ${{ matrix.run }}
+        run: bash -c "$RUN"
 
   # The backend checks, spread over parallel runners (one Go suite, the lint,
   # the generated code or the image build per runner). On one 4 vCPU runner
@@ -163,8 +194,8 @@ jobs:
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
             native: scripts/check-generated.sh && python3 scripts/test_lint.py
-          # The Dockerfile build, as publish builds it (it does not run
-          # for pull requests from forks).
+          # The Dockerfile build for pull requests from forks (publish builds
+          # it for every branch of this repository).
           - group: image-builds
             image: true
     steps:
@@ -222,7 +253,10 @@ jobs:
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: ${{ steps.cache.outputs.cache-primary-key }}
-      - if: matrix.image
+      # publish builds the same Dockerfile for every branch of this
+      # repository; this leg covers pull requests from forks, which get no
+      # publish.
+      - if: matrix.image && github.event.pull_request.head.repo.full_name != github.repository
         uses: ./.github/actions/build-image
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
@@ -313,7 +347,7 @@ jobs:
   # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
-    needs: [detect_changes, dagger-frontend, backend, publish, migration-lint]
+    needs: [detect_changes, frontend, backend, publish, migration-lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -353,20 +387,20 @@ jobs:
         shell: bash
         env:
           DETECT_RESULT: ${{ needs.detect_changes.result }}
-          FRONTEND_RESULT: ${{ needs.dagger-frontend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           PUBLISH_RESULT: ${{ needs.publish.result }}
           MIGRATION_LINT_RESULT: ${{ needs.migration-lint.result }}
         run: |
           set -euo pipefail
-          echo "detect_changes=$DETECT_RESULT dagger-frontend=$FRONTEND_RESULT backend=$BACKEND_RESULT publish=$PUBLISH_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          echo "detect_changes=$DETECT_RESULT frontend=$FRONTEND_RESULT backend=$BACKEND_RESULT publish=$PUBLISH_RESULT migration-lint=$MIGRATION_LINT_RESULT"
           for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$BACKEND_RESULT" "$PUBLISH_RESULT" "$MIGRATION_LINT_RESULT"; do
             [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
           done
 
   dispatch-deploy-dev:
-    needs: [dagger-frontend, backend, publish]
-    # always() so a failed or skipped dagger-frontend does not skip the backend
+    needs: [frontend, backend, publish]
+    # always() so a failed or skipped frontend does not skip the backend
     # deploy dispatch; backend and publish success is the gate.
     if: |
       always() &&
@@ -426,7 +460,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   dispatch-preview-upsert:
-    needs: [dagger-frontend, backend, publish, preview-flag]
+    needs: [frontend, backend, publish, preview-flag]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
@@ -435,7 +469,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.publish.result == 'success' &&
       needs.backend.result == 'success' &&
-      needs.dagger-frontend.result != 'failure'
+      needs.frontend.result != 'failure'
     uses: nanostack-dev/ci-workflows/.github/workflows/dispatch-deploy-event.yml@main
     permissions:
       contents: read
