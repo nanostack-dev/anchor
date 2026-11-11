@@ -29,10 +29,22 @@ test("a scenario in no shard fails", () => {
 	);
 });
 
-test("a scenario in two shards fails", () => {
+test("a dependency that ran in every shard counts once", () => {
+	assert.deepEqual(
+		verifyShards([proof("1/2", ["a", "b"]), proof("2/2", ["a", "c"])]),
+		{ scenarios: 3, shards: 2 },
+	);
+});
+
+test("a scenario in some but not all shards twice fails", () => {
 	assert.throws(
-		() => verifyShards([proof("1/2", ["a", "b"]), proof("2/2", ["b", "c"])]),
-		/two shards: b/,
+		() =>
+			verifyShards([
+				{ shard: "1/3", ran: ["a", "b"], inventory },
+				{ shard: "2/3", ran: ["b"], inventory },
+				{ shard: "3/3", ran: ["c"], inventory },
+			]),
+		/ran in 2 of 3 shards: b/,
 	);
 });
 

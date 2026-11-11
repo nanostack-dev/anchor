@@ -24,13 +24,18 @@ export function verifyShards(proofs) {
 	for (const proof of proofs)
 		if (proof.inventory?.join("\n") !== inventory.join("\n"))
 			throw new Error(`Shard ${proof.shard} listed a different inventory.`);
-	const seen = new Set();
+	// Playwright runs a dependency project (bootstrap) in every shard, so a
+	// scenario that ran in every shard counts once. Any other repeat fails.
+	const runs = new Map();
 	for (const proof of proofs)
-		for (const identity of proof.ran ?? []) {
-			if (seen.has(identity))
-				throw new Error(`Scenario ran in two shards: ${identity}`);
-			seen.add(identity);
-		}
+		for (const identity of proof.ran ?? [])
+			runs.set(identity, (runs.get(identity) ?? 0) + 1);
+	for (const [identity, count] of runs)
+		if (count > 1 && count !== total)
+			throw new Error(
+				`Scenario ran in ${count} of ${total} shards: ${identity}`,
+			);
+	const seen = new Set(runs.keys());
 	const missing = inventory.filter((identity) => !seen.has(identity));
 	const extra = [...seen].filter((identity) => !inventory.includes(identity));
 	if (missing.length || extra.length)
