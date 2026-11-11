@@ -1,0 +1,24 @@
+name: Preview
+
+# Raises or tears down this PR's preview from the description checkbox.
+# Logic and invariants: ci-workflows .github/workflows/preview.yml.
+# Previews exist only for PRs into main, the branch go.yml builds them for.
+
+on:
+  pull_request:
+    types: [edited, closed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  preview:
+    uses: nanostack-dev/ci-workflows/.github/workflows/preview.yml@main
+    permissions:
+      actions: write
+      pull-requests: write
+    with:
+      service: anchor
+      runner: ubuntu-latest
+    secrets:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

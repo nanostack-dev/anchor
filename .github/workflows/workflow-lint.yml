@@ -1,0 +1,19 @@
+name: Workflow lint
+
+# actionlint and the organization's CI rules on every change to .github/.
+# Rules and their reasons: ci-workflows docs/ci-principles.md.
+
+on:
+  pull_request:
+    paths: ['.github/**']
+
+permissions: {}
+
+jobs:
+  lint:
+    uses: nanostack-dev/ci-workflows/.github/workflows/workflow-lint.yml@main
+    permissions:
+      contents: read
+    with:
+      private: false
+      runner: ubuntu-latest

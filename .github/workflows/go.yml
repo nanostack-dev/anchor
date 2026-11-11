@@ -112,7 +112,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
       - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Run the frontend checks
@@ -127,7 +127,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
       - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Run the backend checks
@@ -161,7 +161,7 @@ jobs:
     outputs:
       deploy_image_tag: ${{ steps.publish.outputs.deploy_image_tag }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
       - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
       - name: Build and push the image
@@ -217,6 +217,7 @@ jobs:
     needs: [detect_changes, dagger-frontend, dagger-backend, dagger-publish, migration-lint]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -224,7 +225,7 @@ jobs:
       # isolation, so both can claim it and both can merge green. golang-migrate
       # then refuses the whole source and every integration suite fails at setup.
       # Catch the collision on the pull request, where the fix is a rename.
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: |
             apps/anchor/migrations
@@ -294,6 +295,7 @@ jobs:
   preview-flag:
     if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       pull-requests: read
     outputs:
