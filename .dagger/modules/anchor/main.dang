@@ -119,9 +119,32 @@ type Anchor {
   }
 
   """
-  Component tests (apps/anchor/cmd/it/ct).
+  Every second top-level test of a package, so one suite splits over two
+  runners. Test names come from the sources: `go test -list` would run
+  TestMain, which starts the containers. shard is 0 or 1.
   """
-  componentTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/ct") }
+  let goTestsHalf(ws: Workspace!, dir: String!, shard: String!): Void {
+    goTestBase(ws)
+      .withWorkdir("/repo/apps/anchor/" + dir)
+      .withExec(
+        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; tests=$(grep -hoE '^func Test[A-Za-z0-9_]+\\(t \\*testing\\.T\\)' *_test.go | sed -E 's/^func (Test[A-Za-z0-9_]+).*/\\1/' | sort -u | awk 'NR % 2 == " + shard + "' | paste -sd'|' -); test -n \"$tests\"; gotestsum --format pkgname-and-test-fails -- -run \"^($tests)\\$\" ."],
+        insecureRootCapabilities: true,
+      )
+      .sync
+    null
+  }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), first half: the suite is the
+  longest check (4m35s on a cold 4 vCPU runner), so CI runs the halves on two
+  runners. Together the halves run every test.
+  """
+  componentTestsA(ws: Workspace!): Void @check { goTestsHalf(ws, "cmd/it/ct", "0") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), second half.
+  """
+  componentTestsB(ws: Workspace!): Void @check { goTestsHalf(ws, "cmd/it/ct", "1") }
 
   """
   Service tests (apps/anchor/cmd/it/service).
