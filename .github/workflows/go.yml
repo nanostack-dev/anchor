@@ -120,24 +120,44 @@ jobs:
           set -euo pipefail
           dagger check --progress=report 'dag://anchor/frontend-*' 'dag://anchor/storybook-test' 'dag://anchor/api-client/stale'
 
+  # The backend checks, spread over parallel runners. On one 4 vCPU runner they
+  # took 12 min: component-tests alone runs in 4m35s, but next to the other
+  # checks it took 10m41s (2026-11-11 measurement). Hosted runners are free for
+  # this public repository, so each group gets its own. needs.dagger-backend
+  # is the result of every group.
   dagger-backend:
-    name: dagger-backend
+    name: dagger-backend (${{ matrix.group }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: component-tests
+            checks: dag://anchor/component-tests
+          - group: lint
+            checks: dag://anchor/lint
+          - group: generated-code
+            checks: dag://anchor/generated-code dag://anchor/lint-tooling
+          - group: suites-and-image
+            checks: dag://anchor/service-tests dag://anchor/unit-tests dag://anchor/wiring-tests dag://anchor/image-builds
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
       - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
-      - name: Run the backend checks
+      - name: Run the ${{ matrix.group }} checks
         env:
-          # Two at a time on the runner's 4 vCPUs: lint, three Go suites and the
-          # image build together starved golangci-lint past its timeout.
+          # Two at a time on the runner's 4 vCPUs (more starved golangci-lint
+          # past its timeout).
           DAGGER_CHECK_PARALLEL: '2'
+          CHECKS: ${{ matrix.checks }}
         run: |
           set -euo pipefail
-          dagger check --progress=report 'dag://anchor/lint' 'dag://anchor/*-tests' 'dag://anchor/generated-code' 'dag://anchor/lint-tooling' 'dag://anchor/image-builds'
+          # Links have no spaces or glob characters: word splitting is the list.
+          # shellcheck disable=SC2086
+          dagger check --progress=report $CHECKS
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
   # preview dispatches gate on dagger-backend. A pull request builds when it
