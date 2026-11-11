@@ -187,6 +187,26 @@ jobs:
           restore-keys: |
             anchor-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
             anchor-${{ matrix.group }}-${{ runner.os }}-
+      # Go's test cache knows a file a test opens (the migrations, the OpenAPI
+      # spec) by size and modification time, and a checkout gives every file a
+      # new time: those results never came from the cache. The time now comes
+      # from the file's git blob hash, so it changes exactly when the content
+      # does.
+      - if: matrix.native
+        name: Date each file by its content
+        shell: python3 {0}
+        run: |
+          import os, subprocess
+          out = subprocess.run(["git", "ls-files", "-s", "-z"], check=True, capture_output=True).stdout
+          for entry in out.split(b"\0"):
+              if not entry:
+                  continue
+              meta, path = entry.split(b"\t", 1)
+              blob = meta.split()[1].decode()
+              # A past time (2001-2023): Go never caches a file newer than now.
+              stamp = 1_000_000_000 + int(blob[:8], 16) % 700_000_000
+              if os.path.isfile(path) and not os.path.islink(path):
+                  os.utime(path, (stamp, stamp))
       - if: matrix.native
         name: Run ${{ matrix.group }}
         env:
