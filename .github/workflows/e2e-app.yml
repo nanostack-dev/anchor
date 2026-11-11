@@ -68,8 +68,9 @@ jobs:
         run: pnpm test:e2e:artifacts
       - name: Test the isolated app
         env:
-          # The runner has 4 vCPUs; the CI default of 2 workers took 3.4 min.
-          E2E_WORKERS: '4'
+          # Experiment: 3 workers. 4 workers (one per vCPU) cut the tests from a
+          # median 3.4 to 2.7 min but failed 1 run in 5 on 8 s timeouts.
+          E2E_WORKERS: '3'
           E2E_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
           E2E_TRACE: ${{ inputs.trace && '1' || '0' }}
         run: GOCACHE="$(go env GOCACHE)" pnpm test:e2e:verify --base "$E2E_BASE_REF"
