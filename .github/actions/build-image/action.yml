@@ -1,0 +1,82 @@
+name: Build the anchor image
+description: >-
+  Builds the Dockerfile with Docker Buildx, its layers cached in the GitHub
+  cache and its Go module and build cache mounts carried between runs, so a
+  rebuild compiles only what changed. Optionally pushes it.
+inputs:
+  push:
+    description: Push the image under each tag.
+    default: 'false'
+  tags:
+    description: Image references, one per line. Needed when push is true.
+    default: ''
+  version:
+    default: dev
+  commit-sha:
+    default: unknown
+  build-date:
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      id: buildx
+    # The Dockerfile's Go cache mounts, saved under the commit on main and
+    # restored from the newest; a pull request saves only when it found none
+    # (the repository has 10 GB of cache). The save is actions/cache's post
+    # step, which runs after buildkit-cache-dance's post step copied the
+    # mounts out of the builder; a run that should not save uses the key it
+    # restored, which actions/cache never saves again.
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      id: lookup
+      with:
+        path: image-go-cache
+        lookup-only: true
+        key: anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-
+          anchor-image-go-
+    - id: save
+      shell: bash
+      env:
+        MAIN: ${{ github.ref == 'refs/heads/main' }}
+        MATCHED: ${{ steps.lookup.outputs.cache-matched-key }}
+        PRIMARY: ${{ steps.lookup.outputs.cache-primary-key }}
+      run: |
+        if [[ $MAIN == true || -z $MATCHED ]]; then
+          { echo "save=true"; echo "key=$PRIMARY"; } >> "$GITHUB_OUTPUT"
+        else
+          { echo "save=false"; echo "key=$MATCHED"; } >> "$GITHUB_OUTPUT"
+        fi
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: image-go-cache
+        key: ${{ steps.save.outputs.key }}
+        restore-keys: |
+          anchor-image-go-${{ hashFiles('apps/anchor/go.sum') }}-
+          anchor-image-go-
+    - uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
+      with:
+        builder: ${{ steps.buildx.outputs.name }}
+        cache-map: |
+          {
+            "image-go-cache/mod": "/go/pkg/mod",
+            "image-go-cache/build": "/root/.cache/go-build"
+          }
+        skip-extraction: ${{ steps.save.outputs.save != 'true' }}
+    - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      with:
+        context: .
+        file: Dockerfile
+        platforms: linux/amd64
+        push: ${{ inputs.push }}
+        tags: ${{ inputs.tags }}
+        build-args: |
+          VERSION=${{ inputs.version }}
+          COMMIT_SHA=${{ inputs.commit-sha }}
+          BUILD_DATE=${{ inputs.build-date }}
+        labels: |
+          org.opencontainers.image.revision=${{ inputs.commit-sha }}
+          org.opencontainers.image.version=${{ inputs.version }}
+        cache-from: type=gha,scope=anchor-image
+        cache-to: ${{ steps.save.outputs.save == 'true' && 'type=gha,scope=anchor-image,mode=max' || '' }}
