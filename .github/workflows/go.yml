@@ -136,11 +136,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The component suite is the longest: its halves get a runner each.
+          # The component suite is the longest: its three parts get a runner each.
           - group: component-tests-a
             checks: dag://anchor/component-tests-a
           - group: component-tests-b
             checks: dag://anchor/component-tests-b
+          - group: component-tests-c
+            checks: dag://anchor/component-tests-c
           - group: lint
             checks: dag://anchor/lint
           - group: generated-code

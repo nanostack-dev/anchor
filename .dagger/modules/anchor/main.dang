@@ -119,16 +119,16 @@ type Anchor {
   }
 
   """
-  Every second top-level test of a package, so one suite splits over two
-  runners. Test names come from the sources: `go test -list` would run
-  TestMain, which starts the containers. shard is 0 or 1. It fails unless
+  One part of a package's top-level tests (every partsth test, from offset
+  part), so one suite splits over several runners. Test names come from the sources: `go test -list` would run
+  TestMain, which starts the containers. It fails unless
   every selected test ran, so a name the filter misses cannot pass silently.
   """
-  let goTestsHalf(ws: Workspace!, dir: String!, shard: String!): Void {
+  let goTestsPart(ws: Workspace!, dir: String!, part: String!, parts: String!): Void {
     goTestBase(ws)
       .withWorkdir("/repo/apps/anchor/" + dir)
       .withExec(
-        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; tests=$(grep -hoE '^func Test[A-Za-z0-9_]+\\(t \\*testing\\.T\\)' *_test.go | sed -E 's/^func (Test[A-Za-z0-9_]+).*/\\1/' | sort -u | awk 'NR % 2 == " + shard + "' | paste -sd'|' -); test -n \"$tests\"; rc=0; gotestsum --format pkgname-and-test-fails --jsonfile /tmp/tests.json -- -run \"^($tests)\\$\" . || rc=$?; want=$(echo \"$tests\" | tr '|' '\\n' | wc -l); ran=$(grep -oE '\"Action\":\"(pass|skip)\",\"Package\":\"[^\"]*\",\"Test\":\"Test[^/\"]*\"' /tmp/tests.json | wc -l); echo \"ran $ran of $want selected tests\"; test \"$ran\" -eq \"$want\" || exit 1; exit $rc"],
+        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; tests=$(grep -hoE '^func Test[A-Za-z0-9_]+\\(t \\*testing\\.T\\)' *_test.go | sed -E 's/^func (Test[A-Za-z0-9_]+).*/\\1/' | sort -u | awk 'NR % " + parts + " == " + part + "' | paste -sd'|' -); test -n \"$tests\"; rc=0; gotestsum --format pkgname-and-test-fails --jsonfile /tmp/tests.json -- -run \"^($tests)\\$\" . || rc=$?; want=$(echo \"$tests\" | tr '|' '\\n' | wc -l); ran=$(grep -oE '\"Action\":\"(pass|skip)\",\"Package\":\"[^\"]*\",\"Test\":\"Test[^/\"]*\"' /tmp/tests.json | wc -l); echo \"ran $ran of $want selected tests\"; test \"$ran\" -eq \"$want\" || exit 1; exit $rc"],
         insecureRootCapabilities: true,
       )
       .sync
@@ -136,16 +136,21 @@ type Anchor {
   }
 
   """
-  Component tests (apps/anchor/cmd/it/ct), first half: the suite is the
-  longest check (4m35s on a cold 4 vCPU runner), so CI runs the halves on two
-  runners. Together the halves run every test.
+  Component tests (apps/anchor/cmd/it/ct), part 1 of 3: the suite is the
+  longest check (4m35s on a cold 4 vCPU runner), so CI runs each part on its
+  own runner. Together the parts run every test.
   """
-  componentTestsA(ws: Workspace!): Void @check { goTestsHalf(ws, "cmd/it/ct", "0") }
+  componentTestsA(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "0", "3") }
 
   """
-  Component tests (apps/anchor/cmd/it/ct), second half.
+  Component tests (apps/anchor/cmd/it/ct), part 2 of 3.
   """
-  componentTestsB(ws: Workspace!): Void @check { goTestsHalf(ws, "cmd/it/ct", "1") }
+  componentTestsB(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "1", "3") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 3 of 3.
+  """
+  componentTestsC(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "2", "3") }
 
   """
   Service tests (apps/anchor/cmd/it/service).
