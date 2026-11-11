@@ -120,7 +120,8 @@ jobs:
           set -euo pipefail
           dagger check --progress=report 'dag://anchor/frontend-*' 'dag://anchor/storybook-test' 'dag://anchor/api-client/stale'
 
-  # The backend checks, spread over parallel runners. On one 4 vCPU runner they
+  # The backend checks, spread over parallel runners (one Go suite, the lint or
+  # the image build per runner). On one 4 vCPU runner they
   # took 12 min: component-tests alone runs in 4m35s, but next to the other
   # checks it took 10m41s (2026-11-11 measurement). Hosted runners are free for
   # this public repository, so each group gets its own. needs.dagger-backend
@@ -141,8 +142,12 @@ jobs:
             checks: dag://anchor/lint
           - group: generated-code
             checks: dag://anchor/generated-code dag://anchor/lint-tooling
-          - group: suites-and-image
-            checks: dag://anchor/service-tests dag://anchor/unit-tests dag://anchor/wiring-tests dag://anchor/image-builds
+          - group: service-tests
+            checks: dag://anchor/service-tests
+          - group: unit-and-wiring-tests
+            checks: dag://anchor/unit-tests dag://anchor/wiring-tests
+          - group: image-builds
+            checks: dag://anchor/image-builds
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
