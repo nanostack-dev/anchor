@@ -121,13 +121,14 @@ type Anchor {
   """
   Every second top-level test of a package, so one suite splits over two
   runners. Test names come from the sources: `go test -list` would run
-  TestMain, which starts the containers. shard is 0 or 1.
+  TestMain, which starts the containers. shard is 0 or 1. It fails unless
+  every selected test ran, so a name the filter misses cannot pass silently.
   """
   let goTestsHalf(ws: Workspace!, dir: String!, shard: String!): Void {
     goTestBase(ws)
       .withWorkdir("/repo/apps/anchor/" + dir)
       .withExec(
-        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; tests=$(grep -hoE '^func Test[A-Za-z0-9_]+\\(t \\*testing\\.T\\)' *_test.go | sed -E 's/^func (Test[A-Za-z0-9_]+).*/\\1/' | sort -u | awk 'NR % 2 == " + shard + "' | paste -sd'|' -); test -n \"$tests\"; gotestsum --format pkgname-and-test-fails -- -run \"^($tests)\\$\" ."],
+        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; tests=$(grep -hoE '^func Test[A-Za-z0-9_]+\\(t \\*testing\\.T\\)' *_test.go | sed -E 's/^func (Test[A-Za-z0-9_]+).*/\\1/' | sort -u | awk 'NR % 2 == " + shard + "' | paste -sd'|' -); test -n \"$tests\"; rc=0; gotestsum --format pkgname-and-test-fails --jsonfile /tmp/tests.json -- -run \"^($tests)\\$\" . || rc=$?; want=$(echo \"$tests\" | tr '|' '\\n' | wc -l); ran=$(grep -oE '\"Action\":\"(pass|skip)\",\"Package\":\"[^\"]*\",\"Test\":\"Test[^/\"]*\"' /tmp/tests.json | wc -l); echo \"ran $ran of $want selected tests\"; test \"$ran\" -eq \"$want\" || exit 1; exit $rc"],
         insecureRootCapabilities: true,
       )
       .sync
