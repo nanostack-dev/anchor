@@ -149,8 +149,12 @@ jobs:
             checks: dag://anchor/component-tests-d
           - group: component-tests-e
             checks: dag://anchor/component-tests-e
+          # Lint runs natively with scripts/lint.sh (the pinned linter and the
+          # same configuration as the Dagger lint check) so it can keep Go's
+          # and golangci-lint's caches between runs. In Dagger every hosted run
+          # was cold: 225-282 s, 2m21s of it analyzing every package again.
           - group: lint
-            checks: dag://anchor/lint
+            native: true
           - group: generated-code
             checks: dag://anchor/generated-code dag://anchor/lint-tooling
           - group: service-tests
@@ -161,9 +165,36 @@ jobs:
             checks: dag://anchor/image-builds
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - if: matrix.native
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: apps/anchor/go.mod
+          cache: false
+      # Saved under the commit, restored from the newest earlier one: Go's
+      # build cache and golangci-lint's cache key on file contents, so a
+      # restored cache re-analyzes only what changed.
+      - if: matrix.native
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: anchor-lint-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            anchor-lint-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
+            anchor-lint-${{ runner.os }}-
+      - if: matrix.native
+        name: Lint the backend
+        run: |
+          set -euo pipefail
+          export TMPDIR="$RUNNER_TEMP"
+          scripts/lint.sh backend || { rc=$?; cat "$RUNNER_TEMP"/anchor-lint.*/lint.log; exit "$rc"; }
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
-      - uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
-      - name: Run the ${{ matrix.group }} checks
+      - if: '!matrix.native'
+        uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
+      - if: '!matrix.native'
+        name: Run the ${{ matrix.group }} checks
         env:
           # Two at a time on the runner's 4 vCPUs (more starved golangci-lint
           # past its timeout).
