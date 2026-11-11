@@ -68,10 +68,12 @@ jobs:
         run: pnpm test:e2e:artifacts
       - name: Test the isolated app
         env:
-          # 3 workers on the 4 vCPU runner (2026-11-11, 70 tests): 2 workers took a
-          # median 3.4 min (6 runs), 3 workers 2.8 min (5 runs, no failure), 4
-          # workers 2.7 min but failed 1 run in 5 on 8 s timeouts.
-          E2E_WORKERS: '3'
+          # 2 workers on the 4 vCPU runner. Measured 2026-11-11 (70 tests): 3
+          # workers cut the tests from a median 3.4 to 2.8 min (job about 30 s
+          # faster), 4 workers to 2.7 min, but both made templates.e2e.ts time
+          # out on an 8 s action (1 run in 8 at 3 workers, 1 in 5 at 4), which
+          # never happened at 2 workers. Speed that adds a flake is a loss.
+          E2E_WORKERS: '2'
           E2E_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
           E2E_TRACE: ${{ inputs.trace && '1' || '0' }}
         run: GOCACHE="$(go env GOCACHE)" pnpm test:e2e:verify --base "$E2E_BASE_REF"
