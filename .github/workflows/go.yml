@@ -136,31 +136,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The component suite is the longest: its five parts get a runner
-          # each. With three parts each took 265-293 s; lint (about 225 s) is
-          # the next floor.
-          - group: component-tests-a
-            checks: dag://anchor/component-tests-a
-          - group: component-tests-b
-            checks: dag://anchor/component-tests-b
-          - group: component-tests-c
-            checks: dag://anchor/component-tests-c
-          - group: component-tests-d
-            checks: dag://anchor/component-tests-d
-          - group: component-tests-e
-            checks: dag://anchor/component-tests-e
-          # Lint runs natively with scripts/lint.sh (the pinned linter and the
-          # same configuration as the Dagger lint check) so it can keep Go's
-          # and golangci-lint's caches between runs. In Dagger every hosted run
-          # was cold: 225-282 s, 2m21s of it analyzing every package again.
+          # Lint and the Go tests run natively, as on a laptop, so they keep
+          # Go's build and test caches and golangci-lint's cache between runs
+          # (each group its own cache, below). In Dagger every hosted run was
+          # cold: lint 225-282 s (2 s warm), each test group 205-268 s.
+          # scripts/lint.sh and scripts/go-test-part.sh are what the Dagger
+          # checks run too, for `dagger check` on a laptop.
           - group: lint
-            native: true
+            native: scripts/lint.sh backend
+          # The component suite is the longest: five parts, a runner each.
+          - group: component-tests-a
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 5
+          - group: component-tests-b
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 5
+          - group: component-tests-c
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 5
+          - group: component-tests-d
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 5
+          - group: component-tests-e
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 5
+          - group: service-tests
+            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- ./...
+          - group: unit-and-wiring-tests
+            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- ./internal/... ./cmd/app/...
           - group: generated-code
             checks: dag://anchor/generated-code dag://anchor/lint-tooling
-          - group: service-tests
-            checks: dag://anchor/service-tests
-          - group: unit-and-wiring-tests
-            checks: dag://anchor/unit-tests dag://anchor/wiring-tests
           - group: image-builds
             checks: dag://anchor/image-builds
     steps:
@@ -170,26 +170,46 @@ jobs:
         with:
           go-version-file: apps/anchor/go.mod
           cache: false
-      # Saved under the commit, restored from the newest earlier one: Go's
-      # build cache and golangci-lint's cache key on file contents, so a
-      # restored cache re-analyzes only what changed.
+      # One cache per group: a shared key keeps whichever group saved first.
+      # Go's caches key on file contents, so a restored cache rebuilds and
+      # re-runs only what changed. main saves under its commit; a pull request
+      # restores the newest and saves only when there was none (each save
+      # costs about 12 s and the repository has 10 GB of cache).
       - if: matrix.native
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/golangci-lint
-          key: anchor-lint-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
+          key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
           restore-keys: |
-            anchor-lint-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
-            anchor-lint-${{ runner.os }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-
       - if: matrix.native
-        name: Lint the backend
+        name: Run ${{ matrix.group }}
+        env:
+          CGO_ENABLED: '0'
+          RUN: ${{ matrix.native }}
         run: |
           set -euo pipefail
           export TMPDIR="$RUNNER_TEMP"
-          scripts/lint.sh backend || { rc=$?; cat "$RUNNER_TEMP"/anchor-lint.*/lint.log; exit "$rc"; }
+          mkdir -p ~/.cache/golangci-lint
+          rc=0
+          bash -c "$RUN" || rc=$?
+          if [[ $rc != 0 ]] && compgen -G "$RUNNER_TEMP/anchor-lint.*/lint.log" > /dev/null; then
+            cat "$RUNNER_TEMP"/anchor-lint.*/lint.log
+          fi
+          exit "$rc"
+      - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: ${{ steps.cache.outputs.cache-primary-key }}
       # Pinned CLI and the org-wide DAGGER_ENGINE (ci-workflows docs/technical/dagger.md).
       - if: '!matrix.native'
         uses: nanostack-dev/ci-workflows/.github/actions/setup-dagger@4e3fa3d43941a4a4e047a0e4fcecfdaa4521d881 # main, 2026-11-05
