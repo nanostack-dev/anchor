@@ -167,8 +167,9 @@ jobs:
         run: pnpm exec playwright install chromium
       - if: matrix.browser
         run: |
+          shopt -s nullglob
           shell=(~/.cache/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell)
-          if ldd "${shell[0]}" | grep 'not found'; then
+          if [[ ${#shell[@]} -eq 0 ]] || ldd "${shell[0]}" | grep 'not found'; then
             pnpm exec playwright install-deps chromium
           fi
       # Vite's optimized dependencies for the Storybook tests (about 18 s to
