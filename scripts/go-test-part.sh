@@ -41,6 +41,13 @@ if [[ -z $tests ]]; then
 fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
 json="$(mktemp)"
+b="$(mktemp -d)"
+SECONDS=0; go test -c -o "$b/a.test" ${extra[@]+"${extra[@]}"} . ; echo "MEASURE compile_and_link=${SECONDS}s"
+SECONDS=0; go test -c -o "$b/b.test" ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_default=${SECONDS}s"
+SECONDS=0; go test -c -o "$b/c.test" -ldflags='-w -s' ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_ws=${SECONDS}s"
+SECONDS=0; go test -c -o "$b/d.test" -ldflags='-w' ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_w=${SECONDS}s"
+ls -la "$b" | awk '{print "MEASURE size", $5, $9}'
+SECONDS=0; "$b/a.test" -test.run '^$' > /dev/null 2>&1; echo "MEASURE testmain=${SECONDS}s"
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
