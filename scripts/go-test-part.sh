@@ -24,6 +24,11 @@ if [[ -z $tests ]]; then
   exit 1
 fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
+# MEASURE (temporary)
+xlog="$(mktemp)"
+t0=$(date +%s)
+go test -c -x -o "$xlog.bin" . 2> "$xlog" || true
+echo "MEASURE compile=$(( $(date +%s) - t0 ))s packages=$(grep -cE '/compile( |$)' "$xlog" || true)"
 json="$(mktemp)"
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?

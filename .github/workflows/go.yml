@@ -197,7 +197,7 @@ jobs:
   # every group.
   backend:
     name: backend (${{ matrix.group }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     permissions:
       contents: read
@@ -287,10 +287,10 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/golangci-lint
-          key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
+          key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
           restore-keys: |
-            anchor-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
-            anchor-${{ matrix.group }}-${{ runner.os }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-
       # Go's test cache knows a file a test opens (the migrations, the OpenAPI
       # spec) by size and modification time, and a checkout gives every file a
       # new time: those results never came from the cache. The time now comes
