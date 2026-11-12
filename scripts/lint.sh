@@ -57,7 +57,6 @@ report() {
   local exit_code="$1" reason="$2" status=FAILED coverage=iteration_only
   if [[ $exit_code == 0 ]]; then status=PASSED; fi
   if [[ $action == lint && $scope == full ]]; then coverage=full; fi
-  if [[ $coverage == full && -n ${LINT_SHARD:-} ]]; then coverage="shard ${LINT_SHARD}"; fi
   printf '\nLINT %s\nmodule: %s\nmode: %s\naction: %s\nscope: %s\ncoverage: %s\ntarget_count: %s\nbase: %s\nfallback: %s\nversion: %s\nreason: %s\nexit_code: %s\nelapsed_seconds: %s\nlog: %s\n' \
     "$status" "$module" "$mode" "$action" "$scope" "$coverage" "$target_count" "$comparison_base" "$fallback" "$version" "$reason" "$exit_code" "$SECONDS" "$log_file"
   exit "$exit_code"
@@ -204,19 +203,6 @@ if [[ $action == format ]]; then
 else
   set -- run --config "$config" --path-mode=abs --timeout 15m --allow-serial-runners
   if [[ $mode == fix ]]; then set -- "$@" --fix; fi
-fi
-# LINT_SHARD=i/n (full scope only) lints every n-th package from offset i, so
-# CI spreads the analysis over n runners; together the shards cover ./...
-if [[ -n ${LINT_SHARD:-} && $action == lint && $scope == full ]]; then
-  if [[ ! $LINT_SHARD =~ ^([0-9]+)/([1-9][0-9]*)$ ]] || (( BASH_REMATCH[1] >= BASH_REMATCH[2] )); then
-    printf 'LINT_SHARD must be i/n with 0 <= i < n, got %s\n' "$LINT_SHARD" >&2
-    exit 2
-  fi
-  shard_part="${BASH_REMATCH[1]}" shard_count="${BASH_REMATCH[2]}"
-  targets=()
-  while IFS= read -r pkg; do targets+=("$pkg"); done < <(
-    cd "$module_dir" && GOWORK=off go list -f '{{.Dir}}' ./... | awk -v n="$shard_count" -v p="$shard_part" '(NR - 1) % n == p')
-  target_count=${#targets[@]}
 fi
 set -- "$@" "${targets[@]}"
 printf 'Checking %s (%s, %s, %s, %s); log: %s\n' "$module" "$version" "$action" "$scope" "$mode" "$log_file"
