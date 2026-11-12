@@ -290,15 +290,21 @@ jobs:
             runner: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # The test containers' images, pulled while Go compiles (4-10 s a run).
-      # A test pulls what is still missing itself; keep the list equal to
-      # cmd/it/shared/test_setup.go and the Mailpit helper.
+      # The suite's Postgres and Redis start while Go compiles, and the
+      # suite uses them (ANCHOR_IT_*_ADDR, cmd/it/shared/test_setup.go): it
+      # took 5 s to start its own after a 22 s compile. Mailpit's image is
+      # pulled for the tests that start it. Keep the images and settings equal
+      # to test_setup.go and the Mailpit helper.
       - if: matrix.containers
-        name: Pull the test images in the background
+        name: Start the test containers in the background
         run: |
-          for image in timescale/timescaledb:2.23.0-pg18 redis:7-alpine axllent/mailpit:v1.20; do
-            nohup docker pull -q "$image" > /dev/null 2>&1 &
-          done
+          nohup docker run -d --name anchor-it-postgres -p 127.0.0.1:55432:5432 \
+            -e POSTGRES_DB=anchor -e POSTGRES_USER=anchor -e POSTGRES_PASSWORD=anchor -e NO_TS_TUNE=true \
+            timescale/timescaledb:2.23.0-pg18 > /dev/null 2>&1 &
+          nohup docker run -d --name anchor-it-redis -p 127.0.0.1:56379:6379 redis:7-alpine > /dev/null 2>&1 &
+          nohup docker pull -q axllent/mailpit:v1.20 > /dev/null 2>&1 &
+          echo "ANCHOR_IT_POSTGRES_ADDR=127.0.0.1:55432" >> "$GITHUB_ENV"
+          echo "ANCHOR_IT_REDIS_ADDR=127.0.0.1:56379" >> "$GITHUB_ENV"
       - if: matrix.native
         uses: ./.github/actions/install-go
       # One cache per group: a shared key keeps whichever group saved first.

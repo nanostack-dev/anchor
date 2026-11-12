@@ -2,7 +2,9 @@ package itshared
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -132,18 +134,24 @@ func SetupTest(config TestConfig) func() {
 	ctx := context.Background()
 	var teardownFuncs []func()
 
-	postgresContainer = setupPostgres(ctx, testLogger)
-	teardownFuncs = append(
-		teardownFuncs, func() {
-			if err := postgresContainer.Terminate(ctx); err != nil {
-				testLogger.ErrorContext(ctx, "Failed to terminate postgres container", log.Err(err))
-			} else {
-				testLogger.InfoContext(ctx, "Postgres container terminated")
-			}
-		},
-	)
+	if addr := os.Getenv(externalPostgresEnv); addr != "" {
+		useExternalPostgres(ctx, testLogger, addr)
+	} else {
+		postgresContainer = setupPostgres(ctx, testLogger)
+		teardownFuncs = append(
+			teardownFuncs, func() {
+				if err := postgresContainer.Terminate(ctx); err != nil {
+					testLogger.ErrorContext(ctx, "Failed to terminate postgres container", log.Err(err))
+				} else {
+					testLogger.InfoContext(ctx, "Postgres container terminated")
+				}
+			},
+		)
+	}
 
-	if config.EnableRedis {
+	if addr := os.Getenv(externalRedisEnv); config.EnableRedis && addr != "" {
+		useExternalRedis(ctx, testLogger, addr)
+	} else if config.EnableRedis {
 		redisContainer = setupRedis(ctx, testLogger)
 		teardownFuncs = append(
 			teardownFuncs, func() {
@@ -277,6 +285,89 @@ func setupRedis(ctx context.Context, testLogger *slog.Logger) testcontainers.Con
 	)
 
 	return container
+}
+
+// CI starts Postgres and Redis while the tests compile (.github/workflows/go.yml)
+// and names them here as host:port, which saves the suite the 5 s it took to
+// start its own containers. Each job's runner holds one suite, so the
+// database is fresh.
+const (
+	externalPostgresEnv = "ANCHOR_IT_POSTGRES_ADDR"
+	externalRedisEnv    = "ANCHOR_IT_REDIS_ADDR"
+	externalWait        = 2 * time.Minute
+	externalPoll        = 200 * time.Millisecond
+)
+
+// useExternalPostgres waits until the Postgres at addr answers a query. The
+// image's init server listens on no TCP port, so an answer means the final
+// server is up.
+func useExternalPostgres(ctx context.Context, testLogger *slog.Logger, addr string) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		panic(fmt.Sprintf("%s=%q is not host:port: %v", externalPostgresEnv, addr, err))
+	}
+	url := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
+		defaultTestPostgresValue, os.Getenv("POSTGRES_PASSWORD"), addr, defaultTestPostgresValue)
+	waitFor(externalPostgresEnv, addr, func() error {
+		db, openErr := sql.Open("postgres", url)
+		if openErr != nil {
+			return openErr
+		}
+		defer func() { _ = db.Close() }()
+		return db.PingContext(ctx)
+	})
+	for name, value := range map[string]string{"POSTGRES_HOST": host, "POSTGRES_PORT": port} {
+		if setenvErr := os.Setenv(name, value); setenvErr != nil {
+			panic(fmt.Sprintf("Failed to set %s: %v", name, setenvErr))
+		}
+	}
+	testLogger.InfoContext(ctx, "Using the PostgreSQL CI started", slog.String("addr", addr))
+}
+
+// useExternalRedis waits until the Redis at addr answers PING.
+func useExternalRedis(ctx context.Context, testLogger *slog.Logger, addr string) {
+	waitFor(externalRedisEnv, addr, func() error {
+		dialer := net.Dialer{Timeout: time.Second}
+		conn, dialErr := dialer.DialContext(ctx, "tcp", addr)
+		if dialErr != nil {
+			return dialErr
+		}
+		defer func() { _ = conn.Close() }()
+		if deadlineErr := conn.SetDeadline(time.Now().Add(time.Second)); deadlineErr != nil {
+			return deadlineErr
+		}
+		if _, writeErr := conn.Write([]byte("PING\r\n")); writeErr != nil {
+			return writeErr
+		}
+		reply := make([]byte, len("+PONG"))
+		if _, readErr := io.ReadFull(conn, reply); readErr != nil {
+			return readErr
+		}
+		if string(reply) != "+PONG" {
+			return fmt.Errorf("redis answered %q", reply)
+		}
+		return nil
+	})
+	for name, value := range map[string]string{"REDIS_ADDRESS": addr, "REDIS_PASSWORD": "", "REDIS_DB": "0"} {
+		if setenvErr := os.Setenv(name, value); setenvErr != nil {
+			panic(fmt.Sprintf("Failed to set %s: %v", name, setenvErr))
+		}
+	}
+	testLogger.InfoContext(ctx, "Using the Redis CI started", slog.String("addr", addr))
+}
+
+func waitFor(env, addr string, ready func() error) {
+	deadline := time.Now().Add(externalWait)
+	for {
+		err := ready()
+		if err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			panic(fmt.Sprintf("%s=%s did not answer within %s: %v", env, addr, externalWait, err))
+		}
+		time.Sleep(externalPoll)
+	}
 }
 
 // populate copies the built values into the TestConfig targets, as
