@@ -143,24 +143,19 @@ jobs:
             run: pnpm check && pnpm typecheck && pnpm openapi-ts && git diff --exit-code -- src/client
           - part: unit tests and build
             run: pnpm test && pnpm build
-          # Six shards: four ran 51-69 s jobs, 30-38 s of tests each (2026-11-12).
-          - part: storybook 1/6
-            run: pnpm test-storybook --shard=1/6
+          # Four shards: two took 69-108 s each, three 67-81 s (2026-11-11). Six
+          # gave no gain (53-65 s jobs, 2026-11-12): each spends ~25 s on setup.
+          - part: storybook 1/4
+            run: pnpm test-storybook --shard=1/4
             browser: true
-          - part: storybook 2/6
-            run: pnpm test-storybook --shard=2/6
+          - part: storybook 2/4
+            run: pnpm test-storybook --shard=2/4
             browser: true
-          - part: storybook 3/6
-            run: pnpm test-storybook --shard=3/6
+          - part: storybook 3/4
+            run: pnpm test-storybook --shard=3/4
             browser: true
-          - part: storybook 4/6
-            run: pnpm test-storybook --shard=4/6
-            browser: true
-          - part: storybook 5/6
-            run: pnpm test-storybook --shard=5/6
-            browser: true
-          - part: storybook 6/6
-            run: pnpm test-storybook --shard=6/6
+          - part: storybook 4/4
+            run: pnpm test-storybook --shard=4/4
             browser: true
     defaults:
       run:
