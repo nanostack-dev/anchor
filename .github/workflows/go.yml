@@ -17,7 +17,7 @@ on:
       - 'scripts/lint.sh'
       - 'scripts/test_lint.py'
       - 'scripts/go-test-part.sh'
-      - 'scripts/ct-test-times.txt'
+      - 'scripts/go-test-times.txt'
       - '.github/actions/install-go/**'
       - 'scripts/check-generated.sh'
       - 'scripts/date-by-content.py'
@@ -95,7 +95,7 @@ jobs:
         scripts/lint.sh
         scripts/test_lint.py
         scripts/go-test-part.sh
-        scripts/ct-test-times.txt
+        scripts/go-test-times.txt
         .github/actions/install-go/**
         scripts/check-generated.sh
         scripts/date-by-content.py
@@ -220,41 +220,64 @@ jobs:
           # cold: lint 225-282 s (2 s warm), each test group 205-268 s.
           # scripts/lint.sh and scripts/go-test-part.sh are what the Dagger
           # checks run too, for `dagger check` on a laptop.
+          # golangci-lint loads every package's export data, which Go compiles:
+          # after a change to a package 26 others import, 44 of lint's 58 s.
+          # Without optimizations it took 27 s (2026-11-12); lint only reads
+          # the types. GOFLAGS splits on spaces, so the pair is quoted.
           - group: lint
-            native: scripts/lint.sh backend
-          # The component suite is the longest: eight parts, a runner each.
-          # Parts are balanced by the tests' measured times
-          # (scripts/ct-test-times.txt, GO_TEST_TIMES below): 87 s of laptop
-          # test work each, where every eighth name gave parts 53-112 s.
+            native: GOFLAGS="'-gcflags=all=-N -l'" scripts/lint.sh backend
+          # The component suite is the longest: twelve parts, a runner each.
+          # Parts are balanced by the tests' measured CI times
+          # (scripts/go-test-times.txt, GO_TEST_TIMES below): about 100 s of
+          # test work each, where eight parts by laptop times ran 26-48 s of
+          # tests after a 24 s compile. More parts shorten only the test time:
+          # each part compiles the same test binary.
           # -parallel 8 (GO_TEST_FLAGS below): the tests mostly wait on the
           # database, and Go's default of one per CPU left a part at 45 s
           # where 16 took 32 s (part 4 of 5 on a laptop, 2026-11-11).
           - group: component-tests-a
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 12
             containers: true
           - group: component-tests-b
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 12
             containers: true
           - group: component-tests-c
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 12
             containers: true
           - group: component-tests-d
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 12
             containers: true
           - group: component-tests-e
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 12
             containers: true
           - group: component-tests-f
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 5 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 5 12
             containers: true
           - group: component-tests-g
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 6 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 6 12
             containers: true
           - group: component-tests-h
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 8
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 12
             containers: true
-          - group: service-tests
-            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" ./...
+          - group: component-tests-i
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 8 12
+            containers: true
+          - group: component-tests-j
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 9 12
+            containers: true
+          - group: component-tests-k
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 10 12
+            containers: true
+          - group: component-tests-l
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 11 12
+            containers: true
+          # The service suite in two parts, balanced like the component parts:
+          # 30 s of tests in one.
+          - group: service-tests-a
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/service 0 2
+            containers: true
+          - group: service-tests-b
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/service 1 2
             containers: true
           - group: unit-and-wiring-tests
             native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/...
@@ -286,13 +309,16 @@ jobs:
       # Go's caches key on file contents, so a restored cache rebuilds and
       # re-runs only what changed. main saves under its commit; a pull request
       # restores the newest and saves only when there was none (each save
-      # costs about 12 s and the repository has 10 GB of cache).
+      # costs about 12 s and the repository has 10 GB of cache). The module
+      # zips stay out: Go builds from the extracted modules, and the zips were
+      # 180 of a cache's 490 MB (a restore took 6-9 s).
       - if: matrix.native
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
+            !~/go/pkg/mod/cache/download/**/*.zip
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-nol-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
@@ -316,7 +342,7 @@ jobs:
           # others import, they compiled about 27 % faster (laptop), and the
           # suites ran no slower (they wait on the database, not the CPU).
           GO_TEST_GCFLAGS: all=-N -l
-          GO_TEST_TIMES: scripts/ct-test-times.txt
+          GO_TEST_TIMES: scripts/go-test-times.txt
           RUN: ${{ matrix.native }}
         run: |
           set -euo pipefail
@@ -333,6 +359,7 @@ jobs:
         with:
           path: |
             ~/go/pkg/mod
+            !~/go/pkg/mod/cache/download/**/*.zip
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: ${{ steps.cache.outputs.cache-primary-key }}

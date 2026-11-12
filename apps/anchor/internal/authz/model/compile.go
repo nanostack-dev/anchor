@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
-	"github.com/openfga/language/pkg/go/transformer"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -58,14 +57,10 @@ type Model struct {
 //     lets an API key hold them directly;
 //   - each resource type also answers the permissions scoped to a type above
 //     it, through its parent only: no role on it may hold them.
-func Compile(catalog Catalog) (Model, error) {
+func Compile(catalog Catalog) Model {
 	catalog = catalog.normalized()
-	dsl := catalog.dsl()
-	proto, err := transformer.TransformDSLToProto(dsl)
-	if err != nil {
-		return Model{}, fmt.Errorf("compile authorization model: %w", err)
-	}
-	return Model{DSL: dsl, Proto: proto, Hash: catalog.hash()}, nil
+	defs := catalog.relations()
+	return Model{DSL: dsl(defs), Proto: authorizationModel(defs), Hash: catalog.hash()}
 }
 
 // Bytes is the size OpenFGA measures against MaxBytes before it stores the
@@ -151,62 +146,56 @@ func (c Catalog) heldOn() map[string][]string {
 	return held
 }
 
-func (c Catalog) dsl() string {
-	var w dslWriter
-	w.line(indentNone, "model")
-	w.line(indentRelations, "schema 1.1")
-	w.typeHeader(TypeUser)
-	w.typeHeader(TypeAPIKey)
+// relations lists each type of the model with its relations, in the order
+// the DSL writes them.
+func (c Catalog) relations() []typeDef {
+	defs := []typeDef{{name: TypeUser}, {name: TypeAPIKey}}
 
-	w.typeHeader(TypeRole)
-	if len(c.Permissions) > 0 {
-		w.line(indentRelations, "relations")
-		for _, permission := range c.Permissions {
-			w.define(GrantsRelation(permission.Name), "["+AllUsers+"]")
-		}
-	}
-
-	w.typeHeader(TypeRoleAssignment)
-	w.line(indentRelations, "relations")
-	w.define(RelationRole, "["+TypeRole+"]")
-	w.define(RelationAssignee, "["+TypeUser+"]")
+	role := typeDef{name: TypeRole}
 	for _, permission := range c.Permissions {
-		w.define(CanRelation(permission.Name),
-			RelationAssignee+" and "+GrantsRelation(permission.Name)+" from "+RelationRole)
+		role.add(GrantsRelation(permission.Name), direct(AllUsers))
 	}
+	defs = append(defs, role)
+
+	assignment := typeDef{name: TypeRoleAssignment}
+	assignment.add(RelationRole, direct(TypeRole))
+	assignment.add(RelationAssignee, direct(TypeUser))
+	for _, permission := range c.Permissions {
+		assignment.add(CanRelation(permission.Name), intersection(
+			computed(RelationAssignee), from(GrantsRelation(permission.Name), RelationRole)))
+	}
+	defs = append(defs, assignment)
 
 	held := c.heldOn()
 	inherited := c.inheritedOn(held)
 	for _, t := range c.Types {
-		w.typeHeader(ResourceType(t.Slug))
-		w.line(indentRelations, "relations")
+		def := typeDef{name: ResourceType(t.Slug)}
 		parentTypes := slices.Clone(t.ParentTypes)
 		if t.NestsInItself {
 			parentTypes = append(parentTypes, t.Slug)
 		}
 		hasParent := len(parentTypes) > 0
 		if hasParent {
-			w.define(
-				RelationParent,
-				"["+strings.Join(mapSlugs(slices.Compact(slices.Sorted(slices.Values(parentTypes)))), ", ")+"]",
-			)
+			def.add(RelationParent, direct(mapSlugs(slices.Compact(slices.Sorted(slices.Values(parentTypes))))...))
 		}
-		w.define(RelationAssignment, "["+TypeRoleAssignment+"]")
+		def.add(RelationAssignment, direct(TypeRoleAssignment))
 		for _, permission := range inherited[t.Slug] {
-			w.define(CanRelation(permission), CanRelation(permission)+" from "+RelationParent)
+			def.add(CanRelation(permission), from(CanRelation(permission), RelationParent))
 		}
 		for _, permission := range held[t.Slug] {
-			alternatives := []string{CanRelation(permission) + " from " + RelationAssignment}
+			var alternatives []rewrite
 			if t.Slug == TypeOrganization {
-				alternatives = append([]string{"[" + TypeAPIKey + "]"}, alternatives...)
+				alternatives = append(alternatives, direct(TypeAPIKey))
 			}
+			alternatives = append(alternatives, from(CanRelation(permission), RelationAssignment))
 			if hasParent {
-				alternatives = append(alternatives, CanRelation(permission)+" from "+RelationParent)
+				alternatives = append(alternatives, from(CanRelation(permission), RelationParent))
 			}
-			w.define(CanRelation(permission), strings.Join(alternatives, " or "))
+			def.add(CanRelation(permission), union(alternatives...))
 		}
+		defs = append(defs, def)
 	}
-	return w.String()
+	return defs
 }
 
 // inheritedOn lists, for each type, the permissions scoped to a type above it
@@ -251,28 +240,174 @@ func mapSlugs(slugs []string) []string {
 	return types
 }
 
-// DSL indentation levels, two spaces each.
+// typeDef is one type of the model and its relations in order. Compile renders
+// it both as DSL and as the proto OpenFGA stores, so the two always agree
+// without parsing the DSL (parsing took most of a catalog write's CPU).
+type typeDef struct {
+	name      string
+	relations []relationDef
+}
+
+type relationDef struct {
+	name    string
+	rewrite rewrite
+}
+
+func (d *typeDef) add(name string, r rewrite) {
+	d.relations = append(d.relations, relationDef{name: name, rewrite: r})
+}
+
+// rewrite is one of the few relation definitions the model uses: subjects
+// assigned directly, another relation of the same object, a relation of the
+// objects a tupleset points to, or a union or intersection of those.
+type rewrite struct {
+	kind     rewriteKind
+	types    []string // direct: the subject types, "user:*" for every user
+	relation string   // computed and from: the relation answered
+	tupleset string   // from: the relation whose objects answer it
+	children []rewrite
+}
+
+type rewriteKind int
+
 const (
-	indentNone = iota
-	indentRelations
-	indentDefinitions
+	rewriteDirect rewriteKind = iota
+	rewriteComputed
+	rewriteFrom
+	rewriteUnion
+	rewriteIntersection
 )
 
-type dslWriter struct{ lines []string }
+func direct(types ...string) rewrite { return rewrite{kind: rewriteDirect, types: types} }
 
-func (w *dslWriter) line(indent int, text string) {
-	w.lines = append(w.lines, strings.Repeat("  ", indent)+text)
+func computed(relation string) rewrite { return rewrite{kind: rewriteComputed, relation: relation} }
+
+func from(relation, tupleset string) rewrite {
+	return rewrite{kind: rewriteFrom, relation: relation, tupleset: tupleset}
 }
 
-func (w *dslWriter) typeHeader(name string) {
-	w.lines = append(w.lines, "")
-	w.line(indentNone, "type "+name)
+// union of one alternative is that alternative, as the DSL writes it.
+func union(children ...rewrite) rewrite {
+	if len(children) == 1 {
+		return children[0]
+	}
+	return rewrite{kind: rewriteUnion, children: children}
 }
 
-func (w *dslWriter) define(relation, rewrite string) {
-	w.line(indentDefinitions, "define "+relation+": "+rewrite)
+func intersection(children ...rewrite) rewrite {
+	return rewrite{kind: rewriteIntersection, children: children}
 }
 
-func (w *dslWriter) String() string {
-	return strings.Join(w.lines, "\n") + "\n"
+func (r rewrite) dsl() string {
+	switch r.kind {
+	case rewriteDirect:
+		return "[" + strings.Join(r.types, ", ") + "]"
+	case rewriteComputed:
+		return r.relation
+	case rewriteFrom:
+		return r.relation + " from " + r.tupleset
+	case rewriteUnion, rewriteIntersection:
+		operator := " or "
+		if r.kind == rewriteIntersection {
+			operator = " and "
+		}
+		parts := make([]string, len(r.children))
+		for i, child := range r.children {
+			parts[i] = child.dsl()
+		}
+		return strings.Join(parts, operator)
+	}
+	panic(fmt.Sprintf("unknown rewrite kind %d", r.kind))
 }
+
+func (r rewrite) proto() *openfgav1.Userset {
+	switch r.kind {
+	case rewriteDirect:
+		return &openfgav1.Userset{Userset: &openfgav1.Userset_This{This: &openfgav1.DirectUserset{}}}
+	case rewriteComputed:
+		return &openfgav1.Userset{Userset: &openfgav1.Userset_ComputedUserset{
+			ComputedUserset: &openfgav1.ObjectRelation{Relation: r.relation},
+		}}
+	case rewriteFrom:
+		return &openfgav1.Userset{Userset: &openfgav1.Userset_TupleToUserset{TupleToUserset: &openfgav1.TupleToUserset{
+			Tupleset:        &openfgav1.ObjectRelation{Relation: r.tupleset},
+			ComputedUserset: &openfgav1.ObjectRelation{Relation: r.relation},
+		}}}
+	case rewriteUnion, rewriteIntersection:
+		children := &openfgav1.Usersets{Child: make([]*openfgav1.Userset, len(r.children))}
+		for i, child := range r.children {
+			children.Child[i] = child.proto()
+		}
+		if r.kind == rewriteIntersection {
+			return &openfgav1.Userset{Userset: &openfgav1.Userset_Intersection{Intersection: children}}
+		}
+		return &openfgav1.Userset{Userset: &openfgav1.Userset_Union{Union: children}}
+	}
+	panic(fmt.Sprintf("unknown rewrite kind %d", r.kind))
+}
+
+// directTypes lists the subject types a relation takes directly, for its
+// metadata.
+func (r rewrite) directTypes() []*openfgav1.RelationReference {
+	var refs []*openfgav1.RelationReference
+	switch r.kind {
+	case rewriteDirect:
+		for _, t := range r.types {
+			if name, ok := strings.CutSuffix(t, ":*"); ok {
+				refs = append(refs, &openfgav1.RelationReference{
+					Type:               name,
+					RelationOrWildcard: &openfgav1.RelationReference_Wildcard{Wildcard: &openfgav1.Wildcard{}},
+				})
+				continue
+			}
+			refs = append(refs, &openfgav1.RelationReference{Type: t})
+		}
+	case rewriteUnion, rewriteIntersection:
+		for _, child := range r.children {
+			refs = append(refs, child.directTypes()...)
+		}
+	case rewriteComputed, rewriteFrom:
+	}
+	return refs
+}
+
+func dsl(defs []typeDef) string {
+	var b strings.Builder
+	b.WriteString("model\n  schema 1.1\n")
+	for _, def := range defs {
+		b.WriteString("\ntype " + def.name + "\n")
+		if len(def.relations) == 0 {
+			continue
+		}
+		b.WriteString("  relations\n")
+		for _, relation := range def.relations {
+			b.WriteString("    define " + relation.name + ": " + relation.rewrite.dsl() + "\n")
+		}
+	}
+	return b.String()
+}
+
+func authorizationModel(defs []typeDef) *openfgav1.AuthorizationModel {
+	m := &openfgav1.AuthorizationModel{
+		SchemaVersion:   schemaVersion,
+		TypeDefinitions: make([]*openfgav1.TypeDefinition, len(defs)),
+	}
+	for i, def := range defs {
+		typeDefinition := &openfgav1.TypeDefinition{Type: def.name}
+		if len(def.relations) > 0 {
+			typeDefinition.Relations = make(map[string]*openfgav1.Userset, len(def.relations))
+			metadata := make(map[string]*openfgav1.RelationMetadata, len(def.relations))
+			for _, relation := range def.relations {
+				typeDefinition.Relations[relation.name] = relation.rewrite.proto()
+				metadata[relation.name] = &openfgav1.RelationMetadata{
+					DirectlyRelatedUserTypes: relation.rewrite.directTypes(),
+				}
+			}
+			typeDefinition.Metadata = &openfgav1.Metadata{Relations: metadata}
+		}
+		m.TypeDefinitions[i] = typeDefinition
+	}
+	return m
+}
+
+const schemaVersion = "1.1"
