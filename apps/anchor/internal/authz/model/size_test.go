@@ -39,11 +39,10 @@ func writeWithLimit(t *testing.T, compiled model.Model, limit int) error {
 
 func TestBytes(t *testing.T) {
 	t.Run("OpenFGA stores a model at a limit of exactly its size and refuses it one byte below", func(t *testing.T) {
-		compiled, err := model.Compile(documentCatalog())
-		require.NoError(t, err)
+		compiled := model.Compile(documentCatalog())
 
 		require.NoError(t, writeWithLimit(t, compiled, compiled.Bytes()))
-		err = writeWithLimit(t, compiled, compiled.Bytes()-1)
+		err := writeWithLimit(t, compiled, compiled.Bytes()-1)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "model exceeds size limit")
 	})

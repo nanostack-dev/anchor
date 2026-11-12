@@ -1,12 +1,16 @@
 package model_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/openfga/language/pkg/go/transformer"
 	"github.com/openfga/openfga/pkg/typesystem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"anchor/internal/authz/model"
 )
@@ -27,9 +31,8 @@ func documentCatalog() model.Catalog {
 
 func TestCompile(t *testing.T) {
 	t.Run("A permission is held on its scope and every type above it", func(t *testing.T) {
-		compiled, err := model.Compile(documentCatalog())
+		compiled := model.Compile(documentCatalog())
 
-		require.NoError(t, err)
 		folder := section(compiled.DSL, "type rt_folder")
 		organization := section(compiled.DSL, "type organization")
 		view := model.CanRelation("document:view")
@@ -39,9 +42,8 @@ func TestCompile(t *testing.T) {
 	})
 
 	t.Run("A type below a permission's scope answers it through its parent only", func(t *testing.T) {
-		compiled, err := model.Compile(documentCatalog())
+		compiled := model.Compile(documentCatalog())
 
-		require.NoError(t, err)
 		billing := model.CanRelation("billing:read")
 		assert.Contains(t, section(compiled.DSL, "type rt_folder"), billing+": "+billing+" from parent\n")
 		assert.Contains(t, section(compiled.DSL, "type rt_project"), billing+": "+billing+" from parent\n")
@@ -52,9 +54,8 @@ func TestCompile(t *testing.T) {
 		catalog.Types = append(catalog.Types, model.Type{Slug: "invoice", ParentTypes: []string{"organization"}})
 		catalog.Permissions = append(catalog.Permissions, model.Permission{Name: "invoice:pay", Scope: "invoice"})
 
-		compiled, err := model.Compile(catalog)
+		compiled := model.Compile(catalog)
 
-		require.NoError(t, err)
 		assert.NotContains(t, section(compiled.DSL, "type rt_folder"), model.CanRelation("invoice:pay"))
 		assert.Contains(t, section(compiled.DSL, "type rt_invoice"), model.CanRelation("billing:read"))
 	})
@@ -73,28 +74,25 @@ func TestCompile(t *testing.T) {
 			},
 		}
 
-		compiled, err := model.Compile(catalog)
+		compiled := model.Compile(catalog)
 
-		require.NoError(t, err)
 		board := section(compiled.DSL, "type rt_board")
 		assert.Contains(t, board, model.CanRelation("team:lead"))
 		assert.Contains(t, board, model.CanRelation("project:manage"))
-		_, err = typesystem.NewAndValidate(t.Context(), compiled.Proto)
+		_, err := typesystem.NewAndValidate(t.Context(), compiled.Proto)
 		require.NoError(t, err)
 	})
 
 	t.Run("Only organization lets an API key hold a permission directly", func(t *testing.T) {
-		compiled, err := model.Compile(documentCatalog())
+		compiled := model.Compile(documentCatalog())
 
-		require.NoError(t, err)
 		assert.Contains(t, section(compiled.DSL, "type organization"), "[api_key]")
 		assert.NotContains(t, section(compiled.DSL, "type rt_project"), "[api_key]")
 	})
 
 	t.Run("A self-nesting type is its own parent", func(t *testing.T) {
-		compiled, err := model.Compile(documentCatalog())
+		compiled := model.Compile(documentCatalog())
 
-		require.NoError(t, err)
 		assert.Contains(t, section(compiled.DSL, "type rt_folder"), "define parent: [rt_folder, rt_project]")
 	})
 
@@ -105,10 +103,8 @@ func TestCompile(t *testing.T) {
 			Permissions: []model.Permission{catalog.Permissions[1], catalog.Permissions[0]},
 		}
 
-		first, err := model.Compile(catalog)
-		require.NoError(t, err)
-		second, err := model.Compile(reversed)
-		require.NoError(t, err)
+		first := model.Compile(catalog)
+		second := model.Compile(reversed)
 
 		assert.Equal(t, first.Hash, second.Hash)
 	})
@@ -124,11 +120,50 @@ func TestCompile(t *testing.T) {
 		catalog.Permissions = append(catalog.Permissions,
 			model.Permission{Name: "two\nlines\n  define x: [user]", Scope: "organization"})
 
-		compiled, err := model.Compile(catalog)
+		compiled := model.Compile(catalog)
 
+		_, err := typesystem.NewAndValidate(t.Context(), compiled.Proto)
 		require.NoError(t, err)
-		_, err = typesystem.NewAndValidate(t.Context(), compiled.Proto)
-		require.NoError(t, err)
+	})
+
+	t.Run("The proto is the model OpenFGA parses from the DSL", func(t *testing.T) {
+		keywords := model.Catalog{Types: []model.Type{{Slug: "organization"}}}
+		for _, slug := range []string{"define", "and", "or", "from", "self", "user", "role"} {
+			keywords.Types = append(keywords.Types, model.Type{Slug: slug, ParentTypes: []string{"organization"}})
+			keywords.Permissions = append(keywords.Permissions, model.Permission{Name: slug + ":view", Scope: slug})
+		}
+		large := model.Catalog{Types: []model.Type{{Slug: "organization"}}}
+		for i := range 30 {
+			large.Types = append(large.Types, model.Type{
+				Slug: fmt.Sprintf("type_%02d", i), ParentTypes: []string{"organization"}, NestsInItself: i%3 == 0,
+			})
+			large.Permissions = append(large.Permissions,
+				model.Permission{Name: fmt.Sprintf("doc:perm_%02d", i), Scope: fmt.Sprintf("type_%02d", i)},
+				model.Permission{Name: fmt.Sprintf("org:perm_%02d", i), Scope: "organization"})
+		}
+		catalogs := map[string]model.Catalog{
+			"documents":         documentCatalog(),
+			"organization only": {Types: []model.Type{{Slug: "organization"}}},
+			"several parents": {
+				Types: []model.Type{
+					{Slug: "organization"},
+					{Slug: "a", ParentTypes: []string{"organization"}},
+					{Slug: "b", ParentTypes: []string{"organization", "a"}},
+				},
+				Permissions: []model.Permission{{Name: "b:read", Scope: "b"}, {Name: "a:read", Scope: "a"}},
+			},
+			"OpenFGA keywords": keywords,
+			"thirty types":     large,
+		}
+		for name, catalog := range catalogs {
+			compiled := model.Compile(catalog)
+
+			parsed, err := transformer.TransformDSLToProto(compiled.DSL)
+
+			require.NoError(t, err, name)
+			assert.True(t, proto.Equal(parsed, compiled.Proto), "%s:\nparsed   %s\ncompiled %s",
+				name, protojson.Format(parsed), protojson.Format(compiled.Proto))
+		}
 	})
 
 	t.Run("The catalog hash ignores order and follows every change", func(t *testing.T) {

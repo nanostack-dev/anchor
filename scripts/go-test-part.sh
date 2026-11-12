@@ -10,7 +10,7 @@
 # missing from the file counts 0.5 s), so the parts take about as long.
 #
 # Usage: scripts/go-test-part.sh <package dir> <part> <parts>
-# Example: GO_TEST_TIMES=scripts/ct-test-times.txt scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 8
+# Example: GO_TEST_TIMES=scripts/go-test-times.txt scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 12
 # GO_TEST_FLAGS adds flags to `go test` (CI sets -parallel); GO_TEST_GCFLAGS
 # sets -gcflags (CI: "all=-N -l", which compiles faster).
 set -euo pipefail
@@ -48,8 +48,13 @@ go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
 ran=$(grep -oE '"Action":"(pass|skip)","Package":"[^"]*","Test":"Test[^/"]*"' "$json" | wc -l)
 printf 'ran %s of %s selected tests\n' "$ran" "$want"
-# The slow tests, to keep scripts/ct-test-times.txt honest.
+# The slow tests, and every test's work (its time plus its direct subtests')
+# as WORK lines, from which scripts/go-test-times.txt is regenerated.
 printf 'top-level tests over 5 s:\n'
 go run gotest.tools/gotestsum@v1.13.0 tool slowest --jsonfile "$json" --threshold 5s | awk '$2 !~ /\//' || true
+if [[ -n ${GITHUB_ACTIONS:-} ]]; then printf '::group::work per test\n'; fi
+command -v jq > /dev/null && jq -rs '[.[] | select(.Action == "pass" and .Test)] | group_by(.Test | split("/")[0])[] |
+  "WORK \(.[0].Test | split("/")[0]) \(map(select(.Test | split("/") | length <= 2) | .Elapsed) | add)"' "$json" || true
+if [[ -n ${GITHUB_ACTIONS:-} ]]; then printf '::endgroup::\n'; fi
 if [[ $ran -ne $want ]]; then exit 1; fi
 exit "$rc"
