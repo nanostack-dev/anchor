@@ -1,0 +1,32 @@
+name: Install Go
+description: >-
+  Installs the Go toolchain that apps/anchor/go.mod pins, from go.dev, checked
+  against go.dev's published sha256. actions/setup-go took 11-14 s on the arm
+  runners, 10 s of it copying Go into the tool cache, which a fresh hosted
+  runner never reuses (2026-11-12).
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        version="$(sed -nE 's/^toolchain go([0-9.]+)$/\1/p' apps/anchor/go.mod)"
+        case "$RUNNER_ARCH" in
+          X64) arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "::error::No Go download for runner architecture $RUNNER_ARCH"; exit 1 ;;
+        esac
+        file="go${version}.linux-${arch}.tar.gz"
+        sum="$(curl -fsSL --retry 5 --retry-all-errors 'https://go.dev/dl/?mode=json&include=all' |
+          jq -r --arg f "$file" '[.[].files[] | select(.filename == $f) | .sha256][0] // empty')"
+        if [[ -z $sum ]]; then
+          echo "::error::go.dev lists no sha256 for $file"
+          exit 1
+        fi
+        curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/$file" "https://go.dev/dl/$file"
+        echo "$sum  $RUNNER_TEMP/$file" | sha256sum -c --quiet -
+        tar -xzf "$RUNNER_TEMP/$file" -C "$RUNNER_TEMP"
+        rm "$RUNNER_TEMP/$file"
+        echo "$RUNNER_TEMP/go/bin" >> "$GITHUB_PATH"
+        echo "$HOME/go/bin" >> "$GITHUB_PATH"
+        echo "GOTOOLCHAIN=local" >> "$GITHUB_ENV"

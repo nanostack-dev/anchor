@@ -17,6 +17,8 @@ on:
       - 'scripts/lint.sh'
       - 'scripts/test_lint.py'
       - 'scripts/go-test-part.sh'
+      - 'scripts/ct-test-times.txt'
+      - '.github/actions/install-go/**'
       - 'scripts/check-generated.sh'
       - 'scripts/date-by-content.py'
       - 'scripts/build-anchor.sh'
@@ -93,6 +95,8 @@ jobs:
         scripts/lint.sh
         scripts/test_lint.py
         scripts/go-test-part.sh
+        scripts/ct-test-times.txt
+        .github/actions/install-go/**
         scripts/check-generated.sh
         scripts/date-by-content.py
         scripts/build-anchor.sh
@@ -219,8 +223,9 @@ jobs:
           - group: lint
             native: scripts/lint.sh backend
           # The component suite is the longest: eight parts, a runner each.
-          # Parts take every eighth test by name; by laptop timings the
-          # longest part holds 33 s of tests, against 66 s with five parts.
+          # Parts are balanced by the tests' measured times
+          # (scripts/ct-test-times.txt, GO_TEST_TIMES below): 87 s of laptop
+          # test work each, where every eighth name gave parts 53-112 s.
           # -parallel 8 (GO_TEST_FLAGS below): the tests mostly wait on the
           # database, and Go's default of one per CPU left a part at 45 s
           # where 16 took 32 s (part 4 of 5 on a laptop, 2026-11-11).
@@ -249,10 +254,10 @@ jobs:
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 8
             containers: true
           - group: service-tests
-            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 ./...
+            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" ./...
             containers: true
           - group: unit-and-wiring-tests
-            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- ./internal/... ./cmd/app/...
+            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/...
           # The generated-code and lint-tooling Dagger checks, natively: a
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
@@ -276,10 +281,7 @@ jobs:
             nohup docker pull -q "$image" > /dev/null 2>&1 &
           done
       - if: matrix.native
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: apps/anchor/go.mod
-          cache: false
+        uses: ./.github/actions/install-go
       # One cache per group: a shared key keeps whichever group saved first.
       # Go's caches key on file contents, so a restored cache rebuilds and
       # re-runs only what changed. main saves under its commit; a pull request
@@ -293,10 +295,10 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
             ~/.cache/golangci-lint
-          key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
+          key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-nol-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
           restore-keys: |
-            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
-            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-nol-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-
+            anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-nol-
       # Go's test cache knows a file a test opens (the migrations, the OpenAPI
       # spec) by size and modification time, and a checkout gives every file a
       # new time: those results never came from the cache. The time now comes
@@ -310,6 +312,11 @@ jobs:
         env:
           CGO_ENABLED: '0'
           GO_TEST_FLAGS: -parallel 8
+          # Tests build without optimizations: after a change to a package 26
+          # others import, they compiled about 27 % faster (laptop), and the
+          # suites ran no slower (they wait on the database, not the CPU).
+          GO_TEST_GCFLAGS: all=-N -l
+          GO_TEST_TIMES: scripts/ct-test-times.txt
           RUN: ${{ matrix.native }}
         run: |
           set -euo pipefail
@@ -411,10 +418,7 @@ jobs:
       # stage, replaced). Inside Buildx the same build waited 27 s for its
       # cache to be copied in and 12 s for the modules (2026-11-11); the
       # Dagger publish took 125-162 s from a cold engine.
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: apps/anchor/go.mod
-          cache: false
+      - uses: ./.github/actions/install-go
       - name: Check the Dockerfile builds with the same Go
         run: |
           docker_go=$(sed -nE 's/^FROM .*golang:([0-9.]+)-alpine.*/\1/p' Dockerfile)
