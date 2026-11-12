@@ -26,14 +26,20 @@ RUN go mod download
 # Copy source code
 COPY apps/anchor/ ./
 
-# Build the Go application with build info. The cache mount keeps Go's build
-# cache between builds, so a rebuild compiles only what changed (`-a` used to
-# force every package to recompile). The modules stay in the layer above,
-# cached while go.sum does not change.
+# Build the Go application with build info (scripts/build-anchor.sh, also
+# what CI runs natively). The cache mount keeps Go's build cache between
+# builds, so a rebuild compiles only what changed. The modules stay in the
+# layer above, cached while go.sum does not change.
+COPY scripts/build-anchor.sh /usr/local/bin/build-anchor
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
-    -ldflags="-w -s -X anchor/internal/buildinfo.Version=${VERSION} -X anchor/internal/buildinfo.CommitSHA=${COMMIT_SHA} -X anchor/internal/buildinfo.BuildDate=${BUILD_DATE}" \
-    -o anchor ./cmd/main.go
+    GOOS=$TARGETOS GOARCH=$TARGETARCH build-anchor anchor
+
+# The binary alone. CI replaces this stage with a binary it built natively,
+# with Go's caches warm (`--build-context binary=<dir>`, see
+# .github/actions/build-image); the builder stage then does not run. Keep the
+# Go version above equal to the toolchain in apps/anchor/go.mod.
+FROM scratch AS binary
+COPY --from=builder /app/anchor /anchor
 
 # Production stage - using distroless for minimal attack surface
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
@@ -53,11 +59,11 @@ LABEL dev.nanostack.config-format="nano"
 WORKDIR /app
 
 # Copy application binary
-COPY --from=builder /app/anchor .
+COPY --from=binary /anchor .
 
 # Copy configuration and migrations
-COPY --from=builder /app/application.yaml .
-COPY --from=builder /app/migrations ./migrations
+COPY apps/anchor/application.yaml .
+COPY apps/anchor/migrations ./migrations
 
 # Expose port
 EXPOSE 8080

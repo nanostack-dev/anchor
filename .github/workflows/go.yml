@@ -16,6 +16,12 @@ on:
       - '.golangci.yml'
       - 'scripts/lint.sh'
       - 'scripts/test_lint.py'
+      - 'scripts/go-test-part.sh'
+      - 'scripts/check-generated.sh'
+      - 'scripts/date-by-content.py'
+      - 'scripts/build-anchor.sh'
+      - '.dockerignore'
+      - '.github/actions/build-image/**'
       - 'lint-fix.sh'
       - 'anchor-ui/**'
       - 'pnpm-lock.yaml'
@@ -86,6 +92,12 @@ jobs:
         .golangci.yml
         scripts/lint.sh
         scripts/test_lint.py
+        scripts/go-test-part.sh
+        scripts/check-generated.sh
+        scripts/date-by-content.py
+        scripts/build-anchor.sh
+        .dockerignore
+        .github/actions/build-image/**
         lint-fix.sh
         apps/anchor/cmd/http/openapi.yaml
         .github/workflows/go.yml
@@ -202,30 +214,50 @@ jobs:
           - group: lint
             native: scripts/lint.sh backend
           # The component suite is the longest: five parts, a runner each.
+          # -parallel 8 (GO_TEST_FLAGS below): the tests mostly wait on the
+          # database, and Go's default of one per CPU left a part at 45 s
+          # where 16 took 32 s (part 4 of 5 on a laptop, 2026-11-11).
           - group: component-tests-a
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 5
+            containers: true
           - group: component-tests-b
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 5
+            containers: true
           - group: component-tests-c
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 5
+            containers: true
           - group: component-tests-d
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 5
+            containers: true
           - group: component-tests-e
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 5
+            containers: true
           - group: service-tests
-            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- ./...
+            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 ./...
+            containers: true
           - group: unit-and-wiring-tests
             native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- ./internal/... ./cmd/app/...
           # The generated-code and lint-tooling Dagger checks, natively: a
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
             native: scripts/check-generated.sh && python3 scripts/test_lint.py
-          # The Dockerfile build for pull requests from forks (publish builds
-          # it for every branch of this repository).
+          # The Dockerfile's build from source. publish packages a binary it
+          # built natively, so this leg checks the builder stage: for pull
+          # requests from forks (no publish), and when a file only that stage
+          # reads changed (below).
           - group: image-builds
             image: true
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The test containers' images, pulled while Go compiles (4-10 s a run).
+      # A test pulls what is still missing itself; keep the list equal to
+      # cmd/it/shared/test_setup.go and the Mailpit helper.
+      - if: matrix.containers
+        name: Pull the test images in the background
+        run: |
+          for image in timescale/timescaledb:2.23.0-pg18 redis:7-alpine axllent/mailpit:v1.20; do
+            nohup docker pull -q "$image" > /dev/null 2>&1 &
+          done
       - if: matrix.native
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -260,6 +292,7 @@ jobs:
         name: Run ${{ matrix.group }}
         env:
           CGO_ENABLED: '0'
+          GO_TEST_FLAGS: -parallel 8
           RUN: ${{ matrix.native }}
         run: |
           set -euo pipefail
@@ -279,10 +312,25 @@ jobs:
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: ${{ steps.cache.outputs.cache-primary-key }}
-      # publish builds the same Dockerfile for every branch of this
-      # repository; this leg covers pull requests from forks, which get no
-      # publish.
-      - if: matrix.image && github.event.pull_request.head.repo.full_name != github.repository
+      - if: matrix.image
+        id: image
+        name: Decide whether to build from source
+        env:
+          FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository && github.event_name == 'pull_request' }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          build=true
+          if [[ $FORK != true && -n $BASE && $BASE != 0000000000000000000000000000000000000000 ]] &&
+            git fetch -q --depth=1 origin "$BASE"; then
+            # The inputs of the builder stage that the native build does not share.
+            if ! git diff --name-only "$BASE" HEAD -- Dockerfile .dockerignore \
+              scripts/build-anchor.sh apps/anchor/go.mod apps/anchor/go.sum clients/go/go.mod | grep -q .; then
+              build=false
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+      - if: steps.image.outputs.build == 'true'
         uses: ./.github/actions/build-image
 
   # Pushes the image while the checks run, as go-build-test did. The deploy and
@@ -341,10 +389,52 @@ jobs:
             echo "EOF"
             echo "deploy_image_tag=${short}"
           } >> "$GITHUB_OUTPUT"
-      # The Dockerfile build with cached layers and Go caches (the Dagger
-      # publish rebuilt from a cold engine: 125-162 s).
+      # The binary is built natively, with Go's caches restored as in the
+      # backend jobs, and the image only packages it (the Dockerfile's binary
+      # stage, replaced). Inside Buildx the same build waited 27 s for its
+      # cache to be copied in and 12 s for the modules (2026-11-11); the
+      # Dagger publish took 125-162 s from a cold engine.
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: apps/anchor/go.mod
+          cache: false
+      - name: Check the Dockerfile builds with the same Go
+        run: |
+          docker_go=$(sed -nE 's/^FROM .*golang:([0-9.]+)-alpine.*/\1/p' Dockerfile)
+          mod_go=$(sed -nE 's/^toolchain go([0-9.]+)$/\1/p' apps/anchor/go.mod)
+          if [[ $docker_go != "$mod_go" ]]; then
+            echo "::error::The Dockerfile builds with Go $docker_go, apps/anchor/go.mod pins $mod_go"
+            exit 1
+          fi
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: anchor-publish-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            anchor-publish-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum') }}-
+            anchor-publish-${{ runner.os }}-
+      - name: Build the binary
+        working-directory: apps/anchor
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          VERSION: ${{ steps.publish.outputs.version }}
+          COMMIT_SHA: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+        run: ../../scripts/build-anchor.sh "$RUNNER_TEMP/binary/anchor"
+      - if: github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.cache.outputs.cache-primary-key }}
       - uses: ./.github/actions/build-image
         with:
+          binary-dir: ${{ runner.temp }}/binary
           push: 'true'
           tags: ${{ steps.publish.outputs.refs }}
           version: ${{ steps.publish.outputs.version }}
