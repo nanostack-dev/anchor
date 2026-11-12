@@ -6,8 +6,15 @@ description: >-
   rebuild compiles only what changed. Optionally pushes the image.
 inputs:
   binary-dir:
-    description: A directory holding a prebuilt `anchor` binary for the image.
+    description: >-
+      A directory holding a prebuilt binary per platform, <arch>/anchor (for
+      example amd64/anchor and arm64/anchor).
     default: ''
+  platforms:
+    description: >-
+      Platforms to build, comma-separated. The published image is amd64 and
+      arm64: echopoint's tests run it on the arm64 devbox runner.
+    default: linux/amd64
   push:
     description: Push the image under each tag.
     default: 'false'
@@ -75,7 +82,7 @@ runs:
       with:
         context: .
         file: Dockerfile
-        platforms: linux/amd64
+        platforms: ${{ inputs.platforms }}
         push: ${{ inputs.push }}
         build-contexts: ${{ inputs.binary-dir != '' && format('binary={0}', inputs.binary-dir) || '' }}
         tags: ${{ inputs.tags }}

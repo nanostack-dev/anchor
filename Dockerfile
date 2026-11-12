@@ -34,12 +34,16 @@ COPY scripts/build-anchor.sh /usr/local/bin/build-anchor
 RUN --mount=type=cache,target=/root/.cache/go-build \
     GOOS=$TARGETOS GOARCH=$TARGETARCH build-anchor anchor
 
-# The binary alone. CI replaces this stage with a binary it built natively,
+# The binary alone, at /<arch>/anchor. CI replaces this stage with a
+# directory of binaries it built natively, amd64/anchor and arm64/anchor,
 # with Go's caches warm (`--build-context binary=<dir>`, see
-# .github/actions/build-image); the builder stage then does not run. Keep the
-# Go version above equal to the toolchain in apps/anchor/go.mod.
+# .github/actions/build-image); the builder stage then does not run. One
+# directory serves every platform of a multi-platform build, so the final
+# stage picks its binary by TARGETARCH. Keep the Go version above equal to the
+# toolchain in apps/anchor/go.mod.
 FROM scratch AS binary
-COPY --from=builder /app/anchor /anchor
+ARG TARGETARCH
+COPY --from=builder /app/anchor /${TARGETARCH}/anchor
 
 # Production stage - using distroless for minimal attack surface
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
@@ -59,7 +63,8 @@ LABEL dev.nanostack.config-format="nano"
 WORKDIR /app
 
 # Copy application binary
-COPY --from=binary /anchor .
+ARG TARGETARCH
+COPY --from=binary /${TARGETARCH}/anchor .
 
 # Copy configuration and migrations
 COPY apps/anchor/application.yaml .
