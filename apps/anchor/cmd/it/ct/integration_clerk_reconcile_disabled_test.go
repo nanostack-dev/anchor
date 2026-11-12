@@ -62,12 +62,22 @@ func TestClerkReconcileSkipsADisabledInstance(t *testing.T) {
 	// Observe reconcile jobs for this instance. A disabled instance must not be
 	// reconciled: either no job exists, or every processed job completes without
 	// reaching the Clerk provider (no error from the provider's config/fetch step).
+	//
+	// The update enqueued, before it answered, every job that can reconcile this
+	// instance soon: its own reconcile job, or the scheduler that enqueues one per
+	// keyed instance. So the observation ends once the reconcile queue has
+	// settled (nothing running, nothing due) on two polls in a row, instead of a
+	// fixed window: it used to wait 12 s, alone, before the parallel tests start.
 	const (
-		observeWindow = 12 * time.Second
+		settleTimeout = 30 * time.Second
 		pollEvery     = 250 * time.Millisecond
 	)
-	deadline := time.Now().Add(observeWindow)
-	for time.Now().Before(deadline) {
+	deadline := time.Now().Add(settleTimeout)
+	settledPolls := 0
+	for settledPolls < 2 {
+		require.Truef(t, time.Now().Before(deadline), "the reconcile queue did not settle in %s", settleTimeout)
+		time.Sleep(pollEvery)
+
 		jobs, listErr := reconcileQueue.ListJobs(context.Background(), queue.ListJobsParams{
 			QueueName: integrationReconcileQueueName,
 			Search:    instanceID,
@@ -85,6 +95,33 @@ func TestClerkReconcileSkipsADisabledInstance(t *testing.T) {
 			require.Falsef(t, job.LastError.Valid, "reconcile reached the provider for a disabled instance: %s",
 				job.LastError.String)
 		}
-		time.Sleep(pollEvery)
+
+		if reconcileQueueSettled(t) {
+			settledPolls++
+		} else {
+			settledPolls = 0
+		}
 	}
+}
+
+// reconcileQueueSettled reports whether no integration reconcile job is
+// running or due now. A pending job due later (the scheduler's next run, a
+// retry's backoff) does not count: a retry only follows an error, which the
+// caller checks.
+func reconcileQueueSettled(t *testing.T) bool {
+	t.Helper()
+	for _, status := range []queue.JobStatus{queue.StatusProcessing, queue.StatusPending} {
+		jobs, err := reconcileQueue.ListJobs(context.Background(), queue.ListJobsParams{
+			QueueName: integrationReconcileQueueName,
+			Status:    status,
+			Limit:     1000,
+		})
+		require.NoError(t, err)
+		for _, job := range jobs {
+			if status == queue.StatusProcessing || !job.AvailableAt.After(time.Now()) {
+				return false
+			}
+		}
+	}
+	return true
 }
