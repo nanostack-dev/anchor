@@ -184,14 +184,13 @@ func TestTuples(t *testing.T) {
 
 func TestOwnership(t *testing.T) {
 	t.Run("The sources own disjoint tuples of one Organization and its resource", func(t *testing.T) {
-		compiled, err := model.Compile(model.Catalog{
+		compiled := model.Compile(model.Catalog{
 			Types: []model.Type{
 				{Slug: model.TypeOrganization},
 				{Slug: "project", ParentTypes: []string{model.TypeOrganization}},
 			},
 			Permissions: []model.Permission{{Name: "billing:write", Scope: model.TypeOrganization}},
 		})
-		require.NoError(t, err)
 		engine := fgatest.NewEngine(t)
 		storeID := fgatest.NewStore(t, engine)
 		modelID, err := fga.WriteModel(t.Context(), engine, storeID, compiled.Proto)

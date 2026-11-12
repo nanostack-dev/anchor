@@ -238,5 +238,4 @@ case "$exit_code" in
     fi
     ;;
 esac
-grep -E "Timing|took|Linters took|linters took|stages|packages" "$log_file" | head -60
 report "$exit_code" "$reason"

@@ -221,7 +221,7 @@ jobs:
           # scripts/lint.sh and scripts/go-test-part.sh are what the Dagger
           # checks run too, for `dagger check` on a laptop.
           - group: lint
-            native: scripts/lint.sh backend
+            native: F=apps/anchor/internal/repository/integration_event_repository.go; cp $F /tmp/f.go; sed -i '2,3d' $F; (cd apps/anchor && GOFLAGS="'-gcflags=all=-N -l'" go list -export -deps -test ./... > /dev/null); cp /tmp/f.go $F; echo WARMED; GOFLAGS="'-gcflags=all=-N -l'" scripts/lint.sh backend; rc=$?; grep -hE "took" "$RUNNER_TEMP"/anchor-lint.*/lint.log | cut -c1-300; exit $rc
           # The component suite is the longest: eight parts, a runner each.
           # Parts are balanced by the tests' measured times
           # (scripts/ct-test-times.txt, GO_TEST_TIMES below): 87 s of laptop
@@ -254,10 +254,10 @@ jobs:
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 8
             containers: true
           - group: service-tests
-            native: cd apps/anchor/cmd/it/service && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" ./... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" ./...
+            native: cd apps/anchor/cmd/it/service && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" -ldflags="$GO_TEST_LDFLAGS" ./... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" -ldflags="$GO_TEST_LDFLAGS" ./...
             containers: true
           - group: unit-and-wiring-tests
-            native: cd apps/anchor && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE test=$SECONDS"
+            native: cd apps/anchor && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" -ldflags="$GO_TEST_LDFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" -ldflags="$GO_TEST_LDFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE test=$SECONDS"
           # The generated-code and lint-tooling Dagger checks, natively: a
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
@@ -316,6 +316,7 @@ jobs:
           # others import, they compiled about 27 % faster (laptop), and the
           # suites ran no slower (they wait on the database, not the CPU).
           GO_TEST_GCFLAGS: all=-N -l
+          GO_TEST_LDFLAGS: -w -s
           GO_TEST_TIMES: scripts/ct-test-times.txt
           RUN: ${{ matrix.native }}
         run: |

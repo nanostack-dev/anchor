@@ -1,5 +1,6 @@
-// CI probe: throwaway change.
 package repository
+
+// CI probe: throwaway change.
 
 import (
 	"context"

@@ -42,11 +42,13 @@ if [[ -z $tests ]]; then
 fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
 if [[ -n ${GO_TEST_GCFLAGS:-} ]]; then extra+=("-gcflags=$GO_TEST_GCFLAGS"); fi
+if [[ -n ${GO_TEST_LDFLAGS:-} ]]; then extra+=("-ldflags=$GO_TEST_LDFLAGS"); fi
 json="$(mktemp)"
 SECONDS=0; go test -c -o /dev/null ${extra[@]+"${extra[@]}"} . ; echo "MEASURE compile=${SECONDS}s"; SECONDS=0
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?
 echo "MEASURE test=${SECONDS}s"
+jq -rs '[.[] | select(.Action == "pass" and .Test)] | group_by(.Test | split("/")[0])[] | [(.[0].Test | split("/")[0]), (map(select(.Test | split("/") | length <= 2) | .Elapsed) | add)] | "WORK \(.[0]) \(.[1])"' "$json" || true
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
 ran=$(grep -oE '"Action":"(pass|skip)","Package":"[^"]*","Test":"Test[^/"]*"' "$json" | wc -l)
 printf 'ran %s of %s selected tests\n' "$ran" "$want"

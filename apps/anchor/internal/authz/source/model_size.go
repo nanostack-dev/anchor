@@ -79,11 +79,7 @@ func (g *ModelSizeGuard) ObserveTx(ctx context.Context, event events.Event) erro
 	if g.fitting(hash) {
 		return nil
 	}
-	compiled, err := model.Compile(catalog)
-	if err != nil {
-		return err
-	}
-	if size := compiled.Bytes(); size > model.MaxBytes {
+	if size := model.Compile(catalog).Bytes(); size > model.MaxBytes {
 		return NewModelTooLargeError(size)
 	}
 	g.remember(hash)
