@@ -123,6 +123,12 @@ jobs:
   # never holds the backend deploy.
   frontend:
     name: frontend (${{ matrix.part }})
+    # A pull request that changes no frontend file skips these jobs (ci-ok
+    # accepts skipped): on a Go-only change the Storybook shards were the
+    # slowest jobs of the run (51-69 s, 2026-11-12). A push to main runs them
+    # all, because the deploy dispatch follows this job.
+    needs: detect_changes
+    if: github.event_name != 'pull_request' || needs.detect_changes.outputs.frontend_changed == 'true'
     # Playwright 1.60 cannot install Chromium's system deps on Ubuntu 26.04
     # (ubuntu-latest), as in e2e-app.yml.
     runs-on: ubuntu-24.04
@@ -137,18 +143,24 @@ jobs:
             run: pnpm check && pnpm typecheck && pnpm openapi-ts && git diff --exit-code -- src/client
           - part: unit tests and build
             run: pnpm test && pnpm build
-          # Four shards: two took 69-108 s each, three 67-81 s (2026-11-11).
-          - part: storybook 1/4
-            run: pnpm test-storybook --shard=1/4
+          # Six shards: four ran 51-69 s jobs, 30-38 s of tests each (2026-11-12).
+          - part: storybook 1/6
+            run: pnpm test-storybook --shard=1/6
             browser: true
-          - part: storybook 2/4
-            run: pnpm test-storybook --shard=2/4
+          - part: storybook 2/6
+            run: pnpm test-storybook --shard=2/6
             browser: true
-          - part: storybook 3/4
-            run: pnpm test-storybook --shard=3/4
+          - part: storybook 3/6
+            run: pnpm test-storybook --shard=3/6
             browser: true
-          - part: storybook 4/4
-            run: pnpm test-storybook --shard=4/4
+          - part: storybook 4/6
+            run: pnpm test-storybook --shard=4/6
+            browser: true
+          - part: storybook 5/6
+            run: pnpm test-storybook --shard=5/6
+            browser: true
+          - part: storybook 6/6
+            run: pnpm test-storybook --shard=6/6
             browser: true
     defaults:
       run:
