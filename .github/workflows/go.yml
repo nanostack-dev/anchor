@@ -309,16 +309,13 @@ jobs:
       # Go's caches key on file contents, so a restored cache rebuilds and
       # re-runs only what changed. main saves under its commit; a pull request
       # restores the newest and saves only when there was none (each save
-      # costs about 12 s and the repository has 10 GB of cache). The module
-      # zips stay out: Go builds from the extracted modules, and the zips were
-      # 180 of a cache's 490 MB (a restore took 6-9 s).
+      # costs about 12 s and the repository has 10 GB of cache).
       - if: matrix.native
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
-            !~/go/pkg/mod/cache/download/**/*.zip
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: anchor-${{ matrix.group }}-${{ runner.os }}-${{ runner.arch }}-nol-${{ hashFiles('apps/anchor/go.sum', 'apps/anchor/tools/golangci-lint/go.sum') }}-${{ github.sha }}
@@ -354,12 +351,17 @@ jobs:
             cat "$RUNNER_TEMP"/anchor-lint.*/lint.log
           fi
           exit "$rc"
+      # Go builds from the extracted modules, so the module zips (about 175 of
+      # a cache's 490 MB) stay out. A `!` pattern in the cache paths left them
+      # in (2026-11-12).
+      - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
+        name: Leave the module zips out of the cache
+        run: find ~/go/pkg/mod/cache/download -name '*.zip' -delete
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
-            !~/go/pkg/mod/cache/download/**/*.zip
             ~/.cache/go-build
             ~/.cache/golangci-lint
           key: ${{ steps.cache.outputs.cache-primary-key }}
