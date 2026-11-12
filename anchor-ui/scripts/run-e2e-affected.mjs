@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { verifyCompletion } from "./e2e-completion.mjs";
+import { scenarios, verifyCompletion } from "./e2e-completion.mjs";
 import { planFromGit } from "./e2e-impact.mjs";
 import { statusRuntime } from "./e2e-runtime.mjs";
 
@@ -44,15 +44,21 @@ async function main(args) {
 	const options = { cwd };
 	let complete = false;
 	let list = false;
+	let shard;
 	for (let i = 0; i < args.length; i++) {
 		if (args[i] === "--help") {
 			console.log(
-				"Usage: node scripts/run-e2e-affected.mjs [--base <ref>] [--head <ref>] [--complete] [--list]\nFocused runs select affected domains. --complete runs and verifies the entire current inventory, affected first. Filtering flags are deliberately unsupported.",
+				"Usage: node scripts/run-e2e-affected.mjs [--base <ref>] [--head <ref>] [--complete [--shard <i>/<n>]] [--list]\nFocused runs select affected domains. --complete runs and verifies the entire current inventory, affected first. --shard runs and verifies one Playwright shard of it; e2e-shards.mjs then proves the shards together ran every scenario once. Other filtering flags are deliberately unsupported.",
 			);
 			return;
 		}
 		if (args[i] === "--complete") complete = true;
 		else if (args[i] === "--list") list = true;
+		else if (
+			args[i] === "--shard" &&
+			/^[1-9]\d*\/[1-9]\d*$/.test(args[i + 1] ?? "")
+		)
+			shard = args[++i];
 		else if (
 			["--base", "--head"].includes(args[i]) &&
 			args[i + 1] &&
@@ -61,6 +67,9 @@ async function main(args) {
 			options[args[i].slice(2)] = args[++i];
 		else throw new Error(`Unknown option or missing value: ${args[i]}`);
 	}
+	if (shard && !complete)
+		throw new Error("--shard needs --complete: a focused run is not split.");
+	const shardArgs = shard ? [`--shard=${shard}`] : [];
 	const plan = planFromGit(options);
 	console.log(
 		`Browser selection: ${plan.mode}; ${plan.testPaths.length}/${plan.allTestPaths.length} spec files; ${plan.domains.join(", ") || "no feature changes"}.`,
@@ -109,21 +118,21 @@ async function main(args) {
 			path.join(cwd, "test-results/selection.json"),
 			JSON.stringify({ ...plan, complete }, null, 2),
 		);
+		const listTests = (configFile, extra) =>
+			run(
+				["--config", configFile, "--list", "--reporter=json", ...extra],
+				env,
+				true,
+			).then(JSON.parse);
+		// A shard is a slice of the run's own config: list it with the same
+		// config and flag, so the expected slice is the one Playwright runs.
 		const inventory = complete
-			? JSON.parse(
-					await run(
-						[
-							"--config",
-							"playwright.app.config.ts",
-							"--list",
-							"--reporter=json",
-						],
-						env,
-						true,
-					),
-				)
+			? await listTests(shard ? config : "playwright.app.config.ts", shardArgs)
 			: null;
-		await run(["--config", config], env);
+		const fullInventory = shard
+			? await listTests("playwright.app.config.ts", [])
+			: null;
+		await run(["--config", config, ...shardArgs], env);
 		if (complete) {
 			const report = JSON.parse(await readFile(reportPath, "utf8"));
 			const proof = {
@@ -132,13 +141,20 @@ async function main(args) {
 				head: plan.head,
 				mergeBase: plan.mergeBase,
 				mode: plan.mode,
+				...(shard && {
+					shard,
+					ran: scenarios(inventory).map(({ identity }) => identity),
+					inventory: scenarios(fullInventory).map(({ identity }) => identity),
+				}),
 			};
 			await writeFile(
 				path.join(cwd, "test-results/completion.json"),
 				JSON.stringify(proof, null, 2),
 			);
 			console.log(
-				`Complete coverage verified: ${proof.scenarios} distinct scenarios passed once, without skips or retries.`,
+				shard
+					? `Shard ${shard} verified: ${proof.scenarios} distinct scenarios passed once, without skips or retries.`
+					: `Complete coverage verified: ${proof.scenarios} distinct scenarios passed once, without skips or retries.`,
 			);
 		} else
 			console.log(

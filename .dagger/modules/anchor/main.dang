@@ -119,9 +119,47 @@ type Anchor {
   }
 
   """
-  Component tests (apps/anchor/cmd/it/ct).
+  One part of a package's top-level tests, as CI runs it natively:
+  scripts/go-test-part.sh (every partsth test from offset part, and a failure
+  unless every selected test ran).
   """
-  componentTests(ws: Workspace!): Void @check { goTests(ws, "cmd/it/ct") }
+  let goTestsPart(ws: Workspace!, dir: String!, part: String!, parts: String!): Void {
+    goTestBase(ws)
+      .withWorkdir("/repo")
+      .withExec(
+        ["sh", "-c", "dockerd > /tmp/dockerd.log 2>&1 & for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker info > /dev/null || { cat /tmp/dockerd.log; exit 1; }; bash scripts/go-test-part.sh apps/anchor/" + dir + " " + part + " " + parts],
+        insecureRootCapabilities: true,
+      )
+      .sync
+    null
+  }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 1 of 5: the suite is the
+  longest check (4m35s on a cold 4 vCPU runner), so CI runs each part on its
+  own runner. Together the parts run every test.
+  """
+  componentTestsA(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "0", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 2 of 5.
+  """
+  componentTestsB(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "1", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 3 of 5.
+  """
+  componentTestsC(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "2", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 4 of 5.
+  """
+  componentTestsD(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "3", "5") }
+
+  """
+  Component tests (apps/anchor/cmd/it/ct), part 5 of 5.
+  """
+  componentTestsE(ws: Workspace!): Void @check { goTestsPart(ws, "cmd/it/ct", "4", "5") }
 
   """
   Service tests (apps/anchor/cmd/it/service).

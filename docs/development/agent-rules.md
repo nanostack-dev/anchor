@@ -119,7 +119,7 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
 - Follow `.github/pull_request_template.md`. `gh pr create` starts from it. Keep every section, and fill each one in.
 - The preview checkbox controls the preview environment. Select it to deploy a preview for the pull request. Clear it to destroy the preview.
 - Never delete the `<!-- preview-deploy -->` marker on that line. CI finds the checkbox with the marker, not with the label text.
-- CI reads the checkbox live on each build, so select it before you push. A checkbox selected later makes `preview-toggle.yml` re-run the full build, because the preview image is tagged from the merge commit of the build.
+- CI reads the checkbox live on each build, so select it before you push. A checkbox selected later makes `preview.yml` re-run the full build, because the preview image is tagged from the merge commit of the build.
 - A cleared checkbox starts the cleanup as soon as you save the description. A closed pull request always destroys the preview.
 - `main` has no branch protection and auto-merge is disabled: wait with `gh pr checks <n> --watch`, then `gh pr merge <n> --squash --delete-branch`.
 - A merge that touches `clients/go/**` auto-tags `clients/go/vX` through `release-client.yml`. Find your tag with `git tag --contains <merge-sha> 'clients/go/*'` after `git fetch --tags`, not by guessing the next version.
