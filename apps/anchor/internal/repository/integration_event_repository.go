@@ -1,5 +1,7 @@
 package repository
 
+// CI probe: line shift.
+
 import (
 	"context"
 	"database/sql"
