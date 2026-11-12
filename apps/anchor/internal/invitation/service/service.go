@@ -136,6 +136,7 @@ func (s *organizationInvitationService) Create(
 func (s *organizationInvitationService) Get(
 	ctx context.Context, input organizationinvitation.GetInput,
 ) (organizationinvitation.Invitation, error) {
+	// Probe: measures CI time for a typical service change. Do not merge.
 	if err := validate.ValidateStruct(input); err != nil {
 		return organizationinvitation.Invitation{}, err
 	}
