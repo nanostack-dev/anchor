@@ -10,7 +10,7 @@
 # missing from the file counts 0.5 s), so the parts take about as long.
 #
 # Usage: scripts/go-test-part.sh <package dir> <part> <parts>
-# Example: GO_TEST_TIMES=scripts/go-test-times.txt scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 12
+# Example: GO_TEST_TIMES=scripts/go-test-times.txt scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 16
 # GO_TEST_FLAGS adds flags to `go test` (CI sets -parallel).
 set -euo pipefail
 
