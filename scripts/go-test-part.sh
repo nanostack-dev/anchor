@@ -48,5 +48,8 @@ go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
 ran=$(grep -oE '"Action":"(pass|skip)","Package":"[^"]*","Test":"Test[^/"]*"' "$json" | wc -l)
 printf 'ran %s of %s selected tests\n' "$ran" "$want"
+# The slow tests, to keep scripts/ct-test-times.txt honest.
+printf 'top-level tests over 5 s:\n'
+go run gotest.tools/gotestsum@v1.13.0 tool slowest --jsonfile "$json" --threshold 5s | awk '$2 !~ /\//' || true
 if [[ $ran -ne $want ]]; then exit 1; fi
 exit "$rc"
