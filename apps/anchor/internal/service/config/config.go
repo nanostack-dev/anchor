@@ -58,6 +58,12 @@ func (c *CoreConfig) IsDevelopment() bool {
 	return c.Environment == "development"
 }
 
+// IsTest reports the test suites' environment (cmd/it/*/application.yaml);
+// no deployment uses it.
+func (c *CoreConfig) IsTest() bool {
+	return c.Environment == "test"
+}
+
 // IsProduction accepts "prod" because the infra renderer writes the deploy
 // environment name, not the process name, into core.environment.
 func (c *CoreConfig) IsProduction() bool {
