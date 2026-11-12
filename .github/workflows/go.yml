@@ -220,12 +220,8 @@ jobs:
           # cold: lint 225-282 s (2 s warm), each test group 205-268 s.
           # scripts/lint.sh and scripts/go-test-part.sh are what the Dagger
           # checks run too, for `dagger check` on a laptop.
-          # golangci-lint loads every package's export data, which Go compiles:
-          # after a change to a package 26 others import, 44 of lint's 58 s.
-          # Without optimizations it took 27 s (2026-11-12); lint only reads
-          # the types. GOFLAGS splits on spaces, so the pair is quoted.
           - group: lint
-            native: GOFLAGS="'-gcflags=all=-N -l'" scripts/lint.sh backend
+            native: scripts/lint.sh backend
           # The component suite is the longest: twelve parts, a runner each.
           # Parts are balanced by the tests' measured CI times
           # (scripts/go-test-times.txt, GO_TEST_TIMES below): about 100 s of
@@ -280,7 +276,7 @@ jobs:
             native: scripts/go-test-part.sh apps/anchor/cmd/it/service 1 2
             containers: true
           - group: unit-and-wiring-tests
-            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/...
+            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails ./internal/... ./cmd/app/...
           # The generated-code and lint-tooling Dagger checks, natively: a
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
@@ -335,10 +331,15 @@ jobs:
         env:
           CGO_ENABLED: '0'
           GO_TEST_FLAGS: -parallel 8
-          # Tests build without optimizations: after a change to a package 26
-          # others import, they compiled about 27 % faster (laptop), and the
-          # suites ran no slower (they wait on the database, not the CPU).
-          GO_TEST_GCFLAGS: all=-N -l
+          # Everything builds without optimizations. After a change to a
+          # package 26 others import: the tests compiled about 27 % faster
+          # (laptop) and ran no slower (they wait on the database); lint's
+          # export data loading went 44 -> 27 s; and the go/packages loads in
+          # cmd/app's generated-files test and check-generated.sh no longer
+          # compile optimized copies (cmd/app took 29.5 s, 2.3 s on a laptop).
+          # As GOFLAGS, it reaches every go command a job runs. GOFLAGS splits
+          # on spaces, so the pair is quoted.
+          GOFLAGS: "'-gcflags=all=-N -l'"
           GO_TEST_TIMES: scripts/go-test-times.txt
           RUN: ${{ matrix.native }}
         run: |

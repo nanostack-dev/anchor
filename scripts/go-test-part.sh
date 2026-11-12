@@ -11,8 +11,7 @@
 #
 # Usage: scripts/go-test-part.sh <package dir> <part> <parts>
 # Example: GO_TEST_TIMES=scripts/go-test-times.txt scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 12
-# GO_TEST_FLAGS adds flags to `go test` (CI sets -parallel); GO_TEST_GCFLAGS
-# sets -gcflags (CI: "all=-N -l", which compiles faster).
+# GO_TEST_FLAGS adds flags to `go test` (CI sets -parallel).
 set -euo pipefail
 
 if [[ $# -ne 3 || ! $2 =~ ^[0-9]+$ || ! $3 =~ ^[1-9][0-9]*$ || $2 -ge $3 ]]; then
@@ -41,7 +40,6 @@ if [[ -z $tests ]]; then
   exit 1
 fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
-if [[ -n ${GO_TEST_GCFLAGS:-} ]]; then extra+=("-gcflags=$GO_TEST_GCFLAGS"); fi
 json="$(mktemp)"
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?
