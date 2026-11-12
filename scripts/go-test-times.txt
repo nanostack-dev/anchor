@@ -1,4 +1,4 @@
-# Seconds of work in each top-level component and service test
+# (probe) Seconds of work in each top-level component and service test
 # (apps/anchor/cmd/it/ct and cmd/it/service) on a CI runner: its own time plus its direct subtests', for
 # scripts/go-test-part.sh to balance the CI parts. Stale entries only
 # unbalance the parts; a test missing here counts 0.5 s. Each CI part prints
