@@ -29,7 +29,7 @@ The bar: lint and each test job under 1 min, and a cached binary build under 10 
   - `generated-code`
   - `image-builds`
 - **`frontend`** is a matrix: lint/types/API client, unit tests and build, and Storybook in 4 shards. On a pull request it runs only when a frontend file changed.
-- **`publish`** builds the binary and pushes the image while the checks run.
+- **`publish`** builds the amd64 and arm64 binaries and pushes one multi-platform image while the checks run. arm64 is for echopoint's tests on the arm64 devbox runner; the deploy reads the image at `linux/amd64`.
 - **`ci-ok`** is the one check to require. It passes when every job succeeded or was skipped.
 
 ## Optimizations and why

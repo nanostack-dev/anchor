@@ -485,15 +485,21 @@ jobs:
           restore-keys: |
             anchor-publish-${{ runner.os }}-${{ hashFiles('apps/anchor/go.sum') }}-
             anchor-publish-${{ runner.os }}-
-      - name: Build the binary
+      # amd64 for the Swarm nodes, arm64 for echopoint's tests on the arm64
+      # devbox runner (no matching manifest for linux/arm64 on 2026-11-12).
+      # The binary is pure Go (CGO_ENABLED=0) and the final stage runs no
+      # command, so arm64 is a cross-compile and needs no emulation.
+      - name: Build the binaries
         working-directory: apps/anchor
         env:
           GOOS: linux
-          GOARCH: amd64
           VERSION: ${{ steps.publish.outputs.version }}
           COMMIT_SHA: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-        run: ../../scripts/build-anchor.sh "$RUNNER_TEMP/binary/anchor"
+        run: |
+          for arch in amd64 arm64; do
+            GOARCH=$arch ../../scripts/build-anchor.sh "$RUNNER_TEMP/binary/$arch/anchor"
+          done
       - if: github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == ''
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -504,6 +510,7 @@ jobs:
       - uses: ./.github/actions/build-image
         with:
           binary-dir: ${{ runner.temp }}/binary
+          platforms: linux/amd64,linux/arm64
           push: 'true'
           tags: ${{ steps.publish.outputs.refs }}
           version: ${{ steps.publish.outputs.version }}
