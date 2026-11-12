@@ -172,23 +172,10 @@ jobs:
           if [[ ${#shell[@]} -eq 0 ]] || ldd "${shell[0]}" | grep 'not found'; then
             pnpm exec playwright install-deps chromium
           fi
-      # Vite's optimized dependencies for the Storybook tests (about 18 s to
-      # build on a runner). One shard saves; the others only restore.
-      - if: matrix.browser
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        id: vite
-        with:
-          path: anchor-ui/node_modules/.cache/storybook
-          key: storybook-vite-${{ hashFiles('pnpm-lock.yaml', 'anchor-ui/vitest.workspace.ts', 'anchor-ui/.storybook/**') }}
       - name: Run ${{ matrix.part }}
         env:
           RUN: ${{ matrix.run }}
         run: bash -c "$RUN"
-      - if: matrix.part == 'storybook 1/4' && steps.vite.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: anchor-ui/node_modules/.cache/storybook
-          key: ${{ steps.vite.outputs.cache-primary-key }}
 
   # The backend checks, spread over parallel runners (one Go suite, the lint,
   # the generated code or the image build per runner). On one 4 vCPU runner

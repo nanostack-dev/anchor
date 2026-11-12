@@ -1,4 +1,4 @@
-// CI measurement: throwaway change, reverted next commit.
+// CI measurement 2: throwaway change, reverted next commit.
 package repository
 
 import (

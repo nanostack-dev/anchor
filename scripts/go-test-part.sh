@@ -24,7 +24,15 @@ if [[ -z $tests ]]; then
 fi
 json="$(mktemp)"
 rc=0
+# MEASURE (temporary): pull, compile, then the test run.
+t0=$(date +%s)
+for img in timescale/timescaledb:2.23.0-pg18 redis:7-alpine axllent/mailpit:v1.20; do docker pull -q "$img" > /dev/null & done; wait
+t1=$(date +%s)
+go test -c -o "$json.bin" .
+t2=$(date +%s)
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- -run "^($tests)\$" . || rc=$?
+t3=$(date +%s)
+echo "MEASURE pull=$((t1-t0))s compile=$((t2-t1))s gotestsum=$((t3-t2))s"
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
 ran=$(grep -oE '"Action":"(pass|skip)","Package":"[^"]*","Test":"Test[^/"]*"' "$json" | wc -l)
 printf 'ran %s of %s selected tests\n' "$ran" "$want"
