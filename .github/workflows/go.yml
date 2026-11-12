@@ -310,21 +310,10 @@ jobs:
             runner: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # The suite's Postgres and Redis start while Go compiles, and the
-      # suite uses them (ANCHOR_IT_*_ADDR, cmd/it/shared/test_setup.go): it
-      # took 5 s to start its own after a 22 s compile. Mailpit's image is
-      # pulled for the tests that start it. Keep the images and settings equal
-      # to test_setup.go and the Mailpit helper.
+      # Postgres and Redis start while Go compiles; the suites use them.
       - if: matrix.containers
         name: Start the test containers in the background
-        run: |
-          nohup docker run -d --name anchor-it-postgres -p 127.0.0.1:55432:5432 \
-            -e POSTGRES_DB=anchor -e POSTGRES_USER=anchor -e POSTGRES_PASSWORD=anchor -e NO_TS_TUNE=true \
-            timescale/timescaledb:2.23.0-pg18 > /dev/null 2>&1 &
-          nohup docker run -d --name anchor-it-redis -p 127.0.0.1:56379:6379 redis:7-alpine > /dev/null 2>&1 &
-          nohup docker pull -q axllent/mailpit:v1.20 > /dev/null 2>&1 &
-          echo "ANCHOR_IT_POSTGRES_ADDR=127.0.0.1:55432" >> "$GITHUB_ENV"
-          echo "ANCHOR_IT_REDIS_ADDR=127.0.0.1:56379" >> "$GITHUB_ENV"
+        run: scripts/ci/start-test-containers.sh
       - if: matrix.native
         uses: ./.github/actions/install-go
       # One cache per group: a shared key keeps whichever group saved first.
@@ -352,11 +341,10 @@ jobs:
       - if: matrix.native
         name: Date each file by its content
         run: python3 scripts/date-by-content.py
-      # Go moves an entry's time to now when it uses one older than an hour,
-      # so the entries still dated 2000 at the end went unused (Trim the cache).
+      # Only a job that saves its cache needs to know what the run used.
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
-        name: Date the build cache as unused
-        run: find ~/.cache/go-build -type f -name '*-[ad]' -exec touch -d @946684800 {} + 2> /dev/null || true
+        name: Mark the build cache as unused
+        run: scripts/ci/go-cache.sh mark-unused
       - if: matrix.native
         name: Run ${{ matrix.group }}
         env:
@@ -383,16 +371,11 @@ jobs:
             cat "$RUNNER_TEMP"/anchor-lint.*/lint.log
           fi
           exit "$rc"
-      # Go builds from the extracted modules, so the module zips (about 175 of
-      # a cache's 490 MB) stay out. A `!` pattern in the cache paths left them
-      # in (2026-11-12).
+      # Keeps what this run used and drops the module zips. (A `!` pattern in
+      # the cache paths silently left the zips in, 2026-11-12.)
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         name: Trim the cache
-        run: |
-          find ~/go/pkg/mod/cache/download -name '*.zip' -delete
-          # The build cache keeps what this run used (below), not what every
-          # commit of the last five days built.
-          find ~/.cache/go-build -type f -name '*-[ad]' ! -newermt @946684801 -delete 2> /dev/null || true
+        run: scripts/ci/go-cache.sh trim
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
