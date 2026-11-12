@@ -42,12 +42,22 @@ fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
 json="$(mktemp)"
 b="$(mktemp -d)"
-SECONDS=0; go test -c -o "$b/a.test" ${extra[@]+"${extra[@]}"} . ; echo "MEASURE compile_and_link=${SECONDS}s"
-SECONDS=0; go test -c -o "$b/b.test" ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_default=${SECONDS}s"
-SECONDS=0; go test -c -o "$b/c.test" -ldflags='-w -s' ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_ws=${SECONDS}s"
-SECONDS=0; go test -c -o "$b/d.test" -ldflags='-w' ${extra[@]+"${extra[@]}"} . ; echo "MEASURE link_w=${SECONDS}s"
-ls -la "$b" | awk '{print "MEASURE size", $5, $9}'
-SECONDS=0; "$b/a.test" -test.run '^$' > /dev/null 2>&1; echo "MEASURE testmain=${SECONDS}s"
+SECONDS=0; go test -c -o "$b/a.test" -debug-actiongraph="$b/ag.json" ${extra[@]+"${extra[@]}"} . ; echo "MEASURE compile_and_link=${SECONDS}s"
+python3 - "$b/ag.json" <<'PY'
+import json,sys,re
+from datetime import datetime
+a=json.load(open(sys.argv[1]))
+def t(s):
+    m=re.match(r'(.*T\d\d:\d\d:\d\d)(\.\d+)?(.*)',s); return datetime.fromisoformat(m.group(1)+(m.group(2) or '.0')[:7].ljust(7,'0')+m.group(3))
+rows=[]; n=0
+for x in a:
+    if x.get('TimeStart') and x.get('TimeDone') and not x.get('CacheHit') and x.get('Mode') in ('build','link','vet'):
+        n+=1; rows.append(((t(x['TimeDone'])-t(x['TimeStart'])).total_seconds(),x['Mode'],x.get('Package','')))
+hits=sum(1 for x in a if x.get('CacheHit'))
+print('AG rebuilt %d actions, %d cache hits, sum %.1fs'%(n,hits,sum(r[0] for r in rows)))
+for r in sorted(rows,reverse=True)[:12]: print('AG %.2f %s %s'%r)
+PY
+SECONDS=0; TEST_LOG_LEVEL=info "$b/a.test" -test.run '^$' 2>&1 | while IFS= read -r line; do printf 'TM %s %s\n' "$SECONDS" "${line:0:120}"; done | awk '!seen[substr($0,index($0," ")+1,50)]++' | grep -vE "Pull|Waiting|Verifying|Download|Extracting|[0-9a-f]{12}:" | head -40
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
