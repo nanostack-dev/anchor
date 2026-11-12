@@ -345,12 +345,11 @@ jobs:
       - if: matrix.native
         name: Date each file by its content
         run: python3 scripts/date-by-content.py
-      # Go (and golangci-lint, whose cache is Go's) moves an entry's time to
-      # now when it uses one older than an hour, so the entries still dated
-      # 2000 at the end went unused (Trim the cache).
+      # Go moves an entry's time to now when it uses one older than an hour,
+      # so the entries still dated 2000 at the end went unused (Trim the cache).
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         name: Date the build cache as unused
-        run: find ~/.cache/go-build ~/.cache/golangci-lint -type f -name '*-[ad]' -exec touch -d @946684800 {} + 2> /dev/null || true
+        run: find ~/.cache/go-build -type f -name '*-[ad]' -exec touch -d @946684800 {} + 2> /dev/null || true
       - if: matrix.native
         name: Run ${{ matrix.group }}
         env:
@@ -384,9 +383,9 @@ jobs:
         name: Trim the cache
         run: |
           find ~/go/pkg/mod/cache/download -name '*.zip' -delete
-          # The build and lint caches keep what this run used (below), not
-          # what every commit of the last five days built.
-          find ~/.cache/go-build ~/.cache/golangci-lint -type f -name '*-[ad]' ! -newermt @946684801 -delete 2> /dev/null || true
+          # The build cache keeps what this run used (below), not what every
+          # commit of the last five days built.
+          find ~/.cache/go-build -type f -name '*-[ad]' ! -newermt @946684801 -delete 2> /dev/null || true
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
