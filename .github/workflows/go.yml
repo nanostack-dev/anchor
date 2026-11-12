@@ -213,24 +213,35 @@ jobs:
           # checks run too, for `dagger check` on a laptop.
           - group: lint
             native: scripts/lint.sh backend
-          # The component suite is the longest: five parts, a runner each.
+          # The component suite is the longest: eight parts, a runner each.
+          # Parts take every eighth test by name; by laptop timings the
+          # longest part holds 33 s of tests, against 66 s with five parts.
           # -parallel 8 (GO_TEST_FLAGS below): the tests mostly wait on the
           # database, and Go's default of one per CPU left a part at 45 s
           # where 16 took 32 s (part 4 of 5 on a laptop, 2026-11-11).
           - group: component-tests-a
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 5
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 8
             containers: true
           - group: component-tests-b
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 5
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 8
             containers: true
           - group: component-tests-c
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 5
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 8
             containers: true
           - group: component-tests-d
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 5
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 8
             containers: true
           - group: component-tests-e
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 5
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 8
+            containers: true
+          - group: component-tests-f
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 5 8
+            containers: true
+          - group: component-tests-g
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 6 8
+            containers: true
+          - group: component-tests-h
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 8
             containers: true
           - group: service-tests
             native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 ./...
