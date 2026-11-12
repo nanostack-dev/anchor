@@ -201,7 +201,7 @@ if [[ $action == format ]]; then
   set -- fmt --config "$config" --color=never
   if [[ $mode == check ]]; then set -- "$@" --diff; fi
 else
-  set -- run --config "$config" --path-mode=abs --timeout 15m --allow-serial-runners
+  set -- run --config "$config" --path-mode=abs --timeout 15m --allow-serial-runners -v
   if [[ $mode == fix ]]; then set -- "$@" --fix; fi
 fi
 set -- "$@" "${targets[@]}"
@@ -238,4 +238,5 @@ case "$exit_code" in
     fi
     ;;
 esac
+grep -E "Timing|took|Linters took|linters took|stages|packages" "$log_file" | head -60
 report "$exit_code" "$reason"

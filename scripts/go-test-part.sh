@@ -43,8 +43,10 @@ fi
 read -ra extra <<< "${GO_TEST_FLAGS:-}"
 if [[ -n ${GO_TEST_GCFLAGS:-} ]]; then extra+=("-gcflags=$GO_TEST_GCFLAGS"); fi
 json="$(mktemp)"
+SECONDS=0; go test -c -o /dev/null ${extra[@]+"${extra[@]}"} . ; echo "MEASURE compile=${SECONDS}s"; SECONDS=0
 rc=0
 go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails --jsonfile "$json" -- ${extra[@]+"${extra[@]}"} -run "^($tests)\$" . || rc=$?
+echo "MEASURE test=${SECONDS}s"
 want=$(tr '|' '\n' <<< "$tests" | wc -l)
 ran=$(grep -oE '"Action":"(pass|skip)","Package":"[^"]*","Test":"Test[^/"]*"' "$json" | wc -l)
 printf 'ran %s of %s selected tests\n' "$ran" "$want"

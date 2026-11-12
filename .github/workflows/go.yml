@@ -254,10 +254,10 @@ jobs:
             native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 8
             containers: true
           - group: service-tests
-            native: cd apps/anchor/cmd/it/service && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" ./...
+            native: cd apps/anchor/cmd/it/service && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" ./... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -parallel 8 -gcflags="$GO_TEST_GCFLAGS" ./...
             containers: true
           - group: unit-and-wiring-tests
-            native: cd apps/anchor && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/...
+            native: cd apps/anchor && SECONDS=0 && mkdir -p $RUNNER_TEMP/b && go test -c -o $RUNNER_TEMP/b/ -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE compile=$SECONDS" && SECONDS=0 && go run gotest.tools/gotestsum@v1.13.0 --format pkgname-and-test-fails -- -gcflags="$GO_TEST_GCFLAGS" ./internal/... ./cmd/app/... && echo "MEASURE test=$SECONDS"
           # The generated-code and lint-tooling Dagger checks, natively: a
           # fresh database, `nanostack gen -check`, and the lint script tests.
           - group: generated-code
