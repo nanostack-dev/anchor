@@ -1,5 +1,7 @@
 package repository
 
+// CI probe: throwaway line shift, reverted before merge.
+
 import (
 	"context"
 	"database/sql"
