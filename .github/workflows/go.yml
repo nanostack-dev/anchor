@@ -222,50 +222,63 @@ jobs:
           # checks run too, for `dagger check` on a laptop.
           - group: lint
             native: scripts/lint.sh backend
-          # The component suite is the longest: twelve parts, a runner each.
+          # The component suite is the longest: sixteen parts, a runner each.
           # Parts are balanced by the tests' measured CI times
-          # (scripts/go-test-times.txt, GO_TEST_TIMES below): about 100 s of
-          # test work each, where eight parts by laptop times ran 26-48 s of
-          # tests after a 24 s compile. More parts shorten only the test time:
+          # (scripts/go-test-times.txt, GO_TEST_TIMES below): at most 85 s of
+          # test work each (twelve parts held 100 s and ran 58-71 s jobs),
+          # where eight parts by laptop times ran 26-48 s of tests after a
+          # 24 s compile. More parts shorten only the test time:
           # each part compiles the same test binary.
           # -parallel 8 (GO_TEST_FLAGS below): the tests mostly wait on the
           # database, and Go's default of one per CPU left a part at 45 s
           # where 16 took 32 s (part 4 of 5 on a laptop, 2026-11-11).
           - group: component-tests-a
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 0 16
             containers: true
           - group: component-tests-b
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 1 16
             containers: true
           - group: component-tests-c
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 2 16
             containers: true
           - group: component-tests-d
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 3 16
             containers: true
           - group: component-tests-e
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 4 16
             containers: true
           - group: component-tests-f
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 5 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 5 16
             containers: true
           - group: component-tests-g
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 6 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 6 16
             containers: true
           - group: component-tests-h
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 7 16
             containers: true
           - group: component-tests-i
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 8 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 8 16
             containers: true
           - group: component-tests-j
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 9 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 9 16
             containers: true
           - group: component-tests-k
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 10 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 10 16
             containers: true
           - group: component-tests-l
-            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 11 12
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 11 16
+            containers: true
+          - group: component-tests-m
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 12 16
+            containers: true
+          - group: component-tests-n
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 13 16
+            containers: true
+          - group: component-tests-o
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 14 16
+            containers: true
+          - group: component-tests-p
+            native: scripts/go-test-part.sh apps/anchor/cmd/it/ct 15 16
             containers: true
           # The service suite in two parts, balanced like the component parts:
           # 30 s of tests in one.
@@ -332,6 +345,11 @@ jobs:
       - if: matrix.native
         name: Date each file by its content
         run: python3 scripts/date-by-content.py
+      # Go moves an entry's time to now when it uses one older than an hour,
+      # so the entries still dated 2000 at the end went unused (Trim the cache).
+      - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
+        name: Date the build cache as unused
+        run: find ~/.cache/go-build -type f -name '*-[ad]' -exec touch -d @946684800 {} + 2> /dev/null || true
       - if: matrix.native
         name: Run ${{ matrix.group }}
         env:
@@ -362,8 +380,12 @@ jobs:
       # a cache's 490 MB) stay out. A `!` pattern in the cache paths left them
       # in (2026-11-12).
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
-        name: Leave the module zips out of the cache
-        run: find ~/go/pkg/mod/cache/download -name '*.zip' -delete
+        name: Trim the cache
+        run: |
+          find ~/go/pkg/mod/cache/download -name '*.zip' -delete
+          # The build cache keeps what this run used (below), not what every
+          # commit of the last five days built.
+          find ~/.cache/go-build -type f -name '*-[ad]' ! -newermt @946684801 -delete 2> /dev/null || true
       - if: matrix.native && (github.ref == 'refs/heads/main' || steps.cache.outputs.cache-matched-key == '')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
