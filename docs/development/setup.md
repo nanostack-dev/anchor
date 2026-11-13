@@ -49,7 +49,17 @@ For repeated local development, `node scripts/serve-e2e-full.mjs` keeps the mana
 
 ## Run against dev
 
-`scripts/run-dev.sh` runs this checkout's backend against the dev Postgres and Redis over Tailscale. Its config is `.env.dev` in the primary checkout, rendered from 1Password by [`infra/scripts/dev-env.sh anchor`](https://github.com/nanostack-dev/infra/blob/main/scripts/dev-env.sh) (the script runs it when the file is missing; that needs your own 1Password login). Migrations are off, so a branch never migrates the shared dev database. The queue workers still run and can take dev jobs. Agents in worktrees reuse the primary checkout's file.
+Run this checkout's backend against the dev Postgres and Redis over Tailscale. With Tailscale up and your own 1Password login (service accounts cannot read the `Nanostack` vault):
+
+```sh
+../infra/scripts/dev-env.sh anchor   # once, and when the dev item changes
+./scripts/run-dev.sh
+```
+
+[`infra/scripts/dev-env.sh`](https://github.com/nanostack-dev/infra/blob/main/scripts/dev-env.sh) renders `anchor-dev-runtime` as the Swarm deploy does and writes `.env.dev` in the primary checkout (gitignored, mode 600). `run-dev.sh` reads it, renders it first when it is missing, and lets shell variables win; `ALLOWED_ORIGIN` defaults to anchor-ui on port 3000. Agents in worktrees reuse the primary checkout's file and need no 1Password access.
+
+- Migrations are off, so a branch never migrates the shared dev database.
+- The queue workers still run and can take dev jobs.
 
 ## Existing manual configuration
 
