@@ -15,44 +15,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"html"
 	htmltemplate "html/template"
 	"maps"
 	"regexp"
 	"strconv"
-	"strings"
 	texttemplate "text/template"
 
 	"anchor/internal/domain/email"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 )
-
-var (
-	reBlockClose = regexp.MustCompile(`(?i)</(p|div|h[1-6]|li|tr|blockquote|section|article|header|footer|main|table)>`)
-	reLineBreak  = regexp.MustCompile(`(?i)<br\s*/?>`)
-	reStripTags  = regexp.MustCompile(`<[^>]+>`)
-	reMultiSpace = regexp.MustCompile(`[ \t]+`)
-	reMultiLines = regexp.MustCompile(`\n{3,}`)
-)
-
-// htmlToText converts rendered HTML to a readable plain-text fallback.
-// It inserts newlines at block boundaries, strips all tags, and unescapes entities.
-func htmlToText(rendered string) string {
-	s := reBlockClose.ReplaceAllString(rendered, "$0\n")
-	s = reLineBreak.ReplaceAllString(s, "\n")
-	s = reStripTags.ReplaceAllString(s, "")
-	s = html.UnescapeString(s)
-	lines := strings.Split(s, "\n")
-	out := make([]string, 0, len(lines))
-	for _, l := range lines {
-		l = reMultiSpace.ReplaceAllString(strings.TrimSpace(l), " ")
-		out = append(out, l)
-	}
-	s = strings.Join(out, "\n")
-	s = reMultiLines.ReplaceAllString(s, "\n\n")
-	return strings.TrimSpace(s)
-}
 
 // reVarRef matches top-level variable references: {{ .varName }}.
 var reVarRef = regexp.MustCompile(`\{\{-?\s*\.(\w+)`)
