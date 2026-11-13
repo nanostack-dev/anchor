@@ -47,6 +47,10 @@ pnpm test:e2e:ui
 
 For repeated local development, `node scripts/serve-e2e-full.mjs` keeps the managed preview at `http://127.0.0.1:3015`; use the browser guide's ownership/bootstrap procedure. Close its owning manager with Ctrl-C, then verify cleanup with `node scripts/e2e-runtime.mjs verify-stopped`. Runtime metadata, generated credentials and reports stay ignored.
 
+## Run against dev
+
+`scripts/run-dev.sh` runs this checkout's backend against the dev Postgres and Redis over Tailscale. Its config is `.env.dev` in the primary checkout, rendered from 1Password by [`infra/scripts/dev-env.sh anchor`](https://github.com/nanostack-dev/infra/blob/main/scripts/dev-env.sh) (the script runs it when the file is missing; that needs your own 1Password login). Migrations are off, so a branch never migrates the shared dev database. The queue workers still run and can take dev jobs. Agents in worktrees reuse the primary checkout's file.
+
 ## Existing manual configuration
 
 The backend binds its typed configuration (`apps/anchor/cmd/app.Config`) from the environment, then the YAML file of `CONFIG_PATH` (or [apps/anchor/application.yaml](../../apps/anchor/application.yaml)), then the defaults. [apps/anchor/cmd/app/CONFIG.md](../../apps/anchor/cmd/app/CONFIG.md) lists every setting with its env variable and default. A config file holds no secret and no `${...}` placeholder: set `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `ADMIN_JWT_SECRET` and `APP_ENCRYPTION_KEY` in the environment, or their `*_FILE` variables with a path to a file. Provide the nonsecret connection settings (`POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_DB`, ...) when using an independently provisioned stack. Startup owns migrations from `apps/anchor/migrations`.
