@@ -47,6 +47,20 @@ pnpm test:e2e:ui
 
 For repeated local development, `node scripts/serve-e2e-full.mjs` keeps the managed preview at `http://127.0.0.1:3015`; use the browser guide's ownership/bootstrap procedure. Close its owning manager with Ctrl-C, then verify cleanup with `node scripts/e2e-runtime.mjs verify-stopped`. Runtime metadata, generated credentials and reports stay ignored.
 
+## Run against dev
+
+Run this checkout's backend against the dev Postgres and Redis over Tailscale. With Tailscale up and your own 1Password login (service accounts cannot read the `Nanostack` vault):
+
+```sh
+../infra/scripts/dev-env.sh anchor   # once, and when the dev item changes
+./scripts/run-dev.sh
+```
+
+[`infra/scripts/dev-env.sh`](https://github.com/nanostack-dev/infra/blob/main/scripts/dev-env.sh) renders `anchor-dev-runtime` as the Swarm deploy does and writes `.env.dev` in the primary checkout (gitignored, mode 600). `run-dev.sh` reads it, renders it first when it is missing, and lets shell variables win; `ALLOWED_ORIGIN` defaults to anchor-ui on port 3000. Agents in worktrees reuse the primary checkout's file and need no 1Password access.
+
+- Migrations are off, so a branch never migrates the shared dev database.
+- The queue workers still run and can take dev jobs.
+
 ## Existing manual configuration
 
 The backend binds its typed configuration (`apps/anchor/cmd/app.Config`) from the environment, then the YAML file of `CONFIG_PATH` (or [apps/anchor/application.yaml](../../apps/anchor/application.yaml)), then the defaults. [apps/anchor/cmd/app/CONFIG.md](../../apps/anchor/cmd/app/CONFIG.md) lists every setting with its env variable and default. A config file holds no secret and no `${...}` placeholder: set `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `ADMIN_JWT_SECRET` and `APP_ENCRYPTION_KEY` in the environment, or their `*_FILE` variables with a path to a file. Provide the nonsecret connection settings (`POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_DB`, ...) when using an independently provisioned stack. Startup owns migrations from `apps/anchor/migrations`.
