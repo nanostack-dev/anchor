@@ -115,12 +115,17 @@ The failed browser action log showed the visible toast title and content interce
 the button's pointer events. The accessibility snapshot names this notification
 as the dialog **Store the event signing secret now. It is not shown again.**, with
 a **Close toast** button, matching the shared design-system toast source. After
-checking the newly minted secret panel, scope to that named dialog, activate
-**Close toast** with `press("Enter")`, and assert the dialog is absent before
+checking the newly minted secret panel, scope to that named dialog, hover it,
+activate **Close toast** with `press("Enter")`, and assert the dialog is absent before
 editing and discarding the endpoint draft. This follows the real dismissal
 control without a fixed delay or forced click. The action log does not establish why
 the notification remained visible; do not infer a product defect from this
-pointer interception alone. Keep the reload, one-time secret and signed-delivery
+pointer interception alone. Base UI marks **Close toast** `aria-hidden` until
+the toast stack expands on hover or focus, so the role locator cannot find it
+before the hover. Before design system 0.2.6 the stack was already expanded at
+this point, most likely because the 500 ms slide-in passed under the cursor; with
+the shorter entrance it is not.
+Keep the reload, one-time secret and signed-delivery
 assertions after dismissal.
 
 After this repair, the signed-webhook scenario passed three consecutive Chromium

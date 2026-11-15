@@ -105,8 +105,9 @@ they are reliability samples, not a replacement for the full-suite performance m
 A creation notification can overlap the template editor's bottom-right Cancel
 button during a rapid create-to-edit journey. The failure log showed the actual
 “License template created” dialog intercepting the click; that dialog exposes a
-“Close toast” button. Assert the specific notification, activate its close button
-with Enter and assert it disappears before continuing. Keyboard activation also
+“Close toast” button. Assert the specific notification, hover it (Base UI keeps
+“Close toast” `aria-hidden` until the toast stack expands on hover or focus),
+activate its close button with Enter and assert it disappears before continuing. Keyboard activation also
 avoids chasing the close control while its entrance animation moves it; a pointer
 click can wait for stability until the toast expires and then time out on the
 removed control. Do not force the covered form

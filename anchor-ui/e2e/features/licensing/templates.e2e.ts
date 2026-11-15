@@ -69,6 +69,9 @@ test("templates validate every required value and support create, view, cancel a
 		exact: true,
 	});
 	await expect(createdToast).toBeVisible();
+	// Base UI hides Close toast from assistive tech until the stack expands.
+	// Hovering the notification expands it, as it does for a person.
+	await createdToast.hover();
 	await createdToast
 		.getByRole("button", { name: "Close toast", exact: true })
 		.press("Enter");

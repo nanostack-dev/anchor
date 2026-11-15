@@ -331,6 +331,9 @@ test("event subscriptions filter, persist and deliver a verifiable signed webhoo
 			exact: true,
 		});
 		await expect(secretToast).toBeVisible();
+		// Base UI hides Close toast from assistive tech until the stack expands.
+		// Hovering the notification expands it, as it does for a person.
+		await secretToast.hover();
 		await secretToast
 			.getByRole("button", { name: "Close toast", exact: true })
 			.press("Enter");
