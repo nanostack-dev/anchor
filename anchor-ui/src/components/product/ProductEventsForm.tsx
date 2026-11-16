@@ -33,7 +33,11 @@ import {
 	FieldGroup,
 	FieldLabel,
 } from "@nanostackorg/design-system/components/field";
-import { Input } from "@nanostackorg/design-system/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from "@nanostackorg/design-system/components/input-group";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { toast } from "@nanostackorg/design-system/components/toast";
 import { Box } from "@nanostackorg/design-system/layout/box";
@@ -378,111 +382,116 @@ export function ProductEventsForm({
 									</Box>
 								</CardHeader>
 								<CardContent>
-									{hadEvents && deliveryStatus ? (
-										<Alert
-											tone={
-												deliveryStatus === "failed" ? "critical" : "neutral"
-											}
-											role={deliveryStatus === "failed" ? "alert" : "status"}
-										>
-											<AlertTitle>Delivery status</AlertTitle>
-											<AlertDescription>
-												{deliveryStatus === "failed"
-													? `Last call failed · ${failedCalls} consecutive failed ${failedCalls === 1 ? "call" : "calls"}. Anchor attempts each event up to six times.`
-													: deliveryStatus === "succeeded"
-														? "Last call succeeded."
-														: "No delivery attempts yet."}
-											</AlertDescription>
-										</Alert>
-									) : null}
-									{revealedSecret ? (
-										<Alert tone="warning">
-											<KeyRound className="size-4" />
-											<AlertTitle>New Signing Secret Minted</AlertTitle>
-											<AlertDescription>
-												<p>
-													Store this secret in your webhook handler. It
-													validates payload signatures in the{" "}
-													<code className="font-mono font-semibold">
-														webhook-signature
-													</code>{" "}
-													header. For security, it cannot be revealed again.
-												</p>
-												<Box className="flex items-center gap-2 rounded-xl border border-border bg-background p-2.5 shadow-2xs">
-													<code className="flex-1 truncate font-mono text-xs text-foreground">
-														{revealedSecret}
-													</code>
-													<Button
-														type="button"
-														variant="outline"
-														size="sm"
-														onClick={() => {
-															void navigator.clipboard.writeText(
-																revealedSecret,
-															);
-															setSecretCopied(true);
-															window.setTimeout(
-																() => setSecretCopied(false),
-																1500,
-															);
-														}}
-													>
-														{secretCopied ? (
-															<>
-																<Check className="mr-1 size-3 text-success" />{" "}
-																Copied
-															</>
-														) : (
-															<>
-																<Copy className="mr-1 size-3" /> Copy Secret
-															</>
-														)}
-													</Button>
-												</Box>
-											</AlertDescription>
-										</Alert>
-									) : null}
-
-									<FieldGroup>
-										<form.Field name="eventsEndpointUrl">
-											{(urlField) => (
-												<Field
-													data-disabled={updateMutation.isPending}
-													data-invalid={urlField.state.meta.errors.length > 0}
-												>
-													<FieldLabel htmlFor="events-endpoint-url">
-														Event endpoint URL
-													</FieldLabel>
-													<Box className="relative mt-1">
-														<Globe className="absolute top-2.5 left-3 size-4 text-muted-foreground/70" />
-														<Input
-															font="mono"
-															id="events-endpoint-url"
-															placeholder="https://api.yourdomain.com/webhooks/anchor"
-															value={urlField.state.value}
-															onChange={(e) =>
-																urlField.handleChange(e.target.value)
-															}
-															onBlur={urlField.handleBlur}
-															disabled={updateMutation.isPending}
-															aria-invalid={
-																urlField.state.meta.errors.length > 0
-															}
-														/>
+									<Box className="flex flex-col gap-4">
+										{hadEvents && deliveryStatus ? (
+											<Alert
+												tone={
+													deliveryStatus === "failed" ? "critical" : "neutral"
+												}
+												role={deliveryStatus === "failed" ? "alert" : "status"}
+											>
+												<AlertTitle>Delivery status</AlertTitle>
+												<AlertDescription>
+													{deliveryStatus === "failed"
+														? `Last call failed · ${failedCalls} consecutive failed ${failedCalls === 1 ? "call" : "calls"}. Anchor attempts each event up to six times.`
+														: deliveryStatus === "succeeded"
+															? "Last call succeeded."
+															: "No delivery attempts yet."}
+												</AlertDescription>
+											</Alert>
+										) : null}
+										{revealedSecret ? (
+											<Alert tone="warning">
+												<KeyRound className="size-4" />
+												<AlertTitle>New Signing Secret Minted</AlertTitle>
+												<AlertDescription>
+													<p>
+														Store this secret in your webhook handler. It
+														validates payload signatures in the{" "}
+														<code className="font-mono font-semibold">
+															webhook-signature
+														</code>{" "}
+														header. For security, it cannot be revealed again.
+													</p>
+													<Box className="flex items-center gap-2 rounded-xl border border-border bg-background p-2.5 shadow-2xs">
+														<code className="flex-1 truncate font-mono text-xs text-foreground">
+															{revealedSecret}
+														</code>
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															onClick={() => {
+																void navigator.clipboard.writeText(
+																	revealedSecret,
+																);
+																setSecretCopied(true);
+																window.setTimeout(
+																	() => setSecretCopied(false),
+																	1500,
+																);
+															}}
+														>
+															{secretCopied ? (
+																<>
+																	<Check className="mr-1 size-3 text-success" />{" "}
+																	Copied
+																</>
+															) : (
+																<>
+																	<Copy className="mr-1 size-3" /> Copy Secret
+																</>
+															)}
+														</Button>
 													</Box>
-													<FieldDescription>
-														Anchor POSTs signed catalog events here. Leave empty
-														to clear the endpoint. Production requires HTTPS.
-														Anchor mints the signing secret on first save.
-														{product.config.events?.signing_secret_obfuscated
-															? ` Stored secret: ${product.config.events.signing_secret_obfuscated}.`
-															: ""}
-													</FieldDescription>
-													<FormValidationError field={urlField} />
-												</Field>
-											)}
-										</form.Field>
-									</FieldGroup>
+												</AlertDescription>
+											</Alert>
+										) : null}
+
+										<FieldGroup>
+											<form.Field name="eventsEndpointUrl">
+												{(urlField) => (
+													<Field
+														data-disabled={updateMutation.isPending}
+														data-invalid={urlField.state.meta.errors.length > 0}
+													>
+														<FieldLabel htmlFor="events-endpoint-url">
+															Event endpoint URL
+														</FieldLabel>
+														<InputGroup>
+															<InputGroupAddon>
+																<Globe aria-hidden />
+															</InputGroupAddon>
+															<InputGroupInput
+																font="mono"
+																id="events-endpoint-url"
+																placeholder="https://api.yourdomain.com/webhooks/anchor"
+																value={urlField.state.value}
+																onChange={(e) =>
+																	urlField.handleChange(e.target.value)
+																}
+																onBlur={urlField.handleBlur}
+																disabled={updateMutation.isPending}
+																aria-invalid={
+																	urlField.state.meta.errors.length > 0
+																}
+															/>
+														</InputGroup>
+														<FieldDescription>
+															Anchor POSTs signed catalog events here. Leave
+															empty to clear the endpoint. Production requires
+															HTTPS. Anchor mints the signing secret on first
+															save.
+															{product.config.events?.signing_secret_obfuscated
+																? ` Stored secret: ${product.config.events.signing_secret_obfuscated}.`
+																: ""}
+														</FieldDescription>
+														<FormValidationError field={urlField} />
+													</Field>
+												)}
+											</form.Field>
+										</FieldGroup>
+									</Box>
 								</CardContent>
 							</Card>
 							<Card>
@@ -515,184 +524,194 @@ export function ProductEventsForm({
 									</Box>
 								</CardHeader>
 								<CardContent>
-									<Box className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-										<Box className="relative max-w-sm flex-1">
-											<Search className="absolute top-2.5 left-3 size-4 text-muted-foreground/70" />
-											<Input
-												placeholder="Filter events by name, code, or description..."
-												value={searchQuery}
-												onChange={(e) => setSearchQuery(e.target.value)}
-											/>
-										</Box>
-										<Box className="inline-flex rounded-xl border border-border/50 bg-muted/50 p-1 shadow-2xs backdrop-blur-xs">
-											<button
-												type="button"
-												onClick={() => setFilterType("all")}
-												className={cn(
-													"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
-													filterType === "all"
-														? "bg-background text-foreground shadow-xs font-semibold"
-														: "text-muted-foreground hover:text-foreground",
-												)}
-											>
-												All ({totalCatalogEvents})
-											</button>
-											<button
-												type="button"
-												onClick={() => setFilterType("internal")}
-												className={cn(
-													"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
-													filterType === "internal"
-														? "bg-background text-foreground shadow-xs font-semibold"
-														: "text-muted-foreground hover:text-foreground",
-												)}
-											>
-												Internal ({internalEventsCount})
-											</button>
-											<button
-												type="button"
-												onClick={() => setFilterType("integration")}
-												className={cn(
-													"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
-													filterType === "integration"
-														? "bg-background text-foreground shadow-xs font-semibold"
-														: "text-muted-foreground hover:text-foreground",
-												)}
-											>
-												Integrations ({integrationEventsCount})
-											</button>
-										</Box>
-									</Box>
-
-									{catalogQuery.isLoading ? (
-										<Box className="flex items-center justify-center py-12">
-											<Spinner />
-											<Box
-												as="span"
-												className="ml-2 text-sm text-muted-foreground"
-											>
-												Loading event catalog...
+									<Box className="flex flex-col gap-4">
+										<Box className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+											<Box className="max-w-sm flex-1">
+												<InputGroup>
+													<InputGroupAddon>
+														<Search aria-hidden />
+													</InputGroupAddon>
+													<InputGroupInput
+														aria-label="Filter events"
+														placeholder="Filter events by name, code, or description..."
+														value={searchQuery}
+														onChange={(e) => setSearchQuery(e.target.value)}
+													/>
+												</InputGroup>
 											</Box>
-										</Box>
-									) : catalogQuery.isError && !catalogQuery.data ? (
-										<Alert tone="critical">
-											<AlertTitle>Event catalog unavailable</AlertTitle>
-											<AlertDescription>
-												<p>Load the catalog before saving an endpoint.</p>
-												<Button
+											<Box className="inline-flex rounded-xl border border-border/50 bg-muted/50 p-1 shadow-2xs backdrop-blur-xs">
+												<button
 													type="button"
-													variant="outline"
-													onClick={() => void catalogQuery.refetch()}
+													onClick={() => setFilterType("all")}
+													className={cn(
+														"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
+														filterType === "all"
+															? "bg-background text-foreground shadow-xs font-semibold"
+															: "text-muted-foreground hover:text-foreground",
+													)}
 												>
-													Retry
-												</Button>
-											</AlertDescription>
-										</Alert>
-									) : filteredGroups.length === 0 ? (
-										<Box className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
-											<Radio className="mb-2.5 size-7 text-muted-foreground/40" />
-											<Box
-												as="p"
-												className="font-semibold tracking-tight text-foreground"
-											>
-												No events found
-											</Box>
-											<Box as="p" className="text-xs text-muted-foreground">
-												No catalog events match "{searchQuery}".
+													All ({totalCatalogEvents})
+												</button>
+												<button
+													type="button"
+													onClick={() => setFilterType("internal")}
+													className={cn(
+														"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
+														filterType === "internal"
+															? "bg-background text-foreground shadow-xs font-semibold"
+															: "text-muted-foreground hover:text-foreground",
+													)}
+												>
+													Internal ({internalEventsCount})
+												</button>
+												<button
+													type="button"
+													onClick={() => setFilterType("integration")}
+													className={cn(
+														"rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-[0.98]",
+														filterType === "integration"
+															? "bg-background text-foreground shadow-xs font-semibold"
+															: "text-muted-foreground hover:text-foreground",
+													)}
+												>
+													Integrations ({integrationEventsCount})
+												</button>
 											</Box>
 										</Box>
-									) : (
-										<Box className="space-y-4">
-											{filteredGroups.map((group) => {
-												const groupTypes = group.events.map((e) => e.type);
-												const selectedInGroup = groupTypes.filter((t) =>
-													selectedEvents.includes(t),
-												);
-												const allGroupSelected =
-													selectedInGroup.length === groupTypes.length &&
-													groupTypes.length > 0;
 
-												return (
-													<Box
-														key={`${group.type}:${group.name}`}
-														className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-2xs transition-all duration-200 hover:border-border/80"
+										{catalogQuery.isLoading ? (
+											<Box className="flex items-center justify-center py-12">
+												<Spinner />
+												<Box
+													as="span"
+													className="ml-2 text-sm text-muted-foreground"
+												>
+													Loading event catalog...
+												</Box>
+											</Box>
+										) : catalogQuery.isError && !catalogQuery.data ? (
+											<Alert tone="critical">
+												<AlertTitle>Event catalog unavailable</AlertTitle>
+												<AlertDescription>
+													<p>Load the catalog before saving an endpoint.</p>
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() => void catalogQuery.refetch()}
 													>
-														<Box className="flex items-center justify-between border-b border-border/40 bg-muted/20 px-4 py-2.5">
-															<Box className="flex items-center gap-2">
-																{getGroupIcon(group.name, group.type)}
-																<Box
-																	as="span"
-																	className="text-sm font-semibold tracking-tight text-foreground"
-																>
-																	{group.name}
-																</Box>
-															</Box>
-															<Box className="flex items-center gap-3">
-																<Box
-																	as="span"
-																	className="font-mono text-xs text-muted-foreground"
-																>
-																	{selectedInGroup.length}/{group.events.length}
-																</Box>
-																<Button
-																	type="button"
-																	variant="ghost"
-																	size="sm"
-																	onClick={() => toggleGroup(group)}
-																>
-																	{allGroupSelected ? "Deselect" : "Select all"}
-																</Button>
-															</Box>
-														</Box>
-														<Box className="divide-y divide-border/30">
-															{group.events.map((event) => {
-																const isSelected = selectedEvents.includes(
-																	event.type,
-																);
-																return (
-																	<label
-																		key={event.type}
-																		htmlFor={`event-checkbox-${event.type}`}
-																		className={cn(
-																			"flex cursor-pointer items-start gap-3.5 p-3.5 transition-all active:scale-[0.998] hover:bg-muted/30",
-																			isSelected && "bg-primary/[0.02]",
-																		)}
+														Retry
+													</Button>
+												</AlertDescription>
+											</Alert>
+										) : filteredGroups.length === 0 ? (
+											<Box className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 py-12 text-center text-sm text-muted-foreground">
+												<Radio className="mb-2.5 size-7 text-muted-foreground/40" />
+												<Box
+													as="p"
+													className="font-semibold tracking-tight text-foreground"
+												>
+													No events found
+												</Box>
+												<Box as="p" className="text-xs text-muted-foreground">
+													No catalog events match "{searchQuery}".
+												</Box>
+											</Box>
+										) : (
+											<Box className="space-y-4">
+												{filteredGroups.map((group) => {
+													const groupTypes = group.events.map((e) => e.type);
+													const selectedInGroup = groupTypes.filter((t) =>
+														selectedEvents.includes(t),
+													);
+													const allGroupSelected =
+														selectedInGroup.length === groupTypes.length &&
+														groupTypes.length > 0;
+
+													return (
+														<Box
+															key={`${group.type}:${group.name}`}
+															className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-2xs transition-all duration-200 hover:border-border/80"
+														>
+															<Box className="flex items-center justify-between border-b border-border/40 bg-muted/20 px-4 py-2.5">
+																<Box className="flex items-center gap-2">
+																	{getGroupIcon(group.name, group.type)}
+																	<Box
+																		as="span"
+																		className="text-sm font-semibold tracking-tight text-foreground"
 																	>
-																		<Checkbox
-																			id={`event-checkbox-${event.type}`}
-																			checked={isSelected}
-																			onCheckedChange={() =>
-																				toggleEvent(event.type)
-																			}
-																		/>
-																		<Box className="min-w-0 flex-1">
-																			<Box className="flex flex-wrap items-center gap-2">
-																				<Box
-																					as="span"
-																					className="text-sm font-medium tracking-tight text-foreground"
-																				>
-																					{event.name}
+																		{group.name}
+																	</Box>
+																</Box>
+																<Box className="flex items-center gap-3">
+																	<Box
+																		as="span"
+																		className="font-mono text-xs text-muted-foreground"
+																	>
+																		{selectedInGroup.length}/
+																		{group.events.length}
+																	</Box>
+																	<Button
+																		type="button"
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => toggleGroup(group)}
+																	>
+																		{allGroupSelected
+																			? "Deselect"
+																			: "Select all"}
+																	</Button>
+																</Box>
+															</Box>
+															<Box className="divide-y divide-border/30">
+																{group.events.map((event) => {
+																	const isSelected = selectedEvents.includes(
+																		event.type,
+																	);
+																	return (
+																		<label
+																			key={event.type}
+																			htmlFor={`event-checkbox-${event.type}`}
+																			className={cn(
+																				"flex cursor-pointer items-start gap-3.5 p-3.5 transition-all active:scale-[0.998] hover:bg-muted/30",
+																				isSelected && "bg-primary/[0.02]",
+																			)}
+																		>
+																			<Checkbox
+																				id={`event-checkbox-${event.type}`}
+																				checked={isSelected}
+																				onCheckedChange={() =>
+																					toggleEvent(event.type)
+																				}
+																			/>
+																			<Box className="min-w-0 flex-1">
+																				<Box className="flex flex-wrap items-center gap-2">
+																					<Box
+																						as="span"
+																						className="text-sm font-medium tracking-tight text-foreground"
+																					>
+																						{event.name}
+																					</Box>
+																					<code className="rounded-md border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+																						{event.type}
+																					</code>
 																				</Box>
-																				<code className="rounded-md border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
-																					{event.type}
-																				</code>
+																				<Box
+																					as="p"
+																					className="mt-1 text-xs leading-normal text-muted-foreground"
+																				>
+																					{event.description}
+																				</Box>
 																			</Box>
-																			<Box
-																				as="p"
-																				className="mt-1 text-xs leading-normal text-muted-foreground"
-																			>
-																				{event.description}
-																			</Box>
-																		</Box>
-																	</label>
-																);
-															})}
+																		</label>
+																	);
+																})}
+															</Box>
 														</Box>
-													</Box>
-												);
-											})}
-										</Box>
-									)}
+													);
+												})}
+											</Box>
+										)}
+									</Box>
 								</CardContent>
 							</Card>
 							<Box className="sticky bottom-4 z-20 flex items-center justify-between rounded-2xl border border-border/70 bg-card/85 p-4 shadow-xl backdrop-blur-xl">
