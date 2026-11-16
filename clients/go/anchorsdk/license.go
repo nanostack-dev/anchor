@@ -3,10 +3,8 @@ package anchorsdk
 import (
 	"cmp"
 	"context"
-	"errors"
 	"maps"
 	"slices"
-	"sync"
 	"time"
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
@@ -19,6 +17,13 @@ import (
 //
 // Every organization has exactly one license, so unlike [Members] and
 // [APIKeys] this facade has no list or search.
+//
+// # Caching
+//
+// [License.Get] is uncached: every call reads from Anchor. [LicenseCache] is
+// the opt-in cache. Build one with [NewLicenseCache], choose its store, and
+// read through it where a hot path needs it. A write made through this facade
+// does not touch any cache; call [LicenseCache.Invalidate] after it.
 //
 // # What this does not do
 //
@@ -40,60 +45,21 @@ type License struct{ o *Org }
 // License returns the license facade for this organization.
 func (o *Org) License() License { return License{o: o} }
 
-// defaultLicenseCacheTTL bounds how long [License.Get] serves a cached read
-// before attempting a live refresh. 30s keeps a hot-path, permission-style
-// check from adding a network round trip to every request, while keeping a
-// template swap or an out-of-band Adjust visible reasonably quickly.
-const defaultLicenseCacheTTL = 30 * time.Second
-
-// LicenseCachePolicy controls how [License.Get] caches a license read. The
-// zero value uses the defaults: a 30s TTL, and fail-open on a stale entry.
-//
-// The cache lives on the [Client], keyed by organization ID, and is written
-// with the fresh value — not merely evicted — by every successful
-// [License.Get], [License.Instantiate], and [License.Adjust] made through
-// that client, so a write is visible to the very next read without another
-// round trip.
-type LicenseCachePolicy struct {
-	// TTL bounds how long a cached read is served without a live refresh.
-	// Zero uses the default.
-	TTL time.Duration
-
-	// Strict disables fail-open. By default, once TTL has elapsed, a live
-	// refresh that fails with a transient error (a transport failure, a 5xx,
-	// or 429 with retries exhausted) still serves the last known value —
-	// marked Stale on [LicenseSnapshot] — rather than returning an error, so
-	// an Anchor outage does not block a paying customer; see ADR-0001. A
-	// permanent failure (any other 4xx: a bad request, a revoked key, an
-	// organization that no longer exists) is never papered over regardless of
-	// Strict, because unlike an outage it will not resolve on its own.
-	//
-	// Set Strict to opt into fail-closed: a failed refresh past TTL always
-	// returns the error, even one that fail-open would otherwise absorb.
-	Strict bool
-}
-
-// ttl resolves the effective TTL, applying the default for the zero value.
-func (p LicenseCachePolicy) ttl() time.Duration {
-	if p.TTL <= 0 {
-		return defaultLicenseCacheTTL
-	}
-	return p.TTL
-}
-
-// LicenseSnapshot is a cached read of an organization's license, returned by
-// [License.Get].
+// LicenseSnapshot is a read of an organization's license, returned by
+// [License.Get] and [LicenseCache.Get].
 type LicenseSnapshot struct {
 	*nanoclient.OrganizationLicenseResponse
 
-	// Stale reports whether this snapshot was served from cache after a live
-	// refresh failed, per [LicenseCachePolicy]'s fail-open default. It still
+	// Stale reports whether [LicenseCache.Get] served this snapshot from its
+	// store after a live refresh failed, per [LicenseCachePolicy]'s fail-open
+	// default. [License.Get] never sets it. It still
 	// carries the last values Anchor confirmed; consult Stale to decide
 	// whether to log or warn, not to deny anything — the SDK itself never
 	// does.
 	Stale bool
-	// FetchedAt is when Anchor last confirmed these values, not when this
-	// call returned them. It moves only on a successful live refresh.
+	// FetchedAt is when Anchor last confirmed these values. For a snapshot
+	// served from a [LicenseCache] it is older than the call that returned it;
+	// it moves only on a successful live refresh.
 	FetchedAt time.Time
 }
 
@@ -214,69 +180,6 @@ func newLimitUsage(key string, field nanoclient.LicenseFieldUsageResponse) Limit
 	return limit
 }
 
-// licenseCache holds one cached license read per organization ID, for a
-// single [Client]. Safe for concurrent use.
-type licenseCache struct {
-	mu      sync.Mutex
-	entries map[string]licenseCacheEntry
-}
-
-// licenseCacheEntry is one organization's last known license read.
-type licenseCacheEntry struct {
-	value     *nanoclient.OrganizationLicenseResponse
-	fetchedAt time.Time
-}
-
-func newLicenseCache() *licenseCache {
-	return &licenseCache{entries: make(map[string]licenseCacheEntry)}
-}
-
-// fresh returns a snapshot for organizationID when its cached entry is younger
-// than ttl.
-func (c *licenseCache) fresh(organizationID string, ttl time.Duration) (*LicenseSnapshot, bool) {
-	c.mu.Lock()
-	entry, ok := c.entries[organizationID]
-	c.mu.Unlock()
-
-	if !ok || time.Since(entry.fetchedAt) >= ttl {
-		return nil, false
-	}
-	return &LicenseSnapshot{OrganizationLicenseResponse: entry.value, FetchedAt: entry.fetchedAt}, true
-}
-
-// stale returns organizationID's last known snapshot regardless of age,
-// marked Stale, for [License.Get] to fall back to when a live refresh fails.
-func (c *licenseCache) stale(organizationID string) (*LicenseSnapshot, bool) {
-	c.mu.Lock()
-	entry, ok := c.entries[organizationID]
-	c.mu.Unlock()
-
-	if !ok {
-		return nil, false
-	}
-	return &LicenseSnapshot{OrganizationLicenseResponse: entry.value, Stale: true, FetchedAt: entry.fetchedAt}, true
-}
-
-// store records value as the freshest known license for organizationID,
-// timestamped now, and returns the snapshot [License.Get] should hand back.
-func (c *licenseCache) store(organizationID string, value *nanoclient.OrganizationLicenseResponse) *LicenseSnapshot {
-	now := time.Now()
-
-	c.mu.Lock()
-	c.entries[organizationID] = licenseCacheEntry{value: value, fetchedAt: now}
-	c.mu.Unlock()
-
-	return &LicenseSnapshot{OrganizationLicenseResponse: value, FetchedAt: now}
-}
-
-// delete clears any cached entry for organizationID, so the next Get performs
-// a live fetch regardless of TTL.
-func (c *licenseCache) delete(organizationID string) {
-	c.mu.Lock()
-	delete(c.entries, organizationID)
-	c.mu.Unlock()
-}
-
 // Get returns the organization's current license: every field the product's
 // schema declares, with its value, and for every limit field the latest
 // reported usage plus the status Anchor derives from it. Read a limit through
@@ -288,11 +191,9 @@ func (c *licenseCache) delete(organizationID string) {
 //	    // prompt an upgrade
 //	}
 //
-// The read is cached per [LicenseCachePolicy], usage included. Anchor derives
-// usage fresh on every read, but a cached snapshot was derived when it was
-// fetched, so a usage report becomes visible here only on the next live
-// refresh — call [License.Invalidate] first to see it at once. See [License]
-// and [LicenseCachePolicy] for the fail-open behaviour on a stale entry.
+// Get is uncached: every call reads from Anchor, with the client's retry
+// policy. The snapshot is never Stale and its FetchedAt is the time of the
+// call. To serve repeated reads from a cache, use the opt-in [LicenseCache].
 // Classify a returned error exactly as any other SDK call, with [errors.Is]
 // against the package sentinels — Get itself never blocks or denies.
 func (l License) Get(ctx context.Context) (*LicenseSnapshot, error) {
@@ -300,11 +201,7 @@ func (l License) Get(ctx context.Context) (*LicenseSnapshot, error) {
 
 	c := l.o.c
 
-	if snap, ok := c.licenses.fresh(l.o.id, c.licensePolicy.ttl()); ok {
-		return snap, nil
-	}
-
-	fresh, err := retrying(ctx, c, func(ctx context.Context) (*nanoclient.OrganizationLicenseResponse, error) {
+	resp, err := retrying(ctx, c, func(ctx context.Context) (*nanoclient.OrganizationLicenseResponse, error) {
 		resp, err := c.api.GetOrganizationLicenseWithResponse(ctx, c.productID, l.o.id)
 		if err != nil {
 			return nil, transportError(op, err)
@@ -312,23 +209,11 @@ func (l License) Get(ctx context.Context) (*LicenseSnapshot, error) {
 		return decode(op, resp.StatusCode(), resp.Body, resp.JSON200)
 	})
 	if err != nil {
-		if !c.licensePolicy.Strict && !errors.Is(err, ErrPermanent) {
-			if snap, ok := c.licenses.stale(l.o.id); ok {
-				return snap, nil
-			}
-		}
 		return nil, err
 	}
 
-	return c.licenses.store(l.o.id, fresh), nil
+	return &LicenseSnapshot{OrganizationLicenseResponse: resp, FetchedAt: time.Now()}, nil
 }
-
-// Invalidate clears the cached license read for this organization, so the
-// next Get performs a live fetch. [License.Instantiate] and [License.Adjust]
-// already refresh the cache automatically when the write happens through this
-// client; call Invalidate when the license may have changed some other way —
-// another service, another [Client] instance, the admin UI.
-func (l License) Invalidate() { l.o.c.licenses.delete(l.o.id) }
 
 // Instantiate creates the organization's license as a copy of templateID's
 // current values. Anchor stamps template_id and instantiated_at as
@@ -356,7 +241,6 @@ func (l License) Instantiate(
 		return nil, err
 	}
 
-	c.licenses.store(l.o.id, license)
 	return license, nil
 }
 
@@ -416,7 +300,6 @@ func (b *LicenseAdjustBuilder) Do(ctx context.Context) (*nanoclient.Organization
 		return nil, err
 	}
 
-	c.licenses.store(b.o.id, license)
 	return license, nil
 }
 
@@ -456,11 +339,9 @@ func (l License) Diff(ctx context.Context) (*nanoclient.OrganizationLicenseDiffR
 // value that reads within_limit for an organization genuinely past its
 // ceiling.
 //
-// Reporting usage does not touch the [License.Get] cache. Anchor recomputes a
-// limit's usage and status on every license read, but a cached snapshot was
-// computed when it was fetched, so a report made here reaches [License.Get]
-// only on its next live refresh. Call [License.Invalidate] between the two
-// when a caller must read back what it just reported.
+// A report is visible to the next [License.Get], which always reads live. A
+// [LicenseCache] serves its entry until the TTL ends or [LicenseCache.Invalidate]
+// runs, so invalidate it after a report that a caller must read back at once.
 func (l License) ReportUsage(key string, value float64) *UsageReportBuilder {
 	return &UsageReportBuilder{o: l.o, req: nanoclient.UsageReportRequest{Key: key, Value: value}}
 }

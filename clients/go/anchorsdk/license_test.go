@@ -11,6 +11,7 @@ import (
 
 	nanoclient "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/anchor/clients/go/anchorsdk"
+	"github.com/nanostack-dev/anchor/clients/go/anchorsdk/licensecachetest"
 )
 
 const (
@@ -44,13 +45,11 @@ const (
 		`"free_seats":{"limit":0,"usage":0,"status":"at_limit","last_reported_at":"2026-03-03T00:00:00Z"}}}`
 )
 
-// newLicenseTestClient is [newTestClient] plus a cache policy: License.Get is
-// the only facade in this package that caches, so it is the only one that
-// needs a knob the shared helper does not expose. Retries are fixed at a
-// single attempt — retry behaviour itself is already covered by TestRetry,
-// and every cache test below asserts an exact request count, which a retried
-// attempt would throw off.
-func newLicenseTestClient(t *testing.T, baseURL string, cache anchorsdk.LicenseCachePolicy) *anchorsdk.Client {
+// newLicenseTestClient is [newTestClient] with retries fixed at a single
+// attempt — retry behaviour itself is already covered by TestRetry, and every
+// test below asserts an exact request count, which a retried attempt would
+// throw off.
+func newLicenseTestClient(t *testing.T, baseURL string) *anchorsdk.Client {
 	t.Helper()
 
 	c, err := anchorsdk.New(anchorsdk.Config{
@@ -62,7 +61,6 @@ func newLicenseTestClient(t *testing.T, baseURL string, cache anchorsdk.LicenseC
 			BaseDelay:   time.Millisecond,
 			MaxDelay:    time.Millisecond,
 		},
-		LicenseCache: cache,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -387,24 +385,59 @@ func TestLicenseDeclaredStatusRealPayloadClassifiesCorrectly(t *testing.T) {
 	}
 }
 
-func TestLicenseGetColdCacheReturnsError(t *testing.T) {
-	_, baseURL := newStubServer(t, stubResponse{status: http.StatusInternalServerError, body: apiErrBody})
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{})
+func newTestLicenseCache(t *testing.T, baseURL string, policy anchorsdk.LicenseCachePolicy) *anchorsdk.LicenseCache {
+	t.Helper()
 
-	if _, err := c.Organization(testOrgID).License().Get(t.Context()); err == nil {
+	return anchorsdk.NewLicenseCache(newLicenseTestClient(t, baseURL), nil, policy)
+}
+
+func TestLicenseGetIsUncached(t *testing.T) {
+	stub, baseURL := newStubServer(t,
+		stubResponse{status: http.StatusOK, body: licenseBodyV1},
+		stubResponse{status: http.StatusOK, body: licenseBodyV2},
+	)
+	org := newLicenseTestClient(t, baseURL).Organization(testOrgID)
+
+	first, err := org.License().Get(t.Context())
+	if err != nil {
+		t.Fatalf("first Get: %v", err)
+	}
+	second, err := org.License().Get(t.Context())
+	if err != nil {
+		t.Fatalf("second Get: %v", err)
+	}
+
+	if got := len(stub.calls()); got != 2 {
+		t.Errorf("server saw %d requests, want 2 (License.Get must read from Anchor every time)", got)
+	}
+	if second.Values["max_flows"] != float64(500) {
+		t.Errorf("second Values[max_flows] = %v, want 500 from the second body", second.Values["max_flows"])
+	}
+	if first.Stale || second.Stale {
+		t.Error("a live read must never be marked Stale")
+	}
+	if first.FetchedAt.IsZero() {
+		t.Error("FetchedAt is zero, want the time of the read")
+	}
+}
+
+func TestLicenseCacheColdCacheReturnsError(t *testing.T) {
+	_, baseURL := newStubServer(t, stubResponse{status: http.StatusInternalServerError, body: apiErrBody})
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{})
+
+	if _, err := cache.Get(t.Context(), testOrgID); err == nil {
 		t.Fatal("want an error on a cold cache with no prior value to fall back to, got nil")
 	}
 }
 
-func TestLicenseGetFailsOpenOnTransientRefreshFailure(t *testing.T) {
+func TestLicenseCacheFailsOpenOnTransientRefreshFailure(t *testing.T) {
 	stub, baseURL := newStubServer(t,
 		stubResponse{status: http.StatusOK, body: licenseBodyV1},
 		stubResponse{status: http.StatusInternalServerError, body: apiErrBody},
 	)
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: 10 * time.Millisecond})
-	org := c.Organization(testOrgID)
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: 10 * time.Millisecond})
 
-	first, err := org.License().Get(t.Context())
+	first, err := cache.Get(t.Context(), testOrgID)
 	if err != nil {
 		t.Fatalf("first Get: %v", err)
 	}
@@ -414,7 +447,7 @@ func TestLicenseGetFailsOpenOnTransientRefreshFailure(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond) // outlive the 10ms TTL
 
-	second, err := org.License().Get(t.Context())
+	second, err := cache.Get(t.Context(), testOrgID)
 	if err != nil {
 		t.Fatalf("Get after a transient refresh failure: want the stale cache, got error %v", err)
 	}
@@ -425,29 +458,31 @@ func TestLicenseGetFailsOpenOnTransientRefreshFailure(t *testing.T) {
 		t.Errorf("stale Values[max_flows] = %v, want the first read's %v",
 			second.Values["max_flows"], first.Values["max_flows"])
 	}
+	if !second.FetchedAt.Equal(first.FetchedAt) {
+		t.Errorf("stale FetchedAt = %v, want the first read's %v", second.FetchedAt, first.FetchedAt)
+	}
 	if got := len(stub.calls()); got != 2 {
 		t.Errorf("server saw %d requests, want 2 (the live read, then the failed refresh attempt)", got)
 	}
 }
 
-func TestLicenseGetStrictModeFailsClosed(t *testing.T) {
+func TestLicenseCacheStrictModeFailsClosed(t *testing.T) {
 	_, baseURL := newStubServer(t,
 		stubResponse{status: http.StatusOK, body: licenseBodyV1},
 		stubResponse{status: http.StatusInternalServerError, body: apiErrBody},
 	)
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{
 		TTL:    10 * time.Millisecond,
 		Strict: true,
 	})
-	org := c.Organization(testOrgID)
 
-	if _, err := org.License().Get(t.Context()); err != nil {
+	if _, err := cache.Get(t.Context(), testOrgID); err != nil {
 		t.Fatalf("first Get: %v", err)
 	}
 
 	time.Sleep(50 * time.Millisecond)
 
-	_, err := org.License().Get(t.Context())
+	_, err := cache.Get(t.Context(), testOrgID)
 	if err == nil {
 		t.Fatal("want the refresh error under Strict, got nil (silently served stale data)")
 	}
@@ -456,23 +491,22 @@ func TestLicenseGetStrictModeFailsClosed(t *testing.T) {
 	}
 }
 
-func TestLicenseGetPermanentFailureNeverFailsOpen(t *testing.T) {
+func TestLicenseCachePermanentFailureNeverFailsOpen(t *testing.T) {
 	_, baseURL := newStubServer(t,
 		stubResponse{status: http.StatusOK, body: licenseBodyV1},
 		stubResponse{status: http.StatusForbidden, body: apiErrBody},
 	)
 	// Strict is left false (the default) on purpose: even fail-open must not
 	// paper over a permanent failure, so this must behave the same as Strict.
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: 10 * time.Millisecond})
-	org := c.Organization(testOrgID)
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: 10 * time.Millisecond})
 
-	if _, err := org.License().Get(t.Context()); err != nil {
+	if _, err := cache.Get(t.Context(), testOrgID); err != nil {
 		t.Fatalf("first Get: %v", err)
 	}
 
 	time.Sleep(50 * time.Millisecond)
 
-	_, err := org.License().Get(t.Context())
+	_, err := cache.Get(t.Context(), testOrgID)
 	if err == nil {
 		t.Fatal("want the 403 surfaced, got nil — a permanent failure must never fail open")
 	}
@@ -481,15 +515,14 @@ func TestLicenseGetPermanentFailureNeverFailsOpen(t *testing.T) {
 	}
 }
 
-func TestLicenseGetFreshCacheAvoidsNetworkCall(t *testing.T) {
+func TestLicenseCacheFreshEntryAvoidsNetworkCall(t *testing.T) {
 	stub, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyV1})
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
-	org := c.Organization(testOrgID)
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
 
-	if _, err := org.License().Get(t.Context()); err != nil {
+	if _, err := cache.Get(t.Context(), testOrgID); err != nil {
 		t.Fatalf("first Get: %v", err)
 	}
-	second, err := org.License().Get(t.Context())
+	second, err := cache.Get(t.Context(), testOrgID)
 	if err != nil {
 		t.Fatalf("second Get: %v", err)
 	}
@@ -501,65 +534,22 @@ func TestLicenseGetFreshCacheAvoidsNetworkCall(t *testing.T) {
 	}
 }
 
-func TestLicenseWritesPopulateCache(t *testing.T) {
-	t.Run("instantiate", func(t *testing.T) {
-		stub, baseURL := newStubServer(t, stubResponse{status: http.StatusCreated, body: licenseBodyV1})
-		c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
-		org := c.Organization(testOrgID)
-
-		if _, err := org.License().Instantiate(t.Context(), "tpl_1"); err != nil {
-			t.Fatalf("Instantiate: %v", err)
-		}
-
-		snap, err := org.License().Get(t.Context())
-		if err != nil {
-			t.Fatalf("Get: %v", err)
-		}
-		if snap.Stale {
-			t.Error("Stale = true right after Instantiate, want false")
-		}
-		if got := len(stub.calls()); got != 1 {
-			t.Errorf("server saw %d requests, want exactly 1 (Get must be served from the write-through cache)", got)
-		}
-	})
-
-	t.Run("adjust", func(t *testing.T) {
-		stub, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyV2})
-		c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
-		org := c.Organization(testOrgID)
-
-		if _, err := org.License().Adjust().Set("max_flows", 500).Do(t.Context()); err != nil {
-			t.Fatalf("Adjust: %v", err)
-		}
-
-		snap, err := org.License().Get(t.Context())
-		if err != nil {
-			t.Fatalf("Get: %v", err)
-		}
-		if got := snap.Values["max_flows"]; got != float64(500) {
-			t.Errorf("Values[max_flows] = %v, want 500 (Adjust's own response)", got)
-		}
-		if got := len(stub.calls()); got != 1 {
-			t.Errorf("server saw %d requests, want exactly 1 (Get must be served from the write-through cache)", got)
-		}
-	})
-}
-
-func TestLicenseInvalidateForcesRefetch(t *testing.T) {
+func TestLicenseCacheInvalidateForcesRefetch(t *testing.T) {
 	stub, baseURL := newStubServer(t,
 		stubResponse{status: http.StatusOK, body: licenseBodyV1},
 		stubResponse{status: http.StatusOK, body: licenseBodyV2},
 	)
-	c := newLicenseTestClient(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
-	org := c.Organization(testOrgID)
+	cache := newTestLicenseCache(t, baseURL, anchorsdk.LicenseCachePolicy{TTL: time.Minute})
 
-	if _, err := org.License().Get(t.Context()); err != nil {
+	if _, err := cache.Get(t.Context(), testOrgID); err != nil {
 		t.Fatalf("first Get: %v", err)
 	}
 
-	org.License().Invalidate()
+	if err := cache.Invalidate(t.Context(), testOrgID); err != nil {
+		t.Fatalf("Invalidate: %v", err)
+	}
 
-	snap, err := org.License().Get(t.Context())
+	snap, err := cache.Get(t.Context(), testOrgID)
 	if err != nil {
 		t.Fatalf("second Get: %v", err)
 	}
@@ -569,6 +559,83 @@ func TestLicenseInvalidateForcesRefetch(t *testing.T) {
 	if got := len(stub.calls()); got != 2 {
 		t.Errorf("server saw %d requests, want 2 (Invalidate must force a live refetch)", got)
 	}
+}
+
+// invalidateAfterLoadStore invalidates the organization right after every
+// Load, which is what another process's Invalidate does while this process's
+// live read is in flight.
+type invalidateAfterLoadStore struct{ anchorsdk.LicenseCacheStore }
+
+func (s invalidateAfterLoadStore) Load(ctx context.Context, id string) (anchorsdk.LicenseCacheRead, error) {
+	read, err := s.LicenseCacheStore.Load(ctx, id)
+	if err != nil {
+		return read, err
+	}
+	return read, s.LicenseCacheStore.Invalidate(ctx, id)
+}
+
+func TestLicenseCacheDoesNotStoreAfterConcurrentInvalidate(t *testing.T) {
+	stub, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyV1})
+	inner := anchorsdk.NewMemoryLicenseCacheStore()
+	cache := anchorsdk.NewLicenseCache(
+		newLicenseTestClient(t, baseURL),
+		invalidateAfterLoadStore{inner},
+		anchorsdk.LicenseCachePolicy{TTL: time.Minute},
+	)
+
+	snap, err := cache.Get(t.Context(), testOrgID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got := snap.Values["max_flows"]; got != float64(100) {
+		t.Errorf("Values[max_flows] = %v, want the live read's 100", got)
+	}
+
+	read, err := inner.Load(t.Context(), testOrgID)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if read.Entry != nil {
+		t.Errorf("store holds %+v, want nothing: the read began before an Invalidate", read.Entry)
+	}
+	if got := len(stub.calls()); got != 1 {
+		t.Errorf("server saw %d requests, want 1", got)
+	}
+}
+
+type failingLoadStore struct{ anchorsdk.LicenseCacheStore }
+
+func (failingLoadStore) Load(context.Context, string) (anchorsdk.LicenseCacheRead, error) {
+	return anchorsdk.LicenseCacheRead{}, errors.New("store down")
+}
+
+func TestLicenseCacheLoadErrorCountsAsMiss(t *testing.T) {
+	stub, baseURL := newStubServer(t, stubResponse{status: http.StatusOK, body: licenseBodyV1})
+	inner := anchorsdk.NewMemoryLicenseCacheStore()
+	cache := anchorsdk.NewLicenseCache(
+		newLicenseTestClient(t, baseURL), failingLoadStore{inner}, anchorsdk.LicenseCachePolicy{},
+	)
+
+	if _, err := cache.Get(t.Context(), testOrgID); err != nil {
+		t.Fatalf("Get: a Load error must not reach the caller, got %v", err)
+	}
+
+	read, err := inner.Load(t.Context(), testOrgID)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if read.Entry != nil {
+		t.Error("store holds an entry, want none: the generation was unknown, so the write must be skipped")
+	}
+	if got := len(stub.calls()); got != 1 {
+		t.Errorf("server saw %d requests, want 1", got)
+	}
+}
+
+func TestMemoryLicenseCacheStoreConformance(t *testing.T) {
+	licensecachetest.RunStoreTests(t, func(*testing.T) anchorsdk.LicenseCacheStore {
+		return anchorsdk.NewMemoryLicenseCacheStore()
+	})
 }
 
 func getLicenseWithUsage(t *testing.T) *anchorsdk.LicenseSnapshot {

@@ -81,9 +81,8 @@ func (b *LicenseMigrationBuilder) DiscardDifferences() *LicenseMigrationBuilder 
 // been skipped or failed, so read `Results` rather than treating a nil error as
 // "everything moved".
 //
-// Every organization actually moved has its cached license read dropped, so the
-// next [License.Get] through this client sees the new values rather than
-// waiting out the TTL.
+// Migrate does not touch any [LicenseCache]; call [LicenseCache.Invalidate] for
+// each organization whose Outcome is changed.
 func (b *LicenseMigrationBuilder) Do(
 	ctx context.Context,
 ) (*nanoclient.OrganizationLicenseMigrationResponse, error) {
@@ -103,12 +102,6 @@ func (b *LicenseMigrationBuilder) Do(
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	for _, result := range migration.Results {
-		if result.Outcome == nanoclient.LicenseMigrationOutcomeCHANGED {
-			c.licenses.delete(result.OrganizationId)
-		}
 	}
 
 	return migration, nil
