@@ -87,7 +87,7 @@ org := c.Organization("org_3iXYZ")
 | `org.Resources()` | search by type, ID, name and parent |
 | `c.AccessForUser(id)`, `c.AccessForAPIKey(raw)` | evaluate on an organization or a resource: `On(resource).Can(ctx, perms...)` |
 | `org.APIKeys()` | create, get, update, delete, search, list, validate |
-| `org.License()` | get (cached), instantiate, adjust, diff, report usage |
+| `org.License()` | get (live), instantiate, adjust, diff, report usage |
 | `anchorsdk.Events(secret)` | typed Standard Webhooks ingest (`http.Handler`) |
 
 ### Product events
@@ -232,7 +232,7 @@ the response body naming the missing scopes is kept on `Error.Body`.
 ### Licensing
 
 ```go
-license, err := o.License().Get(ctx)     // every field's value, cached
+license, err := o.License().Get(ctx)     // every field's value, read live
 license.Values["max_flows"]              // any, per the product's license schema
 
 _, err = o.License().Instantiate(ctx, templateID)
@@ -248,22 +248,29 @@ _, err = o.License().ReportUsage("monthly_runs", 412).
 ```
 
 `License.Get` never blocks and never returns an error meaning "denied" — it returns values, and the
-statement that stops a user belongs in your own repository (ADR-0001 in the Anchor repo). The read is
-cached per organization and, on a failed refresh past the cache TTL, fails open by default: the last
-known values are served (`LicenseSnapshot.Stale` is `true`) rather than an error, so an Anchor outage
-does not block a paying customer. A permanent failure (a revoked key, a deleted organization) is
-never papered over this way. Opt into fail-closed instead:
+statement that stops a user belongs in your own repository (ADR-0001 in the Anchor repo). `Get` is
+uncached: every call reads from Anchor, so a change made anywhere is visible on the next call.
+
+If a hot path cannot afford a round trip per check, opt into a cache. `LicenseCache` reads through a
+`LicenseCacheStore`, so you choose where entries live and who shares them:
 
 ```go
-c, err := anchorsdk.New(anchorsdk.Config{
-	// ...
-	LicenseCache: anchorsdk.LicenseCachePolicy{TTL: 10 * time.Second, Strict: true},
-})
+cache := anchorsdk.NewLicenseCache(c, nil, anchorsdk.LicenseCachePolicy{TTL: 10 * time.Second})
+snapshot, err := cache.Get(ctx, orgID)
 ```
 
-`Instantiate` and `Adjust` write straight through to the cache, so the very next `Get` on that
-organization needs no round trip. Call `o.License().Invalidate()` if the license changed some other
-way — another service, the admin UI.
+A nil store uses `NewMemoryLicenseCacheStore`, which is private to the process. Run several replicas
+against a store they share (implement `LicenseCacheStore` over Redis, say) so one replica's
+`Invalidate` reaches the others. Run `licensecachetest.RunStoreTests` from your store's tests to check
+it keeps the contract.
+
+Past the TTL, a failed refresh fails open by default: the last known values are served
+(`LicenseSnapshot.Stale` is `true`) rather than an error, so an Anchor outage does not block a paying
+customer. A permanent failure (a revoked key, a deleted organization) is never papered over this way.
+Set `Strict: true` in the policy to fail closed instead.
+
+Nothing written through the SDK updates the cache. After `Instantiate`, `Adjust`, `Licensing.Migrate`
+or a usage report, call `cache.Invalidate(ctx, orgID)` when the next read must see the change.
 
 A license read carries, per limit field, the latest reported usage and the status Anchor derives from
 it — `within_limit`, `at_limit`, `exceeded`, `stale`. `LicenseSnapshot.Limit` returns one as a
@@ -287,9 +294,8 @@ for _, limit := range snapshot.Limits() {    // every limit field, sorted by key
 `stale` means the field has never been reported against, so there is no current number to trust. It
 reads "unknown", not "breached" — do not treat it as a denial.
 
-Usage travels inside the cached snapshot. Anchor recomputes it on every read, but a cached snapshot
-was computed when it was fetched, so a `ReportUsage` call reaches `Get` only on the next live
-refresh. Call `o.License().Invalidate()` between the two to read back what you just reported.
+Usage travels inside the snapshot. `License.Get` shows a `ReportUsage` call at once; a `LicenseCache`
+shows it only after its TTL ends or `Invalidate` runs.
 
 **Not yet available:** reading the usage series
 ([`GET .../usage/series`](https://github.com/nanostack-dev/anchor/issues/68) shipped, but this facade
