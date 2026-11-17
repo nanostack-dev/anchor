@@ -81,9 +81,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 																href={disabled ? undefined : item.path}
 																target="_blank"
 																rel="noopener noreferrer"
-															>
-																{item.title}
-															</a>
+															/>
 														),
 													}
 												: {})}
