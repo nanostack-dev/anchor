@@ -126,7 +126,7 @@ flowchart TD
 ### Where we got lucky
 
 - No Deploy Router gate ran at 12:09Z; the same reply during a gate would have held Anchor's prod promotion.
-- All seven replies hit dev; prod uses another relay configuration that has not shown it yet.
+- All seven replies hit dev; VictoriaLogs shows no 454 AUTH reply on prod since 2026-11-01.
 
 ## Action items
 
