@@ -1,18 +1,30 @@
 import { getCurrentUserOptions } from "@/client/@tanstack/react-query.gen";
+import { AnchorLogo } from "@/components/brand/AnchorLogo";
 import { ProductTopBar } from "@/components/layout/ProductTopBar";
 import {
 	AppShell,
+	AppShellBrand,
 	AppShellContent,
 	AppShellHeader,
 	AppShellInset,
+	AppShellSidebar,
 } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ProductProvider } from "@/context/product/ProductContext";
+import { ROUTE_PATHS } from "@/routes/routePaths";
 import {
 	Alert,
 	AlertDescription,
 	AlertTitle,
 } from "@nanostackorg/design-system/components/alert";
+import {
+	SidebarContent,
+	SidebarGroup,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuItem,
+	SidebarMenuSkeleton,
+} from "@nanostackorg/design-system/components/sidebar";
 import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
@@ -22,33 +34,50 @@ interface AuthenticatedLayoutProps {
 	children: ReactNode;
 }
 
+// The loading state draws the same glass shell as the loaded page, so the
+// layout does not jump when the current user arrives.
 function ShellLoadingState() {
 	return (
-		<div className="flex min-h-svh w-full" aria-busy="true">
-			<div className="hidden w-61 shrink-0 flex-col gap-4 border-r bg-sidebar p-4 md:flex">
-				<Skeleton height="lg" />
-				<div className="mt-4 flex flex-col gap-2">
-					{Array.from({ length: 8 }).map((_, index) => (
-						<Skeleton
-							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
-							key={index}
-							height="lg"
-						/>
-					))}
-				</div>
-			</div>
-			<div className="flex min-w-0 flex-1 flex-col">
-				<div className="flex h-16 items-center gap-3 border-b px-4">
-					<Skeleton height="sm" />
-					<Skeleton height="lg" />
-				</div>
-				<div className="flex flex-1 flex-col gap-4 p-6">
-					<Skeleton height="lg" />
-					<Skeleton height="md" />
-					<Skeleton height="xxl" />
-				</div>
-			</div>
-		</div>
+		<AppShell>
+			<AppShellSidebar>
+				<SidebarHeader>
+					<AppShellBrand
+						name="Anchor"
+						description="Organization-as-a-Service"
+						href={ROUTE_PATHS.PRODUCT_PERMISSIONS}
+						mark={<AnchorLogo size="lg" />}
+					/>
+				</SidebarHeader>
+				<SidebarContent>
+					<SidebarGroup>
+						<SidebarMenu>
+							{Array.from({ length: 8 }).map((_, index) => (
+								<SidebarMenuItem
+									// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders
+									key={index}
+								>
+									<SidebarMenuSkeleton showIcon />
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroup>
+				</SidebarContent>
+			</AppShellSidebar>
+			<AppShellInset>
+				<AppShellHeader>
+					<div className="flex h-10 w-full items-center gap-3 px-2">
+						<Skeleton height="lg" width="1/4" />
+					</div>
+				</AppShellHeader>
+				<AppShellContent>
+					<div className="flex flex-col gap-4" aria-busy="true">
+						<Skeleton height="lg" width="1/2" />
+						<Skeleton height="md" width="3/4" />
+						<Skeleton height="xxl" />
+					</div>
+				</AppShellContent>
+			</AppShellInset>
+		</AppShell>
 	);
 }
 
