@@ -20,6 +20,6 @@ Fetch this repository and implement in an isolated worktree from `origin/main`; 
 
 Update authoritative docs in the same PR for changed behavior, a verified reusable fix, resolved vocabulary or a consequential architectural choice. Preserve ADR history and component-local docs, link new documents from the index, and verify links/command provenance. Record evidence rather than hypotheses or sensitive logs. The [delivery workflow](docs/development/agent-workflow.md) supplies the local procedure even when no skill is installed.
 
-The SMTP provider (`apps/anchor/internal/integration/provider/smtp`) retries a transient 4yz AUTH reply once with a fresh connection, and retries nothing after MAIL FROM.
+The SMTP provider (`apps/anchor/internal/integration/provider/smtp`) retries a transient 4yz AUTH reply once with a fresh connection, and retries nothing after MAIL FROM ([postmortem](docs/postmortems/2026-11-17-smtp-auth-transient-not-retried.md)).
 
 Follow [.github/pull_request_template.md](.github/pull_request_template.md), preserving every section and the preview marker. Commit/push from an isolated worktree are allowed; complete current-head CI and applicable review before calling work ready. A merged PR alone does not establish deployment.

@@ -28,7 +28,7 @@
   },
   "trigger": "The suite product's SMTP relay answered AUTH with `454 4.7.0 Temporary authentication failure: Connection lost to authentication server` while the flow sent four emails in parallel.",
   "detection": "The routine's suite run (`run_suites.sh`) printed `FAILED anchor db6c38bb …: status_code equals expected=201 actual=500` at the end of the anchor tag, 5 minutes after the send. The six earlier replies were seen by the log routine (`grafana-watch`) within hours, but the ledger status `expected (watch)` kept them out of the postmortem loop, so detection of the pattern took 11 days.",
-  "resolution": "A rerun of the flow went green at 12:26:45Z. The permanent fix makes the Anchor SMTP provider redial and re-authenticate once when AUTH answers 4yz; no message has been sent at that point, so the retry cannot send twice.",
+  "resolution": "A rerun of the flow went green at 12:26:45Z. anchor#395 (merged 12:35:45Z as 0ce3dbb6) makes the Anchor SMTP provider redial and re-authenticate once when AUTH answers 4yz; no message has been sent at that point, so the retry cannot send twice. A relay outage longer than one retry still fails the send, and a gate-tagged real-SMTP flow still holds prod on it (A3).",
   "timeline": {
     "events": [
       {
@@ -78,10 +78,15 @@
         "label": "Anchor suite back to 35/35"
       },
       {
-        "t": "2026-11-17T12:40:00Z",
-        "approx": true,
+        "t": "2026-11-17T12:27:42Z",
         "kind": "followup",
         "label": "Fix PR anchor#395 opened: one AUTH retry",
+        "link": "https://github.com/nanostack-dev/anchor/pull/395"
+      },
+      {
+        "t": "2026-11-17T12:35:45Z",
+        "kind": "followup",
+        "label": "anchor#395 merged (0ce3dbb6)",
         "link": "https://github.com/nanostack-dev/anchor/pull/395"
       }
     ]
@@ -181,7 +186,7 @@
       "type": "prevent",
       "owner": "Nanostack routine (echopoint-investigation)",
       "due": "2026-11-17",
-      "status": "open",
+      "status": "done",
       "fixes": [
         "R1"
       ],
@@ -192,11 +197,11 @@
     },
     {
       "id": "A2",
-      "what": "postmortem-loop.md: an `expected` row that repeats a second time gets a postmortem",
+      "what": "postmortem-loop.md and grafana-watch.md: a repeating `expected` or `noise` row (second time in 14 days, or reaching a suite or gate) gets a postmortem",
       "type": "process",
       "owner": "Nanostack routine (echopoint-investigation)",
       "due": "2026-11-17",
-      "status": "open",
+      "status": "done",
       "fixes": [
         "R2"
       ]
