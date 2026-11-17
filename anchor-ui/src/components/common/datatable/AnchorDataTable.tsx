@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/api-error";
+import { DataTableFrame } from "@nanostackorg/design-system/blocks/data-table-frame";
 import {
 	Button,
 	IconButton,
@@ -510,10 +511,7 @@ export function AnchorDataTable<
 	) : null;
 
 	return (
-		<fieldset
-			disabled={bulkRunning}
-			className="min-w-0 w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-		>
+		<DataTableFrame as="fieldset" disabled={bulkRunning}>
 			<Box className="flex flex-col gap-2 p-4">
 				<Box className="flex flex-wrap items-center gap-2">
 					{onFullTextSearchChange && (
@@ -798,6 +796,6 @@ export function AnchorDataTable<
 					{showErrorState ? "" : `${total} total`}
 				</span>
 			</Box>
-		</fieldset>
+		</DataTableFrame>
 	);
 }
