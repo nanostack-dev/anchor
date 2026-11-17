@@ -75,9 +75,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
 											tooltip={item.title}
 											{...(item.external
 												? {
-														render: (
+														render: (props) => (
 															<a
-																aria-label={item.title}
+																{...props}
 																href={disabled ? undefined : item.path}
 																target="_blank"
 																rel="noopener noreferrer"
