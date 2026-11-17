@@ -35,7 +35,7 @@ The routine's suite run (`run_suites.sh`) printed `FAILED anchor db6c38bb …: s
 
 ## Resolution
 
-A rerun of the flow went green at 12:26:45Z. The permanent fix makes the Anchor SMTP provider redial and re-authenticate once when AUTH answers 4yz; no message has been sent at that point, so the retry cannot send twice.
+A rerun of the flow went green at 12:26:45Z. anchor#395 (merged 12:35:45Z as 0ce3dbb6) makes the Anchor SMTP provider redial and re-authenticate once when AUTH answers 4yz; no message has been sent at that point, so the retry cannot send twice. A relay outage longer than one retry still fails the send, and a gate-tagged real-SMTP flow still holds prod on it (A3).
 
 ## Timeline (UTC)
 
@@ -49,7 +49,8 @@ A rerun of the flow went green at 12:26:45Z. The permanent fix makes the Anchor 
 | ~12:22 | T+12m 36s | **Routine matches ledger row: seventh occurrence** |
 | 12:26:45 | T+17m 21s | **Rerun of the flow completes green** |
 | 12:26:45 | T+17m 21s | **Anchor suite back to 35/35** |
-| ~12:40 | T+30m 36s | **Fix PR anchor#395 opened: one AUTH retry** ([link](https://github.com/nanostack-dev/anchor/pull/395)) |
+| 12:27:42 | T+18m 18s | **Fix PR anchor#395 opened: one AUTH retry** ([link](https://github.com/nanostack-dev/anchor/pull/395)) |
+| 12:35:45 | T+26m 21s | **anchor#395 merged (0ce3dbb6)** ([link](https://github.com/nanostack-dev/anchor/pull/395)) |
 
 ## Root cause analysis: the five whys
 
@@ -132,8 +133,8 @@ flowchart TD
 
 | ID | Action | Type | Owner | Due | Status | Ticket | Fixes |
 |---|---|---|---|---|---|---|---|
-| A1 | SMTP provider redials and re-authenticates once on a 4yz AUTH reply; unit tests for 454→235, 454→454 and 535 | prevent | Nanostack routine (echopoint-investigation) | 2026-11-17 | open | [anchor#395](https://github.com/nanostack-dev/anchor/pull/395) | R1 |
-| A2 | postmortem-loop.md: an `expected` row that repeats a second time gets a postmortem | process | Nanostack routine (echopoint-investigation) | 2026-11-17 | open |  | R2 |
+| A1 | SMTP provider redials and re-authenticates once on a 4yz AUTH reply; unit tests for 454→235, 454→454 and 535 | prevent | Nanostack routine (echopoint-investigation) | 2026-11-17 | done | [anchor#395](https://github.com/nanostack-dev/anchor/pull/395) | R1 |
+| A2 | postmortem-loop.md and grafana-watch.md: a repeating `expected` or `noise` row (second time in 14 days, or reaching a suite or gate) gets a postmortem | process | Nanostack routine (echopoint-investigation) | 2026-11-17 | done |  | R2 |
 | A3 | Decide on queued or detached email dispatch with bounded retries, so a slow relay neither blocks the caller nor leaves a FAILED send behind a 201 duplicate (ADR) | prevent | Anchor maintainers | 2026-12-01 | open |  | R3 |
 | A4 | Alert on `failed to send email` with an SMTP 4yz cause on prod | detect | Anchor maintainers | 2026-12-01 | open |  | R1, R3 |
 
