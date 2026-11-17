@@ -1,6 +1,6 @@
 # Anchor logo
 
-The Anchor mark is an **anchor drawn in squares**: twelve rounded squares on a five-by-five grid, forming the ring, the stock, the shank, the two arm tips and the crown. It uses the same construction as the [Echopoint mark](https://github.com/nanostack-dev/echopoint/blob/main/docs/brand/README.md): rounded squares with a 20% corner radius, a tile with a 23% corner radius, the product's primary color. The two icons sit side by side as one family.
+The Anchor mark is an **anchor drawn in squares**: eleven rounded squares on a five-by-five grid, forming the ring, the stock, the shank, the two arm tips and the crown. It uses the same construction as the [Echopoint mark](https://github.com/nanostack-dev/echopoint/blob/main/docs/brand/README.md): rounded squares with a 20% corner radius, a tile with a 23% corner radius, the product's primary color. The two icons sit side by side as one family.
 
 [`build.py`](build.py) generates every file below from one copy of the geometry. Change the geometry there and rebuild; never edit an output. In code, use the components in `anchor-ui/src/components/brand/AnchorLogo.tsx`, never a copied SVG.
 

@@ -1,6 +1,6 @@
 """Build the Anchor logo files from one copy of the geometry.
 
-The mark is an anchor drawn with twelve rounded squares on a 5 x 5 grid, in the
+The mark is an anchor drawn with eleven rounded squares on a 5 x 5 grid, in the
 same construction as the Echopoint mark: every corner radius is 20% of its square,
 and the icon puts the mark on a tile with a 23% corner radius.
 
