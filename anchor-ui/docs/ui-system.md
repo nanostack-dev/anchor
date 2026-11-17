@@ -22,7 +22,7 @@ Keep one surface owner per region. A table, card, alert or empty state must not 
 
 ## Architecture and behavior
 
-The shell is the design-system `blocks/app-shell`, shared with Echopoint: `AppShell`, `AppShellSidebar` with `AppShellBrand` (the Nanostack mark and the name "Anchor"), `AppShellHeader` (the floating top bar that holds `ProductTopBar`) and `AppShellContent` (the scrolling page region and skip-link target). `src/components/layout/app-shell.tsx` only sets Anchor's widths, skip-link label and content id.
+The shell is the design-system `blocks/app-shell`, shared with Echopoint: `AppShell`, `AppShellSidebar` with `AppShellBrand` (the Anchor mark, passed as `mark={<AnchorLogo size="lg" />}`, and the name "Anchor"), `AppShellHeader` (the floating top bar that holds `ProductTopBar`) and `AppShellContent` (the scrolling page region and skip-link target). `src/components/layout/app-shell.tsx` only sets Anchor's widths, skip-link label and content id.
 
 Routes own routing and auth; pages own data orchestration; `src/components/<domain>` holds typed Anchor visuals shared by those pages. New independent slices may use `src/features/<feature>/components`. Keep stories next to owned UI, and app-wide language/contract stories in `src/stories/system`. Avoid moving unrelated modules just to change their folder.
 

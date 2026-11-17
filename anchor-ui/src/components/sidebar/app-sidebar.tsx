@@ -1,3 +1,4 @@
+import { AnchorLogo } from "@/components/brand/AnchorLogo";
 import { AppShellBrand, AppShellSidebar } from "@/components/layout/app-shell";
 import { NavUser } from "@/components/sidebar/nav-user";
 import { useProduct } from "@/hooks/useProduct";
@@ -38,6 +39,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 					name="Anchor"
 					description="Organization-as-a-Service"
 					href={ROUTE_PATHS.PRODUCT_PERMISSIONS}
+					mark={<AnchorLogo size="lg" />}
 				/>
 			</SidebarHeader>
 			<SidebarContent>

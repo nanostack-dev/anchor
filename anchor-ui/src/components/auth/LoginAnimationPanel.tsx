@@ -6,7 +6,7 @@ import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { AnchorLogoMark } from "./AnchorLogoMark";
+import { AnchorLogo } from "../brand/AnchorLogo";
 
 export function AnchorAnimatedBackdrop({ children }: { children?: ReactNode }) {
 	return (
@@ -32,7 +32,7 @@ export function FloatingAnchorMark({ size = "lg" }: { size?: "md" | "lg" }) {
 			transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
 		>
 			<Box className="text-primary">
-				<AnchorLogoMark size={size} />
+				<AnchorLogo size={size === "lg" ? "hero" : "xl"} />
 			</Box>
 		</motion.div>
 	);
