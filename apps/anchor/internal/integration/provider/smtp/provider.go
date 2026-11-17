@@ -7,7 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/smtp"
+	"net/textproto"
 	"strings"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
@@ -34,6 +37,10 @@ const (
 
 	defaultPort = 587
 )
+
+// authRetryDelay is the wait before the single retry of a transient AUTH reply.
+// Tests set it to zero.
+var authRetryDelay = time.Second //nolint:gochecknoglobals // test seam for the retry wait.
 
 var errMissingEncryptionKey = errors.New("global encryption key is not configured")
 
@@ -283,9 +290,10 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 }
 
 // Send transmits a fully rendered OutboundMessage through the configured SMTP
-// transport. The email service is responsible for rendering, idempotency,
-// and retry; this method handles the network conversation and returns the
-// on-the-wire Message-ID for audit-trail correlation.
+// transport. The email service owns rendering and idempotency. This method
+// handles the network conversation: it retries a transient (4yz) AUTH reply
+// once on a fresh connection, because nothing has been sent before MAIL FROM.
+// It never retries after MAIL FROM, so a message is not sent twice.
 func (p *Provider) Send(
 	ctx context.Context,
 	instance *integration.Instance,
@@ -295,18 +303,56 @@ func (p *Provider) Send(
 	if err != nil {
 		return err
 	}
-	client, err := dialSMTP(ctx, cfg)
+	client, err := p.dialAndAuthenticate(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = client.Close() }()
-	if err = authenticate(client, cfg); err != nil {
-		return fmt.Errorf("smtp auth: %w", err)
-	}
 	if _, err = sendMessage(client, cfg, msg); err != nil {
 		return err
 	}
 	return client.Quit()
+}
+
+// dialAndAuthenticate returns an authenticated client. A transient 4yz AUTH
+// reply closes the connection and retries once on a fresh one after
+// authRetryDelay; other failures return at once.
+func (p *Provider) dialAndAuthenticate(ctx context.Context, cfg Config) (*smtp.Client, error) {
+	client, err := dialSMTP(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	authErr := authenticate(client, cfg)
+	if authErr == nil {
+		return client, nil
+	}
+	_ = client.Close()
+	if !isTransientSMTPReply(authErr) {
+		return nil, fmt.Errorf("smtp auth: %w", authErr)
+	}
+	p.logger.WarnContext(ctx, "smtp auth got a transient reply, retrying once", log.Err(authErr))
+	timer := time.NewTimer(authRetryDelay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("smtp auth: %w", authErr)
+	case <-timer.C:
+	}
+	client, err = dialSMTP(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	if authErr = authenticate(client, cfg); authErr != nil {
+		_ = client.Close()
+		return nil, fmt.Errorf("smtp auth: %w", authErr)
+	}
+	return client, nil
+}
+
+// isTransientSMTPReply reports whether err carries an SMTP 4yz reply.
+func isTransientSMTPReply(err error) bool {
+	var protoErr *textproto.Error
+	return errors.As(err, &protoErr) && protoErr.Code >= 400 && protoErr.Code < 500
 }
 
 // SenderIdentity returns the From address + display name configured on the
