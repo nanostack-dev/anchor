@@ -77,11 +77,12 @@ anchor-ui is light-only today; the dark files exist for dark surfaces outside th
 | `anchor-ui/public/favicon.svg` | Favicon cut. Follows the browser's light or dark scheme. |
 | `anchor-ui/public/favicon.ico` | 16, 32 and 48 px fallback for browsers without SVG favicons. |
 | `anchor-ui/public/apple-touch-icon.png` | 180 px home-screen icon. |
-| `anchor-ui/public/logo.svg` | The blue mark, for the app's remaining `<img src="/logo.svg">` uses in the sidebar. |
+| `anchor-ui/public/logo.svg` | The blue mark, for places that can only take an image URL. |
 
 ## In code
 
 - `AnchorLogo` draws the mark in `currentColor`. Sizes: `sm` 16 px, `md` 20 px, `lg` 24 px, `xl` 96 px, `hero` 160 px. Pass `label` when the mark stands alone; without it the mark is hidden from assistive technology.
 - `AnchorIcon` draws the icon with `bg-primary` and `text-primary-foreground`, so it follows the theme on its own. Sizes: `sm` 32 px, `md` 36 px, `lg` 40 px.
-- The sign-in screens use `AnchorIcon` beside the name and `AnchorLogo` in the loading panel. Inside the app shell, the brand slot of `@nanostackorg/design-system` 0.3.0 and later shows the Nanostack mark beside the product name, so the Anchor mark appears on the sign-in screens, the favicon and the app icon rather than in the sidebar.
+- The sign-in screens use `AnchorIcon` beside the name and `AnchorLogo` in the loading panel.
+- The sidebar brand slot shows the Anchor mark: with `@nanostackorg/design-system` 0.2.x the slot draws the primary tile and Anchor passes `logo={<AnchorLogo size="md" />}`; from 0.3.1 the slot draws no tile and Anchor passes `mark={<AnchorIcon size="sm" />}`. Without `mark`, 0.3.x shows the Nanostack mark, which the design system's own demos keep.
 - The story `Brand/Anchor logo` (`AnchorLogo.stories.tsx`) shows every size.
