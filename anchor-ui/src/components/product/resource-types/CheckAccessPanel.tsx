@@ -22,6 +22,7 @@ import {
 	AlertTitle,
 } from "@nanostackorg/design-system/components/alert";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
 	Field,
 	FieldDescription,
@@ -399,311 +400,319 @@ export function CheckAccessPanel({
 		<Box
 			as="section"
 			aria-labelledby="check-access-heading"
-			className="min-w-0 rounded-2xl border border-border bg-card p-4"
+			className="min-w-0"
 		>
-			<Stack space="md">
-				<Stack space="xs">
-					<Heading level={2} id="check-access-heading">
-						Check access
-					</Heading>
-					<Text tone="muted">
-						Ask whether a member holds a permission on a resource, and see the
-						role that grants it.
-					</Text>
-				</Stack>
+			<Card size="sm">
+				<CardContent>
+					<Stack space="md">
+						<Stack space="xs">
+							<Heading level={2} id="check-access-heading">
+								Check access
+							</Heading>
+							<Text tone="muted">
+								Ask whether a member holds a permission on a resource, and see
+								the role that grants it.
+							</Text>
+						</Stack>
 
-				<FieldGroup>
-					<Field>
-						<FieldLabel htmlFor="check-access-organization">
-							Organization
-						</FieldLabel>
-						<SearchPicker<ProductOrganizationResponse>
-							id="check-access-organization"
-							placeholder="Search organizations"
-							listLabel="Organizations"
-							value={organization}
-							onChange={(next) => {
-								setOrganization(next);
-								setMember(null);
-								setResource(null);
-								changed();
-							}}
-							queryKey={["check-access", productId, "organizations"]}
-							search={async (term, signal) => {
-								const { data } = await searchProductOrganizations({
-									path: { product_id: productId },
-									body: {
-										full_text_search: term || undefined,
-										sort_by: "name",
-										pagination: { limit: SEARCH_PAGE },
-									},
-									signal,
-									throwOnError: true,
-								});
-								return data.items;
-							}}
-							itemKey={(item) => item.id}
-							itemLabel={(item) => item.name}
-							noMatch="No organization matches."
-							nothing="This product has no organizations yet."
-							failure="Anchor didn't return the organizations."
-						/>
-					</Field>
-
-					<Field>
-						<FieldLabel htmlFor="check-access-member">Member</FieldLabel>
-						<SearchPicker<OrganizationMemberResponse>
-							id="check-access-member"
-							placeholder={
-								organization
-									? "Search members by name or email"
-									: "Choose an organization first"
-							}
-							listLabel="Members"
-							value={member}
-							disabled={!organization}
-							onChange={(next) => {
-								setMember(next);
-								changed();
-							}}
-							queryKey={[
-								"check-access",
-								productId,
-								"members",
-								organization?.id,
-							]}
-							search={async (term, signal) => {
-								if (!organization) return [];
-								const { data } = await searchOrganizationMembers({
-									path: {
-										product_id: productId,
-										organization_id: organization.id,
-									},
-									body: {
-										full_text_search: term || undefined,
-										sort_by: "email",
-										pagination: { limit: SEARCH_PAGE },
-									},
-									signal,
-									throwOnError: true,
-								});
-								return data.items;
-							}}
-							itemKey={(item) => item.product_user_id}
-							itemLabel={memberLabel}
-							itemDetail={(item) => (item.name ? item.email : undefined)}
-							itemBlocked={(item) =>
-								item.external_id
-									? undefined
-									: `${item.name ? `${item.email} · ` : ""}No external ID yet, so Anchor can't name them in a check.`
-							}
-							noMatch="No member matches."
-							nothing={
-								organization
-									? `${organization.name} has no members yet.`
-									: "Choose an organization first."
-							}
-							failure="Anchor didn't return the members."
-						/>
-					</Field>
-
-					<Field>
-						<FieldLabel htmlFor="check-access-permission">
-							Permission
-						</FieldLabel>
-						<SearchPicker<ProductResourcePermissionResponse>
-							id="check-access-permission"
-							placeholder="Search permissions"
-							listLabel="Permissions"
-							value={permission}
-							onChange={(next) => {
-								setPermission(next);
-								changed();
-							}}
-							queryKey={["check-access", productId, "permissions"]}
-							search={async (term, signal) => {
-								const { data } = await searchProductResourcePermissions({
-									path: { product_id: productId },
-									body: {
-										full_text_search: term || undefined,
-										sort_by: "name",
-										pagination: { limit: SEARCH_PAGE },
-									},
-									signal,
-									throwOnError: true,
-								});
-								return data.items;
-							}}
-							itemKey={(item) => item.name}
-							itemLabel={(item) => item.name}
-							itemDetail={(item) =>
-								`Scoped to ${typeName(types, item.resource_type)}`
-							}
-							noMatch="No permission matches."
-							nothing="This product has no permissions yet."
-							failure="Anchor didn't return the permissions."
-						/>
-					</Field>
-
-					<Field>
-						<FieldLabel htmlFor="check-access-resource-type">
-							Resource type
-						</FieldLabel>
-						<ResourceTypeSelect
-							id="check-access-resource-type"
-							productId={productId}
-							value={resourceType}
-							placeholder="Choose the resource's type"
-							onChange={(slug) => {
-								setResourceType(slug);
-								setResource(null);
-								changed();
-							}}
-						/>
-						{choosesOrganization && (
-							<FieldDescription>
-								{organization
-									? `Checks ${organization.name} itself.`
-									: "Checks the Organization itself."}
-							</FieldDescription>
-						)}
-					</Field>
-
-					{resourceType && !choosesOrganization && (
-						<Field>
-							<FieldLabel htmlFor="check-access-resource">Resource</FieldLabel>
-							<SearchPicker<ResourceResponse>
-								id="check-access-resource"
-								placeholder={
-									organization
-										? `Search ${typeLabel} resources by name`
-										: "Choose an organization first"
-								}
-								listLabel="Resources"
-								value={resource}
-								disabled={!organization}
-								onChange={(next) => {
-									setResource(next);
-									changed();
-								}}
-								queryKey={[
-									"check-access",
-									productId,
-									"resources",
-									organization?.id,
-									resourceType,
-								]}
-								search={async (term, signal) => {
-									if (!organization) return [];
-									const { data } = await searchResources({
-										path: {
-											product_id: productId,
-											organization_id: organization.id,
-										},
-										body: {
-											filter: {
-												resource_types: [resourceType],
-												name_contains: term || undefined,
+						<FieldGroup>
+							<Field>
+								<FieldLabel htmlFor="check-access-organization">
+									Organization
+								</FieldLabel>
+								<SearchPicker<ProductOrganizationResponse>
+									id="check-access-organization"
+									placeholder="Search organizations"
+									listLabel="Organizations"
+									value={organization}
+									onChange={(next) => {
+										setOrganization(next);
+										setMember(null);
+										setResource(null);
+										changed();
+									}}
+									queryKey={["check-access", productId, "organizations"]}
+									search={async (term, signal) => {
+										const { data } = await searchProductOrganizations({
+											path: { product_id: productId },
+											body: {
+												full_text_search: term || undefined,
+												sort_by: "name",
+												pagination: { limit: SEARCH_PAGE },
 											},
-											sort_by: ResourceSortField.NAME,
-											pagination: { limit: SEARCH_PAGE },
-										},
-										signal,
-										throwOnError: true,
-									});
-									return data.items;
-								}}
-								itemKey={(item) => `${item.type}:${item.id}`}
-								itemLabel={(item) => item.name}
-								itemDetail={(item) => item.id}
-								noMatch={`No ${typeLabel} matches.`}
-								nothing={
-									organization
-										? `${organization.name} has no registered ${typeLabel} resources.`
-										: "Choose an organization first."
-								}
-								failure="Anchor didn't return the resources."
+											signal,
+											throwOnError: true,
+										});
+										return data.items;
+									}}
+									itemKey={(item) => item.id}
+									itemLabel={(item) => item.name}
+									noMatch="No organization matches."
+									nothing="This product has no organizations yet."
+									failure="Anchor didn't return the organizations."
+								/>
+							</Field>
+
+							<Field>
+								<FieldLabel htmlFor="check-access-member">Member</FieldLabel>
+								<SearchPicker<OrganizationMemberResponse>
+									id="check-access-member"
+									placeholder={
+										organization
+											? "Search members by name or email"
+											: "Choose an organization first"
+									}
+									listLabel="Members"
+									value={member}
+									disabled={!organization}
+									onChange={(next) => {
+										setMember(next);
+										changed();
+									}}
+									queryKey={[
+										"check-access",
+										productId,
+										"members",
+										organization?.id,
+									]}
+									search={async (term, signal) => {
+										if (!organization) return [];
+										const { data } = await searchOrganizationMembers({
+											path: {
+												product_id: productId,
+												organization_id: organization.id,
+											},
+											body: {
+												full_text_search: term || undefined,
+												sort_by: "email",
+												pagination: { limit: SEARCH_PAGE },
+											},
+											signal,
+											throwOnError: true,
+										});
+										return data.items;
+									}}
+									itemKey={(item) => item.product_user_id}
+									itemLabel={memberLabel}
+									itemDetail={(item) => (item.name ? item.email : undefined)}
+									itemBlocked={(item) =>
+										item.external_id
+											? undefined
+											: `${item.name ? `${item.email} · ` : ""}No external ID yet, so Anchor can't name them in a check.`
+									}
+									noMatch="No member matches."
+									nothing={
+										organization
+											? `${organization.name} has no members yet.`
+											: "Choose an organization first."
+									}
+									failure="Anchor didn't return the members."
+								/>
+							</Field>
+
+							<Field>
+								<FieldLabel htmlFor="check-access-permission">
+									Permission
+								</FieldLabel>
+								<SearchPicker<ProductResourcePermissionResponse>
+									id="check-access-permission"
+									placeholder="Search permissions"
+									listLabel="Permissions"
+									value={permission}
+									onChange={(next) => {
+										setPermission(next);
+										changed();
+									}}
+									queryKey={["check-access", productId, "permissions"]}
+									search={async (term, signal) => {
+										const { data } = await searchProductResourcePermissions({
+											path: { product_id: productId },
+											body: {
+												full_text_search: term || undefined,
+												sort_by: "name",
+												pagination: { limit: SEARCH_PAGE },
+											},
+											signal,
+											throwOnError: true,
+										});
+										return data.items;
+									}}
+									itemKey={(item) => item.name}
+									itemLabel={(item) => item.name}
+									itemDetail={(item) =>
+										`Scoped to ${typeName(types, item.resource_type)}`
+									}
+									noMatch="No permission matches."
+									nothing="This product has no permissions yet."
+									failure="Anchor didn't return the permissions."
+								/>
+							</Field>
+
+							<Field>
+								<FieldLabel htmlFor="check-access-resource-type">
+									Resource type
+								</FieldLabel>
+								<ResourceTypeSelect
+									id="check-access-resource-type"
+									productId={productId}
+									value={resourceType}
+									placeholder="Choose the resource's type"
+									onChange={(slug) => {
+										setResourceType(slug);
+										setResource(null);
+										changed();
+									}}
+								/>
+								{choosesOrganization && (
+									<FieldDescription>
+										{organization
+											? `Checks ${organization.name} itself.`
+											: "Checks the Organization itself."}
+									</FieldDescription>
+								)}
+							</Field>
+
+							{resourceType && !choosesOrganization && (
+								<Field>
+									<FieldLabel htmlFor="check-access-resource">
+										Resource
+									</FieldLabel>
+									<SearchPicker<ResourceResponse>
+										id="check-access-resource"
+										placeholder={
+											organization
+												? `Search ${typeLabel} resources by name`
+												: "Choose an organization first"
+										}
+										listLabel="Resources"
+										value={resource}
+										disabled={!organization}
+										onChange={(next) => {
+											setResource(next);
+											changed();
+										}}
+										queryKey={[
+											"check-access",
+											productId,
+											"resources",
+											organization?.id,
+											resourceType,
+										]}
+										search={async (term, signal) => {
+											if (!organization) return [];
+											const { data } = await searchResources({
+												path: {
+													product_id: productId,
+													organization_id: organization.id,
+												},
+												body: {
+													filter: {
+														resource_types: [resourceType],
+														name_contains: term || undefined,
+													},
+													sort_by: ResourceSortField.NAME,
+													pagination: { limit: SEARCH_PAGE },
+												},
+												signal,
+												throwOnError: true,
+											});
+											return data.items;
+										}}
+										itemKey={(item) => `${item.type}:${item.id}`}
+										itemLabel={(item) => item.name}
+										itemDetail={(item) => item.id}
+										noMatch={`No ${typeLabel} matches.`}
+										nothing={
+											organization
+												? `${organization.name} has no registered ${typeLabel} resources.`
+												: "Choose an organization first."
+										}
+										failure="Anchor didn't return the resources."
+									/>
+								</Field>
+							)}
+						</FieldGroup>
+
+						<Box className="flex flex-wrap items-center gap-3">
+							<Button
+								variant="solid"
+								tone="brand"
+								loading={check.isPending}
+								disabled={!question}
+								onClick={() => question && check.mutate(question)}
+							>
+								Check
+							</Button>
+							{!question && !check.isPending && (
+								<Text tone="muted" size="sm">
+									Choose an organization, a member, a permission and a resource.
+								</Text>
+							)}
+						</Box>
+
+						<output aria-live="polite" className="sr-only">
+							{announcement}
+						</output>
+
+						{unavailable && check.variables && (
+							<Alert tone="warning" icon={CloudSlashIcon}>
+								<AlertTitle>
+									Access decisions are unavailable right now
+								</AlertTitle>
+								<AlertDescription>
+									<Stack space="sm" align="start">
+										<Box as="span">
+											Anchor's decision store didn't answer, so it made no
+											decision. Try again in a moment.
+										</Box>
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() =>
+												check.variables && check.mutate(check.variables)
+											}
+										>
+											Try again
+										</Button>
+									</Stack>
+								</AlertDescription>
+							</Alert>
+						)}
+
+						{check.isError && !unavailable && check.variables && (
+							<Alert tone="critical" icon={WarningCircleIcon}>
+								<AlertTitle>Anchor didn't check access</AlertTitle>
+								<AlertDescription>
+									<Stack space="sm" align="start">
+										<Box as="span" className="[overflow-wrap:anywhere]">
+											{getErrorDetail(check.error) ??
+												"Check your connection and try again."}
+										</Box>
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() =>
+												check.variables && check.mutate(check.variables)
+											}
+										>
+											Try again
+										</Button>
+									</Stack>
+								</AlertDescription>
+							</Alert>
+						)}
+
+						{check.data && explanation && (
+							<AccessDecision
+								result={check.data}
+								explanation={explanation}
+								types={types}
+								onShowPath={onShowPath}
 							/>
-						</Field>
-					)}
-				</FieldGroup>
-
-				<Box className="flex flex-wrap items-center gap-3">
-					<Button
-						variant="solid"
-						tone="brand"
-						loading={check.isPending}
-						disabled={!question}
-						onClick={() => question && check.mutate(question)}
-					>
-						Check
-					</Button>
-					{!question && !check.isPending && (
-						<Text tone="muted" size="sm">
-							Choose an organization, a member, a permission and a resource.
-						</Text>
-					)}
-				</Box>
-
-				<output aria-live="polite" className="sr-only">
-					{announcement}
-				</output>
-
-				{unavailable && check.variables && (
-					<Alert tone="warning" icon={CloudSlashIcon}>
-						<AlertTitle>Access decisions are unavailable right now</AlertTitle>
-						<AlertDescription>
-							<Stack space="sm" align="start">
-								<Box as="span">
-									Anchor's decision store didn't answer, so it made no decision.
-									Try again in a moment.
-								</Box>
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={() =>
-										check.variables && check.mutate(check.variables)
-									}
-								>
-									Try again
-								</Button>
-							</Stack>
-						</AlertDescription>
-					</Alert>
-				)}
-
-				{check.isError && !unavailable && check.variables && (
-					<Alert tone="critical" icon={WarningCircleIcon}>
-						<AlertTitle>Anchor didn't check access</AlertTitle>
-						<AlertDescription>
-							<Stack space="sm" align="start">
-								<Box as="span" className="[overflow-wrap:anywhere]">
-									{getErrorDetail(check.error) ??
-										"Check your connection and try again."}
-								</Box>
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={() =>
-										check.variables && check.mutate(check.variables)
-									}
-								>
-									Try again
-								</Button>
-							</Stack>
-						</AlertDescription>
-					</Alert>
-				)}
-
-				{check.data && explanation && (
-					<AccessDecision
-						result={check.data}
-						explanation={explanation}
-						types={types}
-						onShowPath={onShowPath}
-					/>
-				)}
-			</Stack>
+						)}
+					</Stack>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 }

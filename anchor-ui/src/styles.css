@@ -7,6 +7,19 @@
 @source "../node_modules/@nanostackorg/design-system/dist";
 @source "./**/*.{ts,tsx}";
 
+/* The glass brand tile in Anchor's colours, as on its favicon
+   (docs/brand/README.md): blue with a white mark. Anchor has no dark theme
+   yet; the lime pair is set for when it does. */
+:root {
+	--app-shell-brand-tile: #1f5bbd;
+	--app-shell-brand-tile-foreground: #ffffff;
+}
+
+.dark {
+	--app-shell-brand-tile: #a0e33b;
+	--app-shell-brand-tile-foreground: #090e1a;
+}
+
 @layer base {
 	body {
 		margin: 0;

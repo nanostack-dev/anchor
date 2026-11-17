@@ -1,3 +1,4 @@
+import { AnchorLogo } from "@/components/brand/AnchorLogo";
 import { AppShellBrand, AppShellSidebar } from "@/components/layout/app-shell";
 import { NavUser } from "@/components/sidebar/nav-user";
 import { useProduct } from "@/hooks/useProduct";
@@ -32,19 +33,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
 	const renderIcon = (Icon?: LucideIcon) =>
 		Icon ? <Icon aria-hidden /> : null;
 	return (
-		<AppShellSidebar material="frosted">
+		<AppShellSidebar>
 			<SidebarHeader>
 				<AppShellBrand
 					name="Anchor"
 					description="Organization-as-a-Service"
 					href={ROUTE_PATHS.PRODUCT_PERMISSIONS}
-					logo={
-						<img
-							src="/logo.svg"
-							alt=""
-							className="size-6 brightness-0 invert"
-						/>
-					}
+					mark={<AnchorLogo size="lg" />}
 				/>
 			</SidebarHeader>
 			<SidebarContent>
@@ -80,15 +75,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
 											tooltip={item.title}
 											{...(item.external
 												? {
-														render: (
+														render: (props) => (
 															<a
-																aria-label={item.title}
+																{...props}
 																href={disabled ? undefined : item.path}
 																target="_blank"
 																rel="noopener noreferrer"
-															>
-																{item.title}
-															</a>
+															/>
 														),
 													}
 												: {})}

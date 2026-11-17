@@ -59,7 +59,7 @@ if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<StrictMode>
-			<DesignSystemProvider linkComponent={RouterLink}>
+			<DesignSystemProvider linkComponent={RouterLink} material="glass">
 				<QueryClientProvider client={queryClient}>
 					<App />
 					<Toaster />

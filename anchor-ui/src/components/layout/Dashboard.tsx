@@ -18,6 +18,13 @@ import {
 	StatCardValue,
 } from "@nanostackorg/design-system/blocks/stat-card";
 import {
+	Card,
+	CardAction,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@nanostackorg/design-system/components/card";
+import {
 	Empty,
 	EmptyDescription,
 	EmptyHeader,
@@ -29,7 +36,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import {
-	ArrowUpRight,
+	ArrowRight,
 	Boxes,
 	Building2,
 	KeyRound,
@@ -108,38 +115,44 @@ function ResourceList({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-			<div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
-				<h3 className="text-sm font-semibold text-foreground">{title}</h3>
-				<TextLink href={viewAllTo}>
-					View all
-					<ArrowUpRight aria-hidden className="size-3.5" />
-				</TextLink>
-			</div>
-			{isLoading ? (
-				<ul className="divide-y divide-border">
-					{Array.from({ length: 4 }).map((_, i) => (
-						<li
-							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
-							key={i}
-							className="flex items-center gap-3 px-5 py-3"
-						>
-							<Skeleton height="sm" />
-							<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-								<Skeleton height="sm" width="1/2" />
-								<Skeleton height="sm" width="3/4" />
-							</div>
-						</li>
-					))}
-				</ul>
-			) : isEmpty ? (
-				<p className="px-5 py-10 text-center text-sm text-muted-foreground">
-					{emptyText}
-				</p>
-			) : (
-				<ul className="divide-y divide-border">{children}</ul>
-			)}
-		</div>
+		<Card size="sm">
+			<CardHeader>
+				<CardTitle>{title}</CardTitle>
+				<CardAction>
+					<TextLink href={viewAllTo}>
+						<span className="inline-flex items-center gap-1 whitespace-nowrap">
+							View all
+							<ArrowRight aria-hidden className="size-3.5" />
+						</span>
+					</TextLink>
+				</CardAction>
+			</CardHeader>
+			<CardContent>
+				{isLoading ? (
+					<ul className="divide-y divide-border/70">
+						{Array.from({ length: 4 }).map((_, i) => (
+							<li
+								// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows
+								key={i}
+								className="flex items-center gap-3 py-3"
+							>
+								<Skeleton height="sm" />
+								<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+									<Skeleton height="sm" width="1/2" />
+									<Skeleton height="sm" width="3/4" />
+								</div>
+							</li>
+						))}
+					</ul>
+				) : isEmpty ? (
+					<p className="py-8 text-center text-sm text-muted-foreground">
+						{emptyText}
+					</p>
+				) : (
+					<ul className="divide-y divide-border/70">{children}</ul>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -292,10 +305,7 @@ export default function DashboardPage() {
 							emptyText="No products yet."
 						>
 							{recentProductItems.map((product) => (
-								<li
-									key={product.id}
-									className="flex items-center gap-3 px-5 py-3"
-								>
+								<li key={product.id} className="flex items-center gap-3 py-3">
 									<span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-xs font-semibold text-primary">
 										{initial(product.name)}
 									</span>
@@ -322,10 +332,7 @@ export default function DashboardPage() {
 							emptyText="No platform users yet."
 						>
 							{recentUserItems.map((member) => (
-								<li
-									key={member.id}
-									className="flex items-center gap-3 px-5 py-3"
-								>
+								<li key={member.id} className="flex items-center gap-3 py-3">
 									<span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-xs font-semibold text-primary">
 										{initial(member.email)}
 									</span>

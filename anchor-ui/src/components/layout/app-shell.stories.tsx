@@ -104,7 +104,7 @@ function ShellHarness({
 	const [router] = useState(() => {
 		const root = createRootRoute({
 			component: () => (
-				<DesignSystemProvider linkComponent={RouterLink}>
+				<DesignSystemProvider linkComponent={RouterLink} material="glass">
 					<AuthenticatedLayout>
 						<Outlet />
 					</AuthenticatedLayout>
@@ -347,6 +347,9 @@ export const DesktopCollapseAndSkipLink: Story = {
 			expect(dashboard.getBoundingClientRect().width).toBeLessThan(40),
 		);
 		await expect(roles).not.toBeVisible();
+		const apiDocs = canvas.getByRole("link", { name: "API Documentation" });
+		await expect(apiDocs.getBoundingClientRect().width).toBeLessThan(40);
+		await expect(apiDocs.querySelector("svg")).toBeVisible();
 		await expect(trigger).toHaveFocus();
 		await userEvent.keyboard("{Enter}");
 		await waitFor(() => expect(roles).toBeVisible());

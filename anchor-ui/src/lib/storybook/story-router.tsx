@@ -25,7 +25,7 @@ export function StoryRouter({
 }) {
 	const rootRoute = createRootRoute({
 		component: () => (
-			<DesignSystemProvider linkComponent={RouterLink}>
+			<DesignSystemProvider linkComponent={RouterLink} material="glass">
 				{children}
 			</DesignSystemProvider>
 		),
