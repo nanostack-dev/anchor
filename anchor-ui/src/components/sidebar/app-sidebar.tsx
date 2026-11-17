@@ -32,19 +32,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
 	const renderIcon = (Icon?: LucideIcon) =>
 		Icon ? <Icon aria-hidden /> : null;
 	return (
-		<AppShellSidebar material="frosted">
+		<AppShellSidebar>
 			<SidebarHeader>
 				<AppShellBrand
 					name="Anchor"
 					description="Organization-as-a-Service"
 					href={ROUTE_PATHS.PRODUCT_PERMISSIONS}
-					logo={
-						<img
-							src="/logo.svg"
-							alt=""
-							className="size-6 brightness-0 invert"
-						/>
-					}
 				/>
 			</SidebarHeader>
 			<SidebarContent>

@@ -7,6 +7,7 @@ Anchor uses the same published `@nanostackorg/design-system` components, tokens 
 - Import UI only from `@nanostackorg/design-system` (root, `components/<name>`, `layout/<name>`, `blocks/<name>`, `provider`). Never copy a shadcn component into the product or import package internals.
 - Wire Tailwind v4 in `src/styles.css`: import Tailwind, then the package stylesheet, and register `../node_modules/@nanostackorg/design-system/dist` with `@source`. Load Plus Jakarta Sans, Outfit and Geist Mono through Fontsource. Shared tokens are complete colors: use `var(--primary)`, never `hsl(var(--primary))`.
 - Wrap the app in `DesignSystemProvider linkComponent={RouterLink}` so `ButtonLink`, `TextLink` and navigation link parts use the product router. Preserve external links, search parameters and fragments.
+- Anchor uses the glass material: `DesignSystemProvider linkComponent={RouterLink} material="glass"` in `src/main.tsx` and in every story provider (`src/lib/storybook/story-router.tsx`, the shell stories). The design system draws glass chrome (sidebar, top bar, popups, dialogs, toasts) and near-opaque cards and tables; Anchor adds no glass classes. Its rules, tokens and measured contrast: `docs/technical/material.md` and ADR 0002 in the design system.
 - Pages and routes compose components, blocks and layout blocks with props only. They pass no `className` or `style`.
 - Before adding a component, search the design-system exports, components, blocks and layouts, then the sibling private registry. Read current source and theme tokens from the design-system repository's `origin/main`, not installed package output. A different look for the same use case needs an existing or shared variant. A visual explained by Anchor's domain belongs in a typed product component. A part a second product would use unchanged belongs in the design system.
 - Product components are closed too: expose typed semantic variants. Within their implementation, compose shared parts by props or build on `Box` using design tokens. Never restyle shared markup, including named parts and rendered children, with classes, CSS selectors or token overrides.
@@ -20,6 +21,8 @@ Use shared `Alert`, `Empty`, `Skeleton`, `Spinner`, `Badge` and their semantic p
 Keep one surface owner per region. A table, card, alert or empty state must not receive a second card wrapper. `Page` owns the title and breadcrumbs; tables do not repeat them. Temporary overlays own their elevation. Loading, error, stale results, empty and pending states must stay actionable and distinguishable.
 
 ## Architecture and behavior
+
+The shell is the design-system `blocks/app-shell`, shared with Echopoint: `AppShell`, `AppShellSidebar` with `AppShellBrand` (the Nanostack mark and the name "Anchor"), `AppShellHeader` (the floating top bar that holds `ProductTopBar`) and `AppShellContent` (the scrolling page region and skip-link target). `src/components/layout/app-shell.tsx` only sets Anchor's widths, skip-link label and content id.
 
 Routes own routing and auth; pages own data orchestration; `src/components/<domain>` holds typed Anchor visuals shared by those pages. New independent slices may use `src/features/<feature>/components`. Keep stories next to owned UI, and app-wide language/contract stories in `src/stories/system`. Avoid moving unrelated modules just to change their folder.
 

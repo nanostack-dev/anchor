@@ -104,7 +104,7 @@ function ShellHarness({
 	const [router] = useState(() => {
 		const root = createRootRoute({
 			component: () => (
-				<DesignSystemProvider linkComponent={RouterLink}>
+				<DesignSystemProvider linkComponent={RouterLink} material="glass">
 					<AuthenticatedLayout>
 						<Outlet />
 					</AuthenticatedLayout>

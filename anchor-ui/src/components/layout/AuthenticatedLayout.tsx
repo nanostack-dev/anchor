@@ -3,10 +3,8 @@ import { ProductTopBar } from "@/components/layout/ProductTopBar";
 import {
 	AppShell,
 	AppShellContent,
+	AppShellHeader,
 	AppShellInset,
-	AppShellSidebarTrigger,
-	AppShellTopbar,
-	AppShellTopbarContent,
 } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ProductProvider } from "@/context/product/ProductContext";
@@ -98,12 +96,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 			<AppShell>
 				<AppSidebar user={sidebarUser} teams={placeholderTeams} />
 				<AppShellInset>
-					<AppShellTopbar>
-						<AppShellSidebarTrigger />
-						<AppShellTopbarContent>
-							<ProductTopBar />
-						</AppShellTopbarContent>
-					</AppShellTopbar>
+					<AppShellHeader>
+						<ProductTopBar />
+					</AppShellHeader>
 					<AppShellContent>{children}</AppShellContent>
 				</AppShellInset>
 			</AppShell>
