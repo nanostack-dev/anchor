@@ -29,7 +29,7 @@ subject or resource than the caller named.
   the admin UI's access explainer uses.
 
 A denial is HTTP 200 with `decision: false` and `context.reason`:
-`SUBJECT_NOT_SYNCED`, `API_KEY_INVALID`, `API_KEY_INACTIVE`, `ORGANIZATION_NOT_FOUND`,
+`SUBJECT_NOT_SYNCED`, `SUBJECT_SUSPENDED`, `API_KEY_INVALID`, `API_KEY_INACTIVE`, `ORGANIZATION_NOT_FOUND`,
 `NOT_A_MEMBER`, `RESOURCE_TYPE_NOT_FOUND`,
 `RESOURCE_NOT_FOUND`, `RESOURCE_NOT_IN_ORGANIZATION`, `PARENT_TYPE_NOT_ALLOWED`
 ([resources](#resources)), `MISSING_PERMISSION` (with `missing_permissions`) or
@@ -138,8 +138,16 @@ any ID that no product user holds answers `SUBJECT_NOT_SYNCED`. No route changes
 external ID after it is set: a changed ID would give one person's access decisions to
 another. The two sources share one set of IDs per product. A user created with a
 Clerk user ID is the user that Clerk ingest then updates and deletes. Each Clerk event
-replaces that user's email and name with Clerk's values and sets it active, whatever
-the product sent on create.
+replaces that user's email and name with Clerk's values and sets an `active` or
+`invited` user active. A `suspended` user stays suspended: Clerk knows nothing of an
+Anchor suspension, and the upsert reads the row under a row lock so the status it
+writes back is the one stored. A Clerk reconcile goes through the same upsert.
+
+A suspended product user is refused with `SUBJECT_SUSPENDED` before its membership
+is read, so the answer does not say whether it belongs to the organization. Its
+memberships and roles are kept and grant nothing while it is suspended. An `invited`
+user is not refused. The status is set on create (`status: suspended`); no route
+changes it afterwards yet.
 
 ## Freshness
 

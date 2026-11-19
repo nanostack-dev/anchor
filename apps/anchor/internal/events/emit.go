@@ -13,12 +13,13 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
 	"github.com/nanostack-dev/pgkit/queue"
+
+	serviceconfig "anchor/internal/service/config"
 )
 
 const (
-	queueName             = "product-events"
-	eventIDPrefix         = "pevt"
-	eventQueueMaxAttempts = 6
+	queueName     = "product-events"
+	eventIDPrefix = "pevt"
 )
 
 type queuePayload struct {
@@ -42,6 +43,7 @@ type TxObserver interface {
 type emitter struct {
 	queue     *queue.Client
 	catalog   Catalog
+	retry     deliveryRetryPolicy
 	observers []TxObserver
 	now       func() time.Time
 }
@@ -50,7 +52,14 @@ type emitter struct {
 // value group over in a random order per process, and observers take locks:
 // two replicas running them in opposite orders deadlock their writes
 // ([postmortem](../../../../docs/postmortems/2026-10-31-tx-observer-order-deadlock.md)).
+// It queues deliveries with the deployed retry policy.
 func NewEmitter(queueClient *queue.Client, catalog Catalog, observers ...TxObserver) Emitter {
+	return newEmitter(queueClient, catalog, deliveryRetryPolicyFor(nil), observers...)
+}
+
+func newEmitter(
+	queueClient *queue.Client, catalog Catalog, retry deliveryRetryPolicy, observers ...TxObserver,
+) Emitter {
 	ordered := slices.Clone(observers)
 	slices.SortStableFunc(ordered, func(a, b TxObserver) int {
 		return cmp.Compare(fmt.Sprintf("%T", a), fmt.Sprintf("%T", b))
@@ -58,15 +67,18 @@ func NewEmitter(queueClient *queue.Client, catalog Catalog, observers ...TxObser
 	return &emitter{
 		queue:     queueClient,
 		catalog:   catalog,
+		retry:     retry,
 		observers: ordered,
 		now:       time.Now,
 	}
 }
 
 // ProvideEmitter hands the emitter every TxObserver that a module adds to the
-// nano.Collect[TxObserver] collection.
-func ProvideEmitter(queueClient *queue.Client, catalog Catalog, observers []TxObserver) Emitter {
-	return NewEmitter(queueClient, catalog, observers...)
+// nano.Collect[TxObserver] collection, and the environment's retry policy.
+func ProvideEmitter(
+	queueClient *queue.Client, catalog Catalog, observers []TxObserver, core *serviceconfig.CoreConfig,
+) Emitter {
+	return newEmitter(queueClient, catalog, deliveryRetryPolicyFor(core), observers...)
 }
 
 func (e *emitter) Emit(ctx context.Context, event Event) error {
@@ -120,20 +132,17 @@ func (e *emitter) enqueue(ctx context.Context, tx *sql.Tx, event Event) error {
 	_, err = e.queue.EnqueueTx(ctx, tx, queue.EnqueueParams{
 		QueueName:   queueName,
 		Payload:     payload,
-		MaxAttempts: eventQueueMaxAttempts,
+		MaxAttempts: e.retry.maxAttempts,
 	})
 	return err
 }
 
-// deliveredData is what a product endpoint receives: Anchor's resource row ID
-// is for the observers only.
+// deliveredData is what a product endpoint receives: the fields the observers
+// alone read (Anchor's resource row ID, the cascaded Organizations) are left out.
 func deliveredData(data Data) Data {
-	if _, internal := data[FieldResourceRowID]; !internal {
-		return data
-	}
-	delivered := make(Data, len(data)-1)
+	delivered := make(Data, len(data))
 	for field, value := range data {
-		if field != FieldResourceRowID {
+		if !isInternalField(field) {
 			delivered[field] = value
 		}
 	}

@@ -673,6 +673,9 @@ func (s *organizationService) Delete(
 		)
 		return txErr
 	}
+	// The license row went with the Organization; its cached copy would
+	// otherwise answer for it until the TTL.
+	s.licenses.ForgetOrganization(ctx, input.ProductID, input.OrganizationID)
 
 	logger.InfoContext(ctx, "organization deleted",
 		slog.String("organization_id", input.OrganizationID),

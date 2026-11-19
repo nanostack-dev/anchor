@@ -30,6 +30,7 @@ type DenyReason string
 
 const (
 	ReasonSubjectNotSynced          DenyReason = "SUBJECT_NOT_SYNCED"
+	ReasonSubjectSuspended          DenyReason = "SUBJECT_SUSPENDED"
 	ReasonAPIKeyInvalid             DenyReason = "API_KEY_INVALID"  //nolint:gosec // a reason code, not a credential
 	ReasonAPIKeyInactive            DenyReason = "API_KEY_INACTIVE" //nolint:gosec // a reason code, not a credential
 	ReasonOrganizationNotFound      DenyReason = "ORGANIZATION_NOT_FOUND"

@@ -168,6 +168,12 @@ function denyCopy(
 				detail:
 					"A product user gets its external ID when the product creates it or when an identity integration syncs it.",
 			};
+		case AccessDenyReason.SUBJECT_SUSPENDED:
+			return {
+				title: `${member} is suspended.`,
+				detail:
+					"A suspended product user keeps its memberships and roles, but they grant nothing until the suspension ends.",
+			};
 		case AccessDenyReason.ORGANIZATION_NOT_FOUND:
 			return {
 				title: `${organization} doesn't exist in this product.`,

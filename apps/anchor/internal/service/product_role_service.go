@@ -426,7 +426,16 @@ func (s *productRoleService) DeleteProductRole(
 			)
 			return fault.ErrUnexpected
 		}
-		return s.emitRole(txCtx, events.ProductRoleDeleted, input.ProductID, input.ID)
+		// The count above, under the role's FOR UPDATE lock, proved that no
+		// membership holds the role, so its delete cascades none.
+		return s.events.Emit(txCtx, events.Event{
+			Type:      events.ProductRoleDeleted,
+			ProductID: input.ProductID,
+			Data: events.Data{
+				events.FieldRoleID:                  input.ID,
+				events.FieldCascadedOrganizationIDs: events.JoinIDs(nil),
+			},
+		})
 	})
 	if err != nil {
 		return err

@@ -33,8 +33,14 @@ func (Assignments) Stale(event events.Event) ([]string, error) {
 		events.OrganizationRoleDeleted):
 		return keyOf(event, events.FieldOrganizationID)
 	case isOneOf(event, events.ProductRoleDeleted, events.ProductUserDeleted):
-		// Their memberships cascade away in any Organization, without events.
-		return []string{fgasync.EveryKey}, nil
+		// Their memberships cascade away without events. The delete names the
+		// Organizations they were in; one that does not costs a sync of every
+		// Organization, never a stale grant.
+		cascaded, named := event.Data[events.FieldCascadedOrganizationIDs]
+		if !named {
+			return []string{fgasync.EveryKey}, nil
+		}
+		return events.SplitIDs(cascaded), nil
 	default:
 		return nil, nil
 	}

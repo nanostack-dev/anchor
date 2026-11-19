@@ -14,7 +14,11 @@ import (
 
 // The organization license read is cached the same way the product API key
 // permission cache is: keyed by (product, organization), evicted on every
-// write, degrading to a no-op when Redis is unavailable. See
+// write and after the Organization's delete commits (its license row goes by
+// foreign key, with no license write), degrading to a no-op when Redis is
+// unavailable. A read-through load that started before an eviction can still
+// store the row it read after that eviction, until the TTL: closing that race
+// needs a versioned store in nanocache. See
 // docs/api-key-permission-cache.md and
 // docs/adr/0012-license-status-derived-on-read.md.
 //

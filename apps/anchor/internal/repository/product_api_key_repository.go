@@ -62,7 +62,9 @@ type ProductAPIKeyRepository interface {
 	// SearchByProductId searches for product API keys with filtering, sorting, and pagination
 	SearchByProductID(ctx context.Context, q ProductAPIKeySearch) (search.Result[apikey.ProductAPIKey], error)
 
-	// UpdateLastUsedAt updates the last used timestamp for a product API key
+	// UpdateLastUsedAt sets the last used timestamp of a product API key to now,
+	// unless it is already within ProductAPIKeyLastUsedPrecision of now, in
+	// which case the statement matches no row and writes nothing.
 	UpdateLastUsedAt(ctx context.Context, productID, id string) error
 
 	// GetByHashedValue retrieves a product API key by its hashed value
@@ -302,10 +304,15 @@ func (r *productAPIKeyRepository) DeletePermissionsByName(
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
+// ProductAPIKeyLastUsedPrecision is how stale a product API key's last_used_at
+// may get: UpdateLastUsedAt writes the row at most once per this interval.
+const ProductAPIKeyLastUsedPrecision = time.Hour
+
 func (r *productAPIKeyRepository) UpdateLastUsedAt(
 	ctx context.Context, productID, id string,
 ) error {
 	now := time.Now()
+	lastUsed := table.ProductAPIKeys.LastUsedAt
 
 	stmt := table.ProductAPIKeys.UPDATE(
 		table.ProductAPIKeys.LastUsedAt,
@@ -317,6 +324,10 @@ func (r *productAPIKeyRepository) UpdateLastUsedAt(
 		table.ProductAPIKeys.ID.EQ(postgres.String(id)).AND(
 			table.ProductAPIKeys.ProductID.EQ(
 				postgres.String(productID),
+			),
+		).AND(
+			lastUsed.IS_NULL().OR(
+				lastUsed.LT(postgres.TimestampzT(now.Add(-ProductAPIKeyLastUsedPrecision))),
 			),
 		),
 	)

@@ -59,9 +59,11 @@ type ProductUserRepository interface {
 		productID string,
 		id string,
 	) (functional.Option[user.ProductUser], error)
-	FindByProductID(
-		ctx context.Context, productID string,
-	) ([]user.ProductUser, error)
+	// FindByProductAndEmail looks the email up on the (product_id, email)
+	// unique index; the match is exact, as the index is.
+	FindByProductAndEmail(
+		ctx context.Context, productID string, email string,
+	) (functional.Option[user.ProductUser], error)
 	FindByExternalID(
 		ctx context.Context, productID string, externalID string,
 	) (functional.Option[user.ProductUser], error)
@@ -145,23 +147,22 @@ func (r *productUserRepositoryImpl) FindByProductIDAndID(
 	return r.optional(transactor.QueryOptional[model.ProductUsers](ctx, r.db, stmt))
 }
 
-func (r *productUserRepositoryImpl) FindByProductID(
+func (r *productUserRepositoryImpl) FindByProductAndEmail(
 	ctx context.Context,
 	productID string,
-) ([]user.ProductUser, error) {
+	email string,
+) (functional.Option[user.ProductUser], error) {
 	stmt := table.ProductUsers.SELECT(
 		table.ProductUsers.AllColumns,
 	).FROM(
 		table.ProductUsers,
 	).WHERE(
-		table.ProductUsers.ProductID.EQ(postgres.String(productID)),
-	)
+		table.ProductUsers.ProductID.EQ(postgres.String(productID)).AND(
+			table.ProductUsers.Email.EQ(postgres.String(email)),
+		),
+	).LIMIT(1)
 
-	rows, err := transactor.Query[[]model.ProductUsers](ctx, r.db, stmt).Value()
-	if err != nil {
-		return nil, err
-	}
-	return r.rows.page(ctx, rows)
+	return r.optional(transactor.QueryOptional[model.ProductUsers](ctx, r.db, stmt))
 }
 
 func (r *productUserRepositoryImpl) FindByExternalID(

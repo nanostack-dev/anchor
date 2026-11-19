@@ -15,6 +15,7 @@ type CoreConfig struct {
 	Auth        AuthConfig        `config:"auth"`
 	Encryption  EncryptionConfig  `config:"encryption"`
 	Integration IntegrationConfig `config:"integration"`
+	Events      EventsConfig      `config:"events"`
 	// Environment names the deployment: production (or prod), dev,
 	// development or test. It selects the production rules, such as
 	// https-only event endpoints, and development's insecure refresh cookie.
@@ -48,6 +49,14 @@ type IntegrationConfig struct {
 	// ReconcileScheduleInterval is how often the integration reconcile job
 	// is scheduled.
 	ReconcileScheduleInterval time.Duration `config:"reconcile_schedule_interval" env:"INTEGRATION_RECONCILE_SCHEDULE_INTERVAL" default:"15m"`
+}
+
+type EventsConfig struct {
+	// AllowPrivateEndpoints accepts product event endpoints on loopback,
+	// private and other non-public addresses, and localhost. Only the test
+	// suites and a local run set it: a deployment refuses them when the
+	// endpoint is saved and again when a delivery dials.
+	AllowPrivateEndpoints bool `config:"allow_private_endpoints" env:"EVENTS_ALLOW_PRIVATE_ENDPOINTS" default:"false"`
 }
 
 func (a AuthConfig) GetAdminJWTSecretAsBytes() []byte {

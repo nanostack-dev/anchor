@@ -326,6 +326,12 @@ func Bind(ctx context.Context, src *nanoconf.Sources) (Config, error) {
 		c.Core.Integration.ReconcileScheduleInterval, _ = nanoconf.Scalar(b, k, nanoconf.ParseDuration)
 	}
 
+	// core.events.allow_private_endpoints: AllowPrivateEndpoints accepts product event endpoints on loopback,
+	{
+		k := nanoconf.Key{Path: "core.events.allow_private_endpoints", Env: "EVENTS_ALLOW_PRIVATE_ENDPOINTS", Default: "false"}
+		c.Core.Events.AllowPrivateEndpoints, _ = nanoconf.Scalar(b, k, nanoconf.ParseBool[bool])
+	}
+
 	// core.environment: Environment names the deployment: production (or prod), dev,
 	{
 		k := nanoconf.Key{Path: "core.environment", Env: "CORE_ENVIRONMENT", Optional: true}
@@ -408,6 +414,9 @@ func (c Config) LogValue() slog.Value {
 			),
 			slog.Group("integration",
 				slog.Duration("reconcile_schedule_interval", c.Core.Integration.ReconcileScheduleInterval),
+			),
+			slog.Group("events",
+				slog.Bool("allow_private_endpoints", c.Core.Events.AllowPrivateEndpoints),
 			),
 			slog.String("environment", c.Core.Environment),
 		),

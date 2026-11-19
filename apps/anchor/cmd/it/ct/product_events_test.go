@@ -491,3 +491,67 @@ func TestProductEventDeliveryStatusOnConfig(t *testing.T) {
 		}, 30*time.Second, 100*time.Millisecond)
 	})
 }
+
+func TestProductEventEndpointGone(t *testing.T) {
+	t.Parallel()
+
+	t.Run(
+		"An endpoint that keeps answering 410 Gone is removed after three calls and gets no more deliveries",
+		func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			product := createTestProductContext(t)
+			owner := product.OwnerAuthenticatedClient()
+			client, _ := product.CreateAPIKeyClientWithAllScopes()
+
+			var attempts atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				attempts.Add(1)
+				w.WriteHeader(http.StatusGone)
+			}))
+			t.Cleanup(server.Close)
+
+			got, err := owner.GetProductWithResponse(ctx, product.ProductID)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, got.StatusCode())
+			eventTypes := []string{"organization.created"}
+			configured, err := owner.UpdateProductWithResponse(ctx, product.ProductID, ct.UpdateProductJSONRequestBody{
+				Name: got.JSON200.Name,
+				Config: &ct.ProductConfigRequest{
+					OrganizationApiKeys: &ct.ProductOrganizationAPIKeysConfigRequest{
+						Prefix: got.JSON200.Config.OrganizationApiKeys.Prefix,
+					},
+					Events: &ct.ProductEventsConfigRequest{EndpointUrl: &server.URL, Events: &eventTypes},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, configured.StatusCode())
+
+			created, err := client.CreateProductOrganizationWithResponse(
+				ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+					Name: "Gone Events Org " + ids.MustNew("org"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, created.StatusCode())
+
+			// The shared delivery worker can lag tens of seconds under -race
+			// -parallel 32, as TestProductEventDeliveryStatusOnConfig allows.
+			require.Eventually(t, func() bool {
+				current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
+				return getErr == nil && current.JSON200 != nil &&
+					(current.JSON200.Config.Events == nil || current.JSON200.Config.Events.EndpointUrl == "")
+			}, 90*time.Second, 100*time.Millisecond)
+			assert.EqualValues(t, 3, attempts.Load())
+
+			_, err = client.CreateProductOrganizationWithResponse(
+				ctx, product.ProductID, ct.CreateProductOrganizationJSONRequestBody{
+					Name: "After Gone Events Org " + ids.MustNew("org"),
+				},
+			)
+			require.NoError(t, err)
+			require.Never(t, func() bool { return attempts.Load() > 3 }, time.Second, 100*time.Millisecond)
+		},
+	)
+}

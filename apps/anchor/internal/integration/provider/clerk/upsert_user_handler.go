@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
+	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/domain/product/user"
@@ -25,23 +27,14 @@ func (p *Provider) executeUpsertUser(
 		return provider.ErrInvalidCommandData(CommandUpsertUser, "UpsertUserData")
 	}
 
-	productUser := user.ProductUser{
-		ProductID:  instance.ProductID,
-		Email:      upsertData.Email,
-		Name:       upsertData.Name,
-		ExternalID: &upsertData.ExternalID,
-		Status:     user.ProductUserStatusActive,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	productUser.GenerateID()
-
 	var upserted user.ProductUser
 	var created bool
 	var unchanged bool
 	upsertErr := p.transactor.InTx(ctx, func(txCtx context.Context) error {
+		// The row lock holds the status read here until the upsert writes it
+		// back, so the status this event keeps is the one stored at commit.
 		existing, findErr := p.productUserRepo.FindByExternalID(
-			txCtx, instance.ProductID, upsertData.ExternalID,
+			transactor.ForUpdate(txCtx), instance.ProductID, upsertData.ExternalID,
 		)
 		if findErr != nil {
 			return findErr
@@ -50,6 +43,16 @@ func (p *Provider) executeUpsertUser(
 			unchanged = true
 			return nil
 		}
+		productUser := user.ProductUser{
+			ProductID:  instance.ProductID,
+			Email:      upsertData.Email,
+			Name:       upsertData.Name,
+			ExternalID: &upsertData.ExternalID,
+			Status:     clerkUpsertStatus(existing),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		productUser.GenerateID()
 		var err error
 		upserted, created, err = p.productUserRepo.UpsertByExternalID(txCtx, productUser)
 		if err != nil {
@@ -129,8 +132,18 @@ func (p *Provider) executeUpsertUser(
 	return nil
 }
 
+// clerkUpsertStatus is the status a Clerk event writes: Clerk has no notion of
+// an Anchor suspension, so a suspended user stays suspended; any other user,
+// a new one included, becomes active.
+func clerkUpsertStatus(existing functional.Option[user.ProductUser]) user.ProductUserStatus {
+	if found, ok := existing.Get(); ok && found.Status == user.ProductUserStatusSuspended {
+		return user.ProductUserStatusSuspended
+	}
+	return user.ProductUserStatusActive
+}
+
 func clerkUpsertWouldChange(existing user.ProductUser, data UpsertUserData) bool {
 	return existing.Email != data.Email ||
 		existing.Name != data.Name ||
-		existing.Status != user.ProductUserStatusActive
+		existing.Status != clerkUpsertStatus(functional.Some(existing))
 }

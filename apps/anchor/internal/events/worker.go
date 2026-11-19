@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,7 +14,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	serviceconfig "anchor/internal/service/config"
-	"anchor/internal/telemetry"
 
 	"anchor/internal/queueworker"
 
@@ -27,14 +27,16 @@ const (
 	workerReapInterval    = 30 * time.Second
 	workerVisibility      = 1 * time.Minute
 	workerBatchSize       = 50
-	workerBackoffBase     = 1 * time.Second
-	workerBackoffBaseTest = 50 * time.Millisecond
-	workerBackoffMax      = 5 * time.Minute
 	deliveryTimeout       = 15 * time.Second
 	maxDeliveryBodyBytes  = 1 << 20
 	successStatusMin      = 200
 	successStatusMax      = 300
 	goneStatus            = 410
+	// goneMinFailedCalls is how many failed calls in a row, the last one a
+	// 410, remove an endpoint, once the streak is also older than the
+	// policy's goneMinFailingFor. One 410 can come from a proxy or a deploy in
+	// progress, and removing the endpoint loses its signing secret.
+	goneMinFailedCalls = 3
 )
 
 // Worker delivers the product events to the products' endpoints.
@@ -50,18 +52,14 @@ func NewWorker(
 	core *serviceconfig.CoreConfig,
 ) (*Worker, error) {
 	logger = logger.With(slog.String("component", "product_events_worker"))
+	retry := deliveryRetryPolicyFor(core)
 	deliverer := &deliverer{
 		endpoints: endpointService,
 		repo:      endpoints,
-		http: &http.Client{
-			Transport: telemetry.ExternalTransport(nil),
-			Timeout:   deliveryTimeout,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		},
-		now:    time.Now,
-		logger: logger,
+		http:      newDeliveryClient(core != nil && core.Events.AllowPrivateEndpoints),
+		policy:    retry,
+		now:       time.Now,
+		logger:    logger,
 	}
 
 	registry := queue.NewHandlerRegistry()
@@ -73,12 +71,6 @@ func NewWorker(
 	if core != nil && !core.IsProduction() {
 		pollInterval = workerPollIntervalDev
 	}
-	// The test suites wait for a delivery to fail six times; at 1 s doubling
-	// that took 31 s of a CI job. Deployments (prod, dev) keep 1 s.
-	backoffBase := workerBackoffBase
-	if core != nil && core.IsTest() {
-		backoffBase = workerBackoffBaseTest
-	}
 
 	worker, err := queue.NewWorker(queueClient, registry, queue.WorkerConfig{
 		WorkerID:          workerID,
@@ -86,8 +78,9 @@ func NewWorker(
 		ReapInterval:      workerReapInterval,
 		VisibilityTimeout: workerVisibility,
 		BatchSizePerQueue: workerBatchSize,
-		BackoffBase:       backoffBase,
-		BackoffMax:        workerBackoffMax,
+		BackoffBase:       retry.base,
+		BackoffMax:        retry.max,
+		RetryDelay:        retry.retryDelay,
 		OnJobFailed: func(ctx context.Context, job queue.Job) {
 			logger.ErrorContext(ctx, "product event delivery permanently failed",
 				slog.Int64("job_id", job.ID),
@@ -111,6 +104,7 @@ type deliverer struct {
 	endpoints EndpointService
 	repo      EndpointRepository
 	http      *http.Client
+	policy    deliveryRetryPolicy
 	now       func() time.Time
 	logger    *slog.Logger
 }
@@ -138,8 +132,14 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	if !target.Allows(eventType) {
 		return nil
 	}
-
+	// The attempt is spent without a call and without counting as a failed
+	// call: the job retries on its own schedule, and the endpoint's next call
+	// after the cooldown decides whether it is back.
 	attemptAt := d.now()
+	if wait := d.policy.breakerWait(target, attemptAt); wait > 0 {
+		return fmt.Errorf("%w: next call in %s", errEndpointCoolingDown, wait.Round(time.Second))
+	}
+
 	headers, err := Sign(target.Secret, payload.EventID, attemptAt, payload.Body)
 	if err != nil {
 		return err
@@ -159,6 +159,11 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	resp, err := d.http.Do(req)
 	if err != nil {
 		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
+		// A refused address does not become public by waiting: the job fails
+		// now instead of spending its day of attempts.
+		if errors.Is(err, errNonPublicAddress) {
+			return queue.NonRetryable(fmt.Errorf("events: deliver: %w", err))
+		}
 		return fmt.Errorf("events: deliver: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -168,16 +173,27 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, true)
 		return nil
 	}
+	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 	// Standard Webhooks: "If a delivery target has been retired, but the HTTP
 	// site still exists, the site SHOULD return a 410 Gone status code and the
-	// sender SHOULD refrain from sending any further notifications."
+	// sender SHOULD refrain from sending any further notifications." Only the
+	// URL that answered is removed, and only after repeated failures over a
+	// long streak.
 	if resp.StatusCode == goneStatus {
-		if delErr := d.repo.DeleteByProductIDInternal(ctx, payload.ProductID); delErr != nil {
-			return fmt.Errorf("events: disable gone endpoint: %w", delErr)
+		removed, delErr := d.repo.DeleteGoneEndpointInternal(
+			ctx, payload.ProductID, target.URL, goneMinFailedCalls, d.policy.goneMinFailingFor,
+		)
+		if delErr != nil {
+			return fmt.Errorf("events: remove gone endpoint: %w", delErr)
 		}
-		return nil
+		if removed {
+			d.logger.WarnContext(ctx, "product event endpoint removed after repeated 410 Gone",
+				slog.String("product_id", payload.ProductID),
+				slog.String("event_id", payload.EventID),
+			)
+			return nil
+		}
 	}
-	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 	d.logger.WarnContext(ctx, "product event delivery rejected",
 		slog.Int("status", resp.StatusCode),
 		slog.String("event_id", payload.EventID),

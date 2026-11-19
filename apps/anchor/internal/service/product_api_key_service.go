@@ -426,7 +426,14 @@ func (s *productAPIKeyService) validateAPIKey(
 		return apikey.ProductAPIKey{}, ErrInvalidAPIKey
 	}
 
-	shouldUpdate := foundAPIKey.LastUsedAt == nil || time.Since(*foundAPIKey.LastUsedAt) > time.Hour
+	if foundAPIKey.Status != apikey.StatusActive {
+		return apikey.ProductAPIKey{}, NewProductAPIKeyInactiveError(foundAPIKey.ID)
+	}
+
+	// The cached LastUsedAt is never refreshed after the write, so this check
+	// only skips the statement; the repository writes the row at most hourly.
+	shouldUpdate := foundAPIKey.LastUsedAt == nil ||
+		time.Since(*foundAPIKey.LastUsedAt) > repository.ProductAPIKeyLastUsedPrecision
 	if shouldUpdate {
 		if updateErr := s.apiKeyRepo.UpdateLastUsedAt(
 			ctx, foundAPIKey.ProductID, foundAPIKey.ID,
@@ -437,9 +444,6 @@ func (s *productAPIKeyService) validateAPIKey(
 				log.Err(updateErr),
 			)
 		}
-	}
-	if foundAPIKey.Status != apikey.StatusActive {
-		return apikey.ProductAPIKey{}, NewProductAPIKeyInactiveError(foundAPIKey.ID)
 	}
 
 	return *foundAPIKey, nil

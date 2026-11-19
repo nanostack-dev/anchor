@@ -2755,6 +2755,7 @@ components:
       type: string
       enum:
       - SUBJECT_NOT_SYNCED
+      - SUBJECT_SUSPENDED
       - API_KEY_INVALID
       - API_KEY_INACTIVE
       - ORGANIZATION_NOT_FOUND
@@ -2767,6 +2768,7 @@ components:
       - PARENT_TYPE_NOT_ALLOWED
       description: >-
         Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet.
+        `SUBJECT_SUSPENDED`: the product user is suspended; its memberships and roles are kept but grant nothing.
         `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired.
         `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member
         of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an

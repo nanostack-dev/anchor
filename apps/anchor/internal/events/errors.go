@@ -8,6 +8,10 @@ import (
 
 var errEmitRequiresTx = errors.New("events: Emit requires transactor.InTx")
 
+// errEndpointCoolingDown is a skipped attempt: the endpoint failed too many
+// calls in a row, too recently, to be dialed again yet.
+var errEndpointCoolingDown = errors.New("events: endpoint is cooling down after repeated failures")
+
 func unknownTypeError(eventType Type) error {
 	return fault.BadRequest(
 		"UNKNOWN_EVENT_TYPE",
@@ -21,6 +25,15 @@ func invalidEndpointURLError() error {
 	return fault.BadRequest(
 		"INVALID_EVENT_ENDPOINT_URL",
 		"The event endpoint URL must be an absolute HTTP or HTTPS URL.",
+	)
+}
+
+// nonPublicEndpointURLError keeps the invalid URL code: clients that handle
+// it handle this refusal too.
+func nonPublicEndpointURLError() error {
+	return fault.BadRequest(
+		"INVALID_EVENT_ENDPOINT_URL",
+		"The event endpoint URL must point to a public address, not localhost or a private network.",
 	)
 }
 

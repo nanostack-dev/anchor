@@ -45,6 +45,16 @@ func TestGetOrganizationLicense(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
 	})
 
+	t.Run("The API returns 404 for the license of an organization deleted after a read", func(t *testing.T) {
+		w := newLicensedWorld(t)
+		w.License().Get() // the read caches the license
+
+		w.DeleteOrganization()
+
+		resp := w.License().GetRaw()
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode(), string(resp.Body))
+	})
+
 	t.Run("The API does not read another product's license", func(t *testing.T) {
 		first := newLicensedWorld(t)
 		second := newLicenseWorld(t)

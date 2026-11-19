@@ -25,6 +25,7 @@ const (
 	RESOURCENOTINORGANIZATION AccessDenyReason = "RESOURCE_NOT_IN_ORGANIZATION"
 	RESOURCETYPENOTFOUND      AccessDenyReason = "RESOURCE_TYPE_NOT_FOUND"
 	SUBJECTNOTSYNCED          AccessDenyReason = "SUBJECT_NOT_SYNCED"
+	SUBJECTSUSPENDED          AccessDenyReason = "SUBJECT_SUSPENDED"
 )
 
 // Valid indicates whether the value is a known member of the AccessDenyReason enum.
@@ -51,6 +52,8 @@ func (e AccessDenyReason) Valid() bool {
 	case RESOURCETYPENOTFOUND:
 		return true
 	case SUBJECTNOTSYNCED:
+		return true
+	case SUBJECTSUSPENDED:
 		return true
 	default:
 		return false
@@ -1286,14 +1289,14 @@ type AccessDecisionContext struct {
 	Permissions *[]string          `json:"permissions,omitempty"`
 	ProductUser *AccessIdentityRef `json:"product_user,omitempty"`
 
-	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+	// Reason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `SUBJECT_SUSPENDED`: the product user is suspended; its memberships and roles are kept but grant nothing. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 	//
 	// Examples: RESOURCE_NOT_IN_ORGANIZATION
 	Reason *AccessDenyReason  `json:"reason,omitempty"`
 	Role   *AccessIdentityRef `json:"role,omitempty"`
 }
 
-// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
+// AccessDenyReason Why access is denied. `SUBJECT_NOT_SYNCED`: no product user has this external ID yet. `SUBJECT_SUSPENDED`: the product user is suspended; its memberships and roles are kept but grant nothing. `API_KEY_INVALID`: no organization API key has this value. `API_KEY_INACTIVE`: the key is inactive or expired. `ORGANIZATION_NOT_FOUND`: the organization does not exist in this product. `NOT_A_MEMBER`: the user is not a member of the organization, or the key belongs to another organization. `MISSING_PERMISSION`: no role the subject holds on the resource or an ancestor, nor the key, holds the action. `NOT_EVALUATED`: a batch item skipped by short-circuiting. `RESOURCE_TYPE_NOT_FOUND`: the product declares no resource type of that slug. `RESOURCE_NOT_FOUND`: the resource is not registered in the organization and names no `properties.parent`, whether or not another organization registered the same ID, which names a different resource there; or the parent it names is registered in no organization of the product. `RESOURCE_NOT_IN_ORGANIZATION`: the parent the request names is registered only in another organization of the product, or is an organization other than the asked one, whether or not that ID exists. For a registered parent it reveals that the parent exists in another organization of the same product. `PARENT_TYPE_NOT_ALLOWED`: the parent's type is not one the resource's type may sit under. New values may be added.
 //
 // Examples: RESOURCE_NOT_IN_ORGANIZATION
 type AccessDenyReason string

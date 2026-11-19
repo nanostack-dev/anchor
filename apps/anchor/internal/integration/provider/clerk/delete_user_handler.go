@@ -34,10 +34,13 @@ func (p *Provider) executeDeleteUser(
 		if findErr != nil {
 			return findErr
 		}
+		var cascaded []string
 		if user, present := found.Get(); present {
 			// Its role assignments on resources go with its memberships
 			// through the foreign keys, each with its event.
-			if releaseErr := p.roleAssignments.ReleaseUser(txCtx, instance.ProductID, user.ID); releaseErr != nil {
+			var releaseErr error
+			cascaded, releaseErr = p.roleAssignments.ReleaseUser(txCtx, instance.ProductID, user.ID)
+			if releaseErr != nil {
 				return releaseErr
 			}
 		}
@@ -52,7 +55,10 @@ func (p *Provider) executeDeleteUser(
 		if emitErr := p.events.Emit(txCtx, events.Event{
 			Type:      events.ProductUserDeleted,
 			ProductID: instance.ProductID,
-			Data:      events.Data{events.FieldProductUserID: found.Value().ID},
+			Data: events.Data{
+				events.FieldProductUserID:           found.Value().ID,
+				events.FieldCascadedOrganizationIDs: events.JoinIDs(cascaded),
+			},
 		}); emitErr != nil {
 			return emitErr
 		}

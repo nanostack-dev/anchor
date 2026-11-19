@@ -39,7 +39,7 @@ The first consumer is EchoPoint. The first event types are organization and memb
 25. As an Anchor feature author, I want an unknown event type to fail at emit time, so that a typo never reaches a Product.
 26. As an operator, I want a durable queue job, so that an Anchor restart does not lose an event that already committed.
 27. As an operator, I want delivery attempts to be visible, so that I can see why EchoPoint did not update.
-28. As an operator, I want a 410 from the endpoint to stop further deliveries to that URL, so that a retired handler does not keep failing.
+28. As an operator, I want repeated 410s from the endpoint to stop further deliveries to that URL, so that a retired handler does not keep failing.
 29. As an operator, I want a 429 or 503 with Retry-After to delay the next attempt, so that we do not hammer a throttled Product.
 30. As an operator, I want 3xx not followed, so that a redirect cannot send events to an unexpected host.
 31. As an operator, I want the signing secret unique per endpoint and stored encrypted, so that a leak of one Product does not forge another.
@@ -72,8 +72,8 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 - After commit, a worker fans out one delivery job per matching endpoint. Tracer: one endpoint, one delivery job. HTTP is not inside the domain transaction.
 - Tracer configuration: one HTTPS URL and one signing secret per Product, set by operators, not a Product API. Later tickets add many endpoints with event-type filters on the Product API. The worker already filters by type so that ticket does not rewrite delivery.
 - Signing secret is unique per endpoint, `whsec_` format, encrypted at rest like integration webhook secrets. Svix libraries already in the Clerk path verify and sign.
-- Retry: reuse the existing pgkit worker shape (bounded attempts, exponential backoff, reap stuck jobs). Treat 2xx as success. Do not follow 3xx. Honour Retry-After on 429/503. Stop the endpoint after 410. At-least-once. Products dedupe on `webhook-id`.
-- HTTPS only. Reject endpoint URLs that resolve to non-public addresses.
+- Retry: reuse the existing pgkit worker shape (bounded attempts, exponential backoff, reap stuck jobs). A deployment retries a delivery for about a day: 20 attempts, 10 s doubling to a 2 h cap ([delivery](technical/product-event-delivery.md#retry-schedule)). Treat 2xx as success. Do not follow 3xx. Honour Retry-After on 429/503. Stop the endpoint after repeated 410s to that URL ([delivery](technical/product-event-delivery.md#410-gone)). At-least-once. Products dedupe on `webhook-id`.
+- HTTPS only. Reject endpoint URLs that resolve to non-public addresses: on save for an IP literal or `localhost`, and on every delivery dial after DNS ([delivery](technical/product-event-delivery.md#endpoint-addresses)).
 - Clerk ingest that writes a catalog resource emits the matching event types in the same transaction as the domain write. Tracer types fire only when those resources actually change.
 - Stacked PRs if the diff would mix schema, worker, and the first emitters.
 
@@ -98,7 +98,7 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 - Emitting every catalog type in the first slice (workspaces, Product Users, Organization API keys wait)
 - EchoPoint handler, cache invalidation, and SDK subscribe helpers
 - Signing-secret self-service rotation API (operators can rotate config)
-- Multi-day Svix-style retry calendars (use existing pgkit backoff first)
+- Retry calendars beyond about a day (the pgkit backoff now spans 15.6 h to 20.8 h)
 
 ## Further Notes
 

@@ -75,11 +75,43 @@ func TestStale(t *testing.T) {
 		assert.Equal(t, []string{"org_acme"}, keys)
 	})
 
-	t.Run("A deleted managed role makes every Organization's assignments stale", func(t *testing.T) {
-		keys, err := source.Assignments{}.Stale(eventWithEveryField(events.ProductRoleDeleted))
+	t.Run("A deleted user makes stale only the Organizations its memberships cascaded from", func(t *testing.T) {
+		event := eventWithEveryField(events.ProductUserDeleted)
+		event.Data[events.FieldCascadedOrganizationIDs] = events.JoinIDs([]string{"org_acme", "org_globex"})
+
+		keys, err := source.Assignments{}.Stale(event)
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{fgasync.EveryKey}, keys)
+		assert.Equal(t, []string{"org_acme", "org_globex"}, keys)
+	})
+
+	t.Run("A deleted user that belonged to no Organization makes no assignments stale", func(t *testing.T) {
+		event := eventWithEveryField(events.ProductUserDeleted)
+		event.Data[events.FieldCascadedOrganizationIDs] = events.JoinIDs(nil)
+
+		keys, err := source.Assignments{}.Stale(event)
+
+		require.NoError(t, err)
+		assert.Empty(t, keys)
+	})
+
+	t.Run("A deleted managed role that held no membership makes no assignments stale", func(t *testing.T) {
+		event := eventWithEveryField(events.ProductRoleDeleted)
+		event.Data[events.FieldCascadedOrganizationIDs] = events.JoinIDs(nil)
+
+		keys, err := source.Assignments{}.Stale(event)
+
+		require.NoError(t, err)
+		assert.Empty(t, keys)
+	})
+
+	t.Run("A delete that does not name its cascaded Organizations makes every Organization stale", func(t *testing.T) {
+		for _, eventType := range []events.Type{events.ProductUserDeleted, events.ProductRoleDeleted} {
+			keys, err := source.Assignments{}.Stale(eventWithEveryField(eventType))
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{fgasync.EveryKey}, keys, eventType)
+		}
 	})
 
 	t.Run("A role change makes that role's grants stale", func(t *testing.T) {

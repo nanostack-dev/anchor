@@ -21,6 +21,8 @@ type productEventEndpointConfigsTable struct {
 	EventsJSON             postgres.ColumnString
 	DeliveryStatus         postgres.ColumnString
 	ConsecutiveFailedCalls postgres.ColumnInteger
+	FailingSince           postgres.ColumnTimestampz
+	LastFailedAt           postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -71,8 +73,10 @@ func newProductEventEndpointConfigsTableImpl(schemaName, tableName, alias string
 		EventsJSONColumn             = postgres.StringColumn("events_json")
 		DeliveryStatusColumn         = postgres.StringColumn("delivery_status")
 		ConsecutiveFailedCallsColumn = postgres.IntegerColumn("consecutive_failed_calls")
-		allColumns                   = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
-		mutableColumns               = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
+		FailingSinceColumn           = postgres.TimestampzColumn("failing_since")
+		LastFailedAtColumn           = postgres.TimestampzColumn("last_failed_at")
+		allColumns                   = postgres.ColumnList{ProductIDColumn, PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn, FailingSinceColumn, LastFailedAtColumn}
+		mutableColumns               = postgres.ColumnList{PlatformTenantIDColumn, EndpointURLColumn, SigningSecretColumn, CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn, FailingSinceColumn, LastFailedAtColumn}
 		defaultColumns               = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn, EventsJSONColumn, DeliveryStatusColumn, ConsecutiveFailedCallsColumn}
 	)
 
@@ -89,6 +93,8 @@ func newProductEventEndpointConfigsTableImpl(schemaName, tableName, alias string
 		EventsJSON:             EventsJSONColumn,
 		DeliveryStatus:         DeliveryStatusColumn,
 		ConsecutiveFailedCalls: ConsecutiveFailedCallsColumn,
+		FailingSince:           FailingSinceColumn,
+		LastFailedAt:           LastFailedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
@@ -125,6 +131,8 @@ func (ProductEventEndpointConfigsTable) ColumnTypes() map[string]string {
 		"events_json":              "jsonb",
 		"delivery_status":          "text",
 		"consecutive_failed_calls": "int4",
+		"failing_since":            "timestamptz",
+		"last_failed_at":           "timestamptz",
 	}
 }
 

@@ -13,3 +13,6 @@ migrations:
 
 core:
   environment: "development"
+  # The integrations journey registers an event receiver on localhost.
+  events:
+    allow_private_endpoints: true
