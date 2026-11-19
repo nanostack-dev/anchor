@@ -79,6 +79,12 @@ type OrganizationLicenseService interface {
 	Search(
 		ctx context.Context, q licenserepo.OrganizationLicenseSearch,
 	) (search.Result[license.OrganizationLicenseSummary], error)
+	// ForgetOrganization drops the cached license of an Organization whose
+	// license row went away without a license write: the Organization's
+	// delete takes it through the foreign key. Call it after that delete
+	// commits, so no read between the eviction and the commit can cache the
+	// row again. A failed eviction is logged, never returned.
+	ForgetOrganization(ctx context.Context, productID, organizationID string)
 }
 
 type organizationLicenseService struct {
@@ -348,6 +354,10 @@ func (s *organizationLicenseService) Search(
 	ctx context.Context, q licenserepo.OrganizationLicenseSearch,
 ) (search.Result[license.OrganizationLicenseSummary], error) {
 	return s.licenseRepo.Search(ctx, q)
+}
+
+func (s *organizationLicenseService) ForgetOrganization(ctx context.Context, productID, organizationID string) {
+	s.licenses.evict(ctx, productID, organizationID)
 }
 
 func (s *organizationLicenseService) DiffAgainstTemplate(
