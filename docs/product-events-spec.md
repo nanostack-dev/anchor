@@ -73,7 +73,7 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 - Tracer configuration: one HTTPS URL and one signing secret per Product, set by operators, not a Product API. Later tickets add many endpoints with event-type filters on the Product API. The worker already filters by type so that ticket does not rewrite delivery.
 - Signing secret is unique per endpoint, `whsec_` format, encrypted at rest like integration webhook secrets. Svix libraries already in the Clerk path verify and sign.
 - Retry: reuse the existing pgkit worker shape (bounded attempts, exponential backoff, reap stuck jobs). A deployment retries a delivery for about a day: 20 attempts, 10 s doubling to a 2 h cap ([delivery](technical/product-event-delivery.md#retry-schedule)). Treat 2xx as success. Do not follow 3xx. Honour Retry-After on 429/503. Stop the endpoint after repeated 410s to that URL ([delivery](technical/product-event-delivery.md#410-gone)). At-least-once. Products dedupe on `webhook-id`.
-- HTTPS only. Reject endpoint URLs that resolve to non-public addresses.
+- HTTPS only. Reject endpoint URLs that resolve to non-public addresses: on save for an IP literal or `localhost`, and on every delivery dial after DNS ([delivery](technical/product-event-delivery.md#endpoint-addresses)).
 - Clerk ingest that writes a catalog resource emits the matching event types in the same transaction as the domain write. Tracer types fire only when those resources actually change.
 - Stacked PRs if the diff would mix schema, worker, and the first emitters.
 

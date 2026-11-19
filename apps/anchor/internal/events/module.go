@@ -31,5 +31,8 @@ func ProvideEndpointService(
 	core *serviceconfig.CoreConfig,
 	logger *slog.Logger,
 ) (EndpointService, error) {
-	return NewEndpointService(repo, catalog, enc, core.IsProduction(), logger)
+	return NewEndpointService(repo, catalog, enc, EndpointURLRules{
+		RequireHTTPS: core.IsProduction(),
+		AllowPrivate: core.Events.AllowPrivateEndpoints,
+	}, logger)
 }

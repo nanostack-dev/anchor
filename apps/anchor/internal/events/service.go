@@ -32,18 +32,18 @@ type EndpointService interface {
 }
 
 type endpointService struct {
-	repo       EndpointRepository
-	catalog    Catalog
-	cipher     *secrets.VersionedCipher
-	production bool
-	logger     *slog.Logger
+	repo     EndpointRepository
+	catalog  Catalog
+	cipher   *secrets.VersionedCipher
+	urlRules EndpointURLRules
+	logger   *slog.Logger
 }
 
 func NewEndpointService(
 	repo EndpointRepository,
 	catalog Catalog,
 	enc *encryption.Service,
-	production bool,
+	urlRules EndpointURLRules,
 	logger *slog.Logger,
 ) (EndpointService, error) {
 	cipher, err := enc.NewCipher(cipherContext)
@@ -51,11 +51,11 @@ func NewEndpointService(
 		return nil, err
 	}
 	return &endpointService{
-		repo:       repo,
-		catalog:    catalog,
-		cipher:     cipher,
-		production: production,
-		logger:     logger.With(slog.String("component", "event_endpoint_service")),
+		repo:     repo,
+		catalog:  catalog,
+		cipher:   cipher,
+		urlRules: urlRules,
+		logger:   logger.With(slog.String("component", "event_endpoint_service")),
 	}, nil
 }
 
@@ -67,7 +67,7 @@ func (s *endpointService) Upsert(ctx context.Context, input UpsertEndpointInput)
 	if err := validate.ValidateStruct(input); err != nil {
 		return Endpoint{}, err
 	}
-	if err := validateEndpointURL(input.URL, s.production); err != nil {
+	if err := validateEndpointURL(input.URL, s.urlRules); err != nil {
 		return Endpoint{}, err
 	}
 	for _, eventType := range input.Events {

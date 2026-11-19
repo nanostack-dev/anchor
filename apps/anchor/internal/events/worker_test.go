@@ -69,15 +69,20 @@ func (f *fakeEndpointStore) isDeleted() bool {
 	return f.deleted
 }
 
-func goneServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+func countingServer(t *testing.T, status int) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var hits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		hits.Add(1)
-		w.WriteHeader(http.StatusGone)
+		w.WriteHeader(status)
 	}))
 	t.Cleanup(server.Close)
 	return server, &hits
+}
+
+func goneServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	return countingServer(t, http.StatusGone)
 }
 
 func goneTarget(url string) events.DeliveryTarget {

@@ -35,6 +35,17 @@ Otherwise the job retries. So a single 410 from a proxy or a deploy keeps the en
 
 Before this rule a single 410 removed the endpoint whatever its URL, so `GET` of the product answered without the endpoint after one 410. It now keeps answering with it, `delivery_status: failed`, until the third failed call in a row.
 
+## Endpoint addresses
+
+An endpoint may only reach public addresses, so a Product cannot point Anchor at its own network ([address.go](../../apps/anchor/internal/events/address.go)). The refused ranges are loopback, private (RFC 1918, IPv6 ULA), shared address space (100.64.0.0/10, which the tailnet uses), link-local (including 169.254.169.254, cloud metadata), unspecified, multicast, documentation, benchmarking and reserved ranges, and the IPv6 prefixes that embed an IPv4 address (NAT64, 6to4, Teredo). An IPv4 address written as IPv6 (`::ffff:127.0.0.1`) is checked as IPv4.
+
+Two checks apply:
+
+1. **On save.** An IP literal in a refused range, `localhost` or a `*.localhost` name answers `400` with code `INVALID_EVENT_ENDPOINT_URL` (the existing code) and the message that the URL must point to a public address. This is early feedback only: names, other IP spellings (decimal, hex) and DNS changes are not visible here.
+2. **On every delivery.** The worker's dialer has a `Control` hook that checks each address it actually connects to, after DNS ([transport.go](../../apps/anchor/internal/events/transport.go)). A refused address fails the attempt before any byte is sent, counts as a failed call and retries on the schedule. This is the security boundary; it also covers a name that changes to a private address after the endpoint was saved (DNS rebinding). The client uses no proxy, so the hook sees the endpoint's address and not a proxy's, and it never follows a redirect.
+
+`core.events.allow_private_endpoints` (`EVENTS_ALLOW_PRIVATE_ENDPOINTS`, default `false`) turns both checks off. Only the test suites (`cmd/it/*/application.yaml`, whose endpoints are httptest servers on 127.0.0.1), the e2e runtime and a local run set it. A deployment never does.
+
 ## Known limitations
 
 - A job that fails every attempt becomes a failed pgkit job and the worker logs `product event delivery permanently failed`. There is no dead-letter view or replay endpoint yet; failed jobs stay in `pgqueue_jobs` for 30 days ([architecture](architecture.md)).

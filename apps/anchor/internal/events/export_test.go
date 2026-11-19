@@ -12,9 +12,16 @@ import (
 	serviceconfig "anchor/internal/service/config"
 )
 
-func ValidateEndpointURLForTest(raw string, production bool) error {
-	return validateEndpointURL(raw, production)
+func ValidateEndpointURLForTest(raw string, rules EndpointURLRules) error {
+	return validateEndpointURL(raw, rules)
 }
+
+// DeliveryClientForTest is the worker's HTTP client.
+func DeliveryClientForTest(allowPrivate bool) *http.Client {
+	return newDeliveryClient(allowPrivate)
+}
+
+var ErrNonPublicAddressForTest = errNonPublicAddress
 
 func DeliveredDataForTest(data Data) Data {
 	return deliveredData(data)

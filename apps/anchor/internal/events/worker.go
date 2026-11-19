@@ -13,7 +13,6 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
 	serviceconfig "anchor/internal/service/config"
-	"anchor/internal/telemetry"
 
 	"anchor/internal/queueworker"
 
@@ -54,15 +53,9 @@ func NewWorker(
 	deliverer := &deliverer{
 		endpoints: endpointService,
 		repo:      endpoints,
-		http: &http.Client{
-			Transport: telemetry.ExternalTransport(nil),
-			Timeout:   deliveryTimeout,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		},
-		now:    time.Now,
-		logger: logger,
+		http:      newDeliveryClient(core != nil && core.Events.AllowPrivateEndpoints),
+		now:       time.Now,
+		logger:    logger,
 	}
 
 	registry := queue.NewHandlerRegistry()
