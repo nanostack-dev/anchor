@@ -49,5 +49,6 @@ Two checks apply:
 ## Known limitations
 
 - A job that fails every attempt becomes a failed pgkit job and the worker logs `product event delivery permanently failed`. There is no dead-letter view or replay endpoint yet; failed jobs stay in `pgqueue_jobs` for 30 days ([architecture](architecture.md)).
+- Each replica's pgkit worker runs claimed jobs one at a time (`Worker.scan`). An endpoint that hangs until the 15 s delivery timeout delays every other Product's deliveries on that replica, and the day-long schedule retries it up to 20 times per event.
 - `Retry-After` on 429 and 503 is not honoured yet; those answers follow the schedule above.
 - The 410 threshold counts every failed call in a row, not only 410s: two 503s and then one 410 remove the endpoint, and so do three queued events that each get one 410. A `disabled` state that stops delivery but keeps the signing secret needs a new `ProductEventDeliveryStatus` value or column.
