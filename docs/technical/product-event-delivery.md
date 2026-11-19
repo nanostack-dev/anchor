@@ -24,7 +24,19 @@ The test suites wait for a delivery to fail six times (`TestProductEventDelivery
 
 `consecutive_failed_calls` counts failed attempts across every job of the endpoint, so it can grow well past one job's attempts while an endpoint stays down.
 
+## 410 Gone
+
+Standard Webhooks asks a sender to stop after a 410. The worker records a 410 as a failed call like any other, then removes the endpoint only when both hold, checked in the delete statement itself (`DeleteGoneEndpointInternal`):
+
+- the stored endpoint still has the URL that answered 410;
+- it has at least 3 consecutive failed calls, the last one this 410.
+
+Otherwise the job retries. So a single 410 from a proxy or a deploy keeps the endpoint, and a 410 from an old URL, in flight while an operator saved a new one, never removes the new URL. Removing an endpoint deletes its signing secret, and saving the endpoint again mints a new one. After removal the job completes, and later events find no endpoint.
+
+Before this rule a single 410 removed the endpoint whatever its URL, so `GET` of the product answered without the endpoint after one 410. It now keeps answering with it, `delivery_status: failed`, until the third failed call in a row.
+
 ## Known limitations
 
 - A job that fails every attempt becomes a failed pgkit job and the worker logs `product event delivery permanently failed`. There is no dead-letter view or replay endpoint yet; failed jobs stay in `pgqueue_jobs` for 30 days ([architecture](architecture.md)).
 - `Retry-After` on 429 and 503 is not honoured yet; those answers follow the schedule above.
+- The 410 threshold counts every failed call in a row, not only 410s: two 503s and then one 410 remove the endpoint, and so do three queued events that each get one 410. A `disabled` state that stops delivery but keeps the signing secret needs a new `ProductEventDeliveryStatus` value or column.

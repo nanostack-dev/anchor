@@ -18,7 +18,7 @@ import (
 
 // endpointRepository keeps the model rows: endpointFromModel returns an error,
 // and a nanorepo mapper cannot. DeleteByTenantAndProduct is
-// derived; the other methods are hand-written. DeleteByProductIDInternal
+// derived; the other methods are hand-written. DeleteGoneEndpointInternal
 // deletes across tenants, and such a delete never derives.
 func _() {
 	nanorepo.Implement[EndpointRepository, endpointRepository](
@@ -30,7 +30,10 @@ type EndpointRepository interface {
 	FindByProductIDInternal(ctx context.Context, productID string) (functional.Option[Endpoint], error)
 	Upsert(ctx context.Context, endpoint Endpoint) error
 	DeleteByTenantAndProduct(ctx context.Context, platformTenantID, productID string) error
-	DeleteByProductIDInternal(ctx context.Context, productID string) error
+	// DeleteGoneEndpointInternal removes the product's endpoint from the
+	// background worker only, when it still has endpointURL and at least
+	// minFailedCalls consecutive failed calls. It reports whether it removed it.
+	DeleteGoneEndpointInternal(ctx context.Context, productID, endpointURL string, minFailedCalls int32) (bool, error)
 	// RecordDeliveryResultInternal updates delivery state from the background worker only.
 	RecordDeliveryResultInternal(ctx context.Context, productID, endpointURL string, succeeded bool) error
 }
@@ -125,11 +128,22 @@ func (r *endpointRepository) Upsert(ctx context.Context, endpoint Endpoint) erro
 	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
-func (r *endpointRepository) DeleteByProductIDInternal(ctx context.Context, productID string) error {
+// DeleteGoneEndpointInternal checks the URL and the count in the delete itself:
+// a save of a new URL, or a success that resets the count, between the
+// worker's call and this delete keeps the endpoint.
+func (r *endpointRepository) DeleteGoneEndpointInternal(
+	ctx context.Context, productID, endpointURL string, minFailedCalls int32,
+) (bool, error) {
 	stmt := table.ProductEventEndpointConfigs.DELETE().WHERE(
-		table.ProductEventEndpointConfigs.ProductID.EQ(postgres.String(productID)),
+		table.ProductEventEndpointConfigs.ProductID.EQ(postgres.String(productID)).
+			AND(table.ProductEventEndpointConfigs.EndpointURL.EQ(postgres.String(endpointURL))).
+			AND(table.ProductEventEndpointConfigs.ConsecutiveFailedCalls.GT_EQ(postgres.Int32(minFailedCalls))),
 	)
-	return transactor.Exec(ctx, r.db, stmt).Err()
+	deleted, err := transactor.ExecAffected(ctx, r.db, stmt).Value()
+	if err != nil {
+		return false, err
+	}
+	return deleted > 0, nil
 }
 
 func (r *endpointRepository) RecordDeliveryResultInternal(

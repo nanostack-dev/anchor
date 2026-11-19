@@ -32,6 +32,10 @@ const (
 	successStatusMin      = 200
 	successStatusMax      = 300
 	goneStatus            = 410
+	// goneMinFailedCalls is how many failed calls in a row, the last one a
+	// 410, remove an endpoint. One 410 can come from a proxy or a deploy in
+	// progress, and removing the endpoint loses its signing secret.
+	goneMinFailedCalls = 3
 )
 
 // Worker delivers the product events to the products' endpoints.
@@ -161,16 +165,24 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, true)
 		return nil
 	}
+	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 	// Standard Webhooks: "If a delivery target has been retired, but the HTTP
 	// site still exists, the site SHOULD return a 410 Gone status code and the
-	// sender SHOULD refrain from sending any further notifications."
+	// sender SHOULD refrain from sending any further notifications." Only the
+	// URL that answered is removed, and only after repeated failures.
 	if resp.StatusCode == goneStatus {
-		if delErr := d.repo.DeleteByProductIDInternal(ctx, payload.ProductID); delErr != nil {
-			return fmt.Errorf("events: disable gone endpoint: %w", delErr)
+		removed, delErr := d.repo.DeleteGoneEndpointInternal(ctx, payload.ProductID, target.URL, goneMinFailedCalls)
+		if delErr != nil {
+			return fmt.Errorf("events: remove gone endpoint: %w", delErr)
 		}
-		return nil
+		if removed {
+			d.logger.WarnContext(ctx, "product event endpoint removed after repeated 410 Gone",
+				slog.String("product_id", payload.ProductID),
+				slog.String("event_id", payload.EventID),
+			)
+			return nil
+		}
 	}
-	d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
 	d.logger.WarnContext(ctx, "product event delivery rejected",
 		slog.Int("status", resp.StatusCode),
 		slog.String("event_id", payload.EventID),
