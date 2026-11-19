@@ -31,7 +31,7 @@ The test suites wait for a delivery to fail six times (`TestProductEventDelivery
 
 Each replica's pgkit worker runs claimed jobs one at a time (`Worker.scan`), so an endpoint that hangs until the 15 s delivery timeout holds every other Product's deliveries on that replica. A deployment therefore stops dialing an endpoint that keeps failing (`breakerWait` in [retry.go](../../apps/anchor/internal/events/retry.go)):
 
-- From 5 failed calls in a row, each failed call opens a cooldown counted from `last_failed_at`: 10 s after the fifth, doubled per further failure, capped at 2 h, the same curve as the retry schedule.
+- From 5 failed calls in a row, each failed call opens a cooldown counted from `last_failed_at`: 5 s after the fifth, doubled per further failure, capped at 1 h. That is half the retry curve, so every cooldown is shorter than the shortest jittered retry delay (three quarters of the curve): a single job's own retries are never skipped (`TestASingleDeliveryAgainstADeadEndpointMakesEveryAttempt`), and skew between the database clock and the worker's has room.
 - During the cooldown an attempt makes no request, is not counted as a failed call and returns a retryable error (`endpoint is cooling down`). The job spends that attempt and retries on its own schedule.
 - The first attempt after the cooldown calls the endpoint. A success resets the streak and closes the breaker for every queued job; a failure opens a longer cooldown.
 
@@ -64,6 +64,6 @@ Two checks apply:
 
 - A job that fails every attempt becomes a failed pgkit job and the worker logs `product event delivery permanently failed`. There is no dead-letter view or replay endpoint yet; failed jobs stay in `pgqueue_jobs` for 30 days ([architecture](architecture.md)). The product event log and replay are tracked in [#131](https://github.com/nanostack-dev/anchor/issues/131).
 - The breaker bounds the cost of an endpoint that fails. An endpoint that succeeds slowly (close to the 15 s timeout) still holds the replica's other deliveries; per-endpoint concurrency in the worker would remove that.
-- While the breaker is open, queued jobs spend attempts without a request. A job whose last attempts fall between the endpoint's recovery and the end of its cooldown (at most 2 h) is lost.
+- While the breaker is open, queued jobs spend attempts without a request: another job's failed call can open a cooldown that covers this job's retry. A job whose last attempts fall between the endpoint's recovery and the end of the current cooldown (at most 1 h) is lost.
 - `Retry-After` on 429 and 503 is not honoured yet; those answers follow the schedule above.
 - The 410 rule counts every failed call in a row, not only 410s, once the streak is 12 h old: an endpoint that answered 503 for 12 h and then one 410 is removed. Removal deletes the signing secret. A `disabled` state that stops delivery but keeps the secret needs a new `ProductEventDeliveryStatus` value, a change to the API contract ([ADR-0024](../adr/0024-event-delivery-retries-for-a-day-and-retires-endpoints-slowly.md)).

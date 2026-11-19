@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"anchor/internal/events"
+	serviceconfig "anchor/internal/service/config"
 
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/require"
@@ -275,7 +276,7 @@ func TestDeliveryToAnEndpointThatKeepsFailing(t *testing.T) {
 		}
 		endpoints := fakeEndpoints{target: goneTarget(server.URL), store: store}
 		rules := events.DeployedDeliveryRulesForTest(clock.Now)
-		clock.Advance(9 * time.Second)
+		clock.Advance(4 * time.Second)
 
 		err := events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules)
 
@@ -295,13 +296,13 @@ func TestDeliveryToAnEndpointThatKeepsFailing(t *testing.T) {
 		}
 		endpoints := fakeEndpoints{target: goneTarget(server.URL), store: store}
 		rules := events.DeployedDeliveryRulesForTest(clock.Now)
-		clock.Advance(10 * time.Second)
+		clock.Advance(5 * time.Second)
 
 		require.Error(
 			t,
 			events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules),
 		)
-		clock.Advance(19 * time.Second)
+		clock.Advance(9 * time.Second)
 		err := events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules)
 		require.ErrorIs(t, err, events.ErrEndpointCoolingDownForTest)
 		clock.Advance(time.Second)
@@ -324,7 +325,7 @@ func TestDeliveryToAnEndpointThatKeepsFailing(t *testing.T) {
 		}
 		endpoints := fakeEndpoints{target: goneTarget(server.URL), store: store}
 		rules := events.DeployedDeliveryRulesForTest(clock.Now)
-		clock.Advance(2 * time.Hour)
+		clock.Advance(time.Hour)
 
 		require.NoError(
 			t,
@@ -338,4 +339,47 @@ func TestDeliveryToAnEndpointThatKeepsFailing(t *testing.T) {
 		require.EqualValues(t, 2, hits.Load())
 		require.Zero(t, store.failures)
 	})
+}
+
+func TestASingleDeliveryAgainstADeadEndpointMakesEveryAttempt(t *testing.T) {
+	t.Parallel()
+	prod := &serviceconfig.CoreConfig{Environment: "prod"}
+	attempts, _, _ := events.DeliveryRetryWindowForTest(prod)
+
+	for jobID := int64(1); jobID <= 20; jobID++ {
+		server, hits := countingServer(t, http.StatusServiceUnavailable)
+		clock := newFakeClock()
+		store := &fakeEndpointStore{clock: clock, url: server.URL}
+		endpoints := fakeEndpoints{target: goneTarget(server.URL), store: store}
+		rules := events.DeployedDeliveryRulesForTest(clock.Now)
+
+		for attempt := 1; attempt <= attempts; attempt++ {
+			err := events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules)
+			require.NotErrorIs(t, err, events.ErrEndpointCoolingDownForTest, "job %d, attempt %d", jobID, attempt)
+			clock.Advance(events.DeliveryRetryDelayForTest(prod, jobID, attempt))
+		}
+
+		require.EqualValues(t, attempts, hits.Load(), "job %d", jobID)
+	}
+}
+
+func TestTheBreakerCooldownStopsAtAnHour(t *testing.T) {
+	t.Parallel()
+	server, hits := countingServer(t, http.StatusServiceUnavailable)
+	clock := newFakeClock()
+	store := &fakeEndpointStore{
+		clock: clock, url: server.URL, failures: 40,
+		failingSince: clock.Now(), lastFailedAt: clock.Now(),
+	}
+	endpoints := fakeEndpoints{target: goneTarget(server.URL), store: store}
+	rules := events.DeployedDeliveryRulesForTest(clock.Now)
+
+	clock.Advance(time.Hour - time.Second)
+	err := events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules)
+	require.ErrorIs(t, err, events.ErrEndpointCoolingDownForTest)
+	clock.Advance(time.Second)
+	err = events.DeliverWithRulesForTest(t.Context(), endpoints, store, server.Client(), "prd_test", rules)
+	require.NotErrorIs(t, err, events.ErrEndpointCoolingDownForTest)
+
+	require.EqualValues(t, 1, hits.Load())
 }

@@ -105,7 +105,7 @@ The catalog is the Product SDK surface: organizations, members, organization inv
 | **endpoint** | An HTTPS URL a Product registers to receive deliveries. Tracer: one URL in Product config. Later: many endpoints through the Product API, each with an event-type filter. | integration webhook |
 | **delivery** | One HTTP POST of an event to an endpoint. | |
 | **failure streak** | The failed calls to an endpoint since its last success or save: `consecutive_failed_calls`, dated by `failing_since` (first) and `last_failed_at` (latest). It spans every queued event of the endpoint. | a job's attempts |
-| **cooldown** | The wait after a failed call, from the fifth in a streak, during which the worker makes no call to that endpoint. See [ADR-0024](docs/adr/0024-event-delivery-retries-for-a-day-and-retires-endpoints-slowly.md). | retry delay — that is per job |
+| **cooldown** | The wait after a failed call, from the fifth in a streak, during which the worker makes no call to that endpoint: 5 s, doubled per further failure, at most 1 h. See [ADR-0024](docs/adr/0024-event-delivery-retries-for-a-day-and-retires-endpoints-slowly.md). | retry delay — that is per job |
 | **thin payload** | `data` carries identifiers of the subject. The Product fetches current state from the API. | snapshot, full payload |
 
 Delivery follows [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) (Svix): headers `webhook-id`, `webhook-timestamp`, `webhook-signature`; body `{type, timestamp, data}` with a thin `data`. Not CloudEvents. See [ADR-0017](docs/adr/0017-product-events-use-standard-webhooks.md).

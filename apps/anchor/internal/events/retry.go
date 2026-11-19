@@ -35,6 +35,8 @@ const (
 	// deployedBreakerMinFailedCalls is the failure streak from which the
 	// worker stops dialing an endpoint until its cooldown has passed.
 	deployedBreakerMinFailedCalls = 5
+	// breakerCooldownDivisor halves the retry curve for the breaker's cooldown.
+	breakerCooldownDivisor = 2
 )
 
 // deliveryRetryPolicy is the one schedule that the emitter (the attempts of a
@@ -73,15 +75,19 @@ func deliveryRetryPolicyFor(core *serviceconfig.CoreConfig) deliveryRetryPolicy 
 
 // breakerWait is how long the worker still skips dialing the target at now.
 // From breakerMinFailedCalls failed calls in a row, each failed call opens a
-// cooldown that follows the retry schedule: the base after the first, doubled
-// per further failure, capped at max. One endpoint that hangs then costs the
-// worker one call per cooldown, not one per queued event and attempt.
+// cooldown of half the retry curve: half the base after the first, doubled per
+// further failure, capped at half of max. One endpoint that hangs then costs
+// the worker one call per cooldown, not one per queued event and attempt.
+//
+// Half keeps every cooldown below the shortest jittered retry delay (three
+// quarters of the curve), so a job's own retries are never skipped, with room
+// for skew between the database clock (last_failed_at) and the worker's.
 func (p deliveryRetryPolicy) breakerWait(target DeliveryTarget, now time.Time) time.Duration {
 	if p.breakerMinFailedCalls <= 0 || target.ConsecutiveFailedCalls < p.breakerMinFailedCalls ||
 		target.LastFailedAt.IsZero() {
 		return 0
 	}
-	cooldown := p.nominalDelay(int(target.ConsecutiveFailedCalls-p.breakerMinFailedCalls) + 1)
+	cooldown := p.nominalDelay(int(target.ConsecutiveFailedCalls-p.breakerMinFailedCalls)+1) / breakerCooldownDivisor
 	return max(target.LastFailedAt.Add(cooldown).Sub(now), 0)
 }
 
