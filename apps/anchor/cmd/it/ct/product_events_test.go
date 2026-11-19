@@ -536,11 +536,13 @@ func TestProductEventEndpointGone(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, http.StatusCreated, created.StatusCode())
 
+			// The shared delivery worker can lag tens of seconds under -race
+			// -parallel 32, as TestProductEventDeliveryStatusOnConfig allows.
 			require.Eventually(t, func() bool {
 				current, getErr := owner.GetProductWithResponse(ctx, product.ProductID)
 				return getErr == nil && current.JSON200 != nil &&
 					(current.JSON200.Config.Events == nil || current.JSON200.Config.Events.EndpointUrl == "")
-			}, 30*time.Second, 100*time.Millisecond)
+			}, 90*time.Second, 100*time.Millisecond)
 			assert.EqualValues(t, 3, attempts.Load())
 
 			_, err = client.CreateProductOrganizationWithResponse(
