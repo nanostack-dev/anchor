@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -32,7 +33,8 @@ const (
 	successStatusMax      = 300
 	goneStatus            = 410
 	// goneMinFailedCalls is how many failed calls in a row, the last one a
-	// 410, remove an endpoint. One 410 can come from a proxy or a deploy in
+	// 410, remove an endpoint, once the streak is also older than the
+	// policy's goneMinFailingFor. One 410 can come from a proxy or a deploy in
 	// progress, and removing the endpoint loses its signing secret.
 	goneMinFailedCalls = 3
 )
@@ -50,10 +52,12 @@ func NewWorker(
 	core *serviceconfig.CoreConfig,
 ) (*Worker, error) {
 	logger = logger.With(slog.String("component", "product_events_worker"))
+	retry := deliveryRetryPolicyFor(core)
 	deliverer := &deliverer{
 		endpoints: endpointService,
 		repo:      endpoints,
 		http:      newDeliveryClient(core != nil && core.Events.AllowPrivateEndpoints),
+		policy:    retry,
 		now:       time.Now,
 		logger:    logger,
 	}
@@ -67,7 +71,6 @@ func NewWorker(
 	if core != nil && !core.IsProduction() {
 		pollInterval = workerPollIntervalDev
 	}
-	retry := deliveryRetryPolicyFor(core)
 
 	worker, err := queue.NewWorker(queueClient, registry, queue.WorkerConfig{
 		WorkerID:          workerID,
@@ -101,6 +104,7 @@ type deliverer struct {
 	endpoints EndpointService
 	repo      EndpointRepository
 	http      *http.Client
+	policy    deliveryRetryPolicy
 	now       func() time.Time
 	logger    *slog.Logger
 }
@@ -128,8 +132,14 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	if !target.Allows(eventType) {
 		return nil
 	}
-
+	// The attempt is spent without a call and without counting as a failed
+	// call: the job retries on its own schedule, and the endpoint's next call
+	// after the cooldown decides whether it is back.
 	attemptAt := d.now()
+	if wait := d.policy.breakerWait(target, attemptAt); wait > 0 {
+		return fmt.Errorf("%w: next call in %s", errEndpointCoolingDown, wait.Round(time.Second))
+	}
+
 	headers, err := Sign(target.Secret, payload.EventID, attemptAt, payload.Body)
 	if err != nil {
 		return err
@@ -149,6 +159,11 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	resp, err := d.http.Do(req)
 	if err != nil {
 		d.recordDeliveryResult(ctx, payload.ProductID, target.URL, false)
+		// A refused address does not become public by waiting: the job fails
+		// now instead of spending its day of attempts.
+		if errors.Is(err, errNonPublicAddress) {
+			return queue.NonRetryable(fmt.Errorf("events: deliver: %w", err))
+		}
 		return fmt.Errorf("events: deliver: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -162,9 +177,12 @@ func (d *deliverer) handleJob(ctx context.Context, job queue.Job) error {
 	// Standard Webhooks: "If a delivery target has been retired, but the HTTP
 	// site still exists, the site SHOULD return a 410 Gone status code and the
 	// sender SHOULD refrain from sending any further notifications." Only the
-	// URL that answered is removed, and only after repeated failures.
+	// URL that answered is removed, and only after repeated failures over a
+	// long streak.
 	if resp.StatusCode == goneStatus {
-		removed, delErr := d.repo.DeleteGoneEndpointInternal(ctx, payload.ProductID, target.URL, goneMinFailedCalls)
+		removed, delErr := d.repo.DeleteGoneEndpointInternal(
+			ctx, payload.ProductID, target.URL, goneMinFailedCalls, d.policy.goneMinFailingFor,
+		)
 		if delErr != nil {
 			return fmt.Errorf("events: remove gone endpoint: %w", delErr)
 		}

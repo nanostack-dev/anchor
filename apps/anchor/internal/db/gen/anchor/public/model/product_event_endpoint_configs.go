@@ -16,4 +16,6 @@ type ProductEventEndpointConfigs struct {
 	EventsJSON             string
 	DeliveryStatus         string
 	ConsecutiveFailedCalls int32
+	FailingSince           *time.Time
+	LastFailedAt           *time.Time
 }

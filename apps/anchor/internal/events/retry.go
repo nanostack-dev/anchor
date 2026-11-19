@@ -27,18 +27,35 @@ const (
 	// deliveryJitterDivisor bounds the jitter to a quarter of the delay, so
 	// replicas do not retry in step and the retry window keeps a floor.
 	deliveryJitterDivisor = 4
+	// deployedGoneMinFailingFor is how long an endpoint must have failed
+	// without a success before a 410 Gone removes it. It is shorter than the
+	// shortest retry window (15.6 h), so a single event can still retire a
+	// gone endpoint, and far longer than a deploy or a proxy answering 410.
+	deployedGoneMinFailingFor = 12 * time.Hour
+	// deployedBreakerMinFailedCalls is the failure streak from which the
+	// worker stops dialing an endpoint until its cooldown has passed.
+	deployedBreakerMinFailedCalls = 5
 )
 
 // deliveryRetryPolicy is the one schedule that the emitter (the attempts of a
-// delivery job) and the worker (the delay between them) share.
+// delivery job) and the worker (the delay between them) share, with the
+// worker's rules for a failing endpoint.
 type deliveryRetryPolicy struct {
 	maxAttempts int
 	base        time.Duration
 	max         time.Duration
+	// goneMinFailingFor is the youngest failure streak that a 410 Gone may
+	// end by removing the endpoint.
+	goneMinFailingFor time.Duration
+	// breakerMinFailedCalls is the failure streak from which the worker skips
+	// dialing the endpoint during its cooldown. Zero turns the breaker off.
+	breakerMinFailedCalls int32
 }
 
 func deliveryRetryPolicyFor(core *serviceconfig.CoreConfig) deliveryRetryPolicy {
 	if core != nil && core.IsTest() {
+		// The suites assert every failed call and a removal after three
+		// 410s, so they keep neither the age rule nor the breaker.
 		return deliveryRetryPolicy{
 			maxAttempts: testDeliveryMaxAttempts,
 			base:        testDeliveryBackoffBase,
@@ -46,10 +63,26 @@ func deliveryRetryPolicyFor(core *serviceconfig.CoreConfig) deliveryRetryPolicy 
 		}
 	}
 	return deliveryRetryPolicy{
-		maxAttempts: deployedDeliveryMaxAttempts,
-		base:        deployedDeliveryBackoffBase,
-		max:         deployedDeliveryBackoffMax,
+		maxAttempts:           deployedDeliveryMaxAttempts,
+		base:                  deployedDeliveryBackoffBase,
+		max:                   deployedDeliveryBackoffMax,
+		goneMinFailingFor:     deployedGoneMinFailingFor,
+		breakerMinFailedCalls: deployedBreakerMinFailedCalls,
 	}
+}
+
+// breakerWait is how long the worker still skips dialing the target at now.
+// From breakerMinFailedCalls failed calls in a row, each failed call opens a
+// cooldown that follows the retry schedule: the base after the first, doubled
+// per further failure, capped at max. One endpoint that hangs then costs the
+// worker one call per cooldown, not one per queued event and attempt.
+func (p deliveryRetryPolicy) breakerWait(target DeliveryTarget, now time.Time) time.Duration {
+	if p.breakerMinFailedCalls <= 0 || target.ConsecutiveFailedCalls < p.breakerMinFailedCalls ||
+		target.LastFailedAt.IsZero() {
+		return 0
+	}
+	cooldown := p.nominalDelay(int(target.ConsecutiveFailedCalls-p.breakerMinFailedCalls) + 1)
+	return max(target.LastFailedAt.Add(cooldown).Sub(now), 0)
 }
 
 // nominalDelay is the wait after a failed attempt (counted from 1) before

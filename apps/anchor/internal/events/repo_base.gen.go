@@ -389,3 +389,67 @@ func (productEventEndpointConfigsWhere) ConsecutiveFailedCallsAfter(v int32) pos
 func (productEventEndpointConfigsWhere) ConsecutiveFailedCallsBefore(v int32) postgres.BoolExpression {
 	return table.ProductEventEndpointConfigs.ConsecutiveFailedCalls.LT(postgres.Int32(v))
 }
+
+// FailingSince is failing_since = v.
+func (productEventEndpointConfigsWhere) FailingSince(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.FailingSince.EQ(postgres.TimestampzT(v))
+}
+
+// FailingSinceIn is failing_since IN (vs...); no value matches no row.
+func (productEventEndpointConfigsWhere) FailingSinceIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.ProductEventEndpointConfigs.FailingSince.IN(exprs...)
+}
+
+// FailingSinceAfter is failing_since > v.
+func (productEventEndpointConfigsWhere) FailingSinceAfter(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.FailingSince.GT(postgres.TimestampzT(v))
+}
+
+// FailingSinceBefore is failing_since < v.
+func (productEventEndpointConfigsWhere) FailingSinceBefore(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.FailingSince.LT(postgres.TimestampzT(v))
+}
+
+// FailingSinceIsNull is failing_since IS NULL.
+func (productEventEndpointConfigsWhere) FailingSinceIsNull() postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.FailingSince.IS_NULL()
+}
+
+// LastFailedAt is last_failed_at = v.
+func (productEventEndpointConfigsWhere) LastFailedAt(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.LastFailedAt.EQ(postgres.TimestampzT(v))
+}
+
+// LastFailedAtIn is last_failed_at IN (vs...); no value matches no row.
+func (productEventEndpointConfigsWhere) LastFailedAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.ProductEventEndpointConfigs.LastFailedAt.IN(exprs...)
+}
+
+// LastFailedAtAfter is last_failed_at > v.
+func (productEventEndpointConfigsWhere) LastFailedAtAfter(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.LastFailedAt.GT(postgres.TimestampzT(v))
+}
+
+// LastFailedAtBefore is last_failed_at < v.
+func (productEventEndpointConfigsWhere) LastFailedAtBefore(v time.Time) postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.LastFailedAt.LT(postgres.TimestampzT(v))
+}
+
+// LastFailedAtIsNull is last_failed_at IS NULL.
+func (productEventEndpointConfigsWhere) LastFailedAtIsNull() postgres.BoolExpression {
+	return table.ProductEventEndpointConfigs.LastFailedAt.IS_NULL()
+}

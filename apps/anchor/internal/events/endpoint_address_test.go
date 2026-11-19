@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -78,6 +79,7 @@ func TestDeliveryRefusesNonPublicAddressesAfterDNS(t *testing.T) {
 			events.DeliveryClientForTest(false), "prd_test")
 
 		require.ErrorIs(t, err, events.ErrNonPublicAddressForTest)
+		require.True(t, queue.IsNonRetryable(err), "a refused address fails the job without retries")
 		require.Zero(t, hits.Load())
 		require.EqualValues(t, 1, store.failures)
 	})

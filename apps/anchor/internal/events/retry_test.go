@@ -23,6 +23,14 @@ func TestDeliveryRetryPolicy(t *testing.T) {
 		})
 	}
 
+	t.Run("A single event can retire a gone endpoint: its retries outlast the 410 age rule", func(t *testing.T) {
+		t.Parallel()
+		_, shortest, _ := events.DeliveryRetryWindowForTest(&serviceconfig.CoreConfig{Environment: "prod"})
+		rules := events.DeployedDeliveryRulesForTest(time.Now)
+		assert.Equal(t, 12*time.Hour, rules.GoneMinFailingFor)
+		assert.Less(t, rules.GoneMinFailingFor, shortest)
+	})
+
 	t.Run("The test suites give up on a failing endpoint within a second after six attempts", func(t *testing.T) {
 		t.Parallel()
 		attempts, _, longest := events.DeliveryRetryWindowForTest(&serviceconfig.CoreConfig{Environment: "test"})

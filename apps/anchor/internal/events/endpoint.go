@@ -3,6 +3,7 @@ package events
 import (
 	"net/netip"
 	"net/url"
+	"time"
 )
 
 type Endpoint struct {
@@ -15,6 +16,11 @@ type Endpoint struct {
 	Events                  []string
 	DeliveryStatus          string
 	ConsecutiveFailedCalls  int32
+	// FailingSince is the first failed call of the current streak, and
+	// LastFailedAt its latest one. Both are zero while the endpoint is not
+	// failing.
+	FailingSince time.Time
+	LastFailedAt time.Time
 }
 
 type UpsertEndpointInput struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"slices"
+	"time"
 
 	"anchor/internal/security/encryption"
 
@@ -17,6 +18,11 @@ type DeliveryTarget struct {
 	URL    string
 	Secret string
 	Events []string
+	// ConsecutiveFailedCalls and LastFailedAt are the endpoint's failure
+	// streak when the worker read it. LastFailedAt is zero while it is not
+	// failing.
+	ConsecutiveFailedCalls int32
+	LastFailedAt           time.Time
 }
 
 func (t DeliveryTarget) Allows(eventType Type) bool {
@@ -170,5 +176,11 @@ func (s *endpointService) DeliveryTarget(
 	if err != nil {
 		return DeliveryTarget{}, false, err
 	}
-	return DeliveryTarget{URL: endpoint.URL, Secret: secret, Events: endpoint.Events}, true, nil
+	return DeliveryTarget{
+		URL:                    endpoint.URL,
+		Secret:                 secret,
+		Events:                 endpoint.Events,
+		ConsecutiveFailedCalls: endpoint.ConsecutiveFailedCalls,
+		LastFailedAt:           endpoint.LastFailedAt,
+	}, true, nil
 }
