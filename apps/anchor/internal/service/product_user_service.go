@@ -115,7 +115,9 @@ func (s *productUserService) Create(
 
 	var createdUser user.ProductUser
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
-		existingUsers, err := s.productUserRepo.FindByProductID(txCtx, input.ProductID)
+		// Checked before the external ID so an email conflict wins; the unique
+		// constraint mapped on Create below backstops a concurrent insert.
+		emailHolder, err := s.productUserRepo.FindByProductAndEmail(txCtx, input.ProductID, input.Email)
 		if err != nil {
 			logger.ErrorContext(txCtx, "failed to check for duplicate email",
 				slog.String("product_id", input.ProductID),
@@ -124,11 +126,7 @@ func (s *productUserService) Create(
 			)
 			return err
 		}
-
-		emailExists := functional.Slice(existingUsers).AnyMatch(func(existingUser user.ProductUser) bool {
-			return existingUser.Email == input.Email
-		})
-		if emailExists {
+		if emailHolder.IsPresent() {
 			return ErrProductUserEmailAlreadyExists
 		}
 
