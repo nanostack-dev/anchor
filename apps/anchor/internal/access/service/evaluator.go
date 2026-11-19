@@ -11,6 +11,7 @@ import (
 	"anchor/internal/applog"
 
 	orgapikey "anchor/internal/domain/organization/apikey"
+	userdomain "anchor/internal/domain/product/user"
 	"anchor/internal/repository"
 	resourcerepository "anchor/internal/resource/repository"
 	rtservice "anchor/internal/resourcetype/service"
@@ -183,6 +184,12 @@ func (e *evaluator) reachAsUser(ctx context.Context, request Request) (reach, er
 	user, synced := found.Get()
 	if !synced {
 		return stoppedBy(ReasonSubjectNotSynced), nil
+	}
+	// A suspended user keeps its memberships and roles, so a lifted
+	// suspension restores them, but reaches nothing meanwhile. An invited
+	// user is not refused: products create users invited and let them act.
+	if user.Status == userdomain.ProductUserStatusSuspended {
+		return stoppedBy(ReasonSubjectSuspended), nil
 	}
 	membership, err := e.memberships.FindByProductUserIDAndOrgID(
 		ctx, request.ProductID, user.ID, request.Organization(), true)
