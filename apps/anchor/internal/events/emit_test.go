@@ -76,6 +76,44 @@ func TestDeliveredData(t *testing.T) {
 		require.Equal(t, events.Data{events.FieldOrganizationID: "org_1", events.FieldResourceID: "ext-1"}, delivered)
 		require.Equal(t, "res_1", data[events.FieldResourceRowID], "the observers still read it")
 	})
+
+	t.Run("A delivered user delete leaves out the organizations its memberships cascaded from", func(t *testing.T) {
+		t.Parallel()
+		data := events.Data{
+			events.FieldProductUserID:           "pusr_1",
+			events.FieldCascadedOrganizationIDs: events.JoinIDs([]string{"org_1", "org_2"}),
+		}
+
+		delivered := events.DeliveredDataForTest(data)
+
+		require.Equal(t, events.Data{events.FieldProductUserID: "pusr_1"}, delivered)
+		require.Equal(t, "org_1,org_2", data[events.FieldCascadedOrganizationIDs], "the observers still read it")
+	})
+
+	t.Run("A delivered event with both internal fields leaves out both", func(t *testing.T) {
+		t.Parallel()
+		data := events.Data{
+			events.FieldOrganizationID:          "org_1",
+			events.FieldResourceRowID:           "res_1",
+			events.FieldCascadedOrganizationIDs: "",
+		}
+
+		require.Equal(t, events.Data{events.FieldOrganizationID: "org_1"}, events.DeliveredDataForTest(data))
+	})
+}
+
+func TestIDList(t *testing.T) {
+	t.Parallel()
+
+	t.Run("A joined list splits back into the same IDs", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, []string{"org_1", "org_2"}, events.SplitIDs(events.JoinIDs([]string{"org_1", "org_2"})))
+	})
+
+	t.Run("An empty list splits into no IDs", func(t *testing.T) {
+		t.Parallel()
+		require.Empty(t, events.SplitIDs(events.JoinIDs(nil)))
+	})
 }
 
 type callLog struct{ calls []string }

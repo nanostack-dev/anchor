@@ -1,6 +1,9 @@
 package events
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type Type string
 
@@ -71,7 +74,34 @@ const (
 	// resource in the relationship store for the observers; the emitter drops
 	// it from the data a product endpoint receives.
 	FieldResourceRowID = "resource_row_id"
+	// FieldCascadedOrganizationIDs lists, joined by JoinIDs, the
+	// Organizations whose memberships a product user or product role delete
+	// takes through the foreign keys, without membership events. It is for
+	// the observers only, like FieldResourceRowID. A delete that leaves it
+	// out makes every Organization's assignments stale; an empty value names
+	// none.
+	FieldCascadedOrganizationIDs = "cascaded_organization_ids"
 )
+
+// isInternalField reports a field the observers read and a product never receives.
+func isInternalField(field string) bool {
+	return field == FieldResourceRowID || field == FieldCascadedOrganizationIDs
+}
+
+// idSeparator joins IDs in one field. Anchor's IDs are prefixed KSUIDs, which
+// never hold it.
+const idSeparator = ","
+
+// JoinIDs packs IDs into one data field.
+func JoinIDs(ids []string) string { return strings.Join(ids, idSeparator) }
+
+// SplitIDs unpacks a field JoinIDs wrote; an empty field holds no ID.
+func SplitIDs(field string) []string {
+	if field == "" {
+		return nil
+	}
+	return strings.Split(field, idSeparator)
+}
 
 type Data map[string]string
 

@@ -207,7 +207,8 @@ func (s *productUserService) Delete(
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
 		// Its role assignments on resources go with its memberships through
 		// the foreign keys, each with its event.
-		if releaseErr := s.roleAssignments.ReleaseUser(txCtx, input.ProductID, input.ProductUserID); releaseErr != nil {
+		cascaded, releaseErr := s.roleAssignments.ReleaseUser(txCtx, input.ProductID, input.ProductUserID)
+		if releaseErr != nil {
 			return releaseErr
 		}
 		var delErr error
@@ -221,7 +222,10 @@ func (s *productUserService) Delete(
 		return s.events.Emit(txCtx, events.Event{
 			Type:      events.ProductUserDeleted,
 			ProductID: input.ProductID,
-			Data:      events.Data{events.FieldProductUserID: input.ProductUserID},
+			Data: events.Data{
+				events.FieldProductUserID:           input.ProductUserID,
+				events.FieldCascadedOrganizationIDs: events.JoinIDs(cascaded),
+			},
 		})
 	})
 	if err != nil {

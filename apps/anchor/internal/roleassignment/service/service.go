@@ -50,8 +50,10 @@ type Service interface {
 	ReleaseOrganization(txCtx context.Context, productID, organizationID string) error
 	// ReleaseUser emits a deleted event for every assignment the product user
 	// holds, inside the transaction that deletes the user; the foreign keys
-	// remove the rows.
-	ReleaseUser(txCtx context.Context, productID, productUserID string) error
+	// remove the rows. It returns the Organizations whose memberships that
+	// delete cascades. It locks the user's row last, as the delete would, so
+	// no membership joins the user until the transaction ends.
+	ReleaseUser(txCtx context.Context, productID, productUserID string) ([]string, error)
 	// CountOnResource counts the assignments held on one resource.
 	CountOnResource(txCtx context.Context, resourceRowID string) (int, error)
 }
@@ -354,24 +356,34 @@ func (s *service) ReleaseOrganization(txCtx context.Context, productID, organiza
 	return s.emitDeleted(txCtx, productID, held)
 }
 
-func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID string) error {
+func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID string) ([]string, error) {
 	organizations, err := s.repo.UserOrganizations(txCtx, productUserID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, organizationID := range organizations {
 		if err = s.resources.ShareOrganization(txCtx, organizationID); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if err = s.repo.FindUserMemberships(transactor.ForUpdate(txCtx), productUserID); err != nil {
-		return err
+		return nil, err
 	}
 	held, err := s.repo.HeldByUser(txCtx, productUserID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.emitDeleted(txCtx, productID, held)
+	if err = s.emitDeleted(txCtx, productID, held); err != nil {
+		return nil, err
+	}
+	// The user's delete takes this lock next anyway, so taking it here keeps
+	// the lock order. A membership write takes FOR KEY SHARE on the user, so
+	// one committed before the lock is in the list read after it, and a later
+	// one waits for the delete and fails its foreign key.
+	if err = s.repo.FindUser(transactor.ForUpdate(txCtx), productUserID); err != nil {
+		return nil, err
+	}
+	return s.repo.UserOrganizations(txCtx, productUserID)
 }
 
 func (s *service) ReleaseResources(

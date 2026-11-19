@@ -47,6 +47,7 @@ var (
 	InvitationService      invitationservice.OrganizationInvitationService
 	OrganizationService    service.OrganizationService
 	ProductRoleService     service.ProductRoleService
+	ProductUserService     service.ProductUserService
 	ResourcePermissionSvc  service.ResourcePermissionService
 	Transactor             transactor.Transactor
 	AuthzStores            authzstore.Stores
@@ -102,6 +103,7 @@ func TestMain(m *testing.M) {
 				InvitationService = c.OrganizationInvitationService
 				OrganizationService = c.OrganizationService
 				ProductRoleService = c.ProductRoleService
+				ProductUserService = c.ProductUserService
 				ResourcePermissionSvc = c.ResourcePermissionService
 				PermissionStartupSync = c.ProductPermissionStartupSync
 			},

@@ -43,6 +43,8 @@ type Repository interface {
 	// FindUserMemberships reads every membership of the product user, in
 	// Organization order.
 	FindUserMemberships(ctx context.Context, productUserID string) error
+	// FindUser reads the product user's row.
+	FindUser(ctx context.Context, productUserID string) error
 	// HeldInOrganization lists every assignment held in an Organization.
 	HeldInOrganization(ctx context.Context, organizationID string) ([]roleassignment.Held, error)
 	// HeldByUser lists every assignment the product user holds, in every
@@ -121,6 +123,13 @@ func (r *repositoryImpl) FindUserMemberships(ctx context.Context, productUserID 
 		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).
 			WHERE(table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID))).
 			ORDER_BY(table.OrganizationMemberships.OrganizationID.ASC()),
+	).Err()
+}
+
+func (r *repositoryImpl) FindUser(ctx context.Context, productUserID string) error {
+	return transactor.Exec(ctx, r.db,
+		table.ProductUsers.SELECT(table.ProductUsers.ID).
+			WHERE(table.ProductUsers.ID.EQ(postgres.String(productUserID))),
 	).Err()
 }
 

@@ -125,15 +125,12 @@ func (e *emitter) enqueue(ctx context.Context, tx *sql.Tx, event Event) error {
 	return err
 }
 
-// deliveredData is what a product endpoint receives: Anchor's resource row ID
-// is for the observers only.
+// deliveredData is what a product endpoint receives: the fields the observers
+// alone read (Anchor's resource row ID, the cascaded Organizations) are left out.
 func deliveredData(data Data) Data {
-	if _, internal := data[FieldResourceRowID]; !internal {
-		return data
-	}
-	delivered := make(Data, len(data)-1)
+	delivered := make(Data, len(data))
 	for field, value := range data {
-		if field != FieldResourceRowID {
+		if !isInternalField(field) {
 			delivered[field] = value
 		}
 	}
