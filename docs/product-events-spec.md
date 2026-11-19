@@ -72,7 +72,7 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 - After commit, a worker fans out one delivery job per matching endpoint. Tracer: one endpoint, one delivery job. HTTP is not inside the domain transaction.
 - Tracer configuration: one HTTPS URL and one signing secret per Product, set by operators, not a Product API. Later tickets add many endpoints with event-type filters on the Product API. The worker already filters by type so that ticket does not rewrite delivery.
 - Signing secret is unique per endpoint, `whsec_` format, encrypted at rest like integration webhook secrets. Svix libraries already in the Clerk path verify and sign.
-- Retry: reuse the existing pgkit worker shape (bounded attempts, exponential backoff, reap stuck jobs). Treat 2xx as success. Do not follow 3xx. Honour Retry-After on 429/503. Stop the endpoint after 410. At-least-once. Products dedupe on `webhook-id`.
+- Retry: reuse the existing pgkit worker shape (bounded attempts, exponential backoff, reap stuck jobs). A deployment retries a delivery for about a day: 20 attempts, 10 s doubling to a 2 h cap ([delivery](technical/product-event-delivery.md#retry-schedule)). Treat 2xx as success. Do not follow 3xx. Honour Retry-After on 429/503. Stop the endpoint after 410. At-least-once. Products dedupe on `webhook-id`.
 - HTTPS only. Reject endpoint URLs that resolve to non-public addresses.
 - Clerk ingest that writes a catalog resource emits the matching event types in the same transaction as the domain write. Tracer types fire only when those resources actually change.
 - Stacked PRs if the diff would mix schema, worker, and the first emitters.
@@ -98,7 +98,7 @@ transactor.InTx(ctx, func(txCtx context.Context) error {
 - Emitting every catalog type in the first slice (workspaces, Product Users, Organization API keys wait)
 - EchoPoint handler, cache invalidation, and SDK subscribe helpers
 - Signing-secret self-service rotation API (operators can rotate config)
-- Multi-day Svix-style retry calendars (use existing pgkit backoff first)
+- Retry calendars beyond about a day (the pgkit backoff now spans 15.6 h to 20.8 h)
 
 ## Further Notes
 

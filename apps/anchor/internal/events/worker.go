@@ -27,9 +27,6 @@ const (
 	workerReapInterval    = 30 * time.Second
 	workerVisibility      = 1 * time.Minute
 	workerBatchSize       = 50
-	workerBackoffBase     = 1 * time.Second
-	workerBackoffBaseTest = 50 * time.Millisecond
-	workerBackoffMax      = 5 * time.Minute
 	deliveryTimeout       = 15 * time.Second
 	maxDeliveryBodyBytes  = 1 << 20
 	successStatusMin      = 200
@@ -73,12 +70,7 @@ func NewWorker(
 	if core != nil && !core.IsProduction() {
 		pollInterval = workerPollIntervalDev
 	}
-	// The test suites wait for a delivery to fail six times; at 1 s doubling
-	// that took 31 s of a CI job. Deployments (prod, dev) keep 1 s.
-	backoffBase := workerBackoffBase
-	if core != nil && core.IsTest() {
-		backoffBase = workerBackoffBaseTest
-	}
+	retry := deliveryRetryPolicyFor(core)
 
 	worker, err := queue.NewWorker(queueClient, registry, queue.WorkerConfig{
 		WorkerID:          workerID,
@@ -86,8 +78,9 @@ func NewWorker(
 		ReapInterval:      workerReapInterval,
 		VisibilityTimeout: workerVisibility,
 		BatchSizePerQueue: workerBatchSize,
-		BackoffBase:       backoffBase,
-		BackoffMax:        workerBackoffMax,
+		BackoffBase:       retry.base,
+		BackoffMax:        retry.max,
+		RetryDelay:        retry.retryDelay,
 		OnJobFailed: func(ctx context.Context, job queue.Job) {
 			logger.ErrorContext(ctx, "product event delivery permanently failed",
 				slog.Int64("job_id", job.ID),
