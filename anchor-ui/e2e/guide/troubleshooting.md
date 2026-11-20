@@ -153,6 +153,21 @@ requires an array and the table calls `map`. The list regression intentionally
 creates zero-grant keys, requires `permissions: []` and exercises pagination and
 facets. The response mapper now preserves an empty array for creation and reads.
 
+## A deleted API key stayed in the list
+
+`immutable API keys keep grants locked and key search, single and bulk deletion
+persist` failed three times between 2026-11-11 and 11-17: the deleted key's row
+was still there after 8 s, the dialog closed and the table showed `3 total`.
+`DeleteProductAPIKeyDialog` invalidated `["searchProductAPIKeys"]`, but the
+generated key is `[{ _id: "searchProductApiKeys", … }]`, so TanStack Query
+matched nothing and the list never refetched after the delete. The scenario
+usually passed only because another refetch landed after the delete; that path
+was not identified. The dialog now matches the generated `_id`, like
+`ProductApiKeyForm`. The story `Product/ProductApiKeyDatatable > Deleting A Key
+Removes Its Row` failed before the repair and passes after it. Invalidate a
+generated query by its `_id` predicate or its generated `…QueryKey` helper, never
+by a hand-written string key.
+
 ## Backend cache missed an embedded contract change
 
 The Go binary fingerprint covered Go, SQL and module files but omitted the

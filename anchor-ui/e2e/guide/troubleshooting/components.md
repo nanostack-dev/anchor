@@ -30,6 +30,21 @@ pnpm test-storybook src/components/common/datatable/AnchorDataTable.stories.tsx 
 Then run the full Storybook suite and inspect the cloud frontend check. A green
 result is required before treating this synchronization repair as verified.
 
+## The closing bulk dialog lost its action name
+
+The repairs above waited for the dialog per story; the cause stayed in
+`BulkActions`. It rendered the dialog from `pending`, and clearing `pending` also
+closed the dialog, so every exit frame showed an empty action button and a
+`()?` title. A third story, `BulkDeleteSelectedRows`, then failed the same axe
+`button-name` rule once on 2026-11-11 and passed on rerun. A `MutationObserver`
+on the action button recorded `Working…` and then `""` during the close.
+
+`BulkActions` now keeps the last request it showed in `shown` and renders the
+title, rows and action label from it. `pending` still opens and closes the
+dialog. `BulkDeleteSelectedRows` records every name the action button takes
+from the confirming click until the dialog leaves, and requires that none is
+empty. It failed with `[ 'Working…', '' ]` before the repair.
+
 ## Storybook did not observe a schema parse error after untargeted paste
 
 After the bulk-dialog repair, cloud CI passed that story but failed

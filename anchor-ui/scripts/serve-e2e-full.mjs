@@ -44,7 +44,7 @@ const startup = startRuntime({
 });
 runtime = await startup;
 const runtimeMs = performance.now() - launchedAt;
-console.log(
+console.error(
 	`Anchor backend ready in ${Math.round(runtimeMs)} ms; building the frontend`,
 );
 const ownerPath = path.join(runtime.directory, "owner.json");
@@ -120,7 +120,7 @@ try {
 		},
 	});
 	const startupMs = performance.now() - launchedAt;
-	console.log(
+	console.error(
 		`Disposable Anchor browser runtime ready at ${frontendURL} (${Math.round(startupMs)} ms; backend ${Math.round(runtimeMs)} ms, frontend ${Math.round(frontendBuildMs)} ms)`,
 	);
 } catch (error) {

@@ -56,8 +56,15 @@ fixtures and evidence; keep verified Anchor troubleshooting in this guide.
 The local suite boots one backend and builds one frontend per run. The
 `webServer` timeout in `playwright.app.config.ts` covers both phases in series;
 size it from the slowest observed backend start plus the frontend build, and read
-the `Anchor backend ready in … ms` line before raising it
-([postmortem](../../../docs/postmortems/2026-11-09-e2e-app-startup-budget.md)). Fresh browser
+the `[WebServer]` timing lines before raising it
+([postmortem](../../../docs/postmortems/2026-11-09-e2e-app-startup-budget.md)). Startup
+prints `[E2E startup] containers healthy`, `Anchor built` and `Anchor API healthy`
+with elapsed milliseconds, then `Anchor backend ready in … ms` and the total. They go
+to stderr: Playwright drops `webServer` stdout by default. On 40 green CI shards
+(2026-11-13 to 11-20) the backend phase took 31–169 s and `vite build` 19–31 s,
+50–199 s in total, so the 420 s budget keeps more than twice the slowest start. A
+failed startup appends the last API log and `docker compose logs` lines to its
+error; see [CI failures](ci-failures.md#startup-failures). Fresh browser
 contexts isolate cookies and UI state; unique fixture IDs isolate server state.
 Keep external requests out of ordinary local tests. Mailpit verifies SMTP
 delivery; Clerk webhook processing uses a local product integration and signed

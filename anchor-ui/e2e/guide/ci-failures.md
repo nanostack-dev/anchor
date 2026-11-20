@@ -19,6 +19,20 @@ completion proof remain available separately. A failing run may have no
 completion proof because the gate never accepted that run. Artifacts expire
 after seven days; download evidence before investigating an older failure.
 
+## Startup failures
+
+`Timed out waiting …ms from config.webServer` or `Process from config.webServer
+was not able to start` means no scenario ran. Read the `[WebServer]` lines above
+it. The `[E2E startup]` phase lines and `Anchor backend ready in … ms` show where
+the time went; compare them with the measured range in the
+[guide](README.md). A `vite build` error is a real build failure of the branch,
+not a flake (for example a missing design-system export). When the disposable
+backend fails, the error ends with the last lines of the Anchor API log and of
+`docker compose logs` for Postgres, Redis and Mailpit. The API runs at `warn`
+level and its secrets come from files, so the excerpt names settings, not
+values. These lines are in the job log only; the artifact still holds no backend
+logs.
+
 ## Traces when a screenshot is insufficient
 
 Run this workflow manually on the relevant branch with **Record traces and

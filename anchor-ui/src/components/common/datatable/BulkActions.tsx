@@ -56,11 +56,13 @@ export function BulkActions<TData>({
 	onRunningChange,
 	onComplete,
 }: BulkActionsProps<TData>) {
-	const [pending, setPending] = useState<{
+	type BulkRequest = {
 		action: DataTableBulkAction<TData>;
 		rows: TData[];
 		selectionScope: string;
-	} | null>(null);
+	};
+	const [pending, setPending] = useState<BulkRequest | null>(null);
+	const [shown, setShown] = useState<BulkRequest | null>(null);
 	const [progress, setProgress] = useState<number | null>(null);
 	const [result, setResult] = useState<{
 		succeeded: number;
@@ -145,11 +147,13 @@ export function BulkActions<TData>({
 								)}
 								onClick={() => {
 									setResult(null);
-									setPending({
+									const request = {
 										action,
 										rows: [...selectedRows],
 										selectionScope,
-									});
+									};
+									setPending(request);
+									setShown(request);
 								}}
 							>
 								{action.label}
@@ -193,15 +197,15 @@ export function BulkActions<TData>({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{pending?.action.label} ({pending?.rows.length})?
+							{shown?.action.label} ({shown?.rows.length})?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{pending?.action.description}
+							{shown?.action.description}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<ScrollArea maxHeight="md">
 						<ul className="text-sm">
-							{pending?.rows.map((row) => (
+							{shown?.rows.map((row) => (
 								<li key={getRowId(row)}>{getRowLabel(row)}</li>
 							))}
 						</ul>
@@ -211,7 +215,7 @@ export function BulkActions<TData>({
 							className="flex items-center gap-2 text-sm"
 							aria-live="polite"
 						>
-							<Spinner /> Processed {progress} of {pending?.rows.length}
+							<Spinner /> Processed {progress} of {shown?.rows.length}
 						</output>
 					)}
 					<AlertDialogFooter>
@@ -219,12 +223,12 @@ export function BulkActions<TData>({
 							Cancel
 						</AlertDialogCancel>
 						<AlertDialogAction
-							tone={pending?.action.destructive ? "critical" : "brand"}
+							tone={shown?.action.destructive ? "critical" : "brand"}
 							variant="solid"
 							disabled={progress !== null || disabled}
 							onClick={() => void execute()}
 						>
-							{progress !== null ? "Working…" : pending?.action.label}
+							{progress !== null ? "Working…" : shown?.action.label}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
