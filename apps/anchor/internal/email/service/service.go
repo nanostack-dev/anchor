@@ -32,6 +32,11 @@ const emailSendDedupeConstraint = "idx_email_send_records_dedupe"
 // a context detached from the caller's request, so the write cannot hang.
 const emailStatusPersistTimeout = 5 * time.Second
 
+// emailDispatchTimeout bounds the provider dispatch, which runs detached from
+// the caller's request once the send record exists. It covers a slow relay
+// (an 11 s AUTH reply was seen) plus the provider's one transient-reply retry.
+const emailDispatchTimeout = 60 * time.Second
+
 var (
 	ErrEmailIntegrationNotConfigured = fault.Conflict(
 		"EMAIL_INTEGRATION_NOT_CONFIGURED",
@@ -787,14 +792,21 @@ func (s *emailService) Send(
 		MessageID: messageID,
 	}
 
-	dispatchErr := mailer.Send(ctx, instance, msg)
+	// The record is persisted, so a duplicate request already gets it back as
+	// in flight. The dispatch therefore runs on a context detached from the
+	// caller's request: a caller that hangs up while the relay is slow must not
+	// cancel the provider's transient-reply retry and leave the record FAILED
+	// behind that duplicate's 201. Detaching drops only cancellation and keeps
+	// request-scoped values (trace correlation); the timeout bounds the dispatch.
+	dispatchCtx, cancelDispatch := context.WithTimeout(context.WithoutCancel(ctx), emailDispatchTimeout)
+	defer cancelDispatch()
+	dispatchErr := mailer.Send(dispatchCtx, instance, msg)
 
 	// mailer.Send has already had its outbound side effect — the message was
 	// handed to the provider or definitively rejected — so the terminal status
 	// write must survive cancellation of the caller's request context, or a
-	// delivered email can stay recorded as unsent. Detaching drops only
-	// cancellation while keeping request-scoped values (trace correlation); the
-	// timeout keeps the detached write bounded.
+	// delivered email can stay recorded as unsent. The timeout keeps the
+	// detached write bounded.
 	persistCtx, cancelPersist := context.WithTimeout(context.WithoutCancel(ctx), emailStatusPersistTimeout)
 	defer cancelPersist()
 
