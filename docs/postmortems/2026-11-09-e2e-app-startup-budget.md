@@ -121,7 +121,7 @@ flowchart TD
 | A1 | Raise the `webServer` timeout in `playwright.app.config.ts` from 180 s to 420 s, with the measured range in a comment | prevent | Nanostack routine (echopoint-investigation) |  | done |  | R1 |
 | A2 | `serve-e2e-full.mjs` prints `Anchor backend ready in … ms` before the frontend build; e2e guide line on sizing the budget | detect | Nanostack routine (echopoint-investigation) |  | done |  | R2 |
 | A3 | Report a webServer startup timeout as its own annotation in `run-e2e-affected.mjs`, so it is not read as a test failure | detect | anchor maintainers | 2026-11-23 | open |  | R2 |
-| A5 | A2's line went to stdout, which Playwright drops for `webServer` by default, so CI never showed it. Print it, the total and per-phase `[E2E startup]` lines to stderr; append API and container logs to a failed startup | detect | anchor maintainers |  | done | flaky-e2e PR | R2 |
+| A5 | A2's line went to stdout, which Playwright drops for `webServer` by default, so CI never showed it. Print it, the total and per-phase `[E2E startup]` lines to stderr; append API and container logs to a failed startup | detect | anchor maintainers |  | done | #404 | R2 |
 | A4 | Build the backend and the frontend in parallel in `serve-e2e-full.mjs` (startup becomes the max of the two phases, not the sum) | mitigate | anchor maintainers | 2026-11-30 | open |  | R1 |
 
 ## Responders
