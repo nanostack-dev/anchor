@@ -231,11 +231,11 @@
     },
     {
       "id": "A4",
-      "what": "Persist failure audit rows outside the aborted batch transaction",
+      "what": "Persist failure audit rows outside the aborted batch transaction (done 2026-11-20 after the recurrence: [postmortem](2026-11-19-failure-audit-in-aborted-tx.md))",
       "type": "mitigate",
       "owner": "anchor",
       "due": "2026-10-24",
-      "status": "open",
+      "status": "done",
       "ticket": {
         "label": "anchor#210",
         "url": "https://github.com/nanostack-dev/anchor/issues/210"

@@ -22,4 +22,6 @@ Update authoritative docs in the same PR for changed behavior, a verified reusab
 
 The SMTP provider (`apps/anchor/internal/integration/provider/smtp`) retries a transient 4yz AUTH reply once with a fresh connection, and retries nothing after MAIL FROM. Once a send record exists, `emailService.Send` dispatches and writes the status on a bounded context detached from the request, so a caller that hangs up never cancels delivery; test a send path with a caller that hangs up ([postmortem](docs/postmortems/2026-11-17-smtp-auth-transient-not-retried.md)).
 
+An integration command handler runs inside its caller's transaction, so it records a failure by returning `provider.WithFailureAudit(err, auditLog)`; the webhook and reconcile paths write that row after the rollback. Never write an ERROR audit row on the failed work's context: it fails with 25P02 and the ruleguard rule `failureAuditLeavesTheAbortedTx` reports it ([postmortem](docs/postmortems/2026-11-19-failure-audit-in-aborted-tx.md)).
+
 Follow [.github/pull_request_template.md](.github/pull_request_template.md), preserving every section and the preview marker. Commit/push from an isolated worktree are allowed; complete current-head CI and applicable review before calling work ready. A merged PR alone does not establish deployment.

@@ -146,7 +146,7 @@ flowchart TD
 | A1 | Scheduler run removes duplicate pending scheduler jobs, keeping the lowest id; CT proves duplicates collapse to one | prevent | anchor | 2026-10-10 | done | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R1 |
 | A2 | Per-instance advisory lock around reconciliation; a second run skips | prevent | anchor | 2026-10-10 | done | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R2 |
 | A3 | Log `removed duplicate reconcile scheduler jobs` at warn so any new fork shows in the warn-spike alert | detect | anchor | 2026-10-10 | done | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R3 |
-| A4 | Persist failure audit rows outside the aborted batch transaction | mitigate | anchor | 2026-10-24 | open | [anchor#210](https://github.com/nanostack-dev/anchor/issues/210) | R4 |
+| A4 | Persist failure audit rows outside the aborted batch transaction (done 2026-11-20 after the recurrence: [postmortem](2026-11-19-failure-audit-in-aborted-tx.md)) | mitigate | anchor | 2026-10-24 | done | [anchor#210](https://github.com/nanostack-dev/anchor/issues/210) | R4 |
 | A5 | Rule in anchor `docs/development/agent-rules.md`: recurring queue jobs dedupe themselves and per-resource jobs take an advisory lock | process | anchor | 2026-10-10 | done | [anchor#211](https://github.com/nanostack-dev/anchor/pull/211) | R1, R2 |
 
 ## Responders
@@ -167,4 +167,5 @@ None: dev only.
 
 - [Postmortem report](https://claude.ai/artifact/J26PXvbhmHEuTjcqF5tBZV)
 - [Follow-up: lost failure audit rows (anchor#210)](https://github.com/nanostack-dev/anchor/issues/210)
-- [Clerk reconcile scheduler](../technical/clerk-reconcile-scheduler.md) and [ADR-0020](../adr/0020-self-rescheduling-jobs-collapse-duplicates.md): current behavior and the design choice
+- [Clerk reconcile scheduler (current behavior)](https://github.com/nanostack-dev/anchor/blob/main/docs/technical/clerk-reconcile-scheduler.md)
+- [ADR-0020: self-rescheduling jobs collapse duplicates](https://github.com/nanostack-dev/anchor/blob/main/docs/adr/0020-self-rescheduling-jobs-collapse-duplicates.md)

@@ -78,22 +78,25 @@ func (p *Provider) executeUpsertUser(
 		})
 	})
 	if upsertErr != nil {
-		provider.WriteAuditLog(ctx, logger, p.auditLogRepo, integration.AuditLog{
-			IntegrationInstanceID: instance.ID,
-			Action:                integration.AuditActionUpsertUser,
-			Severity:              integration.AuditSeverityError,
-			Message:               "Failed to upsert product user from integration event",
-			MetadataJSON: provider.MustMarshalJSON(map[string]any{
-				clerkExternalIDKey: upsertData.ExternalID,
-			}),
-		})
-
 		logger.ErrorContext(ctx, "failed to upsert product user",
 			log.Err(upsertErr),
 			slog.String(clerkExternalIDKey, upsertData.ExternalID),
 			slog.String("product_id", instance.ProductID),
 		)
-		return fmt.Errorf("failed to upsert product user: %w", upsertErr)
+		// The failed write aborted the caller's transaction: the caller writes
+		// this audit row after the rollback.
+		return provider.WithFailureAudit(
+			fmt.Errorf("failed to upsert product user: %w", upsertErr),
+			integration.AuditLog{
+				IntegrationInstanceID: instance.ID,
+				Action:                integration.AuditActionUpsertUser,
+				Severity:              integration.AuditSeverityError,
+				Message:               "Failed to upsert product user from integration event",
+				MetadataJSON: provider.MustMarshalJSON(map[string]any{
+					clerkExternalIDKey: upsertData.ExternalID,
+				}),
+			},
+		)
 	}
 
 	if unchanged {

@@ -65,14 +65,13 @@ One chain does not guarantee one reconcile per instance at a time:
 - A key change enqueues an immediate reconcile that can overlap the scheduled one.
 - A reconcile slower than the visibility timeout is reaped and run again while the first run is still working.
 
-Two concurrent runs insert the same new Clerk user. The upsert merges only on `(product_id, external_id)`, so the second insert fails on `product_users_product_id_email_key` (`23505`) and its batch rolls back. `runInstanceReconcile` therefore wraps the work in `pglock.TryWithLock` on `integration.reconcile.instance:<instance id>`. A run that does not get the lock logs `instance reconcile already running on another worker, skipping` at info and acks; the run holding the lock covers the same users.
+Two concurrent runs insert the same new Clerk user. The upsert merges only on `(product_id, external_id)`, so the second insert fails on `product_users_product_id_email_key` (`23505`) and its batch rolls back. The handler returns its `UPSERT_USER` ERROR audit row with the error (`provider.WithFailureAudit`), and `executeCommandsInBatches` writes it in a new transaction after the rollback ([postmortem](../postmortems/2026-11-19-failure-audit-in-aborted-tx.md)). `runInstanceReconcile` therefore wraps the work in `pglock.TryWithLock` on `integration.reconcile.instance:<instance id>`. A run that does not get the lock logs `instance reconcile already running on another worker, skipping` at info and acks; the run holding the lock covers the same users.
 
 ## Known limitations
 
 - The collapse removes a duplicate after it exists. The run that created it has already enqueued every instance once more; the per-instance lock absorbs that.
 - `DeleteJob` refuses a job a worker has just claimed. That copy runs once more and the next run collapses its successor.
 - `TryWithLock` holds a database transaction, and one pooled connection, open for the whole instance reconcile, including the Clerk API calls.
-- A failed batch loses its failure audit row because the row is written inside the aborted transaction ([anchor#210](https://github.com/nanostack-dev/anchor/issues/210)).
 
 ## Diagnose
 
