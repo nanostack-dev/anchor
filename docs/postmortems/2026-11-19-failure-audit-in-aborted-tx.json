@@ -5,14 +5,25 @@
   "date": "2026-11-19",
   "severity": "SEV4",
   "status": "in review",
-  "authors": ["Nanostack routine (grafana-watch)"],
+  "authors": [
+    "Nanostack routine (grafana-watch)"
+  ],
   "summary": "On 2026-11-19 at 06:43Z, on dev, a Clerk `user.created` event carried an email that another product user (other external id) already held. The upsert failed on `product_users_product_id_email_key` (23505) on all 6 attempts, and each time the handler's `UPSERT_USER` ERROR audit row failed with 25P02, because it was written on the command transaction the failed insert had just aborted. This is root cause R4 of the [2026-10-07 postmortem](2026-10-07-duplicate-clerk-reconcile.md): its action A4 (anchor#210) stayed open for 43 days while the ledger row was marked verified. The fix lets a command handler return its failure audit row with the error, and the webhook and reconcile paths write it in a fresh transaction after the rollback; a ruleguard rule refuses the old pattern. The email conflict itself comes from Clerk events applied without ordering, a design change deferred by anchor#399.",
   "impact": {
     "text": "Dev only, no customer impact. One Clerk event failed permanently after 6 attempts, and the integration audit log lost the 6 `UPSERT_USER` ERROR rows that name the failing external id; the phase-2 retry and failure rows were kept. Prod runs the same code: any Clerk upsert or delete failure there lost its row too, and a failed reconcile batch left no failure row at all.",
     "numbers": [
-      {"value": "6", "label": "UPSERT_USER ERROR audit rows lost (25P02)"},
-      {"value": "1", "label": "Clerk event permanently failed"},
-      {"value": "43 days", "label": "the A4 fix for this class stayed open"}
+      {
+        "value": "6",
+        "label": "UPSERT_USER ERROR audit rows lost (25P02)"
+      },
+      {
+        "value": "1",
+        "label": "Clerk event permanently failed"
+      },
+      {
+        "value": "43 days",
+        "label": "the A4 fix for this class stayed open"
+      }
     ]
   },
   "trigger": "A Clerk `user.created` event for product `prd_3MJZRxg3…` (MCP audit Clerk probes) whose email another external id already held; the upsert raised 23505 and aborted the command transaction.",
@@ -20,16 +31,70 @@
   "resolution": "The impact ended when the event exhausted its retries at 06:44:12Z. The fix (this PR) adds `provider.WithFailureAudit`: the Clerk upsert and delete handlers return their ERROR audit row with the error, `handleEventFailure` writes it in the phase-2 transaction, and `executeCommandsInBatches` writes it in a new transaction after a reconcile batch rolls back. A ruleguard rule reports any `provider.WriteAuditLog` of an ERROR row, and a component test asserts the row after a forced 23505.",
   "timeline": {
     "events": [
-      {"t": "2026-10-07T18:10:38Z", "kind": "note", "label": "First 25P02 audit loss; 10-07 postmortem names R4", "detail": "Action A4 (persist failure audit rows outside the aborted batch transaction) opened as anchor#210, due 2026-10-24.", "link": "https://github.com/nanostack-dev/anchor/issues/210"},
-      {"t": "2026-10-08T19:15:00Z", "approx": true, "kind": "note", "label": "Ledger row 22 marked verified while A4 is open", "detail": "The row went `verified` when the 23505 stopped after anchor#211; the open A4 was not part of the check."},
-      {"t": "2026-11-16T00:00:00Z", "approx": true, "kind": "note", "label": "anchor#210 status note: still open", "link": "https://github.com/nanostack-dev/anchor/issues/210"},
-      {"t": "2026-11-19T06:43:47Z", "kind": "change", "label": "MCP audit Clerk probes reach the dev webhook", "detail": "`webhook ingested and queued as PENDING` rows from 06:43:47Z."},
-      {"t": "2026-11-19T06:43:54Z", "kind": "trigger", "label": "Upsert fails 23505; its audit row fails 25P02", "detail": "`failed to upsert product user` (`product_users_product_id_email_key`) paired with `failed to create integration audit log … (25P02)` at `provider/audit.go:38`."},
-      {"t": "2026-11-19T06:43:58Z", "kind": "note", "label": "Attempts 2 to 5 fail the same way", "detail": "Each `event scheduled for retry` row is kept by phase 2; each UPSERT_USER row is lost."},
-      {"t": "2026-11-19T06:44:12Z", "kind": "resolve", "label": "Event permanently failed after 6 attempts", "detail": "`event permanently failed after max retries` (integration_service.go:1427), then `queue job permanently failed`."},
-      {"t": "2026-11-19T09:02:00Z", "approx": true, "kind": "detect", "label": "grafana-watch records ledger row 102"},
-      {"t": "2026-11-19T17:05:00Z", "kind": "note", "label": "anchor#399 defers Clerk event ordering as design", "detail": "Audit finding `clerk-upsert-no-ordering-email-conflict`: skipping older events needs a stored last-event time and a rule for a stale row with the same email.", "link": "https://github.com/nanostack-dev/anchor/pull/399"},
-      {"t": "2026-11-20T15:40:00Z", "approx": true, "kind": "followup", "label": "Fix PR: failure audit rows leave the aborted tx"}
+      {
+        "t": "2026-10-07T18:10:38Z",
+        "kind": "note",
+        "label": "First 25P02 audit loss; 10-07 postmortem names R4",
+        "detail": "Action A4 (persist failure audit rows outside the aborted batch transaction) opened as anchor#210, due 2026-10-24.",
+        "link": "https://github.com/nanostack-dev/anchor/issues/210"
+      },
+      {
+        "t": "2026-10-08T19:15:00Z",
+        "approx": true,
+        "kind": "note",
+        "label": "Ledger row 22 marked verified while A4 is open",
+        "detail": "The row went `verified` when the 23505 stopped after anchor#211; the open A4 was not part of the check."
+      },
+      {
+        "t": "2026-11-16T00:00:00Z",
+        "approx": true,
+        "kind": "note",
+        "label": "anchor#210 status note: still open",
+        "link": "https://github.com/nanostack-dev/anchor/issues/210"
+      },
+      {
+        "t": "2026-11-19T06:43:47Z",
+        "kind": "change",
+        "label": "MCP audit Clerk probes reach the dev webhook",
+        "detail": "`webhook ingested and queued as PENDING` rows from 06:43:47Z."
+      },
+      {
+        "t": "2026-11-19T06:43:54Z",
+        "kind": "trigger",
+        "label": "Upsert fails 23505; its audit row fails 25P02",
+        "detail": "`failed to upsert product user` (`product_users_product_id_email_key`) paired with `failed to create integration audit log … (25P02)` at `provider/audit.go:38`."
+      },
+      {
+        "t": "2026-11-19T06:43:58Z",
+        "kind": "note",
+        "label": "Attempts 2 to 5 fail the same way",
+        "detail": "Each `event scheduled for retry` row is kept by phase 2; each UPSERT_USER row is lost."
+      },
+      {
+        "t": "2026-11-19T06:44:12Z",
+        "kind": "resolve",
+        "label": "Event permanently failed after 6 attempts",
+        "detail": "`event permanently failed after max retries` (integration_service.go:1427), then `queue job permanently failed`."
+      },
+      {
+        "t": "2026-11-19T09:02:00Z",
+        "approx": true,
+        "kind": "detect",
+        "label": "grafana-watch records ledger row 102"
+      },
+      {
+        "t": "2026-11-19T17:05:00Z",
+        "kind": "note",
+        "label": "anchor#399 defers Clerk event ordering as design",
+        "detail": "Audit finding `clerk-upsert-no-ordering-email-conflict`: skipping older events needs a stored last-event time and a rule for a stale row with the same email.",
+        "link": "https://github.com/nanostack-dev/anchor/pull/399"
+      },
+      {
+        "t": "2026-11-20T15:09:00Z",
+        "kind": "followup",
+        "label": "Fix PR anchor#403 opened",
+        "link": "https://github.com/nanostack-dev/anchor/pull/403"
+      }
     ]
   },
   "whys": {
@@ -47,7 +112,11 @@
                 "text": "WriteAuditLog accepts any context, and no test, type or lint told a handler that its failure row needs a transaction of its own",
                 "evidence": "`internal/integration/provider/audit.go` on 61d4fcdd; no CT asserted a failure audit row",
                 "because": [
-                  {"id": "R1", "root": true, "text": "Command handlers record failures on the transaction that failed, with no guard against it"}
+                  {
+                    "id": "R1",
+                    "root": true,
+                    "text": "Command handlers record failures on the transaction that failed, with no guard against it"
+                  }
                 ]
               }
             ]
@@ -62,7 +131,11 @@
             "text": "Clerk events are applied in arrival order, and nothing decides what a stale row holding the same email means",
             "evidence": "anchor#399 audit finding `clerk-upsert-no-ordering-email-conflict`, deferred as design",
             "because": [
-              {"id": "R3", "root": true, "text": "The Clerk upsert has no event ordering and no rule for a stale product user that holds the email"}
+              {
+                "id": "R3",
+                "root": true,
+                "text": "The Clerk upsert has no event ordering and no rule for a stale product user that holds the email"
+              }
             ]
           }
         ]
@@ -80,7 +153,11 @@
                 "text": "The ledger row went verified when its log line stopped, and verified rows are not re-checked",
                 "evidence": "ledger row 22: `verified (no 23505 from 2026-10-08T19:15…)` with A4 still open",
                 "because": [
-                  {"id": "R2", "root": true, "text": "A ledger row could reach verified while its postmortem still had open agent actions"}
+                  {
+                    "id": "R2",
+                    "root": true,
+                    "text": "A ledger row could reach verified while its postmortem still had open agent actions"
+                  }
                 ]
               }
             ]
@@ -108,18 +185,78 @@
     ]
   },
   "actions": [
-    {"id": "A1", "what": "Return failure audit rows with the error (`provider.WithFailureAudit`); write them after the rollback in the webhook and reconcile paths; ruleguard `failureAuditLeavesTheAbortedTx`; CT `TestClerkWebhookFailedCommandAudit`", "type": "prevent", "owner": "anchor", "due": "2026-11-20", "status": "done", "ticket": {"label": "anchor#210", "url": "https://github.com/nanostack-dev/anchor/issues/210"}, "fixes": ["R1"]},
-    {"id": "A2", "what": "Postmortem loop: a ledger row reaches verified only when every action of its postmortem is done or owned by a human", "type": "process", "owner": "grafana-watch routine", "due": "2026-11-20", "status": "done", "fixes": ["R2"]},
-    {"id": "A3", "what": "Design change: order Clerk events per user and decide how a stale product user that holds the email is resolved", "type": "prevent", "owner": "anchor maintainers (design review)", "due": "2026-12-04", "status": "open", "ticket": {"label": "anchor#399", "url": "https://github.com/nanostack-dev/anchor/pull/399"}, "fixes": ["R3"]}
+    {
+      "id": "A1",
+      "what": "Return failure audit rows with the error (`provider.WithFailureAudit`); write them after the rollback in the webhook and reconcile paths; ruleguard `failureAuditLeavesTheAbortedTx`; CT `TestClerkWebhookFailedCommandAudit`",
+      "type": "prevent",
+      "owner": "anchor",
+      "due": "2026-11-20",
+      "status": "done",
+      "ticket": {
+        "label": "anchor#210",
+        "url": "https://github.com/nanostack-dev/anchor/issues/210"
+      },
+      "fixes": [
+        "R1"
+      ]
+    },
+    {
+      "id": "A2",
+      "what": "Postmortem loop: a ledger row reaches verified only when every action of its postmortem is done or owned by a human",
+      "type": "process",
+      "owner": "grafana-watch routine",
+      "due": "2026-11-20",
+      "status": "done",
+      "fixes": [
+        "R2"
+      ]
+    },
+    {
+      "id": "A3",
+      "what": "Design change: order Clerk events per user and decide how a stale product user that holds the email is resolved",
+      "type": "prevent",
+      "owner": "anchor maintainers (design review)",
+      "due": "2026-12-04",
+      "status": "open",
+      "ticket": {
+        "label": "anchor#399",
+        "url": "https://github.com/nanostack-dev/anchor/pull/399"
+      },
+      "fixes": [
+        "R3"
+      ]
+    }
   ],
-  "responders": [{"role": "Investigation", "name": "Nanostack routine (grafana-watch)"}],
+  "responders": [
+    {
+      "role": "Investigation",
+      "name": "Nanostack routine (grafana-watch)"
+    }
+  ],
   "messaging": {
     "internal": "Dev anchor: a failed Clerk user sync lost its UPSERT_USER ERROR audit row (25P02 on the aborted command tx), the R4 class from 2026-10-07. Fixed: failure audit rows now ride the error to a fresh transaction, with a lint rule and a CT. Clerk event ordering stays a design item.",
     "external": "None: dev only."
   },
   "links": [
-    {"label": "2026-10-07 postmortem (R4, A4)", "url": "2026-10-07-duplicate-clerk-reconcile.md"},
-    {"label": "anchor#210", "url": "https://github.com/nanostack-dev/anchor/issues/210"},
-    {"label": "anchor#399 (deferred ordering design)", "url": "https://github.com/nanostack-dev/anchor/pull/399"}
+    {
+      "label": "2026-10-07 postmortem (R4, A4)",
+      "url": "2026-10-07-duplicate-clerk-reconcile.md"
+    },
+    {
+      "label": "anchor#210",
+      "url": "https://github.com/nanostack-dev/anchor/issues/210"
+    },
+    {
+      "label": "anchor#399 (deferred ordering design)",
+      "url": "https://github.com/nanostack-dev/anchor/pull/399"
+    },
+    {
+      "label": "Fix PR anchor#403",
+      "url": "https://github.com/nanostack-dev/anchor/pull/403"
+    },
+    {
+      "label": "Atelier",
+      "url": "http://nanostack-dev-1340p:4320/postmortems/01a1f983-35c3-7247-9c3a-9ff2eb7a46da"
+    }
   ]
 }

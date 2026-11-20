@@ -49,7 +49,7 @@ The impact ended when the event exhausted its retries at 06:44:12Z. The fix (thi
 | 06:44:12 | T+18s | **Event permanently failed after 6 attempts** `event permanently failed after max retries` (integration_service.go:1427), then `queue job permanently failed`. |
 | ~09:02 | T+2h 18m | **grafana-watch records ledger row 102** |
 | 17:05:00 | T+10h 21m | **anchor#399 defers Clerk event ordering as design** Audit finding `clerk-upsert-no-ordering-email-conflict`: skipping older events needs a stored last-event time and a rule for a stale row with the same email. ([link](https://github.com/nanostack-dev/anchor/pull/399)) |
-| ~15:40 | T+1d 08h | **Fix PR: failure audit rows leave the aborted tx** |
+| 15:09:00 | T+1d 08h | **Fix PR anchor#403 opened** ([link](https://github.com/nanostack-dev/anchor/pull/403)) |
 
 ## Root cause analysis: the five whys
 
@@ -155,3 +155,5 @@ None: dev only.
 - [2026-10-07 postmortem (R4, A4)](2026-10-07-duplicate-clerk-reconcile.md)
 - [anchor#210](https://github.com/nanostack-dev/anchor/issues/210)
 - [anchor#399 (deferred ordering design)](https://github.com/nanostack-dev/anchor/pull/399)
+- [Fix PR anchor#403](https://github.com/nanostack-dev/anchor/pull/403)
+- [Atelier](http://nanostack-dev-1340p:4320/postmortems/01a1f983-35c3-7247-9c3a-9ff2eb7a46da)
