@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { orphanedProjects } from "./e2e-runtime.mjs";
+import { orphanedProjects, startupFailureReport } from "./e2e-runtime.mjs";
 
 const own = "anchor-e2e-aaaaaaaaaa-";
 const select = (projects, overrides = {}) =>
@@ -59,4 +59,33 @@ test("projects outside the Anchor E2E naming scheme are never touched", () => {
 		]),
 		[],
 	);
+});
+
+test("a failed startup reports the tail of the API log and the container logs", () => {
+	const apiLog = ["line 1", "line 2", "nano: build failed error=config"].join(
+		"\n",
+	);
+	const report = startupFailureReport({
+		apiLog: `${apiLog}\n`,
+		composeLogs: "postgres-1  | database system is ready",
+		lines: 2,
+	});
+	assert.equal(
+		report,
+		[
+			"--- Anchor API log (last 2 lines) ---",
+			"line 2",
+			"nano: build failed error=config",
+			"--- docker compose logs (last 2 lines per service) ---",
+			"postgres-1  | database system is ready",
+		].join("\n"),
+	);
+});
+
+test("a startup that failed before the API ran reports only the container logs", () => {
+	assert.equal(
+		startupFailureReport({ apiLog: undefined, composeLogs: "redis-1 | ok" }),
+		"--- docker compose logs (last 80 lines per service) ---\nredis-1 | ok",
+	);
+	assert.equal(startupFailureReport({ apiLog: "  ", composeLogs: "" }), "");
 });

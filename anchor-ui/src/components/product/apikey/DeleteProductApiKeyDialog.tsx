@@ -29,7 +29,11 @@ export function DeleteProductAPIKeyDialog({
 			},
 		});
 
-		queryClient.invalidateQueries({ queryKey: ["searchProductAPIKeys"] });
+		void queryClient.invalidateQueries({
+			predicate: (query) =>
+				(query.queryKey[0] as { _id?: string } | undefined)?._id ===
+				"searchProductApiKeys",
+		});
 
 		toast.add({
 			type: "success",

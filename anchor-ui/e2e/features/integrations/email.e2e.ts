@@ -41,11 +41,13 @@ test("email examples wait for saved data before creation or saving", async ({
 	const held = new Promise<void>((resolve) => {
 		responseHeld = resolve;
 	});
+	let holding = true;
 	await page.route(`**${examplesPath}`, async (route) => {
-		if (route.request().method() !== "GET") {
+		if (route.request().method() !== "GET" || !holding) {
 			await route.continue();
 			return;
 		}
+		holding = false;
 		const response = await route.fetch();
 		responseHeld();
 		await release;
@@ -102,6 +104,7 @@ test("email examples wait for saved data before creation or saving", async ({
 			]);
 	} finally {
 		releaseResponse();
+		await page.unrouteAll({ behavior: "ignoreErrors" });
 	}
 });
 

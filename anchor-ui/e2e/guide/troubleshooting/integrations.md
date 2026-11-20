@@ -208,6 +208,15 @@ UI and verifies that the real examples endpoint retains both saved and new
 sets. Do not replace the response with invented data, wait for the GET in the
 ordinary scenario to hide the defect, or add a fixed delay.
 
+Hold only the first GET. Saving invalidates the examples query, so the editor
+reads the endpoint again while the test polls the API and ends. A route that held
+every GET was still running `route.fetch` or `route.fulfill` for that refetch when
+the context closed. Between 2026-11-10 and 11-18 it failed four CI runs with
+`route.fulfill: Fetch response has been disposed` or `route.fetch: Target page,
+context or browser has been closed`, each with every assertion passed. Later GETs
+now continue unchanged, and `finally` calls
+`page.unrouteAll({ behavior: "ignoreErrors" })` so no handler outlives the test.
+
 `src/components/email/EmailTemplateBuilder.stories.tsx` independently holds the
 initial response in **Delayed Examples Preserve Saved And New**. Its first
 assertion failed before the repair because New Example was enabled. **Failed

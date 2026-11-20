@@ -502,6 +502,24 @@ const bulkArgs = {
 	],
 };
 
+function recordConfirmButtonNames() {
+	const names = new Set<string>();
+	const record = () => {
+		const confirm = document.querySelector('[data-slot="alert-dialog-action"]');
+		if (confirm) names.add(confirm.textContent ?? "");
+	};
+	const observer = new MutationObserver(record);
+	observer.observe(document.body, {
+		subtree: true,
+		childList: true,
+		characterData: true,
+	});
+	return () => {
+		observer.disconnect();
+		return [...names];
+	};
+}
+
 async function openBulkDelete(canvasElement: HTMLElement) {
 	await userEvent.click(
 		within(canvasElement).getByRole("button", { name: "Bulk actions" }),
@@ -531,12 +549,17 @@ export const BulkDeleteSelectedRows: Story = {
 		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
 		await expect(bulkRun).not.toHaveBeenCalled();
 		dialog = await openBulkDelete(canvasElement);
+		const stopRecording = recordConfirmButtonNames();
 		await userEvent.click(
 			dialog.getByRole("button", { name: "Delete selected" }),
 		);
 		await expect(
 			await canvas.findByText("2 succeeded. 0 failed."),
 		).toBeVisible();
+		await waitFor(() =>
+			expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+		);
+		await expect(stopRecording()).not.toContain("");
 		await expect(bulkRun).toHaveBeenCalledTimes(2);
 		await expect(bulkRun).toHaveBeenNthCalledWith(1, rows[0]);
 		await expect(bulkRun).toHaveBeenNthCalledWith(2, rows[1]);

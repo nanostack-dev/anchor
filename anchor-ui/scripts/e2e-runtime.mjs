@@ -131,6 +131,40 @@ async function sourceFingerprint() {
 	return hash.digest("hex").slice(0, 20);
 }
 
+export function startupFailureReport({ apiLog, composeLogs, lines = 80 }) {
+	const tail = (text) => text.trimEnd().split("\n").slice(-lines).join("\n");
+	return [
+		apiLog?.trim() &&
+			`--- Anchor API log (last ${lines} lines) ---\n${tail(apiLog)}`,
+		composeLogs?.trim() &&
+			`--- docker compose logs (last ${lines} lines per service) ---\n${tail(composeLogs)}`,
+	]
+		.filter(Boolean)
+		.join("\n");
+}
+
+async function startupEvidence(metadata) {
+	let apiLog;
+	try {
+		apiLog = await readFile(join(metadata.directory, "api.log"), "utf8");
+	} catch (error) {
+		if (error.code !== "ENOENT") apiLog = `Unreadable: ${error.message}`;
+	}
+	let composeLogs;
+	try {
+		composeLogs = await compose(metadata, [
+			"logs",
+			"--no-color",
+			"--timestamps",
+			"--tail",
+			"80",
+		]);
+	} catch (error) {
+		composeLogs = `Unavailable: ${error.message}`;
+	}
+	return startupFailureReport({ apiLog, composeLogs });
+}
+
 async function allocatePort() {
 	const server = createServer();
 	await new Promise((resolveReady, reject) => {
@@ -412,11 +446,17 @@ export async function startRuntime({
 		])
 			await writeFile(join(metadata.directory, name), value, { mode: 0o600 });
 		await writeMetadata(metadata, pendingMetadataPath);
+		const startedAt = performance.now();
+		const phase = (name) =>
+			console.error(
+				`[E2E startup] ${name}: ${Math.round(performance.now() - startedAt)} ms`,
+			);
 		await compose(
 			metadata,
 			["up", "--detach", "--wait", "--wait-timeout", "90"],
 			{ signal },
 		);
+		phase("containers healthy");
 		metadata.postgresPort = await mappedPort(metadata, "postgres", 5432);
 		metadata.redisPort = await mappedPort(metadata, "redis", 6379);
 		metadata.smtpPort = await mappedPort(metadata, "mailpit", 1025);
@@ -442,6 +482,7 @@ export async function startRuntime({
 					GOCACHE: process.env.GOCACHE || join(localDirectory, "go-build"),
 				},
 			});
+			phase("Anchor built");
 		}
 		const apiPort = await allocatePort();
 		metadata.apiURL = `http://127.0.0.1:${apiPort}`;
@@ -494,11 +535,14 @@ export async function startRuntime({
 			120_000,
 			signal,
 		);
+		phase("Anchor API healthy");
 		await writeMetadata(metadata);
 		await rm(pendingMetadataPath, { force: true });
 		return metadata;
 	} catch (error) {
 		if (metadata) {
+			const evidence = await startupEvidence(metadata);
+			if (evidence) error.message += `\n${evidence}`;
 			try {
 				await stopRuntime(metadata);
 			} catch (cleanupError) {
