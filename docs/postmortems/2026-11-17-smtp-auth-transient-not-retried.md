@@ -56,8 +56,8 @@ A rerun of the flow went green at 12:26:45Z. anchor#395 (merged 12:35:45Z as 0ce
 | 01:52:50 | T+2d 13h | **Caller resends with the same dedupe key; gets 201 in 2 ms** `POST …/email/sends -> 201 (2.066ms)`: the in-flight record, not a delivery. |
 | 01:52:51 | T+2d 13h | **Relay answers 454; retry skipped, send recorded FAILED** Warn `retrying once` at 01:52:51.098Z, then `failed to send email` 454 at .103Z and `-> 499 (11.037s)`: `ctx.Done()` was closed, so `dialAndAuthenticate` returned before the retry. |
 | 01:53:39 | T+2d 13h | **Echopoint gate passes; the FAILED send stays hidden** ([link](https://github.com/nanostack-dev/infra/actions/runs/44656318302)) |
-| ~03:10 | T+2d 15h | **Component test reproduces it on main: record ends FAILED** `TestEmailSendFinishesAfterClientHangUp`: first AUTH 454 after 1.5 s, caller gives up at 300 ms. ([link](https://github.com/nanostack-dev/anchor/pull/PRNUM)) |
-| ~03:20 | T+2d 15h | **Fix PR: dispatch on a detached, bounded context** ([link](https://github.com/nanostack-dev/anchor/pull/PRNUM)) |
+| ~03:10 | T+2d 15h | **Component test reproduces it on main: record ends FAILED** `TestEmailSendFinishesAfterClientHangUp`: the caller hangs up when the relay receives AUTH; the relay answers 454 after 1 s, then 235. ([link](https://github.com/nanostack-dev/anchor/pull/402)) |
+| ~03:20 | T+2d 15h | **Fix PR: dispatch on a detached, bounded context** ([link](https://github.com/nanostack-dev/anchor/pull/402)) |
 
 ## Root cause analysis: the five whys
 
@@ -157,7 +157,7 @@ flowchart TD
 | A2 | postmortem-loop.md and grafana-watch.md: a repeating `expected` or `noise` row (second time in 14 days, or reaching a suite or gate) gets a postmortem | process | Nanostack routine (echopoint-investigation) | 2026-11-17 | done |  | R2 |
 | A3 | Decide on queued email dispatch with bounded retries, so a slow relay does not block the caller (ADR); the detached dispatch shipped as A5 | prevent | Anchor maintainers | 2026-12-01 | open |  | R3 |
 | A4 | Alert on `failed to send email` with an SMTP 4yz cause on prod | detect | Anchor maintainers | 2026-12-01 | open |  | R1, R3 |
-| A5 | Dispatch on a context detached from the request and bounded to 60 s; component test `TestEmailSendFinishesAfterClientHangUp` (caller hangs up, relay answers 454 then 235, record ends SENT) | prevent | Nanostack routine (grafana-watch) | 2026-11-20 | done | [anchor#PRNUM](https://github.com/nanostack-dev/anchor/pull/PRNUM) | R4 |
+| A5 | Dispatch on a context detached from the request and bounded to 60 s; component test `TestEmailSendFinishesAfterClientHangUp` (caller hangs up, relay answers 454 then 235, record ends SENT) | prevent | Nanostack routine (grafana-watch) | 2026-11-20 | done | [anchor#402](https://github.com/nanostack-dev/anchor/pull/402) | R4 |
 
 ## Responders
 
@@ -177,5 +177,5 @@ None: dev only.
 
 - [Failed execution 01a1e969](https://api.echopoint.dev/flows/db6c38bb-2ac8-4154-a546-115b7c3f1b4d/executions/01a1e969-72ba-77a1-a4f0-c18d32d461e1/nodes)
 - [anchor#395](https://github.com/nanostack-dev/anchor/pull/395)
-- [Fix PR (recurrence)](https://github.com/nanostack-dev/anchor/pull/PRNUM)
+- [Fix PR (recurrence)](https://github.com/nanostack-dev/anchor/pull/402)
 - [Deploy Router run 44656318302](https://github.com/nanostack-dev/infra/actions/runs/44656318302)

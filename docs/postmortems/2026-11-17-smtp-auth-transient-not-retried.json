@@ -128,14 +128,14 @@
         "approx": true,
         "label": "Component test reproduces it on main: record ends FAILED",
         "detail": "`TestEmailSendFinishesAfterClientHangUp`: the caller hangs up when the relay receives AUTH; the relay answers 454 after 1 s, then 235.",
-        "link": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+        "link": "https://github.com/nanostack-dev/anchor/pull/402"
       },
       {
         "t": "2026-11-20T03:20:00Z",
         "kind": "followup",
         "approx": true,
         "label": "Fix PR: dispatch on a detached, bounded context",
-        "link": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+        "link": "https://github.com/nanostack-dev/anchor/pull/402"
       }
     ]
   },
@@ -308,8 +308,8 @@
         "R4"
       ],
       "ticket": {
-        "label": "anchor#PRNUM",
-        "url": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+        "label": "anchor#402",
+        "url": "https://github.com/nanostack-dev/anchor/pull/402"
       }
     }
   ],
@@ -334,7 +334,7 @@
     },
     {
       "label": "Fix PR (recurrence)",
-      "url": "https://github.com/nanostack-dev/anchor/pull/PRNUM"
+      "url": "https://github.com/nanostack-dev/anchor/pull/402"
     },
     {
       "label": "Deploy Router run 44656318302",
