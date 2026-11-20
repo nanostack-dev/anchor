@@ -1401,6 +1401,8 @@ func (s *integrationService) handleEventFailure(
 	cause error,
 ) error {
 	failErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+		s.writeFailureAudit(txCtx, logger, cause)
+
 		if job.Attempts < job.MaxAttempts {
 			return s.scheduleRetry(txCtx, logger, event, job, instance, cause)
 		}
@@ -1953,6 +1955,19 @@ func (s *integrationService) findDuplicateEvent(
 	return found.ToPtr(), nil
 }
 
+// writeFailureAudit writes the audit row a command handler attached to cause
+// with provider.WithFailureAudit. Call it on a transaction opened after the
+// failed one rolled back.
+func (s *integrationService) writeFailureAudit(
+	ctx context.Context,
+	logger *slog.Logger,
+	cause error,
+) {
+	if auditLog, ok := provider.FailureAudit(cause); ok {
+		s.writeAuditLog(ctx, logger, auditLog)
+	}
+}
+
 func (s *integrationService) writeAuditLog(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -2040,6 +2055,14 @@ func (s *integrationService) executeCommandsInBatches(
 			return nil
 		})
 		if txErr != nil {
+			// The batch transaction rolled back: record the failed command in
+			// its own transaction so the audit row survives.
+			if auditErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+				s.writeFailureAudit(txCtx, logger, txErr)
+				return nil
+			}); auditErr != nil {
+				logger.ErrorContext(ctx, "failed to persist reconcile failure audit", log.Err(auditErr))
+			}
 			return batchesProcessed, txErr
 		}
 

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -41,6 +42,35 @@ func WriteAuditLog(
 			slog.String("action", auditLog.Action),
 		)
 	}
+}
+
+// FailureAuditError carries the audit row that records a failed command.
+//
+// A command handler runs inside its caller's transaction. When its write fails,
+// PostgreSQL aborts that transaction, so an audit row written there fails with
+// 25P02 and would roll back anyway. The handler returns this error instead, and
+// the caller writes the row in a fresh transaction after the rollback.
+type FailureAuditError struct {
+	Audit integration.AuditLog
+	Err   error
+}
+
+func (e *FailureAuditError) Error() string { return e.Err.Error() }
+
+func (e *FailureAuditError) Unwrap() error { return e.Err }
+
+// WithFailureAudit attaches the audit row that records err. Write failure audit
+// rows this way, never with WriteAuditLog on the context of the failed work.
+func WithFailureAudit(err error, auditLog integration.AuditLog) error {
+	return &FailureAuditError{Audit: auditLog, Err: err}
+}
+
+// FailureAudit returns the audit row attached to err by WithFailureAudit.
+func FailureAudit(err error) (integration.AuditLog, bool) {
+	if auditErr, ok := errors.AsType[*FailureAuditError](err); ok {
+		return auditErr.Audit, true
+	}
+	return integration.AuditLog{}, false
 }
 
 // MustMarshalJSON marshals a value to JSON, returning an empty object on failure.

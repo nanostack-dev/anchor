@@ -16,3 +16,14 @@ func rowLockStaysInline(m dsl.Matcher) {
 		`$x := transactor.WithRowLock($*_)`, `$x = transactor.WithRowLock($*_)`,
 	).Report(`pass the locked context inline to the one call it locks: every query run with $x is locked`)
 }
+
+// failureAuditLeavesTheAbortedTx reports a command handler that writes an ERROR
+// audit row on its caller's context. The failed write aborted that transaction,
+// so the row fails with 25P02 and rolls back anyway. Return
+// provider.WithFailureAudit and let the caller write it after the rollback.
+func failureAuditLeavesTheAbortedTx(m dsl.Matcher) {
+	m.Import("anchor/internal/integration/provider")
+	m.Match(`provider.WriteAuditLog($_, $_, $_, $audit)`).
+		Where(m["audit"].Text.Matches(`AuditSeverityError`)).
+		Report(`return provider.WithFailureAudit: an ERROR audit row written on the failed work's context is lost with its aborted transaction`)
+}
