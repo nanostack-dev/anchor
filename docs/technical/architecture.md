@@ -37,7 +37,7 @@ Template synchronization and adjustment retain their product advisory lock befor
 
 Product API-key updates prepare a requested permission replacement separately from the transaction/refetch and post-commit cache eviction. Omitted permissions skip preparation; an explicit empty replacement still checks mutability and clears permissions.
 
-Email sends check rate limits through a private helper after rendering/variable encoding and before selecting or creating the durable send row. Dedupe, failed-row reuse, provider dispatch and the bounded detached terminal-status write retain their ordering and contexts.
+Email sends check rate limits through a private helper after rendering/variable encoding and before selecting or creating the durable send row. Dedupe and failed-row reuse run on the request context. Once the send row exists, the provider dispatch (bounded to 60 s) and the terminal-status write (5 s) run on contexts detached from the request, so a caller that hangs up cannot cancel delivery or the provider's transient-reply retry; a duplicate request meanwhile gets the in-flight row.
 
 Inbound webhook ingestion is idempotent on the provider's event ID (`UNIQUE (integration_instance_id, external_event_id)`). A sequential duplicate finds the stored event and returns it. Two concurrent deliveries can both miss that check: the loser's insert trips the constraint, `CreateInternal` maps it to `ErrIntegrationEventExists`, and after the aborted transaction the service re-reads the committed event and returns the same `200` with the winner's event ID. It never answers a duplicate with a `409`.
 
