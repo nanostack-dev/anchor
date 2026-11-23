@@ -3,6 +3,7 @@ package ct_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,13 @@ func TestSMTPActiveInstanceUpdateDoesNotRequireWebhookSecret(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode(), "body: %s", string(resp.Body))
 		require.NotNil(t, resp.JSON200)
-		assert.Equal(t, ct.IntegrationInstanceStatusACTIVE, resp.JSON200.Status)
+		assert.Equal(t, ct.IntegrationInstanceStatusCONFIGURING, resp.JSON200.Status)
+		require.Eventually(t, func() bool {
+			got, err := tc.product.OwnerAuthenticatedClient().GetIntegrationInstanceWithResponse(
+				t.Context(), tc.product.ProductID, instance.ID,
+			)
+			return err == nil && got.JSON200 != nil && got.JSON200.Status == ct.IntegrationInstanceStatusACTIVE
+		}, 15*time.Second, 100*time.Millisecond)
 	})
 }
 
