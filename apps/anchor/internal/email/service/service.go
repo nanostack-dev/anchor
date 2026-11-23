@@ -657,8 +657,11 @@ func (s *emailService) Preview(
 		)
 	}
 	v := foundVersion.ToPtr()
-	res, err := s.renderer.Render(v, in.Variables)
+	res, err := s.renderer.RenderContext(ctx, v, in.Variables)
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return email.PreviewResult{}, err
+		}
 		return email.PreviewResult{}, fault.BadRequest(
 			"EMAIL_TEMPLATE_RENDER_ERROR",
 			err.Error(),
@@ -735,8 +738,11 @@ func (s *emailService) Send(
 		return email.SendRecord{}, classifyDispatchError(err)
 	}
 
-	rendered, err := s.renderer.Render(version, in.Variables)
+	rendered, err := s.renderer.RenderContext(ctx, version, in.Variables)
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return email.SendRecord{}, err
+		}
 		return email.SendRecord{}, fault.BadRequest("EMAIL_TEMPLATE_RENDER_ERROR", err.Error())
 	}
 	// A retry resends the recorded message, so the send record always matches what was delivered.

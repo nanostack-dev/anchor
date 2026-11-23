@@ -13,13 +13,14 @@ package renderer
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	htmltemplate "html/template"
 	"maps"
 	"regexp"
-	"strconv"
 	texttemplate "text/template"
+	"text/template/parse"
 
 	"anchor/internal/domain/email"
 
@@ -42,25 +43,38 @@ type Result struct {
 // bag. Rendering is best-effort: a missing required variable produces a
 // visible [varName] placeholder and a warning rather than an error, and a
 // missing optional variable renders empty.
-type Renderer struct{}
+type Renderer struct {
+	stepNode parse.Node
+}
 
-func New() *Renderer { return &Renderer{} }
+func New() *Renderer { return &Renderer{stepNode: parseStepNode()} }
 
 // Render executes the version's subject + HTML body + plain-text body
 // against the supplied variable bag in best-effort mode.
 func (r *Renderer) Render(version *email.TemplateVersion, vars map[string]any) (Result, error) {
+	return r.RenderContext(context.Background(), version, vars)
+}
+
+// RenderContext executes the version's subject + HTML body + plain-text body
+// with a shared step budget and context cancellation check across all parts.
+func (r *Renderer) RenderContext(
+	ctx context.Context,
+	version *email.TemplateVersion,
+	vars map[string]any,
+) (Result, error) {
 	if version == nil {
 		return Result{}, errors.New("template version is nil")
 	}
 
 	warnings, padded := softValidate(version.Variables, vars, version.Subject, version.BodyHTML, version.BodyText)
+	budget := newRenderBudget(ctx, r.stepNode)
 
-	subject, err := r.renderText("subject", version.Subject, padded)
+	subject, err := r.renderText("subject", version.Subject, padded, budget)
 	if err != nil {
 		return Result{}, fmt.Errorf("render subject: %w", err)
 	}
 
-	bodyHTML, err := r.renderHTML("body_html", version.BodyHTML, padded)
+	bodyHTML, err := r.renderHTML("body_html", version.BodyHTML, padded, budget)
 	if err != nil {
 		return Result{}, fmt.Errorf("render body_html: %w", err)
 	}
@@ -69,7 +83,7 @@ func (r *Renderer) Render(version *email.TemplateVersion, vars map[string]any) (
 	if bodyText == "" {
 		bodyText = htmlToText(bodyHTML)
 	} else {
-		bodyText, err = r.renderText("body_text", bodyText, padded)
+		bodyText, err = r.renderText("body_text", bodyText, padded, budget)
 		if err != nil {
 			return Result{}, fmt.Errorf("render body_text: %w", err)
 		}
@@ -151,15 +165,9 @@ func softValidate(schema []email.VariableSchema, vars map[string]any, templates 
 const (
 	// maxRenderedBytes bounds one rendered part: a template can double its output with nested defines.
 	maxRenderedBytes = 256 << 10
-	// maxRangeCount bounds a range over an integer literal, which can loop without writing anything.
-	maxRangeCount = 10_000
 )
 
-var (
-	errRenderTooLarge   = fmt.Errorf("the rendered part exceeds %d bytes", maxRenderedBytes)
-	errRangeCountTooBig = fmt.Errorf("a range over a number is limited to %d iterations", maxRangeCount)
-	integerRange        = regexp.MustCompile(`\{\{-?\s*range\s+(?:\$\w+\s*:?=\s*)?(\d+)\s*-?\}\}`)
-)
+var errRenderTooLarge = fmt.Errorf("the rendered part exceeds %d bytes", maxRenderedBytes)
 
 type cappedBuffer struct{ bytes.Buffer }
 
@@ -170,41 +178,45 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 	return b.Buffer.Write(p)
 }
 
-func checkIntegerRanges(src string) error {
-	for _, match := range integerRange.FindAllStringSubmatch(src, -1) {
-		if count, err := strconv.Atoi(match[1]); err != nil || count > maxRangeCount {
-			return errRangeCountTooBig
-		}
-	}
-	return nil
-}
-
-func (r *Renderer) renderText(name, src string, vars map[string]any) (string, error) {
-	if err := checkIntegerRanges(src); err != nil {
-		return "", err
-	}
-	t, err := texttemplate.New(name).Option("missingkey=zero").Parse(src)
+func (r *Renderer) renderText(name, src string, vars map[string]any, budget *renderBudget) (string, error) {
+	t, err := texttemplate.New(name).Funcs(budget.funcMap()).Option("missingkey=zero").Parse(src)
 	if err != nil {
 		return "", err
 	}
+	for _, tmpl := range t.Templates() {
+		budget.instrumentTree(tmpl.Tree)
+	}
 	var buf cappedBuffer
 	if execErr := t.Execute(&buf, vars); execErr != nil {
-		return "", execErr
+		return "", unwrapBudgetError(budget.ctx, execErr)
 	}
 	return buf.String(), nil
 }
 
-func (r *Renderer) renderHTML(name, src string, vars map[string]any) (string, error) {
-	if err := checkIntegerRanges(src); err != nil {
-		return "", err
-	}
-	t, err := htmltemplate.New(name).Option("missingkey=zero").Parse(src)
+func (r *Renderer) renderHTML(name, src string, vars map[string]any, budget *renderBudget) (string, error) {
+	t, err := htmltemplate.New(name).Funcs(budget.funcMap()).Option("missingkey=zero").Parse(src)
 	if err != nil {
 		return "", err
 	}
+	for _, tmpl := range t.Templates() {
+		budget.instrumentTree(tmpl.Tree)
+	}
 	var buf cappedBuffer
 	if execErr := t.Execute(&buf, vars); execErr != nil {
-		return "", execErr
+		return "", unwrapBudgetError(budget.ctx, execErr)
 	}
 	return buf.String(), nil
+}
+
+func unwrapBudgetError(ctx context.Context, err error) error {
+	switch {
+	case errors.Is(err, errRenderStepLimit):
+		return errRenderStepLimit
+	case errors.Is(err, errRenderTooLarge):
+		return errRenderTooLarge
+	case ctx != nil && ctx.Err() != nil && errors.Is(err, ctx.Err()):
+		return ctx.Err()
+	default:
+		return err
+	}
 }
