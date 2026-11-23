@@ -31,6 +31,9 @@ type AuthService interface {
 	Register(ctx context.Context, input auth.RegisterInput) (
 		platform.User, error,
 	)
+	// StartSession issues tokens and persists a session for an already-verified
+	// or just-registered platform.User. Callers must never pass an unverified user.
+	StartSession(ctx context.Context, platformUser platform.User) (auth.LoginOutput, error)
 	Login(ctx context.Context, input auth.LoginInput) (auth.LoginOutput, error)
 	RefreshToken(ctx context.Context, input auth.RefreshTokenInput) (auth.LoginOutput, error)
 	Logout(ctx context.Context, input auth.LogoutInput) error
@@ -262,25 +265,17 @@ func (s *authService) Login(
 		return auth.LoginOutput{}, fmt.Errorf("failed during password comparison: %w", err)
 	}
 
-	// For login, we need to find the platform user by email first to get the tenant Name
-	// Since we only have the basic user info, we need to search across all tenants
-	// This is a temporary solution - ideally login should include tenant context
-
-	// Get the first tenant (for now assuming single tenant setup)
-	tenants, err := s.tenantRepo.FindAll(ctx)
-	if err != nil || len(tenants) == 0 {
-		logger.ErrorContext(ctx, "no tenants found", log.Err(err))
-		return auth.LoginOutput{}, errors.New("no tenant configuration found")
-	}
-
-	// Try to find platform user in the first tenant
-	foundPlatformUser, err := s.platformTenantUserRepo.FindByTenantAndEmail(
-		ctx, tenants[0].ID, user.Email,
-	)
+	memberships, err := s.platformTenantUserRepo.FindAllByUserID(ctx, user.ID)
 	if err != nil {
-		return auth.LoginOutput{}, err
+		logger.ErrorContext(
+			ctx,
+			"failed to find platform memberships for user",
+			slog.String("user_id", user.ID),
+			log.Err(err),
+		)
+		return auth.LoginOutput{}, fmt.Errorf("failed during platform user lookup: %w", err)
 	}
-	if foundPlatformUser.IsAbsent() {
+	if len(memberships) == 0 {
 		// A valid email/password whose user has no platform-tenant membership is
 		// an authentication failure, not a server error. Return the same modelled
 		// credential error as the sibling branches above so the strict handler
@@ -292,7 +287,16 @@ func (s *authService) Login(
 		logger.WarnContext(ctx, "platform user not found for authenticated user", slog.String("user_id", user.ID))
 		return auth.LoginOutput{}, ErrInvalidCredentials
 	}
-	platformUser := foundPlatformUser.Value()
+	if len(memberships) > 1 {
+		// Password login carries no tenant selector; fail closed rather than
+		// picking an arbitrary tenant when a user belongs to several.
+		logger.WarnContext(ctx, "authenticated user belongs to multiple platform tenants; refusing ambiguous login",
+			slog.String("user_id", user.ID),
+			slog.Int("tenant_count", len(memberships)),
+		)
+		return auth.LoginOutput{}, ErrInvalidCredentials
+	}
+	platformUser := memberships[0]
 
 	output, err := s.startSession(ctx, platformUser)
 	if err != nil {
@@ -301,6 +305,20 @@ func (s *authService) Login(
 	}
 
 	logger.InfoContext(ctx, "user logged in successfully", slog.String("user_id", user.ID))
+	return output, nil
+}
+
+func (s *authService) StartSession(ctx context.Context, platformUser platform.User) (auth.LoginOutput, error) {
+	logger := s.logger.With(slog.String("operation", "StartSession"))
+	output, err := s.startSession(ctx, platformUser)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to start session",
+			slog.String("user_id", platformUser.UserID),
+			slog.String("tenant_id", platformUser.PlatformTenantID),
+			log.Err(err),
+		)
+		return auth.LoginOutput{}, fault.ErrUnexpected
+	}
 	return output, nil
 }
 

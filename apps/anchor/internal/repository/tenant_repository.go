@@ -36,8 +36,8 @@ func platformTenantsUpdatableColumns() postgres.ColumnList {
 type TenantRepository interface {
 	Create(ctx context.Context, tenant tenant.PlatformTenant) (tenant.PlatformTenant, error)
 	Count(ctx context.Context) (int64, error)
-	// FindAll is hand-written: it orders by created_at and id, and login
-	// uses the first tenant.
+	// FindAll is hand-written: it orders by created_at and id for deterministic
+	// test bootstrap lookups (cmd/it/shared/dsl/tenant_builder.go).
 	FindAll(ctx context.Context) ([]tenant.PlatformTenant, error)
 }
 
