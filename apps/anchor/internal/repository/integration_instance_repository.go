@@ -74,6 +74,18 @@ type IntegrationInstanceRepository interface {
 	UpdateOptional(
 		ctx context.Context, tenantID string, instance integration.Instance,
 	) (functional.Option[integration.Instance], error)
+	// ApplyVerificationResult updates only status, last_error and updated_at
+	// when the row is still enabled, CONFIGURING, and unchanged since
+	// expectedUpdatedAt. Prevents a stale verification run from activating a
+	// disabled instance or overwriting a newer config across replicas.
+	ApplyVerificationResult(
+		ctx context.Context,
+		tenantID string,
+		id string,
+		expectedUpdatedAt time.Time,
+		status integration.Status,
+		lastError *string,
+	) (functional.Option[integration.Instance], error)
 	DeleteByTenantAndProductAndID(
 		ctx context.Context, platformTenantID string, productID string, id string,
 	) error
@@ -266,6 +278,43 @@ func (r *integrationInstanceRepositoryImpl) UpdateOptional(
 	).MODEL(entity).WHERE(
 		table.IntegrationInstances.ID.EQ(postgres.String(instance.ID)).AND(
 			table.IntegrationInstances.PlatformTenantID.EQ(postgres.String(tenantID)),
+		),
+	).RETURNING(table.IntegrationInstances.AllColumns)
+
+	return transactor.QueryOptionalMap(ctx, r.db, stmt, r.mapper.ToDomain)
+}
+
+func (r *integrationInstanceRepositoryImpl) ApplyVerificationResult(
+	ctx context.Context,
+	tenantID string,
+	id string,
+	expectedUpdatedAt time.Time,
+	status integration.Status,
+	lastError *string,
+) (functional.Option[integration.Instance], error) {
+	now := time.Now()
+	lastErrExpr := postgres.NULL
+	if lastError != nil {
+		lastErrExpr = postgres.String(*lastError)
+	}
+
+	stmt := table.IntegrationInstances.UPDATE(
+		table.IntegrationInstances.Status,
+		table.IntegrationInstances.LastError,
+		table.IntegrationInstances.UpdatedAt,
+	).SET(
+		postgres.String(string(status)),
+		lastErrExpr,
+		postgres.TimestampzT(now),
+	).WHERE(
+		table.IntegrationInstances.ID.EQ(postgres.String(id)).AND(
+			table.IntegrationInstances.PlatformTenantID.EQ(postgres.String(tenantID)),
+		).AND(
+			table.IntegrationInstances.Status.EQ(postgres.String(string(integration.StatusConfiguring))),
+		).AND(
+			table.IntegrationInstances.IsEnabled.IS_TRUE(),
+		).AND(
+			table.IntegrationInstances.UpdatedAt.EQ(postgres.TimestampzT(expectedUpdatedAt)),
 		),
 	).RETURNING(table.IntegrationInstances.AllColumns)
 

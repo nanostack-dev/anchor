@@ -136,6 +136,10 @@ var (
 		"INTEGRATION_WEBHOOK_SECRET_REQUIRED",
 		"Webhook secret is required when integration instance is active",
 	)
+	ErrIntegrationWebhookSecretUnsupported = fault.BadRequest(
+		"INTEGRATION_WEBHOOK_SECRET_UNSUPPORTED",
+		"Webhook secret is not supported for this integration provider",
+	)
 	ErrIntegrationWebhookEventIDMissing = fault.BadRequest(
 		"INTEGRATION_WEBHOOK_EVENT_ID_MISSING",
 		"Webhook event id header is required",
@@ -358,6 +362,7 @@ func (s *integrationService) UpdateInstance(
 
 	var hadClerkAPIKey bool
 	var hasClerkAPIKeyNow bool
+	var needsVerify bool
 
 	var updated integration.Instance
 	err := s.transactor.InTx(ctx, func(txCtx context.Context) error {
@@ -384,7 +389,9 @@ func (s *integrationService) UpdateInstance(
 
 		hadClerkAPIKey = hasClerkAPIKey(existing.ConfigJSON)
 
-		if applyErr := s.applyInstanceUpdates(txCtx, existing, input, prov); applyErr != nil {
+		var applyErr error
+		needsVerify, applyErr = s.applyInstanceUpdates(txCtx, existing, input, prov)
+		if applyErr != nil {
 			return applyErr
 		}
 
@@ -446,12 +453,18 @@ func (s *integrationService) UpdateInstance(
 	// updated state is visible to the count query.
 	s.manageReconcileSchedulerOnUpdate(ctx, logger, updated, hadClerkAPIKey, hasClerkAPIKeyNow, input.ConfigJSON)
 
-	// Re-verify connection when config changes (e.g. SMTP credentials rotated).
-	if input.ConfigJSON != nil {
+	// Re-verify connection when config changes, when a connection-verified
+	// integration is re-enabled from a non-active state, or whenever an update
+	// wrote a new updated_at while the instance is still enabled and CONFIGURING
+	// (so a no-op update cannot strand an in-flight verification whose
+	// updated_at guard no longer matches). Disabling cancels any in-flight run.
+	if needsVerify || (updated.IsEnabled && updated.Status == integration.StatusConfiguring) {
 		prov, provErr := s.registry.GetProvider(string(updated.ProviderType))
 		if provErr == nil {
 			s.startVerifyAndActivate(logger, updated, prov)
 		}
+	} else if !updated.IsEnabled {
+		s.cancelVerificationRun(updated.ID)
 	}
 
 	return updated, nil
@@ -481,19 +494,22 @@ func (s *integrationService) applyInstanceUpdates(
 	existing *integration.Instance,
 	input integration.UpdateInstanceInput,
 	prov provider.Provider,
-) error {
-	s.applyWebhookSecretUpdate(existing, input.WebhookSecret)
-	s.applyEnabledUpdate(existing, input.IsEnabled)
+) (bool, error) {
+	if err := s.applyWebhookSecretUpdate(existing, input.WebhookSecret, prov); err != nil {
+		return false, err
+	}
+	reEnableNeedsVerify := s.applyEnabledUpdate(existing, input.IsEnabled, prov)
 
-	if err := s.applyConfigUpdate(ctx, existing, input.ConfigJSON, prov); err != nil {
-		return err
+	configNeedsVerify, err := s.applyConfigUpdate(ctx, existing, input.ConfigJSON, prov)
+	if err != nil {
+		return false, err
 	}
 
-	if err := validateInstanceIngestionState(existing, prov); err != nil {
-		return err
+	if err = validateInstanceIngestionState(existing, prov); err != nil {
+		return false, err
 	}
 
-	return nil
+	return reEnableNeedsVerify || configNeedsVerify, nil
 }
 
 // validateInstanceIngestionState enforces that an active integration capable of
@@ -519,9 +535,14 @@ func validateInstanceIngestionState(existing *integration.Instance, prov provide
 func (s *integrationService) applyWebhookSecretUpdate(
 	existing *integration.Instance,
 	webhookSecret *string,
-) {
+	prov provider.Provider,
+) error {
 	if webhookSecret == nil {
-		return
+		return nil
+	}
+
+	if _, ingests := prov.(provider.WebhookIngestor); !ingests {
+		return ErrIntegrationWebhookSecretUnsupported
 	}
 
 	existing.WebhookSecret = webhookSecret
@@ -529,25 +550,38 @@ func (s *integrationService) applyWebhookSecretUpdate(
 		existing.Status = integration.StatusActive
 		existing.LastError = nil
 	}
+	return nil
 }
 
 func (s *integrationService) applyEnabledUpdate(
 	existing *integration.Instance,
 	isEnabled *bool,
-) {
+	prov provider.Provider,
+) bool {
 	if isEnabled == nil {
-		return
+		return false
 	}
 
+	wasStatus := existing.Status
 	existing.IsEnabled = *isEnabled
 	if !existing.IsEnabled {
 		existing.Status = integration.StatusInactive
-		return
+		return false
+	}
+
+	if _, verifies := prov.(provider.ConnectionVerifier); verifies {
+		if wasStatus != integration.StatusActive {
+			existing.Status = integration.StatusConfiguring
+			existing.LastError = nil
+			return true
+		}
+		return false
 	}
 
 	if existing.Status == integration.StatusInactive {
 		existing.Status = integration.StatusActive
 	}
+	return false
 }
 
 func (s *integrationService) applyConfigUpdate(
@@ -555,23 +589,29 @@ func (s *integrationService) applyConfigUpdate(
 	existing *integration.Instance,
 	configJSON json.RawMessage,
 	prov provider.Provider,
-) error {
+) (bool, error) {
 	if configJSON == nil {
-		return nil
+		return false, nil
 	}
 
 	normalizedConfig, prepErr := s.prepareConfigForUpdatedStorage(ctx, prov, existing.ConfigJSON, configJSON)
 	if prepErr != nil {
-		return newInvalidConfigError(prepErr)
+		return false, newInvalidConfigError(prepErr)
 	}
 	if cfgErr := prov.ValidateConfig(ctx, normalizedConfig); cfgErr != nil {
-		return newInvalidConfigError(cfgErr)
+		return false, newInvalidConfigError(cfgErr)
 	}
 
 	existing.ConfigJSON = normalizedConfig
 	existing.ConfigVersion = prov.LatestConfigVersion()
 
-	return nil
+	if _, verifies := prov.(provider.ConnectionVerifier); verifies && existing.IsEnabled {
+		existing.Status = integration.StatusConfiguring
+		existing.LastError = nil
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (s *integrationService) DeleteInstance(
@@ -1726,6 +1766,15 @@ func (s *integrationService) startVerifyAndActivate(
 	go s.verifyAndActivate(ctx, logger, inst, prov, run)
 }
 
+func (s *integrationService) cancelVerificationRun(instanceID string) {
+	s.verificationMu.Lock()
+	if previousRun := s.verificationRuns[instanceID]; previousRun != nil {
+		previousRun.cancel()
+		delete(s.verificationRuns, instanceID)
+	}
+	s.verificationMu.Unlock()
+}
+
 func (s *integrationService) isCurrentVerificationRun(instanceID string, run *verificationRun) bool {
 	s.verificationMu.Lock()
 	defer s.verificationMu.Unlock()
@@ -1774,56 +1823,35 @@ func (s *integrationService) verifyAndActivate(
 	persistCtx, cancel := context.WithTimeout(context.Background(), integrationVerificationPersistTimeout)
 	defer cancel()
 
-	// Re-fetch the live instance so we update current state, not a stale snapshot.
-	foundLive, findErr := s.instanceRepo.FindByIDInternal(persistCtx, inst.ID)
-	if findErr != nil {
+	targetStatus := integration.StatusActive
+	var lastError *string
+	if verifyErr != nil {
+		errMsg := verifyErr.Error()
+		targetStatus = integration.StatusError
+		lastError = &errMsg
+	}
+
+	result, updateErr := s.instanceRepo.ApplyVerificationResult(
+		persistCtx,
+		inst.PlatformTenantID,
+		inst.ID,
+		inst.UpdatedAt,
+		targetStatus,
+		lastError,
+	)
+	if updateErr != nil {
 		// Context deadline/cancellation here is a benign timeout, not a fault;
 		// log.Event downgrades those to Warn; a fault below 500 goes to Debug
 		// and everything else stays at Error.
-		log.ErrorTo(ctx, logger, findErr, "verifyAndActivate: failed to re-fetch instance after verification",
-			slog.String("instance_id", inst.ID),
-		)
-		return
-	}
-	if foundLive.IsAbsent() {
-		// The instance was removed between the save and this verification run
-		// (e.g. deleted by the tenant). This is an expected race, not an error.
-		logger.WarnContext(ctx, "verifyAndActivate: instance no longer exists, skipping verification update",
-			slog.String("instance_id", inst.ID),
-		)
-		return
-	}
-	live := foundLive.ToPtr()
-	if !s.isCurrentVerificationRun(inst.ID, run) {
-		logger.DebugContext(ctx, "verifyAndActivate: skipped superseded verification update",
-			slog.String("instance_id", inst.ID),
-		)
-		return
-	}
-
-	if verifyErr != nil {
-		errMsg := verifyErr.Error()
-		live.Status = integration.StatusError
-		live.LastError = &errMsg
-	} else {
-		live.Status = integration.StatusActive
-		live.LastError = nil
-	}
-
-	result, updateErr := s.instanceRepo.UpdateOptional(persistCtx, live.PlatformTenantID, *live)
-	if updateErr != nil {
-		// As above: a persist-context timeout is benign and downgraded to Warn.
 		log.ErrorTo(ctx, logger, updateErr, "verifyAndActivate: failed to persist verification result",
 			slog.String("instance_id", inst.ID),
 		)
 		return
 	}
 	if result.IsAbsent() {
-		// The instance was deleted between the re-fetch above and this
-		// update — the same expected tenant-delete race as the live == nil
-		// branch. The UPDATE ... RETURNING matched no rows, so there is
-		// nothing to persist and nothing is wrong.
-		logger.WarnContext(ctx, "verifyAndActivate: instance no longer exists, skipping verification update",
+		// The instance was deleted, disabled, or updated to a newer config
+		// while this verification was running. Skipping keeps newer state intact.
+		logger.DebugContext(ctx, "verifyAndActivate: skipped stale verification result",
 			slog.String("instance_id", inst.ID),
 		)
 	}

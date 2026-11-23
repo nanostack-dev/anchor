@@ -23,6 +23,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 - [Access evaluation](technical/access-evaluation.md): the AuthZEN-shaped call a product makes to decide one request, its reasons and freshness
 - [Cursor-paginated searches](technical/cursor-pagination.md): the cursor contract, every search with its order, keys and index, the deprecated lists and the tests
 - [Clerk reconcile scheduler](technical/clerk-reconcile-scheduler.md): one self-rescheduling chain, duplicate collapse and the per-instance lock
+- [SMTP integration verification lifecycle](technical/smtp-verification.md): status transitions, re-verification on config/enable updates, `webhook_secret` refusal and the stale-run guard
 - [api key prefix config](api-key-prefix-config.md)
 - [case insensitive identifiers](case-insensitive-identifiers.md)
 - [Distributed tracing](technical/tracing.md): OpenTelemetry wiring, OTEL_* configuration, span naming and which outbound calls forward trace context

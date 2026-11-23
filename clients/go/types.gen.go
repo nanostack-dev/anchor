@@ -2029,13 +2029,13 @@ type IntegrationInstanceStatus string
 
 // IntegrationInstanceUpdateRequest defines model for IntegrationInstanceUpdateRequest.
 type IntegrationInstanceUpdateRequest struct {
-	// Config Updated provider-specific configuration (JSON object).
+	// Config Updated provider-specific configuration (JSON object). For enabled connection-verified providers (e.g. SMTP), saving a config update sets status to CONFIGURING and re-verifies the connection before returning to ACTIVE or ERROR.
 	Config *IntegrationProviderConfig `json:"config,omitempty"`
 
-	// IsEnabled Whether ingestion is enabled for this integration instance. Setting this to false forces status to INACTIVE. Setting this to true only auto-promotes INACTIVE to ACTIVE. Other status transitions are managed by the integration state machine.
+	// IsEnabled Whether this integration instance is enabled. Setting this to false forces status to INACTIVE and cancels any in-flight connection verification. For webhook-ingesting providers (e.g. Clerk), setting this to true auto-promotes INACTIVE to ACTIVE. For connection-verified providers (e.g. SMTP), setting this to true on any non-ACTIVE instance (including INACTIVE or ERROR) sets status to CONFIGURING and runs connection verification before transitioning to ACTIVE or ERROR.
 	IsEnabled *bool `json:"is_enabled,omitempty"`
 
-	// WebhookSecret The webhook signing secret for signature validation.
+	// WebhookSecret The webhook signing secret for signature validation. Only accepted by webhook-ingesting providers; sending a non-null value for a provider that does not ingest webhooks (such as SMTP) answers 400 INTEGRATION_WEBHOOK_SECRET_UNSUPPORTED.
 	//
 	// Examples: whsec_...
 	WebhookSecret *string `json:"webhook_secret,omitempty"`
