@@ -465,7 +465,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needProductResourcePermissionMapper := needProductResourcePermissionRepository && ov.ProductResourcePermissionRepository == nil
 	needProductAPIKeyService := (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
 	needNanocacheCache3 := needProductAPIKeyService && ov.ProductAPIKeyService == nil
-	needProductAPIKeyRepository := (needProductAPIKeyService && ov.ProductAPIKeyService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil)
+	needProductAPIKeyRepository := needProductAPIKeyService && ov.ProductAPIKeyService == nil
 	needProductAPIKeyMapper := needProductAPIKeyRepository && ov.ProductAPIKeyRepository == nil
 	needProductService := (needAnchorAPI && ov.AnchorAPI == nil) || (needAuthMiddleware && ov.AuthMiddleware == nil)
 	needNanocacheCache2 := needProductService && ov.ProductService == nil
@@ -1906,7 +1906,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.ResourcePermissionService != nil {
 			resourcePermissionService = ov.ResourcePermissionService
 		} else {
-			resourcePermissionService = service8.NewResourcePermissionService(productResourcePermissionRepository, productAPIKeyRepository, resourcetypeServiceService, transactor2, emitter, logger)
+			resourcePermissionService = service8.NewResourcePermissionService(productResourcePermissionRepository, resourcetypeServiceService, transactor2, emitter, logger)
 		}
 		app.Manage("service.ResourcePermissionService", resourcePermissionService) // interface: lifecycle by dynamic type
 	}
