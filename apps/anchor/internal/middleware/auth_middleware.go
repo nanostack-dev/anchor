@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 	"github.com/nanostack-dev/nanostack-framework/pkg/apisec"
@@ -105,12 +106,12 @@ func (auth *AuthMiddleware) Create(next http.Handler) http.Handler {
 func (auth *AuthMiddleware) validateAccessToken(r *http.Request) (*service.AuthClaims, error) {
 	const bearerPrefix = "Bearer "
 
-	bearer := r.Header.Get("Authorization")
-	if len(bearer) < len(bearerPrefix) {
+	rawToken, ok := strings.CutPrefix(r.Header.Get("Authorization"), bearerPrefix)
+	if !ok || rawToken == "" {
 		return nil, unauthorized("invalid bearer format")
 	}
 
-	token, err := auth.jwtHelper.ValidateAccessToken(bearer[len(bearerPrefix):])
+	token, err := auth.jwtHelper.ValidateAccessToken(rawToken)
 	if err != nil {
 		return nil, unauthorized("access token rejected")
 	}
