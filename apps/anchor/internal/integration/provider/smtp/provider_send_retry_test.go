@@ -98,7 +98,7 @@ func sendThroughFake(t *testing.T, s *fakeSMTPServer) error {
 	require.NoError(t, err)
 	port, err := strconv.Atoi(portStr)
 	require.NoError(t, err)
-	p := newTestProvider(t)
+	p := newLoopbackTestProvider(t)
 	cfg := Config{
 		Host: host, Port: port, Username: "u", Password: "p",
 		FromAddress: "from@example.com", Encryption: EncryptionNone, AuthMethod: AuthMethodPlain,

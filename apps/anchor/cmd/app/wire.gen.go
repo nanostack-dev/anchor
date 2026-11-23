@@ -543,7 +543,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 	needSourceCatalog := needModelSource && ov.ModelSource == nil
 	needResourcetypeServiceService := (needSourceCatalog && ov.SourceCatalog == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProductService && ov.ProductService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needEvaluator && ov.Evaluator == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needEmitter := (needResourcetypeServiceService && ov.ResourcetypeServiceService == nil) || (needRoleassignmentServiceService && ov.RoleassignmentServiceService == nil) || (needProvider && ov.Provider == nil) || (needLicenseTemplateSyncService && ov.LicenseTemplateSyncService == nil) || (needOrganizationAPIKeyService && ov.OrganizationAPIKeyService == nil) || (needProductRoleService && ov.ProductRoleService == nil) || (needOrganizationRoleService && ov.OrganizationRoleService == nil) || (needProductUserService && ov.ProductUserService == nil) || (needResourcePermissionService && ov.ResourcePermissionService == nil) || (needResourceServiceService && ov.ResourceServiceService == nil) || (needOrganizationLicenseService && ov.OrganizationLicenseService == nil) || (needOrganizationService && ov.OrganizationService == nil) || (needOrganizationMembershipService && ov.OrganizationMembershipService == nil) || (needOrganizationInvitationService && ov.OrganizationInvitationService == nil) || (needLicenseMigrationService && ov.LicenseMigrationService == nil)
-	needCoreConfig := (needEmitter && ov.Emitter == nil) || (needEncryptionService && ov.EncryptionService == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needAuthConfig && ov.AuthConfig == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
+	needCoreConfig := (needEmitter && ov.Emitter == nil) || (needEncryptionService && ov.EncryptionService == nil) || (needProvider2 && ov.Provider2 == nil) || (needIntegrationService && ov.IntegrationService == nil) || (needIntegrationEventWorker && ov.IntegrationEventWorker == nil) || (needEndpointService && ov.EndpointService == nil) || (needWorker && ov.Worker == nil) || (needAuthConfig && ov.AuthConfig == nil) || (needAnchorAPI && ov.AnchorAPI == nil)
 	needTxObservers := needEmitter && ov.Emitter == nil
 	needModelSizeGuard := needTxObservers && ov.TxObservers == nil
 	needMarker := needTxObservers && ov.TxObservers == nil
@@ -1328,7 +1328,7 @@ func BuildComponents(ctx context.Context, cfg Config, ov Overrides) (_ *nano.App
 		if ov.Provider2 != nil {
 			provider22 = ov.Provider2
 		} else {
-			provider22 = smtp.NewProvider(encryptionService, logger)
+			provider22 = smtp.ProvideProvider(encryptionService, coreConfig, logger)
 		}
 	}
 

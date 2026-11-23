@@ -67,4 +67,6 @@ The backend binds its typed configuration (`apps/anchor/cmd/app.Config`) from th
 
 A product event endpoint on `localhost` or a private address (a local receiver) needs `EVENTS_ALLOW_PRIVATE_ENDPOINTS=true` (`core.events.allow_private_endpoints`). Without it Anchor refuses the URL when it is saved and again when a delivery dials ([product event delivery](../technical/product-event-delivery.md#endpoint-addresses)). The test suites and the e2e runtime set it in their `application.yaml`; a deployment never does.
 
+An outbound SMTP integration pointing at `localhost` or a private address (for example local Mailpit) needs `INTEGRATION_ALLOW_PRIVATE_HOSTS=true` (`core.integration.allow_private_hosts`). Without it Anchor refuses non-public SMTP hosts at config validation and again at dial time (`internal/netguard`). The test suites and the e2e runtime set it in their `application.yaml`; a deployment never does.
+
 The legacy root `.env.example` and `docker-compose.yml` are older generic samples, not the complete current setup contract. Use the managed runtime above for newcomer/agent work rather than assuming their old inline-secret examples start current Anchor. A shared workspace can help locate repositories but adds no prerequisite to this procedure.

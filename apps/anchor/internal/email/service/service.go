@@ -14,6 +14,7 @@ import (
 	"anchor/internal/email/renderer"
 	emailrepo "anchor/internal/email/repository"
 	"anchor/internal/integration/provider"
+	"anchor/internal/netguard"
 	intrepo "anchor/internal/repository"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
@@ -112,6 +113,22 @@ func classifyDispatchError(err error) error {
 		return ErrEmailDeliveryRejected.Wrap(err)
 	}
 	return ErrEmailDeliveryFailed.Wrap(err)
+}
+
+// publicDispatchError maps a provider send error to a safe, tenant-visible
+// summary for email_send_records.last_error without exposing raw peer banners,
+// dial outcomes, or internal network addresses.
+func publicDispatchError(err error) string {
+	switch {
+	case errors.Is(err, provider.ErrMessageRejected):
+		return "email delivery was rejected by the mail server"
+	case errors.Is(err, netguard.ErrNonPublicAddress):
+		return "smtp: host address is not public"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "email delivery timed out"
+	default:
+		return "email delivery failed"
+	}
 }
 
 // errEmailRequiredVariablesMissing builds the validation error returned when a
@@ -811,7 +828,11 @@ func (s *emailService) Send(
 	defer cancelPersist()
 
 	if dispatchErr != nil {
-		errMsg := dispatchErr.Error()
+		// Log the raw transport/SMTP error internally, but persist only a
+		// sanitized summary on email_send_records.last_error so peer banners
+		// and dial outcomes cannot leak to tenants (anchor#408).
+		log.ErrorTo(ctx, s.logger, dispatchErr, "email dispatch failed", slog.String("send_id", persisted.ID))
+		errMsg := publicDispatchError(dispatchErr)
 		if updErr := s.sendRepo.UpdateStatus(
 			persistCtx, in.TenantID, persisted.ID, email.SendStatusFailed, &errMsg, nil,
 		); updErr != nil {

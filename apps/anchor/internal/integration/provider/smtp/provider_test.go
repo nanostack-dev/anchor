@@ -108,6 +108,16 @@ func TestPrepareUpdatedConfigForStorageEncryptsReplacementPassword(t *testing.T)
 
 func newTestProvider(t *testing.T) *Provider {
 	t.Helper()
+	return newTestProviderWithOptions(t, false)
+}
+
+func newLoopbackTestProvider(t *testing.T) *Provider {
+	t.Helper()
+	return newTestProviderWithOptions(t, true)
+}
+
+func newTestProviderWithOptions(t *testing.T, allowPrivateHosts bool) *Provider {
+	t.Helper()
 
 	rawKey := make([]byte, 32)
 	for i := range rawKey {
@@ -122,7 +132,7 @@ func newTestProvider(t *testing.T) *Provider {
 	})
 	require.NoError(t, err)
 
-	return NewProvider(encryptionService, slog.New(slog.DiscardHandler))
+	return NewProviderWithOptions(encryptionService, allowPrivateHosts, slog.New(slog.DiscardHandler))
 }
 
 func mustMarshalConfig(t *testing.T, cfg Config) []byte {

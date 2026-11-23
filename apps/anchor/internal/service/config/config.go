@@ -49,6 +49,11 @@ type IntegrationConfig struct {
 	// ReconcileScheduleInterval is how often the integration reconcile job
 	// is scheduled.
 	ReconcileScheduleInterval time.Duration `config:"reconcile_schedule_interval" env:"INTEGRATION_RECONCILE_SCHEDULE_INTERVAL" default:"15m"`
+	// AllowPrivateHosts accepts integration hosts (such as SMTP relays) on
+	// loopback, private and other non-public addresses, and localhost. Only
+	// the test suites and a local run set it: a deployment refuses them when
+	// the integration config is saved and again when a connection dials.
+	AllowPrivateHosts bool `config:"allow_private_hosts" env:"INTEGRATION_ALLOW_PRIVATE_HOSTS" default:"false"`
 }
 
 type EventsConfig struct {
