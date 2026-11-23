@@ -127,7 +127,6 @@ func TestSearchServicesPassRequestErrorsThrough(t *testing.T) {
 				failingResourcePermissions{
 					failingSearches: failingSearches{err},
 				},
-				nil,
 				organizationOnly{},
 				nil,
 				nil,

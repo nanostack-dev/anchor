@@ -42,12 +42,6 @@ type ProductAPIKeyRepository interface {
 		permissions []apikey.ProductAPIKeyPermission,
 	) error
 
-	// DeletePermissionsByName removes a permission from all API keys of a product.
-	DeletePermissionsByName(
-		ctx context.Context,
-		productID, permissionName string,
-	) error
-
 	// GetByProductAndID retrieves a product API key by product and ID.
 	GetByProductAndID(ctx context.Context, productID, id string) (functional.Option[apikey.ProductAPIKey], error)
 
@@ -289,19 +283,6 @@ func (r *productAPIKeyRepository) ReplacePermissions(
 	).MODELS(entities)
 
 	return transactor.Exec(ctx, r.db, insertStmt).Err()
-}
-
-func (r *productAPIKeyRepository) DeletePermissionsByName(
-	ctx context.Context,
-	productID, permissionName string,
-) error {
-	stmt := table.ProductAPIKeyPermissions.DELETE().WHERE(
-		table.ProductAPIKeyPermissions.ProductID.EQ(postgres.String(productID)).AND(
-			table.ProductAPIKeyPermissions.PermissionName.EQ(postgres.String(permissionName)),
-		),
-	)
-
-	return transactor.Exec(ctx, r.db, stmt).Err()
 }
 
 // ProductAPIKeyLastUsedPrecision is how stale a product API key's last_used_at

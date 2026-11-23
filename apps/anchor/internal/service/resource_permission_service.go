@@ -51,7 +51,6 @@ type ResourcePermissionService interface {
 
 type resourcePermissionService struct {
 	resourcePermissionRepo repository.ProductResourcePermissionRepository
-	apiKeyRepo             repository.ProductAPIKeyRepository
 	resourceTypes          rtservice.Service
 	transactor             transactor.Transactor
 	events                 events.Emitter
@@ -60,7 +59,6 @@ type resourcePermissionService struct {
 
 func NewResourcePermissionService(
 	resourcePermissionRepo repository.ProductResourcePermissionRepository,
-	apiKeyRepo repository.ProductAPIKeyRepository,
 	resourceTypes rtservice.Service,
 	tx transactor.Transactor,
 	eventEmitter events.Emitter,
@@ -68,7 +66,6 @@ func NewResourcePermissionService(
 ) ResourcePermissionService {
 	return &resourcePermissionService{
 		resourcePermissionRepo: resourcePermissionRepo,
-		apiKeyRepo:             apiKeyRepo,
 		resourceTypes:          resourceTypes,
 		transactor:             tx,
 		events:                 eventEmitter,
@@ -304,12 +301,6 @@ func (s *resourcePermissionService) Delete(
 		)
 		if findRolesErr != nil {
 			return findRolesErr
-		}
-
-		if apiKeyDeleteErr := s.apiKeyRepo.DeletePermissionsByName(
-			txCtx, input.ProductID, name.Name,
-		); apiKeyDeleteErr != nil {
-			return apiKeyDeleteErr
 		}
 
 		if deleteErr := s.resourcePermissionRepo.DeleteByProductAndName(

@@ -373,3 +373,71 @@ func TestProductResourcePermissionDeleteTellsRoleAssignedConcurrently(t *testing
 		},
 	)
 }
+
+func TestProductResourcePermissionDeletePreservesProductAPIKeyScopes(t *testing.T) {
+	t.Parallel()
+
+	t.Run(
+		"Deleting a resource permission does not strip matching built-in scopes from Product API keys",
+		func(t *testing.T) {
+			t.Parallel()
+
+			ctx := t.Context()
+			product := createTestProductContext(t)
+
+			immutable := false
+			victimResp, err := product.OwnerAuthenticatedClient().CreateProductAPIKeyWithResponse(
+				ctx, product.ProductID,
+				ct.CreateProductAPIKeyJSONRequestBody{
+					Name:        "immutable-victim-" + ids.MustNew("ct"),
+					Permissions: []string{"organization:read"},
+					Mutable:     &immutable,
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, victimResp.StatusCode(), string(victimResp.Body))
+			victimKeyID := victimResp.JSON201.Id
+			victimRawKey := victimResp.JSON201.Value
+
+			callerClient, _ := product.CreateAPIKeyClientWithScopes([]string{
+				"resources_permissions:create",
+				"resources_permissions:delete",
+			})
+
+			createPerm, err := callerClient.CreateProductResourcePermissionWithResponse(
+				ctx, product.ProductID,
+				ct.CreateProductResourcePermissionRequest{
+					ResourceType: "organization",
+					Name:         "organization:read",
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, createPerm.StatusCode(), string(createPerm.Body))
+
+			deletePerm, err := callerClient.DeleteProductResourcePermissionWithResponse(
+				ctx, product.ProductID, "organization:read",
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, deletePerm.StatusCode(), string(deletePerm.Body))
+
+			afterGet, err := product.OwnerAuthenticatedClient().GetProductAPIKeyWithResponse(
+				ctx, product.ProductID, victimKeyID,
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, afterGet.StatusCode(), string(afterGet.Body))
+
+			var permNames []string
+			for _, p := range afterGet.JSON200.Permissions {
+				permNames = append(permNames, p.PermissionName)
+			}
+			assert.Contains(t, permNames, "organization:read")
+
+			victimClient := product.ClientWithProductKeyHeader(victimRawKey)
+			searchResp, err := victimClient.SearchProductOrganizationsWithResponse(
+				ctx, product.ProductID, nil, ct.SearchProductOrganizationsJSONRequestBody{},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, searchResp.StatusCode(), string(searchResp.Body))
+		},
+	)
+}
