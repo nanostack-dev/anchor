@@ -13,9 +13,11 @@ migrations:
 
 core:
   environment: test
-  # The suites register event endpoints on httptest servers (127.0.0.1).
+  # The suites register event endpoints and SMTP relays on loopback (127.0.0.1 / Mailpit).
   events:
     allow_private_endpoints: true
+  integration:
+    allow_private_hosts: true
 
 server:
   allowed_origin: "*"

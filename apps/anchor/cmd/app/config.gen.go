@@ -326,6 +326,12 @@ func Bind(ctx context.Context, src *nanoconf.Sources) (Config, error) {
 		c.Core.Integration.ReconcileScheduleInterval, _ = nanoconf.Scalar(b, k, nanoconf.ParseDuration)
 	}
 
+	// core.integration.allow_private_hosts: AllowPrivateHosts accepts integration hosts (such as SMTP relays) on
+	{
+		k := nanoconf.Key{Path: "core.integration.allow_private_hosts", Env: "INTEGRATION_ALLOW_PRIVATE_HOSTS", Default: "false"}
+		c.Core.Integration.AllowPrivateHosts, _ = nanoconf.Scalar(b, k, nanoconf.ParseBool[bool])
+	}
+
 	// core.events.allow_private_endpoints: AllowPrivateEndpoints accepts product event endpoints on loopback,
 	{
 		k := nanoconf.Key{Path: "core.events.allow_private_endpoints", Env: "EVENTS_ALLOW_PRIVATE_ENDPOINTS", Default: "false"}
@@ -414,6 +420,7 @@ func (c Config) LogValue() slog.Value {
 			),
 			slog.Group("integration",
 				slog.Duration("reconcile_schedule_interval", c.Core.Integration.ReconcileScheduleInterval),
+				slog.Bool("allow_private_hosts", c.Core.Integration.AllowPrivateHosts),
 			),
 			slog.Group("events",
 				slog.Bool("allow_private_endpoints", c.Core.Events.AllowPrivateEndpoints),

@@ -69,6 +69,87 @@ func TestEmailSendDeliveryFailure(t *testing.T) {
 		// The underlying transport cause must never leak to the client.
 		assert.NotContains(t, env.Errors[0].Message, "connection refused")
 		assert.NotContains(t, env.Errors[0].Message, "dial")
+
+		// The persisted send record's last_error must also be sanitized (never
+		// leaking internal IPs, ports, or raw dial errors).
+		list, listErr := client.SearchEmailSendsWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.SearchEmailSendsJSONRequestBody{},
+		)
+		require.NoError(t, listErr)
+		require.Equal(t, http.StatusOK, list.StatusCode())
+		require.Len(t, list.JSON200.Items, 1)
+		assert.Equal(t, "FAILED", string(list.JSON200.Items[0].Status))
+		require.NotNil(t, list.JSON200.Items[0].LastError)
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "127.0.0.1")
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "connection refused")
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "dial")
+	})
+
+	t.Run("A failed SMTP delivery does not persist raw peer banners into last_error", func(t *testing.T) {
+		t.Parallel()
+
+		ln, listenErr := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, listenErr)
+		t.Cleanup(func() { _ = ln.Close() })
+		go func() {
+			for {
+				conn, acceptErr := ln.Accept()
+				if acceptErr != nil {
+					return
+				}
+				_, _ = conn.Write([]byte("554 internal-redis-host SECRET_BANNER_LEAK\r\n"))
+				_ = conn.Close()
+			}
+		}()
+
+		tc := newEmailTestCtx(t)
+		addr := ln.Addr().(*net.TCPAddr)
+		seedSMTPInstanceAt(t, tc, addr.IP.String(), addr.Port)
+		client := tc.product.OwnerAuthenticatedClient()
+
+		created, err := client.CreateEmailTemplateWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.CreateEmailTemplateJSONRequestBody{
+				Slug:     uniqueSlug(),
+				Name:     "Banner Leak Check",
+				Subject:  "Hello",
+				BodyHtml: "<p>Hello</p>",
+			},
+		)
+		require.NoError(t, err)
+		tplID := created.JSON201.Id
+		_, err = client.PublishEmailTemplateWithResponse(context.Background(), tc.product.ProductID, tplID)
+		require.NoError(t, err)
+
+		vars := map[string]any{}
+		resp, sendErr := client.SendEmailWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.SendEmailJSONRequestBody{
+				TemplateId: &tplID,
+				ToAddress:  openapi_types.Email("alice@example.com"),
+				Variables:  &vars,
+			},
+		)
+		require.NoError(t, sendErr)
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode())
+
+		list, listErr := client.SearchEmailSendsWithResponse(
+			context.Background(),
+			tc.product.ProductID,
+			ct.SearchEmailSendsJSONRequestBody{},
+		)
+		require.NoError(t, listErr)
+		require.Equal(t, http.StatusOK, list.StatusCode())
+		require.Len(t, list.JSON200.Items, 1)
+		assert.Equal(t, "FAILED", string(list.JSON200.Items[0].Status))
+		require.NotNil(t, list.JSON200.Items[0].LastError)
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "SECRET_BANNER_LEAK")
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "internal-redis-host")
+		assert.NotContains(t, *list.JSON200.Items[0].LastError, "127.0.0.1")
 	})
 }
 
@@ -84,6 +165,12 @@ func seedUnreachableSMTPInstance(t *testing.T, tc emailTestCtx) {
 	host := addr.IP.String()
 	port := addr.Port
 	require.NoError(t, l.Close())
+
+	seedSMTPInstanceAt(t, tc, host, port)
+}
+
+func seedSMTPInstanceAt(t *testing.T, tc emailTestCtx, host string, port int) {
+	t.Helper()
 
 	cfg := smtpprov.Config{
 		Host:        host,

@@ -16,3 +16,5 @@ core:
   # The integrations journey registers an event receiver on localhost.
   events:
     allow_private_endpoints: true
+  integration:
+    allow_private_hosts: true

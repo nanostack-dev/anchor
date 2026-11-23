@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"anchor/internal/integration/provider"
+	"anchor/internal/netguard"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
@@ -32,14 +33,18 @@ const (
 )
 
 // dialSMTP returns a connected smtp.Client for the given config, with TLS
-// established as required.
-func dialSMTP(ctx context.Context, cfg Config) (*smtp.Client, error) {
+// established as required. When allowPrivateHosts is false, dialer.Control
+// blocks non-public IP addresses after DNS resolution (anchor#408).
+func dialSMTP(ctx context.Context, cfg Config, allowPrivateHosts bool) (*smtp.Client, error) {
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	deadline, hasDeadline := ctx.Deadline()
 	if !hasDeadline {
 		deadline = time.Now().Add(dialTimeout)
 	}
 	dialer := &net.Dialer{Deadline: deadline}
+	if !allowPrivateHosts {
+		dialer.Control = netguard.RefuseNonPublicDial
+	}
 
 	switch cfg.Encryption {
 	case EncryptionTLS:

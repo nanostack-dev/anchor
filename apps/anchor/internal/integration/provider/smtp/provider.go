@@ -16,6 +16,7 @@ import (
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/integration/provider"
+	"anchor/internal/netguard"
 	"anchor/internal/security/encryption"
 
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
@@ -49,12 +50,23 @@ var errMissingEncryptionKey = errors.New("global encryption key is not configure
 // STARTTLS or implicit TLS (SendGrid, Mailgun, Proton, AWS SES, self-hosted
 // relays, ...).
 type Provider struct {
-	configCipher    *secrets.VersionedCipher
-	configCipherErr error
-	logger          *slog.Logger
+	configCipher      *secrets.VersionedCipher
+	configCipherErr   error
+	allowPrivateHosts bool
+	logger            *slog.Logger
 }
 
 func NewProvider(encryptionService *encryption.Service, logger *slog.Logger) *Provider {
+	return NewProviderWithOptions(encryptionService, false, logger)
+}
+
+// NewProviderWithOptions constructs an SMTP provider with an explicit policy
+// for private/loopback hosts. Production always leaves allowPrivateHosts false.
+func NewProviderWithOptions(
+	encryptionService *encryption.Service,
+	allowPrivateHosts bool,
+	logger *slog.Logger,
+) *Provider {
 	var (
 		cipher *secrets.VersionedCipher
 		err    error
@@ -70,9 +82,10 @@ func NewProvider(encryptionService *encryption.Service, logger *slog.Logger) *Pr
 	}
 
 	return &Provider{
-		configCipher:    cipher,
-		configCipherErr: err,
-		logger:          componentLogger,
+		configCipher:      cipher,
+		configCipherErr:   err,
+		allowPrivateHosts: allowPrivateHosts,
+		logger:            componentLogger,
 	}
 }
 
@@ -91,6 +104,11 @@ func (p *Provider) ValidateConfig(_ context.Context, configJSON []byte) error {
 
 	if strings.TrimSpace(cfg.Host) == "" {
 		return errors.New("smtp config: host is required")
+	}
+	if !p.allowPrivateHosts {
+		if err := netguard.ValidatePublicHost(cfg.Host); err != nil {
+			return errors.New("smtp config: host must be a public address")
+		}
 	}
 	if cfg.Port == 0 {
 		cfg.Port = defaultPort
@@ -263,12 +281,15 @@ func (p *Provider) VerifyConnection(ctx context.Context, instance *integration.I
 		return err
 	}
 	// last_error is returned to the tenant, so it names the step, never the peer's reply or dial outcome.
-	client, err := dialSMTP(ctx, cfg)
+	client, err := dialSMTP(ctx, cfg, p.allowPrivateHosts)
 	if err != nil {
 		p.logger.DebugContext(ctx, "smtp verification could not connect",
 			log.Err(err),
 			slog.String("instance_id", instance.ID),
 		)
+		if errors.Is(err, netguard.ErrNonPublicAddress) {
+			return errors.New("smtp: host address is not public")
+		}
 		return errors.New("smtp: could not connect to the server")
 	}
 	defer func() { _ = client.Close() }()
@@ -318,7 +339,7 @@ func (p *Provider) Send(
 // reply closes the connection and retries once on a fresh one after
 // authRetryDelay; other failures return at once.
 func (p *Provider) dialAndAuthenticate(ctx context.Context, cfg Config) (*smtp.Client, error) {
-	client, err := dialSMTP(ctx, cfg)
+	client, err := dialSMTP(ctx, cfg, p.allowPrivateHosts)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +359,7 @@ func (p *Provider) dialAndAuthenticate(ctx context.Context, cfg Config) (*smtp.C
 		return nil, fmt.Errorf("smtp auth: %w", authErr)
 	case <-timer.C:
 	}
-	client, err = dialSMTP(ctx, cfg)
+	client, err = dialSMTP(ctx, cfg, p.allowPrivateHosts)
 	if err != nil {
 		return nil, err
 	}
