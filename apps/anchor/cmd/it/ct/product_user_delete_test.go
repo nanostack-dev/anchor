@@ -3,8 +3,10 @@ package ct_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
+	ct "github.com/nanostack-dev/anchor/clients/go"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/ids"
 	"github.com/nanostack-dev/pgkit/queue"
@@ -128,6 +130,58 @@ func TestDeleteProductUser(t *testing.T) {
 		// The event is enqueued in the delete's transaction, so the job count is final once the 204 returns.
 		assert.Equal(t, 1, countProductEventJobs(t, productContext.ProductID, "product_user.deleted"))
 	})
+
+	t.Run(
+		"Deleting a user from another product emits no role assignment events and leaves the victim intact",
+		func(t *testing.T) {
+			productA := createTestProductContext(t)
+			productA.CaptureEvents()
+			attackerClient, _ := productA.CreateAPIKeyClientWithScopes([]string{"product_user:delete"})
+
+			productB := createTestProductContext(t)
+			productB.ResourceTypes().Create(ct.CreateProductResourceTypeJSONRequestBody{
+				Slug:        "project",
+				Name:        "Project",
+				ParentTypes: []string{"organization"},
+			})
+			orgB := productB.CreateOrganization(t, "VictimOrg-"+ids.MustNew("ct"), nil)
+			victimResourceExtID := "proj-confidential-" + ids.MustNew("ct")
+			resourcesB := productB.Resources(orgB.Id)
+			resourcesB.Put("project", victimResourceExtID, "Confidential Project", resourcesB.Top())
+
+			roleResp, err := productB.AllScopeAPIKeyClient().CreateProductRoleWithResponse(
+				ctx, productB.ProductID,
+				ct.CreateProductRoleJSONRequestBody{
+					Name:         "ProjectAdmin-" + ids.MustNew("ct"),
+					ResourceType: ct.ResourceTypeSlug("project"),
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusCreated, roleResp.StatusCode(), string(roleResp.Body))
+			roleB := roleResp.JSON201
+
+			victimUser := productB.ProductUsers().Create(ct.CreateProductUserJSONRequestBody{
+				ExternalId: new("ext-victim-" + ids.MustNew("ct")),
+				Email:      "victim-" + ids.MustNew("ct") + "@example.test",
+			})
+			productB.Members(orgB.Id).Add(victimUser.Id, nil)
+			productB.ResourceMembers(orgB.Id, "project", victimResourceExtID).Put(victimUser.Id, roleB.Id)
+
+			delResp, err := attackerClient.DeleteProductUserWithResponse(ctx, productA.ProductID, victimUser.Id)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, delResp.StatusCode(), string(delResp.Body))
+
+			// Events are enqueued in the delete transaction, so the queue count is final once 204 returns.
+			assert.Equal(t, 0, countProductEventJobs(t, productA.ProductID, "resource.role_assignment.deleted"))
+			assert.Equal(t, 0, countProductEventJobs(t, productA.ProductID, "product_user.deleted"))
+
+			// Victim user and role assignment in Product B remain intact.
+			getVictim, err := productB.AllScopeAPIKeyClient().
+				GetProductUserWithResponse(ctx, productB.ProductID, victimUser.Id)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, getVictim.StatusCode(), string(getVictim.Body))
+		},
+	)
 }
 
 func countProductEventJobs(t *testing.T, productID, eventType string) int {

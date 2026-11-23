@@ -357,7 +357,14 @@ func (s *service) ReleaseOrganization(txCtx context.Context, productID, organiza
 }
 
 func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID string) ([]string, error) {
-	organizations, err := s.repo.UserOrganizations(txCtx, productUserID)
+	// Unlocked membership check first: preserves the lock order below (org
+	// advisory lock -> memberships -> user row) while refusing to touch or
+	// emit events for a user owned by another product.
+	exists, err := s.repo.UserExistsInProduct(txCtx, productID, productUserID)
+	if err != nil || !exists {
+		return nil, err
+	}
+	organizations, err := s.repo.UserOrganizations(txCtx, productID, productUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -366,10 +373,10 @@ func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID st
 			return nil, err
 		}
 	}
-	if err = s.repo.FindUserMemberships(transactor.ForUpdate(txCtx), productUserID); err != nil {
+	if err = s.repo.FindUserMemberships(transactor.ForUpdate(txCtx), productID, productUserID); err != nil {
 		return nil, err
 	}
-	held, err := s.repo.HeldByUser(txCtx, productUserID)
+	held, err := s.repo.HeldByUser(txCtx, productID, productUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -380,10 +387,10 @@ func (s *service) ReleaseUser(txCtx context.Context, productID, productUserID st
 	// the lock order. A membership write takes FOR KEY SHARE on the user, so
 	// one committed before the lock is in the list read after it, and a later
 	// one waits for the delete and fails its foreign key.
-	if err = s.repo.FindUser(transactor.ForUpdate(txCtx), productUserID); err != nil {
+	if err = s.repo.FindUser(transactor.ForUpdate(txCtx), productID, productUserID); err != nil {
 		return nil, err
 	}
-	return s.repo.UserOrganizations(txCtx, productUserID)
+	return s.repo.UserOrganizations(txCtx, productID, productUserID)
 }
 
 func (s *service) ReleaseResources(
