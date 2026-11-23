@@ -37,19 +37,20 @@ type Repository interface {
 	Delete(ctx context.Context, resourceRowID, productUserID string, roleRowIDs []string) error
 	// FindOrganization reads the Organization's row.
 	FindOrganization(ctx context.Context, productID, organizationID string) error
-	// UserOrganizations lists the Organizations the product user is a member
-	// of, in ID order.
-	UserOrganizations(ctx context.Context, productUserID string) ([]string, error)
-	// FindUserMemberships reads every membership of the product user, in
-	// Organization order.
-	FindUserMemberships(ctx context.Context, productUserID string) error
-	// FindUser reads the product user's row.
-	FindUser(ctx context.Context, productUserID string) error
+	// UserExistsInProduct reports whether the product user belongs to the product.
+	UserExistsInProduct(ctx context.Context, productID, productUserID string) (bool, error)
+	// UserOrganizations lists the Organizations in the product that the product
+	// user is a member of, in ID order.
+	UserOrganizations(ctx context.Context, productID, productUserID string) ([]string, error)
+	// FindUserMemberships reads every membership of the product user in the
+	// product, in Organization order.
+	FindUserMemberships(ctx context.Context, productID, productUserID string) error
+	// FindUser reads the product user's row within the product.
+	FindUser(ctx context.Context, productID, productUserID string) error
 	// HeldInOrganization lists every assignment held in an Organization.
 	HeldInOrganization(ctx context.Context, organizationID string) ([]roleassignment.Held, error)
-	// HeldByUser lists every assignment the product user holds, in every
-	// Organization.
-	HeldByUser(ctx context.Context, productUserID string) ([]roleassignment.Held, error)
+	// HeldByUser lists every assignment the product user holds in the product.
+	HeldByUser(ctx context.Context, productID, productUserID string) ([]roleassignment.Held, error)
 	// HeldByMember lists every assignment a member holds in an Organization.
 	HeldByMember(ctx context.Context, organizationID, productUserID string) ([]roleassignment.Held, error)
 	// HeldOnResources lists every assignment held on the resources.
@@ -109,27 +110,54 @@ func (r *repositoryImpl) FindOrganization(ctx context.Context, productID, organi
 	).Err()
 }
 
-func (r *repositoryImpl) UserOrganizations(ctx context.Context, productUserID string) ([]string, error) {
+func (r *repositoryImpl) UserExistsInProduct(ctx context.Context, productID, productUserID string) (bool, error) {
+	found, err := transactor.QueryOptional[model.ProductUsers](ctx, r.db,
+		table.ProductUsers.SELECT(table.ProductUsers.ID).WHERE(
+			table.ProductUsers.ID.EQ(postgres.String(productUserID)).
+				AND(table.ProductUsers.ProductID.EQ(postgres.String(productID))),
+		),
+	)
+	return found.IsPresent(), err
+}
+
+func (r *repositoryImpl) UserOrganizations(ctx context.Context, productID, productUserID string) ([]string, error) {
 	return transactor.QueryMapSlice(ctx, r.db,
 		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).
-			WHERE(table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID))).
+			FROM(
+				table.OrganizationMemberships.INNER_JOIN(
+					table.Organizations,
+					table.Organizations.ID.EQ(table.OrganizationMemberships.OrganizationID),
+				),
+			).
+			WHERE(
+				table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).
+					AND(table.Organizations.ProductID.EQ(postgres.String(productID))),
+			).
 			ORDER_BY(table.OrganizationMemberships.OrganizationID.ASC()),
 		func(row model.OrganizationMemberships) string { return row.OrganizationID },
 	).Value()
 }
 
-func (r *repositoryImpl) FindUserMemberships(ctx context.Context, productUserID string) error {
+func (r *repositoryImpl) FindUserMemberships(ctx context.Context, productID, productUserID string) error {
+	productOrganizations := table.Organizations.SELECT(table.Organizations.ID).WHERE(
+		table.Organizations.ProductID.EQ(postgres.String(productID)),
+	)
 	return transactor.Exec(ctx, r.db,
 		table.OrganizationMemberships.SELECT(table.OrganizationMemberships.OrganizationID).
-			WHERE(table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID))).
+			WHERE(
+				table.OrganizationMemberships.ProductUserID.EQ(postgres.String(productUserID)).
+					AND(table.OrganizationMemberships.OrganizationID.IN(productOrganizations)),
+			).
 			ORDER_BY(table.OrganizationMemberships.OrganizationID.ASC()),
 	).Err()
 }
 
-func (r *repositoryImpl) FindUser(ctx context.Context, productUserID string) error {
+func (r *repositoryImpl) FindUser(ctx context.Context, productID, productUserID string) error {
 	return transactor.Exec(ctx, r.db,
-		table.ProductUsers.SELECT(table.ProductUsers.ID).
-			WHERE(table.ProductUsers.ID.EQ(postgres.String(productUserID))),
+		table.ProductUsers.SELECT(table.ProductUsers.ID).WHERE(
+			table.ProductUsers.ID.EQ(postgres.String(productUserID)).
+				AND(table.ProductUsers.ProductID.EQ(postgres.String(productID))),
+		),
 	).Err()
 }
 
@@ -137,8 +165,14 @@ func (r *repositoryImpl) HeldInOrganization(ctx context.Context, organizationID 
 	return r.held(ctx, table.ResourceRoleAssignments.OrganizationID.EQ(postgres.String(organizationID)))
 }
 
-func (r *repositoryImpl) HeldByUser(ctx context.Context, productUserID string) ([]roleassignment.Held, error) {
-	return r.held(ctx, table.ResourceRoleAssignments.ProductUserID.EQ(postgres.String(productUserID)))
+func (r *repositoryImpl) HeldByUser(
+	ctx context.Context,
+	productID, productUserID string,
+) ([]roleassignment.Held, error) {
+	return r.held(ctx,
+		table.ResourceRoleAssignments.ProductUserID.EQ(postgres.String(productUserID)).
+			AND(table.ProductRoles.AS("role").ProductID.EQ(postgres.String(productID))),
+	)
 }
 
 // assignmentRow is an assignment with its role's name.
