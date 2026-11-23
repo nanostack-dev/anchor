@@ -146,19 +146,16 @@ func (s *AnchorAPI) Register(
 		TenantName:     request.Body.TenantName,
 	}
 
-	_, err := s.AuthService.Register(ctx, registerInput)
+	createdPlatformUser, err := s.AuthService.Register(ctx, registerInput)
 	if err != nil {
 		return nil, err
 	}
 
-	loginInput := auth.LoginInput{
-		Email:    registerInput.Email,
-		Password: registerInput.Password,
-	}
-	loginResponse, err := s.AuthService.Login(ctx, loginInput)
+	loginResponse, err := s.AuthService.StartSession(ctx, createdPlatformUser)
 	if err != nil {
-		log.ErrorTo(ctx, s.logger, err, "Error logging in user immediately after registration",
+		log.ErrorTo(ctx, s.logger, err, "Error starting session immediately after registration",
 			slog.String("email", registerInput.Email),
+			slog.String("tenant_id", createdPlatformUser.PlatformTenantID),
 		)
 		return nil, err
 	}

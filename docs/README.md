@@ -21,6 +21,7 @@ Existing authoritative paths remain valid; new current-behavior documents belong
 
 - [api key permission cache](api-key-permission-cache.md)
 - [Access evaluation](technical/access-evaluation.md): the AuthZEN-shaped call a product makes to decide one request, its reasons and freshness
+- [Platform user authentication](technical/authentication.md): registration session handoff, tenant lookup by `user_id` and the multi-tenant login fail-closed rule
 - [Cursor-paginated searches](technical/cursor-pagination.md): the cursor contract, every search with its order, keys and index, the deprecated lists and the tests
 - [Clerk reconcile scheduler](technical/clerk-reconcile-scheduler.md): one self-rescheduling chain, duplicate collapse and the per-instance lock
 - [api key prefix config](api-key-prefix-config.md)

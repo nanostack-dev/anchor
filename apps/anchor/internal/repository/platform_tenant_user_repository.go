@@ -68,6 +68,9 @@ type PlatformTenantUserRepository interface {
 	FindByTenantAndEmail(
 		ctx context.Context, platformTenantID string, email string,
 	) (functional.Option[platform.User], error)
+	FindAllByUserID(
+		ctx context.Context, userID string,
+	) ([]platform.User, error)
 	DeleteByTenantAndID(
 		ctx context.Context, platformTenantID string, id string,
 	) error
@@ -108,6 +111,20 @@ func (r *platformTenantUserRepositoryImpl) Create(
 	}
 
 	return result, nil
+}
+
+func (r *platformTenantUserRepositoryImpl) FindAllByUserID(
+	ctx context.Context, userID string,
+) ([]platform.User, error) {
+	stmt := table.PlatformUsers.SELECT(
+		table.PlatformUsers.AllColumns,
+	).WHERE(
+		table.PlatformUsers.UserID.EQ(postgres.String(userID)),
+	).ORDER_BY(
+		table.PlatformUsers.CreatedAt.ASC(),
+	)
+
+	return transactor.QueryMapSlice(ctx, r.db, stmt, platformUserToDomain).Value()
 }
 
 func NewPlatformTenantUserRepository(

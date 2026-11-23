@@ -100,7 +100,7 @@ A repository is an interface and its implementation struct. `nanorepo.Implement`
     -scopes platform_tenant_id,product_id,organization_id -explain UserRepository
   ```
 
-  It prints how each method resolves. When a note says that the name also derives, compare the SQL in the note with the body. Delete the body only when both run the same query: the same filter, order and joins. A derived `FindAll` or slice find has no `ORDER BY`, so a body that orders its rows stays. Example: `TenantRepository.FindAll` stays hand-written, because login reads `tenants[0]` (`internal/service/auth_service.go`). The note on `FindByEmail` shows the same query as its body, so that body goes:
+  It prints how each method resolves. When a note says that the name also derives, compare the SQL in the note with the body. Delete the body only when both run the same query: the same filter, order and joins. A derived `FindAll` or slice find has no `ORDER BY`, so a body that orders its rows stays. Example: `TenantRepository.FindAll` stays hand-written, because test bootstrap (`cmd/it/shared/dsl/tenant_builder.go`) reads `tenants[0]` in deterministic creation order. The note on `FindByEmail` shows the same query as its body, so that body goes:
 
   ```text
   FindByEmail  hand-written user_repository.go:61
