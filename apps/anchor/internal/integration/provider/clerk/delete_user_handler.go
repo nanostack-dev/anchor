@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
+	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 
 	"anchor/internal/domain/integration"
 	"anchor/internal/events"
@@ -14,8 +16,8 @@ import (
 
 const clerkExternalIDKey = "external_id"
 
-// executeDeleteUser handles CommandDeleteUser commands by deleting a product
-// user via the product user repository.
+// executeDeleteUser handles CommandDeleteUser commands by recording a tombstone
+// and deleting the product user via the product user repository.
 func (p *Provider) executeDeleteUser(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -27,9 +29,29 @@ func (p *Provider) executeDeleteUser(
 		return provider.ErrInvalidCommandData(CommandDeleteUser, "DeleteUserData")
 	}
 
+	deletedAt := time.Now().UTC()
+	if deleteData.EventAt != nil {
+		deletedAt = deleteData.EventAt.UTC()
+	}
+
 	delErr := p.transactor.InTx(ctx, func(txCtx context.Context) error {
+		if lockErr := p.productUserRepo.LockClerkUser(
+			txCtx,
+			instance.ProductID,
+			deleteData.ExternalID,
+		); lockErr != nil {
+			return lockErr
+		}
+		// Record the tombstone even when no product_users row exists yet, so a
+		// delayed user.created or user.updated cannot resurrect the deleted user.
+		if tombErr := p.productUserRepo.PutTombstone(
+			txCtx, instance.ProductID, deleteData.ExternalID, deletedAt,
+		); tombErr != nil {
+			return tombErr
+		}
+
 		found, findErr := p.productUserRepo.FindByExternalID(
-			txCtx, instance.ProductID, deleteData.ExternalID,
+			transactor.ForUpdate(txCtx), instance.ProductID, deleteData.ExternalID,
 		)
 		if findErr != nil {
 			return findErr

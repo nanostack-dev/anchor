@@ -28,14 +28,15 @@ func (m *ProductUserMapper) ToDomain(entity model.ProductUsers) (user.ProductUse
 	}
 
 	return user.ProductUser{
-		ID:         entity.ID,
-		ProductID:  entity.ProductID,
-		Email:      entity.Email,
-		Name:       name,
-		ExternalID: entity.ExternalID,
-		Status:     status,
-		CreatedAt:  entity.CreatedAt,
-		UpdatedAt:  entity.UpdatedAt,
+		ID:                entity.ID,
+		ProductID:         entity.ProductID,
+		Email:             entity.Email,
+		Name:              name,
+		ExternalID:        entity.ExternalID,
+		Status:            status,
+		LastSyncedEventAt: entity.LastSyncedEventAt,
+		CreatedAt:         entity.CreatedAt,
+		UpdatedAt:         entity.UpdatedAt,
 	}, nil
 }
 
@@ -43,13 +44,14 @@ func (m *ProductUserMapper) ToEntity(domain user.ProductUser) model.ProductUsers
 	name := functional.OptionOf(domain.Name, domain.Name != "").ToPtr()
 
 	return model.ProductUsers{
-		ID:         domain.ID,
-		ProductID:  domain.ProductID,
-		Email:      domain.Email,
-		Name:       name,
-		ExternalID: domain.ExternalID,
-		Status:     string(domain.Status),
-		CreatedAt:  domain.CreatedAt,
-		UpdatedAt:  domain.UpdatedAt,
+		ID:                domain.ID,
+		ProductID:         domain.ProductID,
+		Email:             domain.Email,
+		Name:              name,
+		ExternalID:        domain.ExternalID,
+		Status:            string(domain.Status),
+		LastSyncedEventAt: domain.LastSyncedEventAt,
+		CreatedAt:         domain.CreatedAt,
+		UpdatedAt:         domain.UpdatedAt,
 	}
 }

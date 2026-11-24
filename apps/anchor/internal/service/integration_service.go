@@ -1091,10 +1091,53 @@ func (s *integrationService) reconcileInstance(
 		)
 	}
 
-	commands, recErr := clerkProv.Reconcile(ctx, instance.ConfigJSON)
+	recResult, recErr := clerkProv.Reconcile(ctx, instance.ConfigJSON)
 	if recErr != nil {
 		return recErr
 	}
+
+	deletePlan, delPlanErr := clerkProv.PlanReconcileDeletions(
+		ctx, instance.ProductID, instance.ConfigJSON, recResult,
+	)
+	if delPlanErr != nil {
+		return delPlanErr
+	}
+
+	if deletePlan.AbortedReason != "" {
+		logger.WarnContext(ctx, "integration reconcile deletions aborted by safety guard",
+			slog.String("integration_instance_id", instance.ID),
+			slog.String("reason", deletePlan.AbortedReason),
+			slog.Int64("stamped_count", deletePlan.StampedCount),
+			slog.Int("candidate_count", deletePlan.CandidateCount),
+		)
+		if auditErr := s.transactor.InTx(ctx, func(txCtx context.Context) error {
+			s.writeAuditLog(txCtx, logger, integration.AuditLog{
+				IntegrationInstanceID: instance.ID,
+				Action:                integration.AuditActionDeleteUser,
+				Severity:              integration.AuditSeverityWarning,
+				Message:               "Reconcile deletions aborted by safety guard",
+				MetadataJSON: provider.MustMarshalJSON(map[string]any{
+					"reason":          deletePlan.AbortedReason,
+					"aborted_run":     deletePlan.AbortRun,
+					"stamped_count":   deletePlan.StampedCount,
+					"candidate_count": deletePlan.CandidateCount,
+				}),
+			})
+			return nil
+		}); auditErr != nil {
+			logger.ErrorContext(ctx, "failed to record reconcile deletion abort audit", log.Err(auditErr))
+		}
+		if deletePlan.AbortRun {
+			return nil
+		}
+	}
+
+	// Run confirmed deletes before upserts so a user who deleted and re-signed
+	// up with the same email heals in a single reconcile pass.
+	commands := make([]provider.Command, 0, len(deletePlan.Deletes)+len(recResult.Upserts))
+	commands = append(commands, deletePlan.Deletes...)
+	commands = append(commands, recResult.Upserts...)
+
 	if len(commands) == 0 {
 		logger.InfoContext(ctx, "integration reconcile produced no commands",
 			slog.String("integration_instance_id", instance.ID),
@@ -1121,8 +1164,11 @@ func (s *integrationService) reconcileInstance(
 			Severity:              integration.AuditSeveritySuccess,
 			Message:               "Integration reconciliation completed",
 			MetadataJSON: provider.MustMarshalJSON(map[string]any{
-				"commands": len(commands),
-				"batches":  batchesProcessed,
+				"commands":       len(commands),
+				"deletes":        len(deletePlan.Deletes),
+				"upserts":        len(recResult.Upserts),
+				"deferred_count": deletePlan.DeferredCount,
+				"batches":        batchesProcessed,
 			}),
 		})
 

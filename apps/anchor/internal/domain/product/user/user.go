@@ -49,14 +49,15 @@ func (s ProductUserStatus) Valid() bool {
 }
 
 type ProductUser struct {
-	ID         string
-	ProductID  string
-	Email      string
-	Name       string
-	ExternalID *string
-	Status     ProductUserStatus
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID                string
+	ProductID         string
+	Email             string
+	Name              string
+	ExternalID        *string
+	Status            ProductUserStatus
+	LastSyncedEventAt *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // GenerateID sets the product user's ID to a new prefixed KSUID.

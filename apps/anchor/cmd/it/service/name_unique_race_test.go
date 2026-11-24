@@ -11,6 +11,7 @@ import (
 
 	"anchor/internal/domain/auth"
 	"anchor/internal/domain/permission"
+	productuser "anchor/internal/domain/product/user"
 	"anchor/internal/repository"
 )
 
@@ -61,6 +62,22 @@ func TestConcurrentUniqueInsertsReturnSentinel(t *testing.T) {
 				perm.Name = strings.ToLower(name)
 			}
 			_, err := PermissionRepository.Create(t.Context(), perm)
+			return err
+		})
+	})
+
+	t.Run("Product user email", func(t *testing.T) {
+		productID := GivenATenantAndProduct(t).Product.ID
+		email := "race-" + uuid.NewString() + "@example.com"
+		assertOneInsertWins(t, repository.ErrProductUserEmailExists, func(int) error {
+			u := productuser.ProductUser{
+				ProductID: productID,
+				Email:     email,
+				Name:      "Race User",
+				Status:    productuser.ProductUserStatusActive,
+			}
+			u.GenerateID()
+			_, err := ProductUserRepo.Create(t.Context(), u)
 			return err
 		})
 	})

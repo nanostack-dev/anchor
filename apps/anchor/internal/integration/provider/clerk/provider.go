@@ -41,6 +41,7 @@ const (
 	clerkUsersPageSize       = 500
 	clerkDefaultBaseURL      = "https://api.clerk.com/v1"
 	clerkConfigCipherContext = "clerk-api-key"
+	clerkEmailVerifiedStatus = "verified"
 
 	// HTTP transport timeouts for the Clerk API client.
 	clerkHTTPDialTimeout           = 10 * time.Second
@@ -119,6 +120,22 @@ func (p *Provider) Type() string {
 
 func (p *Provider) LatestConfigVersion() int32 {
 	return clerkLatestConfigVer
+}
+
+// OverrideEndpointForTesting redirects Clerk API requests to a local test
+// server and returns a restore function. Callers must not run concurrently
+// with other tests sharing the same Provider instance.
+func (p *Provider) OverrideEndpointForTesting(baseURL string, client *http.Client) func() {
+	prevBaseURL := p.baseURL
+	prevClient := p.httpClient
+	p.baseURL = baseURL
+	if client != nil {
+		p.httpClient = client
+	}
+	return func() {
+		p.baseURL = prevBaseURL
+		p.httpClient = prevClient
+	}
 }
 
 // Config represents the config stored in integration_instances.config_json.
@@ -251,8 +268,9 @@ func (p *Provider) ValidateWebhook(
 
 // clerkWebhookEvent represents the top-level structure of a Clerk webhook payload.
 type clerkWebhookEvent struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Type      string          `json:"type"`
+	Timestamp *int64          `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
 }
 
 func (p *Provider) ExtractEventType(payload []byte) string {
@@ -272,11 +290,17 @@ type clerkUserData struct {
 	FirstName      *string             `json:"first_name"`
 	LastName       *string             `json:"last_name"`
 	PrimaryEmailID *string             `json:"primary_email_address_id"`
+	UpdatedAt      *int64              `json:"updated_at"`
+}
+
+type clerkEmailVerification struct {
+	Status string `json:"status"`
 }
 
 type clerkEmailAddress struct {
-	ID           string `json:"id"`
-	EmailAddress string `json:"email_address"`
+	ID           string                  `json:"id"`
+	EmailAddress string                  `json:"email_address"`
+	Verification *clerkEmailVerification `json:"verification"`
 }
 
 func (p *Provider) ParseEvent(_ context.Context, _ string, payload []byte) (any, error) {
@@ -340,16 +364,23 @@ func (p *Provider) handleUserEvent(event *clerkWebhookEvent) ([]provider.Command
 		return nil, fmt.Errorf("failed to parse clerk user data: %w", err)
 	}
 
-	email := p.extractPrimaryEmail(userData)
+	email, verified := p.extractPrimaryEmail(userData)
 	name := buildFullName(userData.FirstName, userData.LastName)
+	eventAt := clerkUnixMillis(userData.UpdatedAt)
+	if eventAt == nil {
+		eventAt = clerkUnixMillis(event.Timestamp)
+	}
 
 	return []provider.Command{
 		{
 			Type: CommandUpsertUser,
 			Data: UpsertUserData{
-				ExternalID: userData.ID,
-				Email:      email,
-				Name:       name,
+				ExternalID:    userData.ID,
+				Email:         email,
+				EmailVerified: verified,
+				Name:          name,
+				EventAt:       eventAt,
+				Source:        SyncSourceWebhook,
 			},
 		},
 	}, nil
@@ -370,24 +401,35 @@ func (p *Provider) handleUserDeletedEvent(event *clerkWebhookEvent) (
 			Type: CommandDeleteUser,
 			Data: DeleteUserData{
 				ExternalID: userData.ID,
+				EventAt:    clerkUnixMillis(event.Timestamp),
 			},
 		},
 	}, nil
 }
 
-func (p *Provider) extractPrimaryEmail(user clerkUserData) string {
+func clerkUnixMillis(ms *int64) *time.Time {
+	if ms == nil || *ms <= 0 {
+		return nil
+	}
+	t := time.UnixMilli(*ms).UTC()
+	return &t
+}
+
+func (p *Provider) extractPrimaryEmail(user clerkUserData) (string, bool) {
 	if user.PrimaryEmailID != nil {
 		primary := functional.Slice(user.EmailAddresses).FindFirst(func(ea clerkEmailAddress) bool {
 			return ea.ID == *user.PrimaryEmailID
 		})
 		if primary.IsPresent() {
-			return primary.Value().EmailAddress
+			ea := primary.Value()
+			return ea.EmailAddress, ea.Verification != nil && ea.Verification.Status == clerkEmailVerifiedStatus
 		}
 	}
 	if len(user.EmailAddresses) > 0 {
-		return user.EmailAddresses[0].EmailAddress
+		ea := user.EmailAddresses[0]
+		return ea.EmailAddress, ea.Verification != nil && ea.Verification.Status == clerkEmailVerifiedStatus
 	}
-	return ""
+	return "", false
 }
 
 const fullNameParts = 2

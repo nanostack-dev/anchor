@@ -76,7 +76,7 @@ func clerkOfficialUserCreatedPayload() map[string]any {
 		},
 		"instance_id": "ins_2g7np7Hrk0SN6kj5EDMLDaKNL0S",
 		"object":      "event",
-		"timestamp":   float64(1716883200),
+		"timestamp":   float64(1716883200000),
 		"type":        "user.created",
 	}
 }
@@ -120,7 +120,7 @@ func clerkOfficialUserUpdatedPayload() map[string]any {
 			"public_metadata":          map[string]any{},
 			"two_factor_enabled":       false,
 			"unsafe_metadata":          map[string]any{},
-			"updated_at":               float64(1654012824306),
+			"updated_at":               float64(1716883260000),
 			"username":                 nil,
 			"web3_wallets":             []any{},
 		},
@@ -131,7 +131,7 @@ func clerkOfficialUserUpdatedPayload() map[string]any {
 			},
 		},
 		"object":    "event",
-		"timestamp": float64(1654012824306),
+		"timestamp": float64(1716883260000),
 		"type":      "user.updated",
 	}
 }
@@ -150,7 +150,7 @@ func clerkOfficialUserDeletedPayload() map[string]any {
 			},
 		},
 		"object":    "event",
-		"timestamp": float64(1661861640000),
+		"timestamp": float64(1716883320000),
 		"type":      "user.deleted",
 	}
 }

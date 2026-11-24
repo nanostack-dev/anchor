@@ -39,6 +39,7 @@ func UseSchema(schema string) {
 	ProductResourceTypes = ProductResourceTypes.FromSchema(schema)
 	ProductRoleResourcePermissions = ProductRoleResourcePermissions.FromSchema(schema)
 	ProductRoles = ProductRoles.FromSchema(schema)
+	ProductUserTombstones = ProductUserTombstones.FromSchema(schema)
 	ProductUsers = ProductUsers.FromSchema(schema)
 	Products = Products.FromSchema(schema)
 	ResourceRoleAssignments = ResourceRoleAssignments.FromSchema(schema)

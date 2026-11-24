@@ -7,12 +7,13 @@ import (
 )
 
 type ProductUsers struct {
-	ID         string `sql:"primary_key"`
-	ProductID  string
-	Email      string
-	Name       *string
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	ExternalID *string
+	ID                string `sql:"primary_key"`
+	ProductID         string
+	Email             string
+	Name              *string
+	Status            string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ExternalID        *string
+	LastSyncedEventAt *time.Time
 }

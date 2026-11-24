@@ -51,10 +51,11 @@ var uniqueGuardsWithoutMapping = map[string]string{
 	"product_event_endpoint_configs_pkey": "upserted with ON CONFLICT (product_id)",
 	"product_resource_type_parents_pkey": "INSERT ... SELECT yields each parent once; " +
 		"an update replaces edges after the type row's UPDATE",
-	"authz_stores_pkey":         "inserted with ON CONFLICT (product_id) DO NOTHING",
-	"authz_stores_store_id_key": "OpenFGA generates every store ID",
-	"authz_models_pkey":         "upserted under the product sync lock",
-	"authz_sync_marks_pkey":     "upserted with ON CONFLICT (product_id, source, scope_key)",
+	"authz_stores_pkey":            "inserted with ON CONFLICT (product_id) DO NOTHING",
+	"authz_stores_store_id_key":    "OpenFGA generates every store ID",
+	"authz_models_pkey":            "upserted under the product sync lock",
+	"authz_sync_marks_pkey":        "upserted with ON CONFLICT (product_id, source, scope_key)",
+	"product_user_tombstones_pkey": "upserted with ON CONFLICT (product_id, external_id)",
 }
 
 // retiredUniqueGuards are dropped by a migration but still mapped, because the
