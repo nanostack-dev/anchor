@@ -92,7 +92,19 @@ func (r *postgresRepository) Postpone(ctx context.Context, productID string, unt
 	).Err()
 }
 
-func (r *postgresRepository) RecordedModel(ctx context.Context, productID string) (RecordedModel, error) {
+func (r *postgresRepository) RecordedModel(ctx context.Context, productID, version string) (RecordedModel, error) {
+	found, err := transactor.QueryOptionalMap(ctx, r.db,
+		table.AuthzModels.SELECT(table.AuthzModels.ModelID, table.AuthzModels.ModelHash).
+			WHERE(table.AuthzModels.ProductID.EQ(postgres.String(productID)).
+				AND(table.AuthzModels.ModelVersion.EQ(postgres.String(version)))),
+		func(row dbmodel.AuthzModels) RecordedModel {
+			return RecordedModel{ID: row.ModelID, Hash: row.ModelHash}
+		},
+	)
+	return found.OrElse(RecordedModel{}), err
+}
+
+func (r *postgresRepository) LegacyModel(ctx context.Context, productID string) (RecordedModel, error) {
 	found, err := transactor.QueryOptionalMap(ctx, r.db,
 		table.AuthzStores.SELECT(table.AuthzStores.ModelID, table.AuthzStores.ModelHash).
 			WHERE(table.AuthzStores.ProductID.EQ(postgres.String(productID))),
@@ -106,7 +118,27 @@ func (r *postgresRepository) RecordedModel(ctx context.Context, productID string
 	return found.OrElse(RecordedModel{}), err
 }
 
-func (r *postgresRepository) SetModel(ctx context.Context, productID string, model RecordedModel) error {
+func (r *postgresRepository) SetModel(ctx context.Context, productID, version string, model RecordedModel) error {
+	if err := transactor.Exec(ctx, r.db,
+		table.AuthzModels.INSERT(
+			table.AuthzModels.ProductID,
+			table.AuthzModels.ModelVersion,
+			table.AuthzModels.ModelHash,
+			table.AuthzModels.ModelID,
+		).VALUES(productID, version, model.Hash, model.ID).
+			ON_CONFLICT(table.AuthzModels.ProductID, table.AuthzModels.ModelVersion).
+			DO_UPDATE(postgres.SET(
+				table.AuthzModels.ModelHash.SET(postgres.String(model.Hash)),
+				table.AuthzModels.ModelID.SET(postgres.String(model.ID)),
+				table.AuthzModels.WrittenAt.SET(postgres.TimestampzExp(postgres.NOW())),
+			)),
+	).Err(); err != nil {
+		return err
+	}
+	// Mirror onto authz_stores so pre-#401 replicas running during a rolling
+	// deploy (or after a schema rollback) still find a valid model pointer.
+	// Post-#401 releases use authz_models as primary and read authz_stores only
+	// for lazy adoption and empty-table Open fallback.
 	return transactor.Exec(ctx, r.db,
 		table.AuthzStores.UPDATE(table.AuthzStores.ModelID, table.AuthzStores.ModelHash).
 			SET(postgres.String(model.ID), postgres.String(model.Hash)).

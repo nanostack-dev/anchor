@@ -77,7 +77,7 @@ func Hash(catalog Catalog) string {
 
 func (c Catalog) hash() string {
 	var b strings.Builder
-	b.WriteString(modelVersion)
+	b.WriteString(Version)
 	for _, t := range c.Types {
 		fmt.Fprintf(&b, "\nt %q %v %v", t.Slug, t.ParentTypes, t.NestsInItself)
 	}
@@ -88,9 +88,11 @@ func (c Catalog) hash() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// modelVersion changes whenever Compile writes a different model for the same
-// catalog, so every store gets the new model.
-const modelVersion = "anchor-authz-model-3"
+// Version identifies this release's compiled model format. It changes whenever
+// Compile writes a different model for the same catalog, and keys each
+// Product's row in authz_models so rolling deploys across Version bumps never
+// overwrite each other's model pointer (ADR-0025).
+const Version = "anchor-authz-model-3"
 
 // HasPermission reports whether the model holds the permission, so tuples
 // never name a relation it lacks.

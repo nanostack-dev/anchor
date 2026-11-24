@@ -89,7 +89,7 @@ The syncer does the rest:
 
 - It drops each desired tuple whose relation the current model does not define. A permission deleted from the catalog therefore leaves its grants deleted, not rejected.
 - It deletes before it writes, in batches of 100, and treats a tuple already there or already gone as done.
-- It compiles a model once per hash per process, and writes it only when the hash differs from the one recorded in `authz_stores`.
+- It compiles a model once per hash per process, and writes it only when the hash differs from the one recorded for this release's `model.Version` in `authz_models` (adopting a matching pre-#401 `authz_stores` pointer without an OpenFGA write, and mirroring back to `authz_stores` for rollbacks; [ADR-0025](../adr/0025-one-openfga-model-per-release-version.md)).
 
 ## The replay middleware
 

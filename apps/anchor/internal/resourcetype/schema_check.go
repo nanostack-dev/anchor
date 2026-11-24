@@ -39,6 +39,7 @@ const (
 	migrationRoleTypeRequired     = 66
 	migrationAllowsCustomRoles    = 67
 	migrationAuthzSyncMarks       = 69
+	migrationAuthzModels          = 77
 )
 
 // roleSchemaFact is one thing the migrations from 000059 to 000069 (roles,
@@ -131,6 +132,11 @@ SELECT to_regclass('authz_sync_marks') IS NOT NULL AND (SELECT count(*) = 3 FROM
 WHERE table_schema = current_schema() AND table_name = 'authz_stores'
   AND column_name IN ('model_id', 'model_hash', 'reconciled_at'))`,
 			problem: "authz_sync_marks or the authz_stores sync columns are missing", version: migrationAuthzSyncMarks,
+		},
+		{
+			// Per-release OpenFGA model pointers keep rolling deploys from overwriting each other.
+			holds:   `SELECT to_regclass('authz_models') IS NOT NULL`,
+			problem: "authz_models table is missing", version: migrationAuthzModels,
 		},
 	}
 }

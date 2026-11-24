@@ -398,26 +398,39 @@ func (s *Syncer) modelState(ctx context.Context, productID string) (Model, compi
 	if err != nil {
 		return Model{}, compiledModel{}, RecordedModel{}, err
 	}
-	recorded, err := s.repo.RecordedModel(ctx, productID)
+	recorded, err := s.repo.RecordedModel(ctx, productID, source.version())
 	return source, compiled, recorded, err
 }
 
-// ensureModel writes the Product's model when it changed since the model the
-// store follows. It runs under the exclusive lock.
+// ensureModel writes the Product's model for this release's model version when
+// missing or stale. If the legacy authz_stores pointer already matches the
+// hash, it adopts that model ID without an OpenFGA write. Runs under the
+// exclusive lock.
 func (s *Syncer) ensureModel(ctx context.Context, engine fga.Engine, storeID, productID string) (target, error) {
 	source, compiled, recorded, err := s.modelState(ctx, productID)
 	if err != nil {
 		return target{}, err
 	}
-	if recorded.Hash != source.Hash || recorded.ID == "" {
-		modelID, writeErr := fga.WriteModel(ctx, engine, storeID, compiled.proto)
-		if writeErr != nil {
-			return target{}, writeErr
-		}
-		recorded = RecordedModel{ID: modelID, Hash: source.Hash}
-		if err = s.repo.SetModel(ctx, productID, recorded); err != nil {
+	if recorded.Hash == source.Hash && recorded.ID != "" {
+		return target{store: fga.NewStore(engine, storeID, recorded.ID), relations: compiled.relations}, nil
+	}
+	legacy, legacyErr := s.repo.LegacyModel(ctx, productID)
+	if legacyErr != nil {
+		return target{}, legacyErr
+	}
+	if legacy.Hash == source.Hash && legacy.ID != "" {
+		if err = s.repo.SetModel(ctx, productID, source.version(), legacy); err != nil {
 			return target{}, err
 		}
+		return target{store: fga.NewStore(engine, storeID, legacy.ID), relations: compiled.relations}, nil
+	}
+	modelID, writeErr := fga.WriteModel(ctx, engine, storeID, compiled.proto)
+	if writeErr != nil {
+		return target{}, writeErr
+	}
+	recorded = RecordedModel{ID: modelID, Hash: source.Hash}
+	if err = s.repo.SetModel(ctx, productID, source.version(), recorded); err != nil {
+		return target{}, err
 	}
 	return target{store: fga.NewStore(engine, storeID, recorded.ID), relations: compiled.relations}, nil
 }

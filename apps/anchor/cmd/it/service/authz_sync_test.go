@@ -117,7 +117,7 @@ func productStore(t *testing.T, productID string) fga.Store {
 	t.Helper()
 	storeID, err := AuthzStores.StoreID(t.Context(), productID)
 	require.NoError(t, err)
-	recorded, err := AuthzMarks.RecordedModel(t.Context(), productID)
+	recorded, err := AuthzMarks.RecordedModel(t.Context(), productID, model.Version)
 	require.NoError(t, err)
 	require.NotEmpty(t, recorded.ID, "the product has no model yet")
 	return fga.NewStore(openFGA(t), storeID, recorded.ID)
@@ -198,15 +198,50 @@ func TestAuthzSync(t *testing.T) {
 
 	t.Run("A catalog that did not change keeps its model", func(t *testing.T) {
 		w := givenSyncWorld(t)
-		first, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
+		first, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
 		require.NoError(t, err)
+		legacy, err := AuthzMarks.LegacyModel(t.Context(), w.productID)
+		require.NoError(t, err)
+		assert.Equal(t, first, legacy, "SetModel must mirror the written model onto authz_stores")
 
 		syncProduct(t, w.productID)
 
-		again, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
+		again, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
 		require.NoError(t, err)
 		assert.Equal(t, first.ID, again.ID)
 	})
+
+	t.Run(
+		"First deploy adopts matching authz_stores model into authz_models without an OpenFGA write",
+		func(t *testing.T) {
+			w := givenSyncWorld(t)
+			rebuild(t, w.productID)
+			before, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
+			require.NoError(t, err)
+
+			// Simulate a product migrated to 000077 whose authz_models table is empty
+			// while authz_stores still holds the matching pre-#401 pointer.
+			_, err = TestDB.ExecContext(t.Context(), `DELETE FROM authz_models WHERE product_id = $1`, w.productID)
+			require.NoError(t, err)
+
+			found, err := AuthzStores.Open(t.Context(), w.productID)
+			require.NoError(t, err)
+			opened, ok := found.Get()
+			require.True(t, ok)
+			assert.False(t, opened.ModelCurrent, "Open must report fallback when authz_models has no row yet")
+
+			require.NoError(t, AuthzSyncer.EnsureModel(t.Context(), w.productID))
+
+			adopted, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
+			require.NoError(t, err)
+			assert.Equal(
+				t,
+				before,
+				adopted,
+				"EnsureModel must adopt the legacy pointer without writing a new OpenFGA model",
+			)
+		},
+	)
 
 	t.Run("Five concurrent syncs of one product all succeed", func(t *testing.T) {
 		w := givenSyncWorld(t)
@@ -313,7 +348,7 @@ func TestAuthzSync(t *testing.T) {
 		kept := givenPermission(t, w.productID)
 		givenRolePermission(t, w.productID, w.managedID, kept)
 		syncProduct(t, w.productID)
-		before, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
+		before, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
 		require.NoError(t, err)
 		_, err = TestDB.ExecContext(t.Context(), `DELETE FROM product_resource_permissions
 			WHERE product_id = $1 AND name = $2`, w.productID, w.permission)
@@ -321,7 +356,7 @@ func TestAuthzSync(t *testing.T) {
 
 		syncProduct(t, w.productID)
 
-		after, err := AuthzMarks.RecordedModel(t.Context(), w.productID)
+		after, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
 		require.NoError(t, err)
 		assert.NotEqual(t, before.ID, after.ID)
 		assert.True(t, can(t, w.productID, model.User(member), kept, w.organizationID))
@@ -356,7 +391,7 @@ func TestAuthzReconcile(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			AuthzSyncer.Sweep(t.Context())
-			recorded, err := AuthzMarks.RecordedModel(t.Context(), productID)
+			recorded, err := AuthzMarks.RecordedModel(t.Context(), productID, model.Version)
 			return err == nil && recorded.ID != "" &&
 				can(t, productID, model.User(member), w.permission, w.organizationID)
 		}, 60*time.Second, 10*time.Millisecond)

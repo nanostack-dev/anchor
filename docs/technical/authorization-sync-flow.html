@@ -199,7 +199,7 @@ const TABLES = {
   memberships: { schema: "public",  name: "organization_memberships", cols: ["organization_id", "product_user_id", "product_role_id"] },
   jobs:        { schema: "public",  name: "pgqueue_jobs",             cols: ["queue_name", "payload.type", "status"] },
   marks:       { schema: "public",  name: "authz_sync_marks",         cols: ["product_id", "source", "scope_key", "revision", "marked_at"] },
-  stores:      { schema: "public",  name: "authz_stores",             cols: ["product_id", "store_id", "model_id", "model_hash"] },
+  stores:      { schema: "public",  name: "authz_stores",             cols: ["product_id", "store_id", "reconciled_at", "model_id (mirror)"] },
   tuple:       { schema: "openfga", name: "openfga.tuple",            cols: ["store", "object_type", "object_id", "relation", "_user"] },
   changelog:   { schema: "openfga", name: "openfga.changelog",        cols: ["object_type", "object_id", "relation", "_user", "operation"] },
 };
@@ -347,7 +347,7 @@ const common = [
     title: "Read the marks and the model", actor: "replay", dot: "--sync",
     note: `<ul><li>The sync reads the Product's pending marks and remembers <b>revision 8</b>.</li>
 <li><code>ensureModel</code> compares the stored model hash with the catalog's hash. They match, so the sync uses the current model.</li></ul>`,
-    code: `SELECT * FROM authz_sync_marks WHERE product_id = 'prod_tasks';        -- (org_acme, revision 8)\nSELECT model_id, model_hash FROM authz_stores WHERE product_id = 'prod_tasks';\n-- model_hash = Hash(catalog) → keep model 01JMODEL`,
+    code: `SELECT * FROM authz_sync_marks WHERE product_id = 'prod_tasks';        -- (org_acme, revision 8)\nSELECT model_id, model_hash FROM authz_models WHERE product_id = 'prod_tasks' AND model_version = 'anchor-authz-model-3';\n-- model_hash = Hash(catalog) → keep model 01JMODEL`,
     apply: s => { markRead(s, "marks"); markRead(s, "stores"); s.work = { rev: 8 }; },
   },
   {

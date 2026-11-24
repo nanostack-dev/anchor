@@ -1,10 +1,14 @@
 package service_test
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -14,7 +18,9 @@ import (
 	"anchor/internal/authz/decision"
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/fga"
+	"anchor/internal/authz/fgasync"
 	"anchor/internal/authz/model"
+	authzsource "anchor/internal/authz/source"
 	authzstore "anchor/internal/authz/store"
 )
 
@@ -81,28 +87,113 @@ func TestAuthzDecisions(t *testing.T) {
 		require.NoError(t, group.Wait())
 	})
 
-	t.Run("The first decision after a release that compiles a new model writes it", func(t *testing.T) {
+	t.Run(
+		"The first decision after a release with a new model version writes its own row without touching the previous release",
+		func(t *testing.T) {
+			w := givenSyncWorld(t)
+			externalID, _ := givenMemberWithExternalID(t, w)
+			rebuild(t, w.productID)
+
+			// Move the existing model onto a previous release version so this release
+			// arrives on an already-rebuilt store with no row for model.Version yet.
+			var prevModelID string
+			require.NoError(t, TestDB.QueryRowContext(t.Context(),
+				`UPDATE authz_models SET model_version = 'previous-release', model_hash = 'previous-release-hash'
+			 WHERE product_id = $1 AND model_version = $2 RETURNING model_id`,
+				w.productID, model.Version).Scan(&prevModelID))
+			_, err := TestDB.ExecContext(t.Context(),
+				`UPDATE authz_stores SET model_hash = 'previous-release-hash' WHERE product_id = $1`,
+				w.productID)
+			require.NoError(t, err)
+
+			checker := decision.NewChecker(AuthzStores, AuthzSyncer, applog.Scoped{Logger: TestLogger})
+			evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
+				OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger,
+				applog.Scoped{Logger: TestLogger})
+
+			decided, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
+
+			require.NoError(t, err)
+			assert.True(t, decided.Allowed)
+
+			// Previous release keeps its untouched row, while this release wrote its own.
+			var prevAfter string
+			require.NoError(t, TestDB.QueryRowContext(t.Context(),
+				`SELECT model_id FROM authz_models WHERE product_id = $1 AND model_version = 'previous-release'`,
+				w.productID).Scan(&prevAfter))
+			assert.Equal(t, prevModelID, prevAfter, "previous release's model row must stay untouched")
+
+			current, err := AuthzMarks.RecordedModel(t.Context(), w.productID, model.Version)
+			require.NoError(t, err)
+			assert.NotEmpty(t, current.ID)
+			assert.NotEqual(t, prevModelID, current.ID)
+			assert.NotEqual(t, "previous-release-hash", current.Hash)
+		},
+	)
+
+	t.Run("Alternating decisions across two release model versions write no extra models", func(t *testing.T) {
 		w := givenSyncWorld(t)
 		externalID, _ := givenMemberWithExternalID(t, w)
 		rebuild(t, w.productID)
-		var before string
-		require.NoError(t, TestDB.QueryRowContext(t.Context(),
-			`UPDATE authz_stores SET model_hash = 'previous release' WHERE product_id = $1 RETURNING model_id`,
-			w.productID).Scan(&before))
-		checker := decision.NewChecker(AuthzStores, AuthzSyncer, applog.Scoped{Logger: TestLogger})
-		evaluator := accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
-			OrgAPIKeyService, checker, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger,
-			applog.Scoped{Logger: TestLogger})
 
-		decided, err := evaluator.Evaluate(t.Context(), userRequest(w, externalID))
+		const nextVersion = "anchor-authz-model-next"
+		nextStores := authzstore.NewWithVersion(
+			TestDB, AuthzEngines, TestLogger, applog.Scoped{Logger: TestLogger}, nextVersion,
+		)
+		nextSyncer, err := fgasync.New(fgasync.Deps{
+			Engines:    AuthzEngines,
+			Stores:     nextStores,
+			Repository: AuthzMarks,
+			Locker:     fgasync.NewPostgresLocker(Transactor, nil),
+			Models: versionedModels{
+				base:    authzsource.NewCatalog(authzsource.NewTables(TestDB), ResourceTypeService),
+				version: nextVersion,
+			},
+			Sources: nil,
+			Logger:  TestLogger,
+		})
+		require.NoError(t, err)
 
+		makeEval := func(s authzstore.Stores, r decision.Rebuilder) accessservice.Evaluator {
+			c := decision.NewChecker(s, r, applog.Scoped{Logger: TestLogger})
+			return accessservice.NewEvaluator(ProductUserRepo, MembershipRepo, OrganizationRepo,
+				OrgAPIKeyService, c, ResourceTypeService, ResourceRepo, RoleAssignmentRepo, TestLogger,
+				applog.Scoped{Logger: TestLogger})
+		}
+
+		// First decision on the next release creates its own authz_models row.
+		decided, err := makeEval(nextStores, nextSyncer).Evaluate(t.Context(), userRequest(w, externalID))
 		require.NoError(t, err)
 		assert.True(t, decided.Allowed)
-		var after, hash string
-		require.NoError(t, TestDB.QueryRowContext(t.Context(),
-			`SELECT model_id, model_hash FROM authz_stores WHERE product_id = $1`, w.productID).Scan(&after, &hash))
-		assert.NotEqual(t, before, after, "the store follows a newly written model")
-		assert.NotEqual(t, "previous release", hash)
+
+		storeID, err := AuthzStores.StoreID(t.Context(), w.productID)
+		require.NoError(t, err)
+		beforeResp, err := openFGA(
+			t,
+		).ReadAuthorizationModels(t.Context(), &openfgav1.ReadAuthorizationModelsRequest{StoreId: storeID})
+		require.NoError(t, err)
+		beforeCount := len(beforeResp.GetAuthorizationModels())
+
+		// Alternating fresh checkers (forcing EnsureModel on every call) writes zero new models.
+		for range 3 {
+			d1, evalErr := makeEval(AuthzStores, AuthzSyncer).Evaluate(t.Context(), userRequest(w, externalID))
+			require.NoError(t, evalErr)
+			assert.True(t, d1.Allowed)
+			d2, evalErr := makeEval(nextStores, nextSyncer).Evaluate(t.Context(), userRequest(w, externalID))
+			require.NoError(t, evalErr)
+			assert.True(t, d2.Allowed)
+		}
+
+		afterResp, err := openFGA(
+			t,
+		).ReadAuthorizationModels(t.Context(), &openfgav1.ReadAuthorizationModelsRequest{StoreId: storeID})
+		require.NoError(t, err)
+		assert.Len(
+			t,
+			afterResp.GetAuthorizationModels(),
+			beforeCount,
+			"alternating releases must not write new OpenFGA models",
+		)
 	})
 
 	t.Run("An engine that isn't ready answers 503", func(t *testing.T) {
@@ -192,4 +283,20 @@ func userRequest(w syncWorld, externalID string) accessservice.Request {
 		Resource:  accessservice.Resource{Type: accessservice.ResourceOrganization, ID: w.organizationID},
 		Actions:   []string{w.permission},
 	}
+}
+
+type versionedModels struct {
+	base    fgasync.ModelSource
+	version string
+}
+
+func (v versionedModels) Model(ctx context.Context, productID string) (fgasync.Model, error) {
+	m, err := v.base.Model(ctx, productID)
+	if err != nil {
+		return fgasync.Model{}, err
+	}
+	m.Version = v.version
+	sum := sha256.Sum256([]byte(v.version + "\n" + m.Hash))
+	m.Hash = hex.EncodeToString(sum[:])
+	return m, nil
 }
