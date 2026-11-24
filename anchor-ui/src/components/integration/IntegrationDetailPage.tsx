@@ -49,6 +49,7 @@ interface IntegrationDetailPageProps {
 	auditIsLoadingMore?: boolean;
 	auditLoadMoreErrorMessage?: string | null;
 	auditTotal?: number;
+	breadCrumbLabels?: Record<string, string>;
 }
 const auditTone: Record<
 	NonNullable<IntegrationAuditEntry["severity"]>,
@@ -68,12 +69,17 @@ export function IntegrationDetailPage({
 	auditIsLoadingMore = false,
 	auditLoadMoreErrorMessage = null,
 	auditTotal,
+	breadCrumbLabels,
 }: IntegrationDetailPageProps) {
 	const sortedAuditEntries = [...auditEntries].sort(
 		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
 	);
 	return (
-		<Page title={title} description={description}>
+		<Page
+			title={title}
+			description={description}
+			breadCrumbLabels={breadCrumbLabels}
+		>
 			<Stack space="lg">
 				{backLink}
 				{summary.length > 0 && (

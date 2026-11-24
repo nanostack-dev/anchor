@@ -184,6 +184,9 @@ export default function PlatformIntegrationsPage() {
 		<Page
 			title="Integration Hub"
 			description={`Manage provider connections for ${activeProduct?.name ?? productId}`}
+			breadCrumbLabels={
+				activeProduct ? { [productId]: activeProduct.name } : undefined
+			}
 		>
 			<div className="space-y-6 pb-6">
 				<section className="rounded-2xl border bg-card p-6">

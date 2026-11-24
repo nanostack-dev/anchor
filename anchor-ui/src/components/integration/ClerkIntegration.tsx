@@ -411,6 +411,9 @@ export default function ClerkIntegrationPage() {
 
 	return (
 		<IntegrationDetailPage
+			breadCrumbLabels={
+				activeProduct ? { [productId]: activeProduct.name } : undefined
+			}
 			title="Clerk Authentication"
 			description="Configure webhook security, sync controls, and runtime behavior for Clerk identity events."
 			backLink={

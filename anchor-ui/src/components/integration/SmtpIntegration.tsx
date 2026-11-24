@@ -325,6 +325,9 @@ export default function SmtpIntegrationPage() {
 
 	return (
 		<IntegrationDetailPage
+			breadCrumbLabels={
+				activeProduct ? { [productId]: activeProduct.name } : undefined
+			}
 			title="SMTP Email"
 			description="Configure outbound email through any SMTP provider — Proton Mail, SendGrid, Mailgun, AWS SES, or self-hosted relays."
 			backLink={
