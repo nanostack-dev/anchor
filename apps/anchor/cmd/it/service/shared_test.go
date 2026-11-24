@@ -10,6 +10,7 @@ import (
 	authzengine "anchor/internal/authz/engine"
 	"anchor/internal/authz/fgasync"
 	authzstore "anchor/internal/authz/store"
+	"anchor/internal/integration/provider/clerk"
 	invitationservice "anchor/internal/invitation/service"
 	"anchor/internal/repository"
 	resourcerepository "anchor/internal/resource/repository"
@@ -25,44 +26,48 @@ import (
 )
 
 var (
-	TestLogger             = itshared.TestLogger
-	ServerURL              = itshared.ServerURL
-	Faker                  = itshared.Faker
-	APIKeyService          service.ProductAPIKeyService
-	OrgAPIKeyService       service.OrganizationAPIKeyService
-	APIKeyRepository       repository.ProductAPIKeyRepository
-	OrgAPIKeyRepository    repository.OrganizationAPIKeyRepository
-	OrganizationRepo       repository.OrganizationRepository
-	PermissionRepository   repository.ProductPermissionRepository
-	ResourcePermissionRepo repository.ProductResourcePermissionRepository
-	ProductRepository      repository.ProductRepository
-	TenantRepository       repository.TenantRepository
-	UserRepository         repository.UserRepository
-	Queue                  *queue.Client
-	APIKeyEventSvc         service.OrganizationAPIKeyEventService
-	ProductRoleRepo        repository.ProductRoleRepository
-	ResourceTypeRepo       rtrepository.Repository
-	TestDB                 *sql.DB
-	MembershipService      service.OrganizationMembershipService
-	InvitationService      invitationservice.OrganizationInvitationService
-	OrganizationService    service.OrganizationService
-	ProductRoleService     service.ProductRoleService
-	ProductUserService     service.ProductUserService
-	ResourcePermissionSvc  service.ResourcePermissionService
-	Transactor             transactor.Transactor
-	AuthzStores            authzstore.Stores
-	AuthzEngines           authzengine.Provider
-	AuthzMarks             fgasync.Repository
-	AuthzSyncer            *fgasync.Syncer
-	Evaluator              accessservice.Evaluator
-	ProductUserRepo        repository.ProductUserRepository
-	MembershipRepo         repository.OrganizationMembershipRepository
-	ResourceTypeService    rtservice.Service
-	ResourceService        resourceservice.Service
-	RoleAssignmentService  assignmentservice.Service
-	ResourceRepo           resourcerepository.Repository
-	RoleAssignmentRepo     assignmentrepository.Repository
-	PermissionStartupSync  *service.ProductPermissionStartupSync
+	TestLogger              = itshared.TestLogger
+	ServerURL               = itshared.ServerURL
+	Faker                   = itshared.Faker
+	APIKeyService           service.ProductAPIKeyService
+	OrgAPIKeyService        service.OrganizationAPIKeyService
+	APIKeyRepository        repository.ProductAPIKeyRepository
+	OrgAPIKeyRepository     repository.OrganizationAPIKeyRepository
+	OrganizationRepo        repository.OrganizationRepository
+	PermissionRepository    repository.ProductPermissionRepository
+	ResourcePermissionRepo  repository.ProductResourcePermissionRepository
+	ProductRepository       repository.ProductRepository
+	TenantRepository        repository.TenantRepository
+	UserRepository          repository.UserRepository
+	Queue                   *queue.Client
+	APIKeyEventSvc          service.OrganizationAPIKeyEventService
+	ProductRoleRepo         repository.ProductRoleRepository
+	ResourceTypeRepo        rtrepository.Repository
+	TestDB                  *sql.DB
+	MembershipService       service.OrganizationMembershipService
+	InvitationService       invitationservice.OrganizationInvitationService
+	OrganizationService     service.OrganizationService
+	ProductRoleService      service.ProductRoleService
+	ProductUserService      service.ProductUserService
+	ResourcePermissionSvc   service.ResourcePermissionService
+	Transactor              transactor.Transactor
+	AuthzStores             authzstore.Stores
+	AuthzEngines            authzengine.Provider
+	AuthzMarks              fgasync.Repository
+	AuthzSyncer             *fgasync.Syncer
+	Evaluator               accessservice.Evaluator
+	ProductUserRepo         repository.ProductUserRepository
+	MembershipRepo          repository.OrganizationMembershipRepository
+	ResourceTypeService     rtservice.Service
+	ResourceService         resourceservice.Service
+	RoleAssignmentService   assignmentservice.Service
+	ResourceRepo            resourcerepository.Repository
+	RoleAssignmentRepo      assignmentrepository.Repository
+	PermissionStartupSync   *service.ProductPermissionStartupSync
+	ClerkProvider           *clerk.Provider
+	IntegrationService      service.IntegrationService
+	IntegrationInstanceRepo repository.IntegrationInstanceRepository
+	IntegrationAuditLogRepo repository.IntegrationAuditLogRepository
 )
 
 func TestMain(m *testing.M) {
@@ -106,6 +111,10 @@ func TestMain(m *testing.M) {
 				ProductUserService = c.ProductUserService
 				ResourcePermissionSvc = c.ResourcePermissionService
 				PermissionStartupSync = c.ProductPermissionStartupSync
+				ClerkProvider = c.Provider
+				IntegrationService = c.IntegrationService
+				IntegrationInstanceRepo = c.IntegrationInstanceRepository
+				IntegrationAuditLogRepo = c.IntegrationAuditLogRepository
 			},
 		},
 	)

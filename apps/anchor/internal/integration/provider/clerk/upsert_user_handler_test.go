@@ -3,6 +3,7 @@ package clerk
 
 import (
 	"testing"
+	"time"
 
 	"anchor/internal/domain/product/user"
 
@@ -89,4 +90,33 @@ func TestClerkUpsertStatus(t *testing.T) {
 
 func stored(status user.ProductUserStatus) functional.Option[user.ProductUser] {
 	return functional.Some(user.ProductUser{Status: status})
+}
+
+func TestIsTombstoned(t *testing.T) {
+	t.Parallel()
+
+	deletedAt := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	older := deletedAt.Add(-time.Second)
+	same := deletedAt
+	newer := deletedAt.Add(time.Second)
+
+	assert.True(t, isTombstoned(nil, deletedAt), "missing event timestamp must not bypass tombstone")
+	assert.True(t, isTombstoned(&older, deletedAt))
+	assert.True(t, isTombstoned(&same, deletedAt))
+	assert.False(t, isTombstoned(&newer, deletedAt))
+}
+
+func TestIsStaleEvent(t *testing.T) {
+	t.Parallel()
+
+	syncedAt := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	older := syncedAt.Add(-time.Millisecond)
+	same := syncedAt
+	newer := syncedAt.Add(time.Millisecond)
+
+	assert.False(t, isStaleEvent(nil, &syncedAt))
+	assert.False(t, isStaleEvent(&older, nil))
+	assert.True(t, isStaleEvent(&older, &syncedAt))
+	assert.False(t, isStaleEvent(&same, &syncedAt))
+	assert.False(t, isStaleEvent(&newer, &syncedAt))
 }

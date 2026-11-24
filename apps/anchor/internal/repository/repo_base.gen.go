@@ -5041,6 +5041,38 @@ func (productUsersWhere) ExternalIDIsNull() postgres.BoolExpression {
 	return table.ProductUsers.ExternalID.IS_NULL()
 }
 
+// LastSyncedEventAt is last_synced_event_at = v.
+func (productUsersWhere) LastSyncedEventAt(v time.Time) postgres.BoolExpression {
+	return table.ProductUsers.LastSyncedEventAt.EQ(postgres.TimestampzT(v))
+}
+
+// LastSyncedEventAtIn is last_synced_event_at IN (vs...); no value matches no row.
+func (productUsersWhere) LastSyncedEventAtIn(vs ...time.Time) postgres.BoolExpression {
+	if len(vs) == 0 {
+		return postgres.Bool(false)
+	}
+	exprs := make([]postgres.Expression, len(vs))
+	for i, v := range vs {
+		exprs[i] = postgres.TimestampzT(v)
+	}
+	return table.ProductUsers.LastSyncedEventAt.IN(exprs...)
+}
+
+// LastSyncedEventAtAfter is last_synced_event_at > v.
+func (productUsersWhere) LastSyncedEventAtAfter(v time.Time) postgres.BoolExpression {
+	return table.ProductUsers.LastSyncedEventAt.GT(postgres.TimestampzT(v))
+}
+
+// LastSyncedEventAtBefore is last_synced_event_at < v.
+func (productUsersWhere) LastSyncedEventAtBefore(v time.Time) postgres.BoolExpression {
+	return table.ProductUsers.LastSyncedEventAt.LT(postgres.TimestampzT(v))
+}
+
+// LastSyncedEventAtIsNull is last_synced_event_at IS NULL.
+func (productUsersWhere) LastSyncedEventAtIsNull() postgres.BoolExpression {
+	return table.ProductUsers.LastSyncedEventAt.IS_NULL()
+}
+
 // productsBase is the generated base of table products. It holds the table (t),
 // typed predicates (where), helpers that run in the context transaction and
 // return the model rows, and the pkg/db/transactor functions as methods.

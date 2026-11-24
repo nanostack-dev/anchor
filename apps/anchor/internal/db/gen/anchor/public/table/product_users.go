@@ -12,14 +12,15 @@ type productUsersTable struct {
 	postgres.Table
 
 	// Columns
-	ID         postgres.ColumnString
-	ProductID  postgres.ColumnString
-	Email      postgres.ColumnString
-	Name       postgres.ColumnString
-	Status     postgres.ColumnString
-	CreatedAt  postgres.ColumnTimestampz
-	UpdatedAt  postgres.ColumnTimestampz
-	ExternalID postgres.ColumnString
+	ID                postgres.ColumnString
+	ProductID         postgres.ColumnString
+	Email             postgres.ColumnString
+	Name              postgres.ColumnString
+	Status            postgres.ColumnString
+	CreatedAt         postgres.ColumnTimestampz
+	UpdatedAt         postgres.ColumnTimestampz
+	ExternalID        postgres.ColumnString
+	LastSyncedEventAt postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -61,31 +62,33 @@ func newProductUsersTable(schemaName, tableName, alias string) *ProductUsersTabl
 
 func newProductUsersTableImpl(schemaName, tableName, alias string) productUsersTable {
 	var (
-		IDColumn         = postgres.StringColumn("id")
-		ProductIDColumn  = postgres.StringColumn("product_id")
-		EmailColumn      = postgres.StringColumn("email")
-		NameColumn       = postgres.StringColumn("name")
-		StatusColumn     = postgres.StringColumn("status")
-		CreatedAtColumn  = postgres.TimestampzColumn("created_at")
-		UpdatedAtColumn  = postgres.TimestampzColumn("updated_at")
-		ExternalIDColumn = postgres.StringColumn("external_id")
-		allColumns       = postgres.ColumnList{IDColumn, ProductIDColumn, EmailColumn, NameColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, ExternalIDColumn}
-		mutableColumns   = postgres.ColumnList{ProductIDColumn, EmailColumn, NameColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, ExternalIDColumn}
-		defaultColumns   = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                = postgres.StringColumn("id")
+		ProductIDColumn         = postgres.StringColumn("product_id")
+		EmailColumn             = postgres.StringColumn("email")
+		NameColumn              = postgres.StringColumn("name")
+		StatusColumn            = postgres.StringColumn("status")
+		CreatedAtColumn         = postgres.TimestampzColumn("created_at")
+		UpdatedAtColumn         = postgres.TimestampzColumn("updated_at")
+		ExternalIDColumn        = postgres.StringColumn("external_id")
+		LastSyncedEventAtColumn = postgres.TimestampzColumn("last_synced_event_at")
+		allColumns              = postgres.ColumnList{IDColumn, ProductIDColumn, EmailColumn, NameColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, ExternalIDColumn, LastSyncedEventAtColumn}
+		mutableColumns          = postgres.ColumnList{ProductIDColumn, EmailColumn, NameColumn, StatusColumn, CreatedAtColumn, UpdatedAtColumn, ExternalIDColumn, LastSyncedEventAtColumn}
+		defaultColumns          = postgres.ColumnList{CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return productUsersTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:         IDColumn,
-		ProductID:  ProductIDColumn,
-		Email:      EmailColumn,
-		Name:       NameColumn,
-		Status:     StatusColumn,
-		CreatedAt:  CreatedAtColumn,
-		UpdatedAt:  UpdatedAtColumn,
-		ExternalID: ExternalIDColumn,
+		ID:                IDColumn,
+		ProductID:         ProductIDColumn,
+		Email:             EmailColumn,
+		Name:              NameColumn,
+		Status:            StatusColumn,
+		CreatedAt:         CreatedAtColumn,
+		UpdatedAt:         UpdatedAtColumn,
+		ExternalID:        ExternalIDColumn,
+		LastSyncedEventAt: LastSyncedEventAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
@@ -115,14 +118,15 @@ func (ProductUsersTable) UniqueKeys() map[string][]string {
 // operators a column accepts.
 func (ProductUsersTable) ColumnTypes() map[string]string {
 	return map[string]string{
-		"id":          "varchar",
-		"product_id":  "varchar",
-		"email":       "varchar",
-		"name":        "varchar",
-		"status":      "varchar",
-		"created_at":  "timestamptz",
-		"updated_at":  "timestamptz",
-		"external_id": "varchar",
+		"id":                   "varchar",
+		"product_id":           "varchar",
+		"email":                "varchar",
+		"name":                 "varchar",
+		"status":               "varchar",
+		"created_at":           "timestamptz",
+		"updated_at":           "timestamptz",
+		"external_id":          "varchar",
+		"last_synced_event_at": "timestamptz",
 	}
 }
 
