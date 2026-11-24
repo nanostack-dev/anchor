@@ -109,7 +109,7 @@ export function UsageHistoryChartView({
 							{field}
 						</Text>
 					</Heading>
-					<Text size="xs" tone="muted">
+					<Text size="sm" tone="muted">
 						Each point is the last value reported in its bucket, never a sum or
 						an average.
 					</Text>

@@ -11,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Input } from "@nanostackorg/design-system/components/input";
 import { Label } from "@nanostackorg/design-system/components/label";
 import { Textarea } from "@nanostackorg/design-system/components/textarea";
@@ -19,7 +20,7 @@ import { Box } from "@nanostackorg/design-system/layout/box";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { ArrowLeft, PenLine } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 interface ProductResourcePermissionDetailViewProps {
 	productId: string;
@@ -102,7 +103,6 @@ export function ProductResourcePermissionDetailView({
 			{editing ? (
 				<Box
 					as="form"
-					className="space-y-6 rounded-lg border border-border p-6"
 					onSubmit={(event) => {
 						event.preventDefault();
 						updateMutation.mutate({
@@ -111,95 +111,107 @@ export function ProductResourcePermissionDetailView({
 						});
 					}}
 				>
-					<Box className="space-y-2">
-						<Label htmlFor="permission-name">Name</Label>
-						<Input
-							id="permission-name"
-							value={permission.name}
-							readOnly
-							disabled
-						/>
-						<Box as="p" className="text-sm text-muted-foreground">
-							The permission name cannot be changed.
-						</Box>
-					</Box>
-					<Box className="space-y-2">
-						<Label htmlFor="permission-resource-type">Resource type</Label>
-						<Input
-							id="permission-resource-type"
-							value={scopeName}
-							readOnly
-							disabled
-						/>
-						<Box as="p" className="text-sm text-muted-foreground">
-							A permission's resource type never changes.
-						</Box>
-					</Box>
-					<Box className="space-y-2">
-						<Label htmlFor="permission-description">Description</Label>
-						<Textarea
-							id="permission-description"
-							value={description}
-							onChange={(event) => setDescription(event.target.value)}
-							rows={5}
-						/>
-					</Box>
-					{updateMutation.isError && (
-						<Box as="p" role="alert" className="text-sm text-destructive">
-							{getApiErrorMessage(updateMutation.error) ||
-								"Could not update permission. Try again."}
-						</Box>
-					)}
-					<Box className="flex gap-2">
-						<Button
-							variant="solid"
-							tone="brand"
-							type="submit"
-							disabled={updateMutation.isPending}
-						>
-							{updateMutation.isPending ? "Saving..." : "Save changes"}
-						</Button>
-						<Button type="button" variant="outline" onClick={onCancel}>
-							Cancel
-						</Button>
-					</Box>
+					<Card>
+						<CardContent>
+							<Box className="space-y-6">
+								<Box className="space-y-2">
+									<Label htmlFor="permission-name">Name</Label>
+									<Input
+										id="permission-name"
+										value={permission.name}
+										readOnly
+										disabled
+									/>
+									<Box as="p" className="text-sm text-muted-foreground">
+										The permission name cannot be changed.
+									</Box>
+								</Box>
+								<Box className="space-y-2">
+									<Label htmlFor="permission-resource-type">
+										Resource type
+									</Label>
+									<Input
+										id="permission-resource-type"
+										value={scopeName}
+										readOnly
+										disabled
+									/>
+									<Box as="p" className="text-sm text-muted-foreground">
+										A permission's resource type never changes.
+									</Box>
+								</Box>
+								<Box className="space-y-2">
+									<Label htmlFor="permission-description">Description</Label>
+									<Textarea
+										id="permission-description"
+										value={description}
+										onChange={(event) => setDescription(event.target.value)}
+										rows={5}
+									/>
+								</Box>
+								{updateMutation.isError && (
+									<Box as="p" role="alert" className="text-sm text-destructive">
+										{getApiErrorMessage(updateMutation.error) ||
+											"Could not update permission. Try again."}
+									</Box>
+								)}
+								<Box className="flex gap-2">
+									<Button
+										variant="solid"
+										tone="brand"
+										type="submit"
+										disabled={updateMutation.isPending}
+									>
+										{updateMutation.isPending ? "Saving..." : "Save changes"}
+									</Button>
+									<Button type="button" variant="outline" onClick={onCancel}>
+										Cancel
+									</Button>
+								</Box>
+							</Box>
+						</CardContent>
+					</Card>
 				</Box>
 			) : (
-				<Box
-					as="section"
-					className="rounded-lg border border-border p-6"
-					aria-label="Resource permission details"
-				>
-					<dl className="grid gap-6 sm:grid-cols-2">
-						<div>
-							<dt className="text-sm text-muted-foreground">Name</dt>
-							<dd className="mt-1 font-medium">{permission.name}</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Resource type</dt>
-							<dd className="mt-1 [overflow-wrap:anywhere]">{scopeName}</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Description</dt>
-							<dd className="mt-1">
-								{permission.description || "No description"}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Created</dt>
-							<dd className="mt-1">
-								{dayjs(permission.created_at).format("D MMMM YYYY H:mm")}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Updated</dt>
-							<dd className="mt-1">
-								{dayjs(permission.updated_at).format("D MMMM YYYY H:mm")}
-							</dd>
-						</div>
-					</dl>
+				<Box as="section" aria-label="Resource permission details">
+					<Card>
+						<CardContent>
+							<dl className="grid gap-x-8 gap-y-5 sm:grid-cols-[10rem_1fr]">
+								<DetailRow label="Name">
+									<Box as="span" className="font-medium">
+										{permission.name}
+									</Box>
+								</DetailRow>
+								<DetailRow label="Resource type">{scopeName}</DetailRow>
+								<DetailRow label="Description">
+									{permission.description || "No description"}
+								</DetailRow>
+								<DetailRow label="Created">
+									{dayjs(permission.created_at).format("D MMMM YYYY H:mm")}
+								</DetailRow>
+								<DetailRow label="Updated">
+									{dayjs(permission.updated_at).format("D MMMM YYYY H:mm")}
+								</DetailRow>
+							</dl>
+						</CardContent>
+					</Card>
 				</Box>
 			)}
 		</Page>
+	);
+}
+
+function DetailRow({
+	label,
+	children,
+}: {
+	label: string;
+	children: ReactNode;
+}) {
+	return (
+		<>
+			<dt className="text-sm text-muted-foreground">{label}</dt>
+			<dd className="[overflow-wrap:anywhere]">{children}</dd>
+		</>
 	);
 }

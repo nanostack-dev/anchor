@@ -6,6 +6,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { ConfirmDialog } from "@nanostackorg/design-system/blocks/confirm-dialog";
+import { DataTableFrame } from "@nanostackorg/design-system/blocks/data-table-frame";
 import {
 	Alert,
 	AlertDescription,
@@ -679,23 +680,25 @@ export function ResourceTypesEditor({ productId }: ResourceTypesEditorProps) {
 			)}
 
 			<Box className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<Box
-					ref={canvasFrame}
-					className="h-[26rem] min-w-0 scroll-mt-20 overflow-hidden rounded-2xl border border-border bg-surface-subtle md:h-[32rem] lg:h-[36rem]"
-				>
-					<ResourceTypeCanvas
-						types={types}
-						layout={layout}
-						editing={editing && !locked}
-						selectedKey={state.selected}
-						namingKey={state.naming}
-						entering={state.entering}
-						instant={state.instant}
-						focusRequest={state.focus}
-						actions={actions}
-						trace={editing ? null : trace}
-					/>
-				</Box>
+				<DataTableFrame>
+					<Box
+						ref={canvasFrame}
+						className="h-[26rem] min-w-0 scroll-mt-20 overflow-hidden bg-surface-subtle md:h-[32rem] lg:h-[36rem]"
+					>
+						<ResourceTypeCanvas
+							types={types}
+							layout={layout}
+							editing={editing && !locked}
+							selectedKey={state.selected}
+							namingKey={state.naming}
+							entering={state.entering}
+							instant={state.instant}
+							focusRequest={state.focus}
+							actions={actions}
+							trace={editing ? null : trace}
+						/>
+					</Box>
+				</DataTableFrame>
 				<Stack space="md">
 					<ResourceTypeInspector
 						type={selected}

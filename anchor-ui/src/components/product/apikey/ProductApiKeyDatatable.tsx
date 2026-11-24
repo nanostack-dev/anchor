@@ -131,7 +131,14 @@ export function ProductApiKeyDatatable({
 		() => [
 			columnHelper.accessor("name", {
 				header: () => <span>Name</span>,
-				cell: (info) => info.getValue(),
+				cell: (info) => (
+					<Box
+						as="span"
+						className="block min-w-0 max-w-[16rem] whitespace-normal break-words"
+					>
+						{info.getValue()}
+					</Box>
+				),
 				enableSorting: true,
 			}),
 			columnHelper.accessor("description", {

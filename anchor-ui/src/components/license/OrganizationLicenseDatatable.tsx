@@ -268,8 +268,10 @@ export function OrganizationLicenseDatatable({
 								)}
 								aria-label={`${row.original.organization_name}: ${label}. Open license details`}
 							>
-								<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
-								<span>{label}</span>
+								<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+									<SlidersHorizontal aria-hidden className="size-4 shrink-0" />
+									{label}
+								</span>
 							</TextLink>
 						);
 					}

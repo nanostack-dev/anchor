@@ -12,6 +12,7 @@ import {
 	AlertTitle,
 } from "@nanostackorg/design-system/components/alert";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
 	Field,
 	FieldDescription,
@@ -108,79 +109,89 @@ export function CreateProductResourcePermissionForm({
 					</AlertDescription>
 				</Alert>
 			)}
-			<FieldGroup>
-				<Field invalid={submitted && Boolean(typeError)}>
-					<FieldLabel htmlFor="permission-resource-type">
-						Resource type
-					</FieldLabel>
-					<ResourceTypeSelect
-						id="permission-resource-type"
-						productId={productId}
-						value={resourceType}
-						invalid={submitted && Boolean(typeError)}
-						onChange={(slug) => {
-							if (
-								!name.trim() ||
-								[prefix(resourceType), prefix(chosenType)].includes(name)
-							)
-								setName(prefix(slug));
-							setResourceType(slug);
-						}}
-					/>
-					{submitted && typeError ? (
-						<FieldError>{typeError}</FieldError>
-					) : (
-						<FieldDescription>
-							Roles scoped to this type, or to a type above it, can hold the
-							permission. It never changes after you create it.
-						</FieldDescription>
-					)}
-				</Field>
-				<Field invalid={submitted && Boolean(nameError)}>
-					<FieldLabel htmlFor="permission-name">Name</FieldLabel>
-					<Input
-						id="permission-name"
-						font="mono"
-						value={name}
-						maxLength={220}
-						placeholder="document:view"
-						aria-invalid={(submitted && Boolean(nameError)) || undefined}
-						onChange={(event) => setName(event.target.value)}
-					/>
-					{submitted && nameError ? (
-						<FieldError>{nameError}</FieldError>
-					) : (
-						<FieldDescription>
-							Unique in the product. A type:action form reads well, but any name
-							works.
-						</FieldDescription>
-					)}
-				</Field>
-				<Field invalid={Boolean(descriptionError)}>
-					<FieldLabel htmlFor="permission-description">Description</FieldLabel>
-					<Textarea
-						id="permission-description"
-						value={description}
-						rows={3}
-						onChange={(event) => setDescription(event.target.value)}
-					/>
-					{descriptionError && <FieldError>{descriptionError}</FieldError>}
-				</Field>
-			</FieldGroup>
-			<Inline space="sm">
-				<Button
-					type="submit"
-					variant="solid"
-					tone="brand"
-					loading={create.isPending}
-					disabled={!resourceType || !name.trim()}
-				>
-					Create permission
-				</Button>
-				<Button type="button" variant="outline" onClick={onCancel}>
-					Cancel
-				</Button>
-			</Inline>
+			<Card>
+				<CardContent>
+					<Stack space="lg">
+						<FieldGroup>
+							<Field invalid={submitted && Boolean(typeError)}>
+								<FieldLabel htmlFor="permission-resource-type">
+									Resource type
+								</FieldLabel>
+								<ResourceTypeSelect
+									id="permission-resource-type"
+									productId={productId}
+									value={resourceType}
+									invalid={submitted && Boolean(typeError)}
+									onChange={(slug) => {
+										if (
+											!name.trim() ||
+											[prefix(resourceType), prefix(chosenType)].includes(name)
+										)
+											setName(prefix(slug));
+										setResourceType(slug);
+									}}
+								/>
+								{submitted && typeError ? (
+									<FieldError>{typeError}</FieldError>
+								) : (
+									<FieldDescription>
+										Roles scoped to this type, or to a type above it, can hold
+										the permission. It never changes after you create it.
+									</FieldDescription>
+								)}
+							</Field>
+							<Field invalid={submitted && Boolean(nameError)}>
+								<FieldLabel htmlFor="permission-name">Name</FieldLabel>
+								<Input
+									id="permission-name"
+									font="mono"
+									value={name}
+									maxLength={220}
+									placeholder="document:view"
+									aria-invalid={(submitted && Boolean(nameError)) || undefined}
+									onChange={(event) => setName(event.target.value)}
+								/>
+								{submitted && nameError ? (
+									<FieldError>{nameError}</FieldError>
+								) : (
+									<FieldDescription>
+										Unique in the product. A type:action form reads well, but
+										any name works.
+									</FieldDescription>
+								)}
+							</Field>
+							<Field invalid={Boolean(descriptionError)}>
+								<FieldLabel htmlFor="permission-description">
+									Description
+								</FieldLabel>
+								<Textarea
+									id="permission-description"
+									value={description}
+									rows={3}
+									onChange={(event) => setDescription(event.target.value)}
+								/>
+								{descriptionError && (
+									<FieldError>{descriptionError}</FieldError>
+								)}
+							</Field>
+						</FieldGroup>
+						<Inline space="sm">
+							<Button
+								type="submit"
+								variant="solid"
+								tone="brand"
+								loading={create.isPending}
+								disabled={!resourceType || !name.trim()}
+							>
+								Create permission
+							</Button>
+							<Button type="button" variant="outline" onClick={onCancel}>
+								Cancel
+							</Button>
+						</Inline>
+					</Stack>
+				</CardContent>
+			</Card>
 		</Stack>
 	);
 }

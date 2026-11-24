@@ -137,7 +137,7 @@ function ZoomControls() {
 	const flow = useReactFlow();
 	return (
 		<Panel position="bottom-left">
-			<div className="nodrag nopan flex gap-1 rounded-xl border border-border bg-card p-1 shadow-xs">
+			<div className="nodrag nopan flex gap-1 rounded-xl border border-border bg-card p-1">
 				<IconButton
 					icon={MagnifyingGlassPlusIcon}
 					label="Zoom in"

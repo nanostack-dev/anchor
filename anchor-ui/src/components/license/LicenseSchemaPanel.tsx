@@ -2,6 +2,7 @@ import { getLicenseSchema } from "@/client";
 import { getLicenseSchemaQueryKey } from "@/client/@tanstack/react-query.gen";
 import { getErrorDetail } from "@/lib/api-error";
 import { isHttpQueryError, unwrapQuery } from "@/lib/http-query-error";
+import { DataTableFrame } from "@nanostackorg/design-system/blocks/data-table-frame";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
@@ -118,7 +119,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 
 	return (
 		<Stack space="lg">
-			<Spread space="lg" alignY="start">
+			<Spread space="lg" alignY="center">
 				<Box as="p" className="max-w-2xl text-sm text-muted-foreground">
 					{schema.description || "No description."}
 				</Box>
@@ -134,7 +135,7 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 				/>
 			</Spread>
 
-			<Box className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			<DataTableFrame aria-label="License schema fields">
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -155,13 +156,15 @@ export function LicenseSchemaPanel({ productId }: LicenseSchemaPanelProps) {
 								</TableCell>
 								<TableCell tone="muted">{field.description || "—"}</TableCell>
 								<TableCell tone="muted">
-									{summarizeRules(field.type, field.rules)}
+									<Box className="min-w-48 whitespace-normal">
+										{summarizeRules(field.type, field.rules)}
+									</Box>
 								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>
 				</Table>
-			</Box>
+			</DataTableFrame>
 		</Stack>
 	);
 }

@@ -24,6 +24,7 @@ export function OrganizationLicenseTabs({
 					key={tab.segment}
 					href={`${ROUTE_PATHS.ORGANIZATION_LICENSE_DETAIL.replace("$organizationId", encodeURIComponent(organizationId))}/${tab.segment}`}
 					variant={activeSegment === tab.segment ? "soft" : "ghost"}
+					size="sm"
 					tone={activeSegment === tab.segment ? "brand" : "neutral"}
 					aria-current={activeSegment === tab.segment ? "page" : undefined}
 				>

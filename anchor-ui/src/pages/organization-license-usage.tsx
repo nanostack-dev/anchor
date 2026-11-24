@@ -1,3 +1,4 @@
+import { LicenseSectionIntro } from "@/components/license/LicenseSectionIntro";
 import { OrganizationLicenseLimits } from "@/components/license/OrganizationLicenseLimits";
 import { UsageHistoryChart } from "@/components/license/UsageHistoryChart";
 import { useOrganizationLicenseQuery } from "@/components/license/use-organization-license";
@@ -6,7 +7,6 @@ import {
 	organizationLicenseDetailRoute,
 	organizationLicenseUsageRoute,
 } from "@/routes/organizations/organization-license.$organizationId";
-import { Text } from "@nanostackorg/design-system/components/text";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -31,11 +31,11 @@ export default function OrganizationLicenseUsagePage() {
 	return (
 		<Stack space="xl">
 			<Stack space="md" as="section">
-				<Text size="xs" tone="muted">
+				<LicenseSectionIntro>
 					Latest reported usage against what this organization is allowed.
 					Anchor records usage past a limit and never blocks on it. Select a
 					limit to see its history.
-				</Text>
+				</LicenseSectionIntro>
 				<OrganizationLicenseLimits
 					usage={usage}
 					adjustedFields={license.adjusted_fields}

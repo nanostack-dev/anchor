@@ -11,14 +11,6 @@ import { AnchorLogo } from "../brand/AnchorLogo";
 export function AnchorAnimatedBackdrop({ children }: { children?: ReactNode }) {
 	return (
 		<Box className="absolute inset-0 overflow-hidden bg-surface-subtle">
-			<Box
-				aria-hidden
-				className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-primary/8 blur-3xl"
-			/>
-			<Box
-				aria-hidden
-				className="pointer-events-none absolute -bottom-24 -left-24 size-96 rounded-full bg-info/8 blur-3xl"
-			/>
 			{children}
 		</Box>
 	);
@@ -50,9 +42,9 @@ export function LoginAnimationPanel() {
 						</Text>
 					</Stack>
 					<Inline space="sm" align="center">
-						<Badge>Identity</Badge>
-						<Badge>RBAC</Badge>
-						<Badge>Multi-tenancy</Badge>
+						<Badge variant="outline">Identity</Badge>
+						<Badge variant="outline">RBAC</Badge>
+						<Badge variant="outline">Multi-tenancy</Badge>
 					</Inline>
 				</Stack>
 			</Box>

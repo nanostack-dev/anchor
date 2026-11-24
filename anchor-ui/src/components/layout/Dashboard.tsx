@@ -30,6 +30,7 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@nanostackorg/design-system/components/empty";
+import { Heading } from "@nanostackorg/design-system/components/heading";
 import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import { TextLink } from "@nanostackorg/design-system/components/text-link";
 import { useQuery } from "@tanstack/react-query";
@@ -71,7 +72,7 @@ function StatCard({ stat }: { stat: Stat; index: number }) {
 		<Link
 			to={to}
 			aria-label={`${label}: view all`}
-			className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+			className="block rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
 		>
 			<SharedStatCard variant="outline">
 				<Icon aria-hidden className="size-5 text-muted-foreground" />
@@ -89,14 +90,7 @@ function StatCard({ stat }: { stat: Stat; index: number }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-	return (
-		<div className="flex items-center gap-3">
-			<h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-				{children}
-			</h2>
-			<span aria-hidden className="h-px flex-1 bg-border" />
-		</div>
-	);
+	return <Heading level={2}>{children}</Heading>;
 }
 
 function ResourceList({

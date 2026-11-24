@@ -12,7 +12,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@nanostackorg/design-system/components/popover";
-import { Check, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 // FacetedFilter.tsx
 import * as React from "react";
 
@@ -85,6 +85,7 @@ export function FacetedFilter({
 								.map((v) => options.find((opt) => opt.value === v)?.label || v)
 								.join(", ")}`
 						: `${label}`}
+					<ChevronDown aria-hidden />
 				</PopoverTrigger>
 				<PopoverContent aria-label={`${label} filter`}>
 					<Command>

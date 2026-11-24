@@ -1,12 +1,12 @@
+import { Inline, Stack, Text } from "@nanostackorg/design-system";
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
-	Heading,
-	Inline,
-	Label,
-	Stack,
-	Text,
-} from "@nanostackorg/design-system";
+	Field,
+	FieldLabel,
+} from "@nanostackorg/design-system/components/field";
+import { BuildingsIcon, KeyIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, KeyRound } from "lucide-react";
 import { useState } from "react";
 
 import { searchProductOrganizationsOptions } from "@/client/@tanstack/react-query.gen";
@@ -53,53 +53,67 @@ export default function OrganizationApiKeysPage() {
 			description="View API keys issued across organizations in the selected product."
 		>
 			<Stack space="lg">
-				<Stack space="lg">
-					<Label htmlFor="organization-api-key-org-select">Organization</Label>
-					<Select
-						items={organizations.map((organization) => ({
-							value: organization.id,
-							label: organization.name,
-						}))}
-						value={selectedOrgId ?? null}
-						onValueChange={(value) => setSelectedOrgId(value ?? "")}
-						disabled={isLoading || organizations.length === 0}
-					>
-						<SelectTrigger id="organization-api-key-org-select" width="fill">
-							<SelectValue
-								placeholder={
-									isLoading
-										? "Loading organizations..."
-										: organizations.length === 0
-											? "No organizations found"
-											: "Select an organization..."
-								}
-							/>
-						</SelectTrigger>
-						<SelectContent aria-label="Organization options">
-							{organizations.map((organization) => (
-								<SelectItem key={organization.id} value={organization.id}>
-									<Inline space="xs">
-										<Building2 />
-										<span>{organization.name}</span>
-									</Inline>
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Stack>
+				<Card>
+					<CardContent>
+						<Stack space="lg">
+							<Field>
+								<FieldLabel htmlFor="organization-api-key-org-select">
+									Organization
+								</FieldLabel>
+								<Inline>
+									<Select
+										items={organizations.map((organization) => ({
+											value: organization.id,
+											label: organization.name,
+										}))}
+										value={selectedOrgId ?? null}
+										onValueChange={(value) => setSelectedOrgId(value ?? "")}
+										disabled={isLoading || organizations.length === 0}
+									>
+										<SelectTrigger
+											id="organization-api-key-org-select"
+											width="auto"
+										>
+											<SelectValue
+												placeholder={
+													isLoading
+														? "Loading organizations..."
+														: organizations.length === 0
+															? "No organizations found"
+															: "Select an organization..."
+												}
+											/>
+										</SelectTrigger>
+										<SelectContent aria-label="Organization options">
+											{organizations.map((organization) => (
+												<SelectItem
+													key={organization.id}
+													value={organization.id}
+												>
+													<Inline space="xs">
+														<BuildingsIcon />
+														<span>{organization.name}</span>
+													</Inline>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</Inline>
+							</Field>
+							{selectedOrgId ? null : (
+								<EmptyState
+									icon={KeyIcon}
+									title="No Organization Selected"
+									description="Select an organization to review its API keys and granted Anchor permissions."
+								/>
+							)}
+						</Stack>
+					</CardContent>
+				</Card>
 
 				{selectedOrgId ? (
 					<OrganizationApiKeyDatatable organizationId={selectedOrgId} />
-				) : (
-					<Stack space="lg" align="center">
-						<KeyRound />
-						<Heading level={3}>No Organization Selected</Heading>
-						<Text tone="muted">
-							Select an organization to review its API keys and granted Anchor
-							permissions.
-						</Text>
-					</Stack>
-				)}
+				) : null}
 			</Stack>
 		</Page>
 	);

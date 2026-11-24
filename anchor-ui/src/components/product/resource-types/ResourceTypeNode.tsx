@@ -179,7 +179,7 @@ export function ResourceTypeNode({ data }: NodeProps<ResourceTypeFlowNode>) {
 				onDoubleClick={() => {
 					if (editing && !type.builtIn) actions.startRename(type.key);
 				}}
-				className="resource-type-card flex h-full w-full cursor-pointer flex-col justify-center gap-1 rounded-xl border border-border bg-card px-3 shadow-xs outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/30 data-[selected=true]:border-primary data-[selected=true]:ring-2 data-[selected=true]:ring-primary/20 data-[trace=path]:border-primary data-[trace=path]:bg-accent data-[trace=granted]:border-success data-[trace=granted]:ring-2 data-[trace=granted]:ring-success/25"
+				className="resource-type-card flex h-full w-full cursor-pointer flex-col justify-center gap-1 rounded-xl border border-border bg-card px-3 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/30 data-[selected=true]:border-primary data-[selected=true]:ring-2 data-[selected=true]:ring-primary/20 data-[trace=path]:border-primary data-[trace=path]:bg-accent data-[trace=granted]:border-success data-[trace=granted]:ring-2 data-[trace=granted]:ring-success/25"
 			>
 				<div className="flex min-w-0 items-center gap-1.5">
 					{type.builtIn && (

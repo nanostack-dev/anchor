@@ -104,7 +104,10 @@ export function ProductUserDatatable() {
 			columnHelper.accessor("email", {
 				header: () => <span>Email</span>,
 				cell: (info) => (
-					<Box as="span" className="text-sm font-medium">
+					<Box
+						as="span"
+						className="block min-w-0 max-w-[18rem] text-sm font-medium break-all"
+					>
 						{info.getValue()}
 					</Box>
 				),

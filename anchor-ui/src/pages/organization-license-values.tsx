@@ -5,6 +5,7 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { FormAlert } from "@/components/common/FormAlert";
 import { LicenseAdjustmentBar } from "@/components/license/LicenseAdjustmentBar";
+import { LicenseSectionIntro } from "@/components/license/LicenseSectionIntro";
 import { LicenseValueFields } from "@/components/license/LicenseValueFields";
 import {
 	formatFieldValue,
@@ -192,11 +193,11 @@ export default function OrganizationLicenseValuesPage() {
 
 	return (
 		<Stack space="md">
-			<Text size="xs" tone="muted">
+			<LicenseSectionIntro>
 				Every field this product declares, and what this organization holds for
 				it. Change one to adjust this customer alone — the tier is untouched,
 				and so is which tier the license says it came from.
-			</Text>
+			</LicenseSectionIntro>
 
 			<LicenseValueFields
 				fields={fields}

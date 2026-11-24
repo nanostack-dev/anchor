@@ -376,7 +376,10 @@ export function ProductEventsForm({
 												events occur.
 											</CardDescription>
 										</Box>
-										<Badge variant={isEndpointConfigured ? "outline" : "soft"}>
+										<Badge
+											variant="soft"
+											tone={isEndpointConfigured ? "success" : "neutral"}
+										>
 											{isEndpointConfigured ? "Configured" : "Unset"}
 										</Badge>
 									</Box>
@@ -539,7 +542,7 @@ export function ProductEventsForm({
 													/>
 												</InputGroup>
 											</Box>
-											<Box className="inline-flex rounded-xl border border-border/50 bg-muted/50 p-1 shadow-2xs backdrop-blur-xs">
+											<Box className="inline-flex rounded-xl bg-muted p-1">
 												<button
 													type="button"
 													onClick={() => setFilterType("all")}
@@ -617,7 +620,7 @@ export function ProductEventsForm({
 												</Box>
 											</Box>
 										) : (
-											<Box className="space-y-4">
+											<Box className="space-y-6">
 												{filteredGroups.map((group) => {
 													const groupTypes = group.events.map((e) => e.type);
 													const selectedInGroup = groupTypes.filter((t) =>
@@ -630,9 +633,9 @@ export function ProductEventsForm({
 													return (
 														<Box
 															key={`${group.type}:${group.name}`}
-															className="overflow-hidden rounded-2xl border border-border/50 bg-card/60 shadow-2xs transition-all duration-200 hover:border-border/80"
+															className="overflow-hidden"
 														>
-															<Box className="flex items-center justify-between border-b border-border/40 bg-muted/20 px-4 py-2.5">
+															<Box className="flex items-center justify-between border-b px-1 py-2">
 																<Box className="flex items-center gap-2">
 																	{getGroupIcon(group.name, group.type)}
 																	<Box
@@ -662,7 +665,7 @@ export function ProductEventsForm({
 																	</Button>
 																</Box>
 															</Box>
-															<Box className="divide-y divide-border/30">
+															<Box className="divide-y">
 																{group.events.map((event) => {
 																	const isSelected = selectedEvents.includes(
 																		event.type,
@@ -691,7 +694,7 @@ export function ProductEventsForm({
 																					>
 																						{event.name}
 																					</Box>
-																					<code className="rounded-md border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+																					<code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
 																						{event.type}
 																					</code>
 																				</Box>
@@ -714,95 +717,102 @@ export function ProductEventsForm({
 									</Box>
 								</CardContent>
 							</Card>
-							<Box className="sticky bottom-4 z-20 flex items-center justify-between rounded-2xl border border-border/70 bg-card/85 p-4 shadow-xl backdrop-blur-xl">
-								<Box className="text-xs">
-									<form.Subscribe selector={(state) => [state.isDirty]}>
-										{([isDirty]) =>
-											isDirty ? (
-												<Box
-													as="span"
-													className="inline-flex items-center gap-2 font-medium text-warning-on-tint"
+							<Box className="sticky bottom-4 z-20">
+								<Card size="sm">
+									<CardContent>
+										<Box className="flex items-center justify-between">
+											<Box className="text-xs">
+												<form.Subscribe selector={(state) => [state.isDirty]}>
+													{([isDirty]) =>
+														isDirty ? (
+															<Box
+																as="span"
+																className="inline-flex items-center gap-2 font-medium text-warning-on-tint"
+															>
+																<Box
+																	as="span"
+																	className="size-2 animate-pulse rounded-full bg-warning"
+																/>
+																Unsaved changes
+															</Box>
+														) : (
+															<Box
+																as="span"
+																className="inline-flex items-center gap-2 text-muted-foreground"
+															>
+																<CheckCircle2 className="size-3.5 text-success" />
+																Endpoint and subscriptions saved
+															</Box>
+														)
+													}
+												</form.Subscribe>
+											</Box>
+											<Box className="flex items-center gap-2.5">
+												<form.Subscribe selector={(state) => [state.isDirty]}>
+													{([isDirty]) => (
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															disabled={!isDirty || updateMutation.isPending}
+															onClick={handleReset}
+														>
+															<RotateCcw className="mr-1.5 size-3.5" />
+															Discard
+														</Button>
+													)}
+												</form.Subscribe>
+												<form.Subscribe
+													selector={(state) =>
+														[
+															state.canSubmit,
+															state.isSubmitting,
+															state.isDirty,
+															state.isValidating,
+															state.isValid,
+															state.values.eventsEndpointUrl,
+														] as const
+													}
 												>
-													<Box
-														as="span"
-														className="size-2 animate-pulse rounded-full bg-warning"
-													/>
-													Unsaved changes
-												</Box>
-											) : (
-												<Box
-													as="span"
-													className="inline-flex items-center gap-2 text-muted-foreground"
-												>
-													<CheckCircle2 className="size-3.5 text-success" />
-													Endpoint and subscriptions saved
-												</Box>
-											)
-										}
-									</form.Subscribe>
-								</Box>
-								<Box className="flex items-center gap-2.5">
-									<form.Subscribe selector={(state) => [state.isDirty]}>
-										{([isDirty]) => (
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												disabled={!isDirty || updateMutation.isPending}
-												onClick={handleReset}
-											>
-												<RotateCcw className="mr-1.5 size-3.5" />
-												Discard
-											</Button>
-										)}
-									</form.Subscribe>
-									<form.Subscribe
-										selector={(state) =>
-											[
-												state.canSubmit,
-												state.isSubmitting,
-												state.isDirty,
-												state.isValidating,
-												state.isValid,
-												state.values.eventsEndpointUrl,
-											] as const
-										}
-									>
-										{([
-											canSubmit,
-											isSubmitting,
-											isDirty,
-											isValidating,
-											isValid,
-											endpointUrl,
-										]) => (
-											<Button
-												variant="solid"
-												tone="brand"
-												type="submit"
-												size="sm"
-												disabled={
-													!canSubmit ||
-													isSubmitting ||
-													!isValid ||
-													isValidating ||
-													!isDirty ||
-													(Boolean(endpointUrl.trim()) && !catalogQuery.data) ||
-													updateMutation.isPending
-												}
-											>
-												{updateMutation.isPending || isSubmitting ? (
-													<>
-														<Spinner data-icon="inline-start" />
-														Saving...
-													</>
-												) : (
-													"Save endpoint"
-												)}
-											</Button>
-										)}
-									</form.Subscribe>
-								</Box>
+													{([
+														canSubmit,
+														isSubmitting,
+														isDirty,
+														isValidating,
+														isValid,
+														endpointUrl,
+													]) => (
+														<Button
+															variant="solid"
+															tone="brand"
+															type="submit"
+															size="sm"
+															disabled={
+																!canSubmit ||
+																isSubmitting ||
+																!isValid ||
+																isValidating ||
+																!isDirty ||
+																(Boolean(endpointUrl.trim()) &&
+																	!catalogQuery.data) ||
+																updateMutation.isPending
+															}
+														>
+															{updateMutation.isPending || isSubmitting ? (
+																<>
+																	<Spinner data-icon="inline-start" />
+																	Saving...
+																</>
+															) : (
+																"Save endpoint"
+															)}
+														</Button>
+													)}
+												</form.Subscribe>
+											</Box>
+										</Box>
+									</CardContent>
+								</Card>
 							</Box>
 						</Box>
 					);

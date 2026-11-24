@@ -527,29 +527,31 @@ export function AnchorDataTable<
 						</Box>
 					)}
 					{children}
-					<DropdownMenu>
-						<DropdownMenuTrigger render={<Button variant="outline" />}>
-							Columns <ChevronDown />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							{table
-								.getAllLeafColumns()
-								.filter((column) => column.getCanHide())
-								.map((column) => (
-									<DropdownMenuCheckboxItem
-										key={column.id}
-										checked={column.getIsVisible()}
-										onCheckedChange={(value) =>
-											column.toggleVisibility(!!value)
-										}
-									>
-										{column.id}
-									</DropdownMenuCheckboxItem>
-								))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+					{renderFilters()}
+					<Box className="ml-auto">
+						<DropdownMenu>
+							<DropdownMenuTrigger render={<Button variant="outline" />}>
+								Columns <ChevronDown />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								{table
+									.getAllLeafColumns()
+									.filter((column) => column.getCanHide())
+									.map((column) => (
+										<DropdownMenuCheckboxItem
+											key={column.id}
+											checked={column.getIsVisible()}
+											onCheckedChange={(value) =>
+												column.toggleVisibility(!!value)
+											}
+										>
+											{column.id}
+										</DropdownMenuCheckboxItem>
+									))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</Box>
 				</Box>
-				{renderFilters()}
 				{bulkActionsEnabled && bulkActions && getRowId && (
 					<BulkActions
 						actions={bulkActions}
@@ -742,13 +744,18 @@ export function AnchorDataTable<
 					</TableBody>
 				</Table>
 			</Box>
-			<Box className="flex flex-wrap items-center justify-end gap-2 p-4">
-				{enableRowSelection && (
-					<Box className="basis-full text-sm text-muted-foreground sm:basis-auto sm:flex-1">
-						{table.getSelectedRowModel().rows.length} of{" "}
-						{table.getFilteredRowModel().rows.length} row(s) selected.
-					</Box>
-				)}
+			<Box className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
+				<Box className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+					<span className="whitespace-nowrap tabular-nums">
+						{showErrorState ? "" : `${total} total`}
+					</span>
+					{enableRowSelection && (
+						<span className="tabular-nums">
+							{table.getSelectedRowModel().rows.length} of{" "}
+							{table.getFilteredRowModel().rows.length} row(s) selected.
+						</span>
+					)}
+				</Box>
 				<Box className="flex gap-2">
 					<Button
 						variant="outline"
@@ -792,9 +799,6 @@ export function AnchorDataTable<
 						))}
 					</SelectContent>
 				</Select>
-				<span className="ml-auto whitespace-nowrap text-sm text-muted-foreground">
-					{showErrorState ? "" : `${total} total`}
-				</span>
 			</Box>
 		</DataTableFrame>
 	);

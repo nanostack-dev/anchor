@@ -28,9 +28,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTE_PATHS } from "@/routes/routePaths";
 import { CopyButton } from "@nanostackorg/design-system/blocks/copy-button";
 import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@nanostackorg/design-system/components/alert";
+import {
 	Button,
 	IconButton,
 } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Checkbox } from "@nanostackorg/design-system/components/checkbox";
 import {
 	Dialog,
@@ -453,99 +459,96 @@ function VariableEditor({
 	return (
 		<Stack space="sm">
 			{variables.map((v, i) => (
-				<Box
-					key={variableKeysRef.current[i]}
-					className="rounded-lg border border-border bg-card"
-				>
-					{/* Main row */}
-					<Box className="flex items-center gap-2 p-2">
-						<Input
-							aria-label={`Variable name ${i + 1}`}
-							font="mono"
-							size="sm"
-							placeholder="variable_name"
-							value={v.name}
-							onChange={(e) => update(i, { name: e.target.value })}
-						/>
-						<TypeSelect
-							label={`Type for variable ${v.name || i + 1}`}
-							value={v.type}
-							options={VARIABLE_TYPES}
-							onChange={(t) => update(i, { type: t })}
-						/>
-						<Label>
-							<Checkbox
-								checked={v.required ?? false}
-								onCheckedChange={(checked) => update(i, { required: checked })}
+				<Card key={variableKeysRef.current[i]} size="sm">
+					<CardContent>
+						{/* Main row */}
+						<Box className="flex items-center gap-2">
+							<Input
+								aria-label={`Variable name ${i + 1}`}
+								font="mono"
+								size="sm"
+								placeholder="variable_name"
+								value={v.name}
+								onChange={(e) => update(i, { name: e.target.value })}
 							/>
-							Req
-						</Label>
-						<IconButton
-							variant="ghost"
-							tone="critical"
-							size="sm"
-							type="button"
-							icon={Trash2}
-							label={`Remove variable ${v.name || i + 1}`}
-							onClick={() => remove(i)}
-						/>
-					</Box>
-
-					{/* LIST sub-schema */}
-					{v.type === EmailVariableType.LIST && (
-						<Box className="border-t border-border px-3 py-2.5 flex flex-col gap-2 bg-muted/30 rounded-b-lg">
-							<Inline space="sm" wrap={false}>
-								<Text as="span" size="xs" tone="muted">
-									Each item is
-								</Text>
-								<TypeSelect
-									label={`Item type for variable ${v.name || i + 1}`}
-									value={v.items?.type ?? EmailVariableType.STRING}
-									options={LIST_ITEM_TYPES}
-									onChange={(t) =>
-										updateItems(i, {
-											type: t,
-											properties:
-												t === EmailVariableType.OBJECT
-													? (v.items?.properties ?? [])
-													: undefined,
-										})
+							<TypeSelect
+								label={`Type for variable ${v.name || i + 1}`}
+								value={v.type}
+								options={VARIABLE_TYPES}
+								onChange={(t) => update(i, { type: t })}
+							/>
+							<Label>
+								<Checkbox
+									checked={v.required ?? false}
+									onCheckedChange={(checked) =>
+										update(i, { required: checked })
 									}
 								/>
-							</Inline>
-							{v.items?.type === EmailVariableType.OBJECT && (
-								<Box className="pl-3 border-l-2 border-border">
-									<Box
-										as="p"
-										className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5"
-									>
-										Object fields
-									</Box>
-									<PropertyListEditor
-										properties={v.items.properties ?? []}
-										onChange={(props) => updateItems(i, { properties: props })}
-									/>
-								</Box>
-							)}
-						</Box>
-					)}
-
-					{/* OBJECT sub-schema */}
-					{v.type === EmailVariableType.OBJECT && (
-						<Box className="border-t border-border px-3 py-2.5 flex flex-col gap-1.5 bg-muted/30 rounded-b-lg">
-							<Box
-								as="p"
-								className="text-[10px] text-muted-foreground uppercase tracking-wider"
-							>
-								Properties
-							</Box>
-							<PropertyListEditor
-								properties={v.properties ?? []}
-								onChange={(props) => update(i, { properties: props })}
+								Req
+							</Label>
+							<IconButton
+								variant="ghost"
+								tone="critical"
+								size="sm"
+								type="button"
+								icon={Trash2}
+								label={`Remove variable ${v.name || i + 1}`}
+								onClick={() => remove(i)}
 							/>
 						</Box>
-					)}
-				</Box>
+
+						{/* LIST sub-schema */}
+						{v.type === EmailVariableType.LIST && (
+							<Box className="pt-3 flex flex-col gap-2">
+								<Inline space="sm" wrap={false}>
+									<Text as="span" size="xs" tone="muted">
+										Each item is
+									</Text>
+									<TypeSelect
+										label={`Item type for variable ${v.name || i + 1}`}
+										value={v.items?.type ?? EmailVariableType.STRING}
+										options={LIST_ITEM_TYPES}
+										onChange={(t) =>
+											updateItems(i, {
+												type: t,
+												properties:
+													t === EmailVariableType.OBJECT
+														? (v.items?.properties ?? [])
+														: undefined,
+											})
+										}
+									/>
+								</Inline>
+								{v.items?.type === EmailVariableType.OBJECT && (
+									<Box className="pl-3 border-l-2 border-border">
+										<Text as="p" size="xs" tone="muted" weight="medium">
+											Object fields
+										</Text>
+										<PropertyListEditor
+											properties={v.items.properties ?? []}
+											onChange={(props) =>
+												updateItems(i, { properties: props })
+											}
+										/>
+									</Box>
+								)}
+							</Box>
+						)}
+
+						{/* OBJECT sub-schema */}
+						{v.type === EmailVariableType.OBJECT && (
+							<Box className="pt-3 flex flex-col gap-1.5">
+								<Text as="p" size="xs" tone="muted" weight="medium">
+									Properties
+								</Text>
+								<PropertyListEditor
+									properties={v.properties ?? []}
+									onChange={(props) => update(i, { properties: props })}
+								/>
+							</Box>
+						)}
+					</CardContent>
+				</Card>
 			))}
 			<Button variant="outline" size="sm" onClick={add}>
 				+ Add Variable
@@ -638,23 +641,20 @@ function ListObjectInput({
 			<Box className="rounded-md border border-border overflow-hidden">
 				{/* Header */}
 				<Box
-					className="grid bg-muted/60 border-b border-border"
+					className="grid border-b border-border"
 					style={{
 						gridTemplateColumns: `repeat(${properties.length}, minmax(0, 1fr)) 32px`,
 					}}
 				>
 					{properties.map((p) => (
-						<Box
-							key={p.name}
-							className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate"
-						>
-							{p.name}
-							<Box
-								as="span"
-								className="ml-1 text-muted-foreground/50 normal-case tracking-normal"
-							>
+						<Box key={p.name} className="px-2 py-1 truncate">
+							<Text as="span" size="xs" tone="muted" weight="medium">
+								{p.name}
+							</Text>
+							<Text as="span" size="xs" tone="muted">
+								{" "}
 								{p.type.toLowerCase()}
-							</Box>
+							</Text>
 						</Box>
 					))}
 					<div />
@@ -755,7 +755,7 @@ function ObjectInput({
 					className={`grid items-center ${i < properties.length - 1 ? "border-b border-border" : ""}`}
 					style={{ gridTemplateColumns: "120px 1fr" }}
 				>
-					<Box className="px-2 py-1.5 bg-muted/40 border-r border-border">
+					<Box className="px-2 py-1.5 border-r border-border">
 						<Text as="span" size="xs" tone="muted" font="mono">
 							{p.name}
 						</Text>
@@ -1057,8 +1057,11 @@ function ExampleManager({
 			</Spread>
 
 			{!hydrated || examples.length === 0 ? (
-				<Box className="border rounded-lg p-8 text-center">
-					<FileText className="size-8 text-muted-foreground mx-auto mb-3" />
+				<Box className="p-8 text-center">
+					<FileText
+						className="size-8 text-muted-foreground mx-auto mb-3"
+						aria-hidden
+					/>
 					<Box as="p" className="text-sm text-muted-foreground mb-1">
 						{hydrated
 							? "No examples yet"
@@ -1114,7 +1117,7 @@ function ExampleManager({
 
 					{/* Active example editor */}
 					{activeExample && (
-						<Box className="flex-1 bg-muted/30 rounded-lg border p-4 flex flex-col gap-3">
+						<Box className="flex-1 flex flex-col gap-3">
 							{/* Editor toolbar */}
 							<Inline space="sm" wrap={false}>
 								<Input
@@ -1154,10 +1157,9 @@ function ExampleManager({
 										placeholder='{"userName": "Alice", "orderTotal": 99.99}'
 									/>
 									{rawError && (
-										<Box className="flex items-center gap-1.5 text-xs text-destructive font-mono">
-											<AlertCircle className="size-3" />
-											{rawError}
-										</Box>
+										<Alert tone="critical">
+											<AlertDescription>{rawError}</AlertDescription>
+										</Alert>
 									)}
 								</Stack>
 							) : varNames.length === 0 ? (
@@ -1204,22 +1206,14 @@ function ExampleManager({
 					{saveStatus === "saving" ? "Saving…" : "Save Examples"}
 				</Button>
 				{saveStatus === "saved" && (
-					<Box
-						as="span"
-						className="text-xs text-success flex items-center gap-1"
-					>
-						<Check className="size-3" />
-						Saved
-					</Box>
+					<Text as="span" size="sm" tone="success">
+						<Check className="size-3 inline" /> Saved
+					</Text>
 				)}
 				{saveStatus === "error" && (
-					<Box
-						as="span"
-						className="text-xs text-destructive flex items-center gap-1"
-					>
-						<AlertCircle className="size-3" />
-						Save failed
-					</Box>
+					<Text as="span" size="sm" tone="critical">
+						<AlertCircle className="size-3 inline" /> Save failed
+					</Text>
 				)}
 			</Inline>
 		</Stack>
@@ -1512,7 +1506,7 @@ function PreviewPane({
 	})();
 
 	return (
-		<Box className="flex flex-col h-full gap-4">
+		<Box className="flex flex-col gap-4">
 			<Spread space="md">
 				<Button
 					onClick={handlePreview}
@@ -1529,17 +1523,12 @@ function PreviewPane({
 				)}
 			</Spread>
 			{previewError && (
-				<Box className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2">
-					<Box
-						as="p"
-						className="text-xs text-destructive font-mono whitespace-pre-wrap"
-					>
-						{previewError}
-					</Box>
-				</Box>
+				<Alert tone="critical">
+					<AlertDescription>{previewError}</AlertDescription>
+				</Alert>
 			)}
 			{preview ? (
-				<Box className="flex flex-col gap-2 flex-1 min-h-0">
+				<Box className="flex flex-col gap-2">
 					<Box className="text-sm">
 						<Text as="span" weight="medium">
 							Subject:{" "}
@@ -1549,46 +1538,60 @@ function PreviewPane({
 						</Text>
 					</Box>
 					{preview.warnings.length > 0 && (
-						<Box className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 flex flex-col gap-1">
-							<Box as="p" className="text-xs font-medium text-warning">
+						<Alert tone="warning">
+							<AlertTitle>
 								{preview.warnings.length} render warning
 								{preview.warnings.length > 1 ? "s" : ""}
-							</Box>
-							<Stack space="xxs" as="ul">
-								{preview.warnings.map((w, i) => (
-									<Box
-										as="li"
-										key={previewWarningKeys[i] ?? `${w}-${i}`}
-										className="text-xs text-warning font-mono"
-									>
-										· {w}
-									</Box>
-								))}
-							</Stack>
-						</Box>
+							</AlertTitle>
+							<AlertDescription>
+								<Stack space="xxs" as="ul">
+									{preview.warnings.map((w, i) => (
+										<Box
+											as="li"
+											key={previewWarningKeys[i] ?? `${w}-${i}`}
+											className="font-mono"
+										>
+											· {w}
+										</Box>
+									))}
+								</Stack>
+							</AlertDescription>
+						</Alert>
 					)}
-					<Box className="flex-1 min-h-0 border rounded-md overflow-hidden">
-						<iframe
-							title="Email Preview"
-							srcDoc={preview.body_html}
-							className="w-full h-full"
-							sandbox="allow-same-origin"
-						/>
-					</Box>
+					<Card size="sm">
+						<CardContent>
+							<Box className="h-[60dvh] min-h-96 overflow-hidden rounded-xl">
+								<iframe
+									title="Email Preview"
+									srcDoc={preview.body_html}
+									className="w-full h-full"
+									sandbox="allow-same-origin"
+								/>
+							</Box>
+						</CardContent>
+					</Card>
 				</Box>
 			) : draftVersion ? (
-				<Box className="flex-1 min-h-0 border rounded-md overflow-hidden">
-					<iframe
-						title="Email Preview"
-						srcDoc={draftVersion.body_html}
-						className="w-full h-full"
-						sandbox="allow-same-origin"
-					/>
-				</Box>
+				<Card size="sm">
+					<CardContent>
+						<Box className="h-[60dvh] min-h-96 overflow-hidden rounded-xl">
+							<iframe
+								title="Email Preview"
+								srcDoc={draftVersion.body_html}
+								className="w-full h-full"
+								sandbox="allow-same-origin"
+							/>
+						</Box>
+					</CardContent>
+				</Card>
 			) : (
-				<Box className="flex-1 flex items-center justify-center text-sm text-muted-foreground border rounded-md">
-					Click "Refresh Preview" to render
-				</Box>
+				<Card size="sm">
+					<CardContent>
+						<Box className="flex h-[60dvh] min-h-96 items-center justify-center">
+							<Text tone="muted">Click "Refresh Preview" to render</Text>
+						</Box>
+					</CardContent>
+				</Card>
 			)}
 		</Box>
 	);
@@ -1762,21 +1765,23 @@ export function EmailTemplateBuilder({
 	}
 
 	return (
-		<Box className="flex flex-col h-full gap-0">
+		<Box className="flex flex-col gap-0">
 			{/* Header */}
-			<Box className="flex flex-col gap-3 px-4 py-3 border-b shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+			<Box className="flex flex-col gap-3 px-4 py-3 shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 				<Box className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
 					<TextLink href={ROUTE_PATHS.EMAIL_TEMPLATES}>← Templates</TextLink>
 					<Separator orientation="vertical" length="short" />
-					<Input
-						value={name}
-						onChange={(e) => handleNameChange(e.target.value)}
-						variant="ghost"
-						size="sm"
-						aria-label="Template name"
-						placeholder="Template name"
-					/>
-					<Text as="span" size="xs" tone="muted" font="mono" truncate>
+					<Box className="w-56 max-w-full shrink-0">
+						<Input
+							value={name}
+							onChange={(e) => handleNameChange(e.target.value)}
+							variant="ghost"
+							size="sm"
+							aria-label="Template name"
+							placeholder="Template name"
+						/>
+					</Box>
+					<Text as="span" size="sm" tone="muted" font="mono" truncate>
 						/{template.slug}
 					</Text>
 					{template.published_version_id ? (
@@ -1786,7 +1791,7 @@ export function EmailTemplateBuilder({
 					)}
 				</Box>
 				<Box className="flex items-center gap-2 sm:justify-end">
-					<Text as="span" size="xs" tone="muted">
+					<Text as="span" size="sm" tone="muted">
 						{saveState === "saving" && "Saving…"}
 						{saveState === "saved" && "Saved"}
 						{saveState === "error" && "Save failed"}
@@ -1814,17 +1819,19 @@ export function EmailTemplateBuilder({
 				</Box>
 			</Box>
 			{publishError && (
-				<Box className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-b">
-					{publishError}
+				<Box className="px-4 sm:px-6">
+					<Alert tone="critical">
+						<AlertDescription>{publishError}</AlertDescription>
+					</Alert>
 				</Box>
 			)}
 
 			{/* Body — split editor / preview on desktop, tabbed on mobile */}
-			<Box className="flex flex-1 min-h-0">
+			<Box className="flex">
 				{/* Left: editor */}
 				<Box
-					className={`grid h-full min-h-0 grid-cols-1 p-4 ${
-						isMobile ? "w-full" : "w-1/2 border-r"
+					className={`grid min-w-0 grid-cols-1 p-4 ${
+						isMobile ? "w-full" : "w-1/2"
 					}`}
 				>
 					<Tabs defaultValue="content">
@@ -1838,7 +1845,7 @@ export function EmailTemplateBuilder({
 						</TabsList>
 
 						<TabsContent value="content">
-							<Box className="flex h-full min-h-0 flex-col gap-4">
+							<Box className="flex flex-col gap-4">
 								<Box className="flex flex-col gap-1 shrink-0">
 									<Label htmlFor="subject">Subject</Label>
 									<Input
@@ -1849,7 +1856,7 @@ export function EmailTemplateBuilder({
 										placeholder="Hello {{ .name }}"
 									/>
 								</Box>
-								<Box className="flex flex-col flex-1 min-h-0 gap-1">
+								<Box className="flex flex-col gap-1">
 									<Box className="flex items-center justify-between shrink-0">
 										<Label>HTML Body</Label>
 										<CopyButton
@@ -1862,27 +1869,29 @@ export function EmailTemplateBuilder({
 											disabled={!bodyHtml}
 										/>
 									</Box>
-									<Box
-										className="flex-1 min-h-0 border rounded-2xl overflow-hidden"
-										as="section"
-										aria-label="HTML editor"
-									>
-										<Editor
-											language="html"
-											value={bodyHtml}
-											onChange={(val) => handleBodyHtmlChange(val ?? "")}
-											theme="vs-light"
-											height="100%"
-											options={{
-												minimap: { enabled: false },
-												fontSize: 13,
-												lineNumbers: "on",
-												wordWrap: "on",
-												scrollBeyondLastLine: false,
-												tabSize: 2,
-												automaticLayout: true,
-											}}
-										/>
+									<Box as="section" aria-label="HTML editor">
+										<Card size="sm">
+											<CardContent>
+												<Box className="overflow-hidden rounded-xl">
+													<Editor
+														language="html"
+														value={bodyHtml}
+														onChange={(val) => handleBodyHtmlChange(val ?? "")}
+														theme="vs-light"
+														height="60dvh"
+														options={{
+															minimap: { enabled: false },
+															fontSize: 13,
+															lineNumbers: "on",
+															wordWrap: "on",
+															scrollBeyondLastLine: false,
+															tabSize: 2,
+															automaticLayout: true,
+														}}
+													/>
+												</Box>
+											</CardContent>
+										</Card>
 									</Box>
 								</Box>
 							</Box>
@@ -1927,72 +1936,83 @@ export function EmailTemplateBuilder({
 										}
 
 										return (
-											<Box className="border rounded-md p-3 flex flex-col gap-2 bg-muted/40">
-												<Spread space="md">
-													<Box
-														as="p"
-														className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-													>
-														Detected in template
-													</Box>
-													<Button variant="outline" size="sm" onClick={pushAll}>
-														Push all ({unpushed.length})
-													</Button>
-												</Spread>
-												<Stack space="xs">
-													{unpushed.map((s) => {
-														const isListObj =
-															s.type === EmailVariableType.LIST &&
-															s.items?.type === EmailVariableType.OBJECT;
-														const fields = isListObj
-															? (s.items?.properties ?? [])
-															: [];
-														return (
-															<Button
-																width="fill"
-																variant="ghost"
+											<Card size="sm">
+												<CardContent>
+													<Box className="flex flex-col gap-2">
+														<Spread space="md">
+															<Text
+																as="p"
 																size="sm"
-																type="button"
-																key={s.name}
-																onClick={() => pushOne(s)}
+																tone="muted"
+																weight="medium"
 															>
-																<Box
-																	as="span"
-																	className="font-mono text-xs text-foreground group-hover:text-foreground mt-0.5"
-																>
-																	+ {s.name}
-																</Box>
-																<Box className="flex flex-wrap items-center gap-1 mt-0.5">
-																	<Box
-																		as="span"
-																		className={`text-[10px] px-1.5 py-0 rounded font-medium ${
-																			s.type === EmailVariableType.LIST
-																				? "bg-accent text-accent-foreground border border-border"
-																				: s.type === EmailVariableType.OBJECT
-																					? "bg-secondary text-secondary-foreground border border-border"
-																					: "bg-muted text-muted-foreground border border-border"
-																		}`}
+																Detected in template
+															</Text>
+															<Button
+																variant="outline"
+																size="sm"
+																onClick={pushAll}
+															>
+																Push all ({unpushed.length})
+															</Button>
+														</Spread>
+														<Stack space="xs">
+															{unpushed.map((s) => {
+																const isListObj =
+																	s.type === EmailVariableType.LIST &&
+																	s.items?.type === EmailVariableType.OBJECT;
+																const fields = isListObj
+																	? (s.items?.properties ?? [])
+																	: [];
+																return (
+																	<Button
+																		width="fill"
+																		variant="ghost"
+																		size="sm"
+																		type="button"
+																		key={s.name}
+																		onClick={() => pushOne(s)}
 																	>
-																		{s.type === EmailVariableType.LIST &&
-																		s.items
-																			? `LIST · ${s.items.type}`
-																			: s.type}
-																	</Box>
-																	{fields.map((f) => (
 																		<Box
 																			as="span"
-																			key={f.name}
-																			className="text-[10px] font-mono text-muted-foreground/70 bg-muted px-1 rounded"
+																			className="font-mono text-xs text-foreground group-hover:text-foreground mt-0.5"
 																		>
-																			{f.name}
+																			+ {s.name}
 																		</Box>
-																	))}
-																</Box>
-															</Button>
-														);
-													})}
-												</Stack>
-											</Box>
+																		<Box className="flex flex-wrap items-center gap-1 mt-0.5">
+																			<Box
+																				as="span"
+																				className={`text-[10px] px-1.5 py-0 rounded font-medium ${
+																					s.type === EmailVariableType.LIST
+																						? "bg-accent text-accent-foreground border border-border"
+																						: s.type ===
+																								EmailVariableType.OBJECT
+																							? "bg-secondary text-secondary-foreground border border-border"
+																							: "bg-muted text-muted-foreground border border-border"
+																				}`}
+																			>
+																				{s.type === EmailVariableType.LIST &&
+																				s.items
+																					? `LIST · ${s.items.type}`
+																					: s.type}
+																			</Box>
+																			{fields.map((f) => (
+																				<Box
+																					as="span"
+																					key={f.name}
+																					className="text-[10px] font-mono text-muted-foreground bg-muted px-1 rounded"
+																				>
+																					{f.name}
+																				</Box>
+																			))}
+																		</Box>
+																	</Button>
+																);
+															})}
+														</Stack>
+													</Box>
+												</CardContent>
+											</Card>
 										);
 									})()}
 									<VariableEditor
@@ -2019,7 +2039,7 @@ export function EmailTemplateBuilder({
 						{/* Mobile-only preview tab (desktop renders the split panel below) */}
 						{isMobile && (
 							<TabsContent value="preview">
-								<Box className="flex h-full min-h-0 flex-col gap-4">
+								<Box className="flex flex-col gap-4">
 									<PreviewPane
 										productId={productId}
 										templateId={templateId}
@@ -2035,13 +2055,10 @@ export function EmailTemplateBuilder({
 
 				{/* Right: preview (desktop split view) */}
 				{!isMobile && (
-					<Box className="flex flex-col w-1/2 p-4 min-h-0">
-						<Box
-							as="p"
-							className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3"
-						>
-							Live Preview
-						</Box>
+					<Box className="flex flex-col w-1/2 p-4 gap-3">
+						<Text as="p" size="sm" tone="muted" weight="medium">
+							Live preview
+						</Text>
 						<PreviewPane
 							productId={productId}
 							templateId={templateId}

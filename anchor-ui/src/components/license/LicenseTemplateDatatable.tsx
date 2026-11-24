@@ -113,7 +113,12 @@ export function LicenseTemplateDatatable({
 							encodeURIComponent(info.row.original.id),
 						)}
 					>
-						{info.getValue()}
+						<Box
+							as="span"
+							className="inline-block min-w-0 max-w-[16rem] whitespace-normal break-words"
+						>
+							{info.getValue()}
+						</Box>
 					</TextLink>
 				),
 				enableSorting: true,
