@@ -90,7 +90,7 @@ export function IntegrationDetailPage({
 				{backLink}
 				{summary.length > 0 && (
 					<Box
-						className={`grid grid-cols-2 gap-3 ${summaryColumns[Math.min(summary.length, 4)] ?? "md:grid-cols-4"}`}
+						className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${summaryColumns[Math.min(summary.length, 4)] ?? "md:grid-cols-4"}`}
 					>
 						{summary.map((item) => (
 							<StatCard key={item.label} variant="outline" size="sm">
