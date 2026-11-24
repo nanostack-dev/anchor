@@ -71,9 +71,22 @@ type ModelChanges func(event events.Event) bool
 // Model is a Product's authorization model before it is compiled. The syncer
 // compiles it only for a hash it has not compiled before.
 type Model struct {
+	// Version identifies the release's compiled model format (e.g.
+	// model.Version) and keys the Product's row in authz_models so two releases
+	// with different model formats coexist during a rolling deploy (ADR-0025).
+	Version string
 	// Hash changes whenever the compiled model would.
 	Hash    string
 	Compile func() (*openfgav1.AuthorizationModel, error)
+}
+
+const defaultModelVersion = "default"
+
+func (m Model) version() string {
+	if m.Version != "" {
+		return m.Version
+	}
+	return defaultModelVersion
 }
 
 // Scope is what a mark makes stale: one key of one source, every key of a

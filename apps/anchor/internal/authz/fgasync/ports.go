@@ -25,9 +25,15 @@ type Repository interface {
 	// Postpone moves a Product's marks behind every other's.
 	Postpone(ctx context.Context, productID string, until time.Time) error
 
-	// RecordedModel returns the model the Product's store follows, if any.
-	RecordedModel(ctx context.Context, productID string) (RecordedModel, error)
-	SetModel(ctx context.Context, productID string, model RecordedModel) error
+	// RecordedModel returns the model the Product's store follows for version,
+	// if any (authz_models).
+	RecordedModel(ctx context.Context, productID, version string) (RecordedModel, error)
+	// LegacyModel returns the pre-#401 model pointer kept on authz_stores, if
+	// any, so a release with the same hash adopts it without writing OpenFGA.
+	LegacyModel(ctx context.Context, productID string) (RecordedModel, error)
+	// SetModel records the model for (productID, version) in authz_models and
+	// mirrors it to authz_stores for rollbacks to pre-#401 releases.
+	SetModel(ctx context.Context, productID, version string, model RecordedModel) error
 	SetReconciled(ctx context.Context, productID string, at time.Time) error
 	// DueForReconcile names the Product rebuilt longest ago, if that was before
 	// the given time; a Product never rebuilt comes first.

@@ -57,12 +57,16 @@ type Checker struct {
 	stores    store.Stores
 	rebuilder Rebuilder
 	builds    singleflight.Group
-	// current holds when this process last made sure each Product's model is
-	// the one it compiles.
+	// current holds the latest modelCheck recorded for each Product.
 	current sync.Map
 	// logger writes a failed model check with the request scope of its
 	// context.
 	logger *slog.Logger
+}
+
+type modelCheck struct {
+	at      time.Time
+	current bool
 }
 
 func NewChecker(stores store.Stores, rebuilder Rebuilder, logger applog.Scoped) *Checker {
@@ -148,7 +152,7 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 		if buildErr := c.rebuilder.Reconcile(buildCtx, productID); buildErr != nil {
 			return nil, buildErr
 		}
-		c.current.Store(productID, time.Now())
+		c.current.Store(productID, modelCheck{at: time.Now(), current: true})
 		return c.stores.Open(buildCtx, productID)
 	})
 	select {
@@ -159,26 +163,41 @@ func (c *Checker) store(ctx context.Context, productID string) (store.Opened, er
 	}
 }
 
-// currentModel brings the store's model up to date at most every
-// modelCheckInterval, while the other decisions for the Product wait. It runs
-// again later because a replica of the previous release, during a rolling
-// deploy, writes its own model back. A failure keeps the store as it is, is
-// logged, and is tried again after modelRetryDelay.
+// currentModel ensures this release's authz_models row exists and matches the
+// current catalog. When opened.ModelCurrent is false (first decision on a new
+// modelVersion whose row does not exist yet), it skips the 30 s cache and runs
+// EnsureModel inline under singleflight; on failure (e.g. ErrLockBusy during a
+// Reconcile) it falls back to opened's existing model and retries after
+// modelRetryDelay. When opened.ModelCurrent is true, it re-checks every
+// modelCheckInterval to pick up catalog edits made through another release's
+// replica during a mixed deploy.
 func (c *Checker) currentModel(ctx context.Context, productID string, opened store.Opened) store.Opened {
 	if checked, found := c.current.Load(productID); found {
-		if at, isTime := checked.(time.Time); isTime && time.Since(at) < modelCheckInterval {
-			return opened
+		if entry, ok := checked.(modelCheck); ok {
+			switch {
+			case opened.ModelCurrent && entry.current && time.Since(entry.at) < modelCheckInterval:
+				return opened
+			case !opened.ModelCurrent && !entry.current && time.Since(entry.at) < modelRetryDelay:
+				return opened
+			}
 		}
 	}
 	result := c.builds.DoChan("model:"+productID, func() (any, error) {
 		modelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkTimeout)
 		defer cancel()
 		if err := c.rebuilder.EnsureModel(modelCtx, productID); err != nil {
-			c.current.Store(productID, time.Now().Add(modelRetryDelay-modelCheckInterval))
+			if opened.ModelCurrent {
+				c.current.Store(
+					productID,
+					modelCheck{at: time.Now().Add(modelRetryDelay - modelCheckInterval), current: true},
+				)
+			} else {
+				c.current.Store(productID, modelCheck{at: time.Now(), current: false})
+			}
 			c.logger.WarnContext(ctx, "authz model check failed", log.Err(err), slog.String("product_id", productID))
 			return nil, err
 		}
-		c.current.Store(productID, time.Now())
+		c.current.Store(productID, modelCheck{at: time.Now(), current: true})
 		return c.stores.Open(modelCtx, productID)
 	})
 	select {

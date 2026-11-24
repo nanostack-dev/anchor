@@ -21,6 +21,7 @@ import (
 	"anchor/internal/applog"
 	"anchor/internal/authz/engine"
 	"anchor/internal/authz/fga"
+	authzmodel "anchor/internal/authz/model"
 	"anchor/internal/db/gen/anchor/public/model"
 	"anchor/internal/db/gen/anchor/public/table"
 )
@@ -54,6 +55,10 @@ type Opened struct {
 	// Rebuilt reports whether a full rebuild filled the store. Until one does,
 	// it may hold only the keys written since, and would deny the others.
 	Rebuilt bool
+	// ModelCurrent reports whether Store.ModelID() came from this release's
+	// authz_models row (as opposed to a fallback model from another release or
+	// the legacy authz_stores pointer while this release's row is not yet written).
+	ModelCurrent bool
 	// refused samples the log of a contextual tuple the model refuses.
 	refused *applog.BurstSampler
 	// logger writes the refusal with the request scope of its context. Nil
@@ -108,6 +113,7 @@ const refusedLogBurst = 20
 type stores struct {
 	db       *sql.DB
 	provider engine.Provider
+	version  string
 	logger   *slog.Logger
 	scoped   *slog.Logger
 	refused  *applog.BurstSampler
@@ -117,8 +123,21 @@ type stores struct {
 }
 
 func New(db *sql.DB, provider engine.Provider, logger *slog.Logger, scoped applog.Scoped) Stores {
+	return NewWithVersion(db, provider, logger, scoped, authzmodel.Version)
+}
+
+// NewWithVersion opens stores for a specific compiled model version. Production
+// uses New (model.Version); tests use this to simulate two releases running
+// side by side during a rolling deploy.
+func NewWithVersion(
+	db *sql.DB, provider engine.Provider, logger *slog.Logger, scoped applog.Scoped, version string,
+) Stores {
+	if version == "" {
+		version = authzmodel.Version
+	}
 	return &stores{
-		db: db, provider: provider, logger: logger.With(slog.String("component", "authz_store")),
+		db: db, provider: provider, version: version,
+		logger:  logger.With(slog.String("component", "authz_store")),
 		scoped:  scoped.Logger,
 		refused: &applog.BurstSampler{Burst: refusedLogBurst, Period: time.Minute},
 	}
@@ -169,27 +188,32 @@ func (s *stores) StoreID(ctx context.Context, productID string) (string, error) 
 	return winner, nil
 }
 
+type openedRow struct {
+	StoreID       string
+	ReconciledAt  *time.Time
+	LegacyModelID *string
+	ModelID       *string
+}
+
 func (s *stores) Open(ctx context.Context, productID string) (functional.Option[Opened], error) {
 	openfga, err := s.provider.Get()
 	if err != nil {
 		return functional.None[Opened](), err
 	}
-	found, err := transactor.QueryOptional[model.AuthzStores](ctx, s.db,
-		table.AuthzStores.SELECT(table.AuthzStores.StoreID, table.AuthzStores.ModelID, table.AuthzStores.ReconciledAt).
-			WHERE(table.AuthzStores.ProductID.EQ(postgres.String(productID))),
-	)
-	if err != nil {
+	row, found, err := s.findStoreAndModel(ctx, productID)
+	if err != nil || !found {
 		return functional.None[Opened](), err
 	}
-	recorded, ok := found.Get()
-	if !ok || recorded.ModelID == nil || *recorded.ModelID == "" {
-		return functional.None[Opened](), nil
+	modelID, modelCurrent, err := s.resolveModelID(ctx, productID, row)
+	if err != nil || modelID == "" {
+		return functional.None[Opened](), err
 	}
 	opened := Opened{
-		Store:   fga.NewStore(openfga, recorded.StoreID, *recorded.ModelID),
-		Rebuilt: recorded.ReconciledAt != nil,
-		refused: s.refused,
-		logger:  s.scoped,
+		Store:        fga.NewStore(openfga, row.StoreID, modelID),
+		Rebuilt:      row.ReconciledAt != nil,
+		ModelCurrent: modelCurrent,
+		refused:      s.refused,
+		logger:       s.scoped,
 	}
 	if cached, hit := s.relations.Load(opened.Store.ModelID()); hit {
 		if relations, isRelations := cached.(fga.Relations); isRelations {
@@ -202,6 +226,57 @@ func (s *stores) Open(ctx context.Context, productID string) (functional.Option[
 	}
 	s.relations.Store(opened.Store.ModelID(), opened.Relations)
 	return functional.Some(opened), nil
+}
+
+func (s *stores) findStoreAndModel(ctx context.Context, productID string) (openedRow, bool, error) {
+	stmt := table.AuthzStores.SELECT(
+		table.AuthzStores.StoreID.AS("opened_row.store_id"),
+		table.AuthzStores.ReconciledAt.AS("opened_row.reconciled_at"),
+		table.AuthzStores.ModelID.AS("opened_row.legacy_model_id"),
+		table.AuthzModels.ModelID.AS("opened_row.model_id"),
+	).FROM(
+		table.AuthzStores.LEFT_JOIN(
+			table.AuthzModels,
+			table.AuthzModels.ProductID.EQ(table.AuthzStores.ProductID).
+				AND(table.AuthzModels.ModelVersion.EQ(postgres.String(s.version))),
+		),
+	).WHERE(table.AuthzStores.ProductID.EQ(postgres.String(productID)))
+
+	found, err := transactor.QueryOptional[openedRow](ctx, s.db, stmt)
+	if err != nil {
+		return openedRow{}, false, err
+	}
+	row, ok := found.Get()
+	return row, ok, nil
+}
+
+// resolveModelID returns this release's model ID when recorded. For a store
+// already rebuilt on another release (or before #401), it falls back to the
+// newest authz_models row or legacy authz_stores.model_id with current=false so
+// the checker runs EnsureModel inline instead of triggering a full Reconcile.
+func (s *stores) resolveModelID(ctx context.Context, productID string, row openedRow) (string, bool, error) {
+	if row.ModelID != nil && *row.ModelID != "" {
+		return *row.ModelID, true, nil
+	}
+	if row.ReconciledAt == nil {
+		return "", false, nil
+	}
+	newest, err := transactor.QueryOptional[model.AuthzModels](ctx, s.db,
+		table.AuthzModels.SELECT(table.AuthzModels.ModelID).
+			WHERE(table.AuthzModels.ProductID.EQ(postgres.String(productID))).
+			ORDER_BY(table.AuthzModels.WrittenAt.DESC()).
+			LIMIT(1),
+	)
+	if err != nil {
+		return "", false, err
+	}
+	if m, ok := newest.Get(); ok && m.ModelID != "" {
+		return m.ModelID, false, nil
+	}
+	if row.LegacyModelID != nil && *row.LegacyModelID != "" {
+		return *row.LegacyModelID, false, nil
+	}
+	return "", false, nil
 }
 
 func (s *stores) find(ctx context.Context, productID string) (string, error) {

@@ -109,6 +109,12 @@ func TestResourceTypeSchemaCheck(t *testing.T) {
 			problem:  "authz_sync_marks or the authz_stores sync columns are missing",
 			recovery: "migrate force 68",
 		},
+		{
+			name:     "Missing authz_models fails the check and names the recovery",
+			breakIt:  `DROP TABLE authz_models`,
+			problem:  "authz_models table is missing",
+			recovery: "migrate force 76",
+		},
 	} {
 		t.Run(broken.name, func(t *testing.T) {
 			tx := migratedSchemaTx(t)
@@ -150,6 +156,7 @@ func migratedSchemaTx(t *testing.T) *sql.Tx {
 		`CREATE TABLE organization_invitations (product_role_id VARCHAR(255))`,
 		`CREATE TABLE authz_sync_marks (product_id VARCHAR(255))`,
 		`CREATE TABLE authz_stores (model_id VARCHAR(64), model_hash VARCHAR(64), reconciled_at TIMESTAMPTZ)`,
+		`CREATE TABLE authz_models (product_id VARCHAR(255), model_version VARCHAR(64), model_hash VARCHAR(64), model_id VARCHAR(64))`,
 		`CREATE UNIQUE INDEX idx_product_roles_managed_lower_name ON product_roles (product_id, lower(name))
 			WHERE organization_id IS NULL`,
 		`CREATE UNIQUE INDEX idx_product_roles_custom_lower_name ON product_roles (organization_id, lower(name))

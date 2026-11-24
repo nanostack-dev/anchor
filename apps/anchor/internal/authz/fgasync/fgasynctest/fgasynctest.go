@@ -21,12 +21,18 @@ import (
 // Repository keeps marks and store records in memory. Postgres runs a sync's
 // reads and writes in the lock's transaction; this one applies them at once,
 // which is what the syncer's correctness rests on anyway.
+type modelKey struct {
+	productID string
+	version   string
+}
+
 type Repository struct {
 	mu         sync.Mutex
 	revision   int64
 	clock      func() time.Time
 	marks      map[fgasync.Scope]markRow
-	models     map[string]fgasync.RecordedModel
+	models     map[modelKey]fgasync.RecordedModel
+	legacy     map[string]fgasync.RecordedModel
 	reconciled map[string]time.Time
 	products   map[string]bool
 }
@@ -40,7 +46,8 @@ func NewRepository(clock func() time.Time) *Repository {
 	return &Repository{
 		clock:      clock,
 		marks:      map[fgasync.Scope]markRow{},
-		models:     map[string]fgasync.RecordedModel{},
+		models:     map[modelKey]fgasync.RecordedModel{},
+		legacy:     map[string]fgasync.RecordedModel{},
 		reconciled: map[string]time.Time{},
 		products:   map[string]bool{},
 	}
@@ -123,16 +130,31 @@ func (r *Repository) Postpone(_ context.Context, productID string, until time.Ti
 	return nil
 }
 
-func (r *Repository) RecordedModel(_ context.Context, productID string) (fgasync.RecordedModel, error) {
+func (r *Repository) RecordedModel(_ context.Context, productID, version string) (fgasync.RecordedModel, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.models[productID], nil
+	return r.models[modelKey{productID: productID, version: version}], nil
 }
 
-func (r *Repository) SetModel(_ context.Context, productID string, model fgasync.RecordedModel) error {
+func (r *Repository) LegacyModel(_ context.Context, productID string) (fgasync.RecordedModel, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.models[productID] = model
+	return r.legacy[productID], nil
+}
+
+// SetLegacyModel seeds the pre-#401 authz_stores pointer without writing
+// authz_models, for testing lazy adoption.
+func (r *Repository) SetLegacyModel(productID string, model fgasync.RecordedModel) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.legacy[productID] = model
+}
+
+func (r *Repository) SetModel(_ context.Context, productID, version string, model fgasync.RecordedModel) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.models[modelKey{productID: productID, version: version}] = model
+	r.legacy[productID] = model
 	return nil
 }
 
@@ -292,12 +314,13 @@ func (s *Stores) StoreID(ctx context.Context, productID string) (string, error) 
 	return created.GetId(), nil
 }
 
-// Store returns the Product's store at the model the syncer recorded.
+// Store returns the Product's store at the model the syncer recorded for the
+// default test version (or legacy mirror).
 func (s *Stores) Store(t testing.TB, repo *Repository, productID string) fga.Store {
 	t.Helper()
 	storeID, err := s.StoreID(t.Context(), productID)
 	require.NoError(t, err)
-	recorded, err := repo.RecordedModel(t.Context(), productID)
+	recorded, err := repo.LegacyModel(t.Context(), productID)
 	require.NoError(t, err)
 	return fga.NewStore(s.engine, storeID, recorded.ID)
 }

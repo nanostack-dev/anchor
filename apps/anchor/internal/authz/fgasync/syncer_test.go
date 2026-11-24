@@ -106,6 +106,7 @@ func owns(doc, user string) fga.Tuple {
 // models serves one DSL for every Product and counts compilations.
 type models struct {
 	mu       sync.Mutex
+	version  string
 	dsl      string
 	compiles int
 }
@@ -114,7 +115,8 @@ func (m *models) Model(_ context.Context, _ string) (fgasync.Model, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	dsl := m.dsl
-	return fgasync.Model{Hash: dsl, Compile: func() (*openfgav1.AuthorizationModel, error) {
+	ver := m.version
+	return fgasync.Model{Version: ver, Hash: dsl, Compile: func() (*openfgav1.AuthorizationModel, error) {
 		m.mu.Lock()
 		m.compiles++
 		m.mu.Unlock()
@@ -294,7 +296,7 @@ func TestModel(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
-		before, err := w.repo.RecordedModel(t.Context(), productID)
+		before, err := w.repo.RecordedModel(t.Context(), productID, "default")
 		require.NoError(t, err)
 		w.models.dsl = ownersEditors
 
@@ -302,7 +304,7 @@ func TestModel(t *testing.T) {
 
 		assert.Equal(t, []fgasync.Scope{fgasync.WholeProduct(productID)}, w.repo.Marks())
 		require.NoError(t, w.syncer.Sync(t.Context(), fgasync.WholeProduct(productID)))
-		after, err := w.repo.RecordedModel(t.Context(), productID)
+		after, err := w.repo.RecordedModel(t.Context(), productID, "default")
 		require.NoError(t, err)
 		assert.NotEqual(t, before.ID, after.ID)
 		assert.Equal(t, ownersEditors, after.Hash)
@@ -312,18 +314,92 @@ func TestModel(t *testing.T) {
 		w := givenWorld(t)
 		w.changeDoc(t.Context(), t, productID, "readme", "ana")
 		require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
-		first, err := w.repo.RecordedModel(t.Context(), productID)
+		first, err := w.repo.RecordedModel(t.Context(), productID, "default")
 		require.NoError(t, err)
 
 		for range 3 {
 			require.NoError(t, w.syncer.Sync(t.Context(), readmeScope()))
 		}
 
-		again, err := w.repo.RecordedModel(t.Context(), productID)
+		again, err := w.repo.RecordedModel(t.Context(), productID, "default")
 		require.NoError(t, err)
 		assert.Equal(t, first.ID, again.ID)
 		assert.Equal(t, 1, w.models.compiles)
 	})
+
+	t.Run("A matching legacy authz_stores pointer is adopted without writing OpenFGA", func(t *testing.T) {
+		w := givenWorld(t)
+		w.models.version = "v3"
+		storeID, err := w.stores.StoreID(t.Context(), productID)
+		require.NoError(t, err)
+		proto, err := transformer.TransformDSLToProto(ownersModel)
+		require.NoError(t, err)
+		legacyID, err := fga.WriteModel(t.Context(), w.engine, storeID, proto)
+		require.NoError(t, err)
+		w.repo.SetLegacyModel(productID, fgasync.RecordedModel{ID: legacyID, Hash: ownersModel})
+
+		require.NoError(t, w.syncer.EnsureModel(t.Context(), productID))
+
+		adopted, err := w.repo.RecordedModel(t.Context(), productID, "v3")
+		require.NoError(t, err)
+		assert.Equal(t, legacyID, adopted.ID)
+		assert.Equal(t, ownersModel, adopted.Hash)
+		modelsResp, err := w.engine.ReadAuthorizationModels(
+			t.Context(),
+			&openfgav1.ReadAuthorizationModelsRequest{StoreId: storeID},
+		)
+		require.NoError(t, err)
+		assert.Len(t, modelsResp.GetAuthorizationModels(), 1, "adoption must not write a duplicate model")
+	})
+
+	t.Run(
+		"Two release versions coexist without rewriting each other, and a catalog edit updates only its version",
+		func(t *testing.T) {
+			w := givenWorld(t)
+			w.models.version = "v1"
+			modelsV2 := &models{version: "v2", dsl: ownersEditors}
+			syncerV2, err := fgasync.New(fgasync.Deps{
+				Engines:    fgasynctest.Engines{Engine: w.engine},
+				Stores:     w.stores,
+				Repository: w.repo,
+				Locker:     w.locker,
+				Models:     modelsV2,
+				Sources:    []fgasync.Source{docOwners{docs: w.docs}},
+				Logger:     slog.New(slog.DiscardHandler),
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, w.syncer.EnsureModel(t.Context(), productID))
+			require.NoError(t, syncerV2.EnsureModel(t.Context(), productID))
+			v1Before, err := w.repo.RecordedModel(t.Context(), productID, "v1")
+			require.NoError(t, err)
+			v2Before, err := w.repo.RecordedModel(t.Context(), productID, "v2")
+			require.NoError(t, err)
+			assert.NotEqual(t, v1Before.ID, v2Before.ID)
+
+			// Alternating EnsureModel calls between v1 and v2 write no new models.
+			for range 3 {
+				require.NoError(t, w.syncer.EnsureModel(t.Context(), productID))
+				require.NoError(t, syncerV2.EnsureModel(t.Context(), productID))
+			}
+			v1After, err := w.repo.RecordedModel(t.Context(), productID, "v1")
+			require.NoError(t, err)
+			v2After, err := w.repo.RecordedModel(t.Context(), productID, "v2")
+			require.NoError(t, err)
+			assert.Equal(t, v1Before.ID, v1After.ID)
+			assert.Equal(t, v2Before.ID, v2After.ID)
+
+			// A catalog change on v2 updates only v2's row; v1 keeps its model.
+			modelsV2.dsl = ownersModel
+			require.NoError(t, syncerV2.EnsureModel(t.Context(), productID))
+			v1Still, err := w.repo.RecordedModel(t.Context(), productID, "v1")
+			require.NoError(t, err)
+			v2Updated, err := w.repo.RecordedModel(t.Context(), productID, "v2")
+			require.NoError(t, err)
+			assert.Equal(t, v1Before.ID, v1Still.ID)
+			assert.NotEqual(t, v2Before.ID, v2Updated.ID)
+		},
+	)
 
 	t.Run("A tuple whose relation the model lacks is dropped, not written", func(t *testing.T) {
 		w := givenWorld(t)

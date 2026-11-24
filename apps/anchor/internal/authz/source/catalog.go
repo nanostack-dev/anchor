@@ -42,7 +42,8 @@ func (c Catalog) Model(ctx context.Context, productID string) (fgasync.Model, er
 		return fgasync.Model{}, err
 	}
 	return fgasync.Model{
-		Hash: model.Hash(catalog),
+		Version: model.Version,
+		Hash:    model.Hash(catalog),
 		Compile: func() (*openfgav1.AuthorizationModel, error) {
 			return model.Compile(catalog).Proto, nil
 		},
