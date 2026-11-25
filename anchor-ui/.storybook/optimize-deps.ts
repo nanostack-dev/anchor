@@ -32,6 +32,7 @@
 export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/blocks/app-shell",
 	"@nanostackorg/design-system/blocks/confirm-dialog",
+	"@nanostackorg/design-system/blocks/data-table-frame",
 	"@nanostackorg/design-system/blocks/copy-button",
 	"@nanostackorg/design-system/blocks/empty-state",
 	"@nanostackorg/design-system/blocks/page-header",
@@ -55,6 +56,7 @@ export const OPTIMIZE_DEPS_INCLUDE = [
 	"@nanostackorg/design-system/components/heading",
 	"@nanostackorg/design-system/components/input",
 	"@nanostackorg/design-system/components/input-group",
+	"@nanostackorg/design-system/components/item",
 	"@nanostackorg/design-system/components/label",
 	"@nanostackorg/design-system/components/popover",
 	"@nanostackorg/design-system/components/progress",

@@ -44,7 +44,6 @@ export function SmtpConfigForm({
 						placeholder="smtp.protonmail.ch"
 						value={form.host}
 						onChange={(e) => setField("host", e.target.value)}
-						font="mono"
 					/>
 					{errors.host && (
 						<p className="text-xs text-destructive">{errors.host}</p>
@@ -57,7 +56,6 @@ export function SmtpConfigForm({
 						placeholder="587"
 						value={form.port}
 						onChange={(e) => setField("port", e.target.value)}
-						font="mono"
 					/>
 					{errors.port && (
 						<p className="text-xs text-destructive">{errors.port}</p>
@@ -115,7 +113,6 @@ export function SmtpConfigForm({
 					placeholder="you@proton.me"
 					value={form.username}
 					onChange={(e) => setField("username", e.target.value)}
-					font="mono"
 				/>
 				{errors.username && (
 					<p className="text-xs text-destructive">{errors.username}</p>
@@ -136,7 +133,6 @@ export function SmtpConfigForm({
 					}
 					value={form.password}
 					onChange={(e) => setField("password", e.target.value)}
-					font="mono"
 				/>
 				{errors.password && (
 					<p className="text-xs text-destructive">{errors.password}</p>
@@ -151,7 +147,6 @@ export function SmtpConfigForm({
 						placeholder="you@proton.me"
 						value={form.fromAddress}
 						onChange={(e) => setField("fromAddress", e.target.value)}
-						font="mono"
 					/>
 					{errors.fromAddress && (
 						<p className="text-xs text-destructive">{errors.fromAddress}</p>
@@ -175,7 +170,6 @@ export function SmtpConfigForm({
 					placeholder="support@yourapp.com (optional)"
 					value={form.replyTo}
 					onChange={(e) => setField("replyTo", e.target.value)}
-					font="mono"
 				/>
 			</div>
 		</div>

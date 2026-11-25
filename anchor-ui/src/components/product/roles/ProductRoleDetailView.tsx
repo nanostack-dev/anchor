@@ -3,11 +3,14 @@ import { Page } from "@/components/common/Page";
 import { useScopeTypes } from "@/components/product/resource-types/ResourceTypeSelect";
 import { typeName } from "@/components/product/resource-types/resource-type-scope";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import { Badge } from "@nanostackorg/design-system/components/badge";
 import { ButtonLink } from "@nanostackorg/design-system/components/button";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Box } from "@nanostackorg/design-system/layout/box";
 import dayjs from "dayjs";
 import { ArrowLeft, PenLine } from "lucide-react";
+import type { ReactNode } from "react";
 import { ProductRoleEditor } from "./ProductRoleEditor";
 
 interface ProductRoleDetailViewProps {
@@ -76,63 +79,60 @@ export function ProductRoleDetailView({
 					onSaved={onSaved}
 				/>
 			) : (
-				<Box
-					as="section"
-					className="rounded-lg border border-border p-6"
-					aria-label="Role details"
-				>
-					<dl className="grid gap-6 sm:grid-cols-2">
-						<div>
-							<dt className="text-sm text-muted-foreground">Name</dt>
-							<dd className="mt-1 font-medium [overflow-wrap:anywhere]">
-								{role.name}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Resource type</dt>
-							<dd className="mt-1 [overflow-wrap:anywhere]">{scopeName}</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Description</dt>
-							<dd className="mt-1">{role.description || "No description"}</dd>
-						</div>
-						<Box className="sm:col-span-2">
-							<dt className="text-sm text-muted-foreground">
-								Permissions ({role.permissions.length})
-							</dt>
-							<dd className="mt-2">
-								{role.permissions.length ? (
-									<Box as="ul" className="flex flex-wrap gap-2">
-										{role.permissions.map((permission) => (
-											<Box
-												as="li"
-												key={permission.permission_name}
-												className="rounded-md border border-border px-2 py-1 text-sm"
-											>
-												{permission.permission_name}
-											</Box>
-										))}
+				<Box as="section" aria-label="Role details">
+					<Card>
+						<CardContent>
+							<dl className="grid gap-x-8 gap-y-5 sm:grid-cols-[10rem_1fr]">
+								<DetailRow label="Name">
+									<Box as="span" className="font-medium">
+										{role.name}
 									</Box>
-								) : (
-									"No permissions assigned"
-								)}
-							</dd>
-						</Box>
-						<div>
-							<dt className="text-sm text-muted-foreground">Created</dt>
-							<dd className="mt-1">
-								{dayjs(role.created_at).format("D MMMM YYYY H:mm")}
-							</dd>
-						</div>
-						<div>
-							<dt className="text-sm text-muted-foreground">Updated</dt>
-							<dd className="mt-1">
-								{dayjs(role.updated_at).format("D MMMM YYYY H:mm")}
-							</dd>
-						</div>
-					</dl>
+								</DetailRow>
+								<DetailRow label="Resource type">{scopeName}</DetailRow>
+								<DetailRow label="Description">
+									{role.description || "No description"}
+								</DetailRow>
+								<DetailRow label={`Permissions (${role.permissions.length})`}>
+									{role.permissions.length ? (
+										<Box as="ul" className="flex flex-wrap gap-2">
+											{role.permissions.map((permission) => (
+												<Box as="li" key={permission.permission_name}>
+													<Badge variant="outline">
+														{permission.permission_name}
+													</Badge>
+												</Box>
+											))}
+										</Box>
+									) : (
+										"No permissions assigned"
+									)}
+								</DetailRow>
+								<DetailRow label="Created">
+									{dayjs(role.created_at).format("D MMMM YYYY H:mm")}
+								</DetailRow>
+								<DetailRow label="Updated">
+									{dayjs(role.updated_at).format("D MMMM YYYY H:mm")}
+								</DetailRow>
+							</dl>
+						</CardContent>
+					</Card>
 				</Box>
 			)}
 		</Page>
+	);
+}
+
+function DetailRow({
+	label,
+	children,
+}: {
+	label: string;
+	children: ReactNode;
+}) {
+	return (
+		<>
+			<dt className="text-sm text-muted-foreground">{label}</dt>
+			<dd className="[overflow-wrap:anywhere]">{children}</dd>
+		</>
 	);
 }

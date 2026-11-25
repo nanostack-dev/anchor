@@ -34,6 +34,7 @@ import {
 import { useProduct } from "@/hooks/useProduct";
 import { productIntegrationClerkRoute } from "@/routes/platform/$productId.integration-clerk";
 import { CopyIconButton } from "@nanostackorg/design-system/blocks/copy-button";
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
 import {
 	Alert,
 	AlertDescription,
@@ -64,7 +65,11 @@ import { Label } from "@nanostackorg/design-system/components/label";
 import { Skeleton } from "@nanostackorg/design-system/components/skeleton";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Switch } from "@nanostackorg/design-system/components/switch";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
+import { PlugsIcon } from "@phosphor-icons/react";
 import {
 	useInfiniteQuery,
 	useMutation,
@@ -411,18 +416,22 @@ export default function ClerkIntegrationPage() {
 
 	return (
 		<IntegrationDetailPage
+			breadCrumbLabels={{
+				...(activeProduct ? { [productId]: activeProduct.name } : {}),
+				"integration-clerk": "Clerk",
+			}}
 			title="Clerk Authentication"
 			description="Configure webhook security, sync controls, and runtime behavior for Clerk identity events."
 			backLink={
-				<div className="inline-flex flex-wrap items-center gap-2">
-					<Badge variant="outline">
+				<Inline>
+					<Badge variant="soft">
 						Product {activeProduct?.name ?? productId}
 					</Badge>
 					<Badge variant="soft">Provider Clerk</Badge>
 					{clerkInstance?.id ? (
-						<Badge variant="outline">{clerkInstance.id}</Badge>
+						<Badge variant="soft">{clerkInstance.id}</Badge>
 					) : null}
-				</div>
+				</Inline>
 			}
 			summary={[
 				{
@@ -431,7 +440,7 @@ export default function ClerkIntegrationPage() {
 						? clerkInstance.is_enabled
 							? "Live"
 							: "Paused"
-						: "NOT_CONFIGURED",
+						: "Not configured",
 				},
 				{
 					label: "Webhook",
@@ -445,7 +454,7 @@ export default function ClerkIntegrationPage() {
 					label: "Last updated",
 					value: clerkInstance
 						? dayjs(clerkInstance.updated_at).format("D MMMM YYYY H:mm")
-						: "-",
+						: "Never",
 				},
 			]}
 			auditEntries={auditEntries}
@@ -490,17 +499,11 @@ export default function ClerkIntegrationPage() {
 			{!isLoading && !clerkInstance ? (
 				<Card variant="outline">
 					<CardContent>
-						<Stack space="md">
-							<div className="rounded-full border bg-muted/40 p-3">
-								<Plug className="size-6 text-muted-foreground" />
-							</div>
-							<p className="mt-4 text-base font-semibold">
-								No Clerk instance configured
-							</p>
-							<p className="mt-2 max-w-md text-sm text-muted-foreground">
-								Create an instance to activate Clerk webhook ingestion and user
-								sync.
-							</p>
+						<EmptyState
+							icon={PlugsIcon}
+							title="No Clerk instance configured"
+							description="Create an instance to activate Clerk webhook ingestion and user sync."
+						>
 							<Button
 								variant="solid"
 								tone="brand"
@@ -515,11 +518,11 @@ export default function ClerkIntegrationPage() {
 								Create Clerk Instance
 							</Button>
 							{createMutation.isError ? (
-								<p className="mt-3 text-xs text-destructive" role="alert">
+								<Text size="xs" tone="critical" role="alert">
 									Failed to create instance. It may already exist.
-								</p>
+								</Text>
 							) : null}
-						</Stack>
+						</EmptyState>
 					</CardContent>
 				</Card>
 			) : null}
@@ -535,28 +538,28 @@ export default function ClerkIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<Stack space="md">
-								<div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
-									<span className="text-muted-foreground">Connection</span>
+								<Spread>
+									<Text tone="muted">Connection</Text>
 									<Badge tone={form.enabled ? "success" : "neutral"}>
 										{form.enabled ? "Live" : "Paused"}
 									</Badge>
-								</div>
-								<div className="flex items-center justify-between gap-2 rounded-lg border p-3">
-									<span className="text-muted-foreground">Instance ID</span>
-									<div className="flex items-center gap-1">
-										<span className="max-w-[200px] truncate font-mono text-xs">
+								</Spread>
+								<Spread>
+									<Text tone="muted">Instance ID</Text>
+									<Inline space="xs" wrap={false}>
+										<Text size="xs" font="mono" truncate>
 											{clerkInstance.id}
-										</span>
+										</Text>
 										<CopyIconButton
 											value={clerkInstance.id}
 											label="Copy Clerk instance ID"
 											size="sm"
 										/>
-									</div>
-								</div>
-								<div className="rounded-lg border p-3">
-									<div className="mb-2 flex items-center justify-between">
-										<span className="text-muted-foreground">Webhook URL</span>
+									</Inline>
+								</Spread>
+								<Stack space="xs">
+									<Spread>
+										<Text tone="muted">Webhook URL</Text>
 										<CopyIconButton
 											label="Copy webhook URL"
 											size="sm"
@@ -565,14 +568,14 @@ export default function ClerkIntegrationPage() {
 												clerkInstance.provider_type,
 											)}
 										/>
-									</div>
-									<p className="truncate font-mono text-xs text-muted-foreground">
+									</Spread>
+									<Text size="xs" tone="muted" font="mono" truncate>
 										{getWebhookUrl(
 											clerkInstance.product_id,
 											clerkInstance.provider_type,
 										)}
-									</p>
-								</div>
+									</Text>
+								</Stack>
 							</Stack>
 						</CardContent>
 					</Card>
@@ -586,28 +589,27 @@ export default function ClerkIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<Stack space="md">
-								<div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-									<div className="inline-flex items-center gap-1">
-										<Shield className="size-3.5" />
-										Credential visibility
-									</div>
-									<p className="mt-2 text-[11px] leading-5">
+								<Stack space="xs">
+									<Inline space="xs" wrap={false}>
+										<Shield className="size-3.5 shrink-0 text-muted-foreground" />
+										<Text size="sm" weight="medium">
+											Credential visibility
+										</Text>
+									</Inline>
+									<Text size="xs" tone="muted">
 										Secrets are write-only once persisted. Leave secret fields
 										blank to keep existing values unchanged.
-									</p>
-								</div>
+									</Text>
+								</Stack>
 
-								<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
-									<div>
+								<Spread>
+									<Stack space="xs">
 										<Label htmlFor="integration-enabled">Enabled</Label>
-										<p
-											className="text-xs text-muted-foreground"
-											id="enabled-description"
-										>
+										<Text size="xs" tone="muted" id="enabled-description">
 											Turn off to pause webhook processing without deleting
 											setup.
-										</p>
-									</div>
+										</Text>
+									</Stack>
 									<Switch
 										id="integration-enabled"
 										aria-describedby="enabled-description"
@@ -616,7 +618,7 @@ export default function ClerkIntegrationPage() {
 											setForm((prev) => ({ ...prev, enabled: checked }))
 										}
 									/>
-								</div>
+								</Spread>
 
 								<div className="flex flex-col gap-2">
 									<Label htmlFor="webhook-secret">Webhook Secret</Label>

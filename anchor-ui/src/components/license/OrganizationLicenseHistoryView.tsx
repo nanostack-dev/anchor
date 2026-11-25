@@ -4,6 +4,7 @@ import {
 } from "@/client";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { cn } from "@/lib/utils";
+import { DataTableFrame } from "@nanostackorg/design-system/blocks/data-table-frame";
 import { Button } from "@nanostackorg/design-system/components/button";
 import {
 	Empty,
@@ -106,18 +107,17 @@ export function OrganizationLicenseHistoryView({
 
 	return (
 		<Stack space="md">
-			<Box
-				as="ol"
-				className="divide-y divide-border rounded-lg border border-border"
-			>
-				{moments.map((group) => (
-					<HistoryMoment
-						key={group[0].id}
-						entries={group}
-						templateName={templateName}
-					/>
-				))}
-			</Box>
+			<DataTableFrame aria-label="License changes">
+				<Box as="ol" className="divide-y divide-border">
+					{moments.map((group) => (
+						<HistoryMoment
+							key={group[0].id}
+							entries={group}
+							templateName={templateName}
+						/>
+					))}
+				</Box>
+			</DataTableFrame>
 			{hasMore && (
 				<Spread space="md">
 					{loadMoreErrorMessage ? (
@@ -143,6 +143,11 @@ export function OrganizationLicenseHistoryView({
 	);
 }
 
+const fieldGridClass =
+	"grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-6 gap-y-1.5 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]";
+const fieldRowClass =
+	"col-span-2 grid grid-cols-subgrid items-baseline wrap-anywhere";
+
 function HistoryMoment({
 	entries,
 	templateName,
@@ -162,8 +167,8 @@ function HistoryMoment({
 		<Box
 			as="li"
 			className={cn(
-				"flex flex-col gap-3 p-3 first:rounded-t-lg last:rounded-b-lg",
-				isAdjustment && "bg-accent/50",
+				"flex flex-col gap-3 px-5 py-4",
+				isAdjustment && "bg-accent/40",
 			)}
 		>
 			<Box className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -193,11 +198,11 @@ function HistoryMoment({
 			{stampsWholeSet ? (
 				<InstantiationBody entry={first} templateName={templateName} />
 			) : (
-				<Stack space="sm" as="ul">
+				<Box as="ul" className={fieldGridClass}>
 					{entries.map((entry) => (
 						<AdjustmentRow key={entry.id} entry={entry} />
 					))}
-				</Stack>
+				</Box>
 			)}
 		</Box>
 	);
@@ -238,10 +243,10 @@ function InstantiationBody({
 				</Text>
 			)}
 			{names.length > 0 && (
-				<dl className="flex flex-col gap-1">
+				<dl className={fieldGridClass}>
 					{names.map((name) => (
-						<Box key={name} className="flex flex-wrap items-baseline gap-x-2">
-							<Text as="dt" font="mono">
+						<Box key={name} className={fieldRowClass}>
+							<Text as="dt" font="mono" tone="muted">
 								{name}
 							</Text>
 							<Text as="dd" tabular>
@@ -261,8 +266,8 @@ function AdjustmentRow({
 	entry: OrganizationLicenseChangeResponse;
 }) {
 	return (
-		<Box as="li" className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<Text as="span" font="mono">
+		<Box as="li" className={fieldRowClass}>
+			<Text as="span" font="mono" tone="muted">
 				{entry.field ?? "—"}
 			</Text>
 			<Box

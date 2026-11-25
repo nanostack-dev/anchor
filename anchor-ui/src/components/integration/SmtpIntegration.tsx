@@ -17,6 +17,10 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import { IntegrationDetailPage } from "@/components/integration/IntegrationDetailPage";
 import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
+import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -36,6 +40,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@nanostackorg/design-system/components/card";
+import { Text } from "@nanostackorg/design-system/components/text";
+import { Inline } from "@nanostackorg/design-system/layout/inline";
+import { Spread } from "@nanostackorg/design-system/layout/spread";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 
 import { Label } from "@nanostackorg/design-system/components/label";
@@ -325,18 +332,22 @@ export default function SmtpIntegrationPage() {
 
 	return (
 		<IntegrationDetailPage
+			breadCrumbLabels={{
+				...(activeProduct ? { [productId]: activeProduct.name } : {}),
+				"integration-smtp": "SMTP",
+			}}
 			title="SMTP Email"
 			description="Configure outbound email through any SMTP provider — Proton Mail, SendGrid, Mailgun, AWS SES, or self-hosted relays."
 			backLink={
-				<div className="inline-flex flex-wrap items-center gap-2">
-					<Badge variant="outline">
+				<Inline>
+					<Badge variant="soft">
 						Product {activeProduct?.name ?? productId}
 					</Badge>
 					<Badge variant="soft">Provider SMTP</Badge>
 					{smtpInstance?.id ? (
-						<Badge variant="outline">{smtpInstance.id}</Badge>
+						<Badge variant="soft">{smtpInstance.id}</Badge>
 					) : null}
-				</div>
+				</Inline>
 			}
 			summary={[
 				{
@@ -345,17 +356,20 @@ export default function SmtpIntegrationPage() {
 						? smtpInstance.is_enabled
 							? "Live"
 							: "Paused"
-						: "NOT_CONFIGURED",
+						: "Not configured",
 				},
 				{
 					label: "Status",
-					value: smtpInstance?.status ?? "-",
+					value: smtpInstance
+						? smtpInstance.status.charAt(0).toUpperCase() +
+							smtpInstance.status.slice(1).toLowerCase()
+						: "—",
 				},
 				{
 					label: "Last updated",
 					value: smtpInstance
 						? dayjs(smtpInstance.updated_at).format("D MMMM YYYY H:mm")
-						: "-",
+						: "Never",
 				},
 			]}
 			auditEntries={[]}
@@ -432,20 +446,24 @@ export default function SmtpIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<Stack space="md">
-								<div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
-									<span className="text-muted-foreground">Status</span>
+								<Spread>
+									<Text tone="muted">Status</Text>
 									<Badge tone={smtpInstance.is_enabled ? "success" : "neutral"}>
 										{smtpInstance.is_enabled ? "Live" : "Paused"}
 									</Badge>
-								</div>
-								<div className="flex items-center justify-between gap-2 rounded-lg border p-3">
-									<span className="text-muted-foreground">Instance ID</span>
-									<span className="font-mono text-xs">{smtpInstance.id}</span>
-								</div>
+								</Spread>
+								<Spread>
+									<Text tone="muted">Instance ID</Text>
+									<Text size="xs" font="mono" truncate>
+										{smtpInstance.id}
+									</Text>
+								</Spread>
 								{smtpInstance.last_error ? (
-									<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-										{smtpInstance.last_error}
-									</div>
+									<Alert tone="critical">
+										<AlertDescription>
+											{smtpInstance.last_error}
+										</AlertDescription>
+									</Alert>
 								) : null}
 							</Stack>
 						</CardContent>
@@ -460,21 +478,21 @@ export default function SmtpIntegrationPage() {
 						</CardHeader>
 						<CardContent>
 							<Stack space="md">
-								<div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-									<div className="inline-flex items-center gap-1">
-										<Shield className="size-3.5" />
+								<Inline space="xs" wrap={false}>
+									<Shield className="size-3.5 shrink-0 text-muted-foreground" />
+									<Text size="xs" tone="muted">
 										Password is write-only once saved. Leave blank to keep the
 										existing value.
-									</div>
-								</div>
+									</Text>
+								</Inline>
 
-								<div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
-									<div>
+								<Spread>
+									<Stack space="xs">
 										<Label htmlFor="smtp-enabled">Enabled</Label>
-										<p className="text-xs text-muted-foreground">
+										<Text size="xs" tone="muted">
 											Pause without deleting configuration.
-										</p>
-									</div>
+										</Text>
+									</Stack>
 									<Switch
 										id="smtp-enabled"
 										checked={form.enabled}
@@ -482,7 +500,7 @@ export default function SmtpIntegrationPage() {
 											setForm((prev) => ({ ...prev, enabled: checked }))
 										}
 									/>
-								</div>
+								</Spread>
 
 								<SmtpConfigForm
 									form={form}

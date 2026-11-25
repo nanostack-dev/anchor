@@ -12,6 +12,7 @@ import {
 import { FormAlert } from "@/components/common/FormAlert";
 import { getApiErrorMessage, getApiFieldErrors } from "@/lib/api-error";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
 	Field,
 	FieldError,
@@ -146,37 +147,45 @@ export function LicenseTemplateForm({
 	return (
 		<Stack onSubmit={handleSubmit} space="xl" as="form">
 			<FormAlert message={generalError} />
-			<FieldGroup>
-				<Field invalid={!!fieldErrors.name} disabled={isSubmitting}>
-					<FieldLabel htmlFor="template-name">Name</FieldLabel>
-					<Input
-						id="template-name"
-						value={name}
-						onChange={(event) => setName(event.target.value)}
-						placeholder="Pro"
-						maxLength={120}
-						disabled={isSubmitting}
-						aria-invalid={!!fieldErrors.name}
-						aria-describedby={
-							fieldErrors.name ? "template-name-error" : undefined
-						}
-					/>
-					{fieldErrors.name && (
-						<FieldError id="template-name-error">{fieldErrors.name}</FieldError>
-					)}
-				</Field>
-				<Field disabled={isSubmitting}>
-					<FieldLabel htmlFor="template-description">Description</FieldLabel>
-					<Textarea
-						id="template-description"
-						value={description}
-						onChange={(event) => setDescription(event.target.value)}
-						placeholder="Optional"
-						rows={2}
-						disabled={isSubmitting}
-					/>
-				</Field>
-			</FieldGroup>
+			<Card>
+				<CardContent>
+					<FieldGroup>
+						<Field invalid={!!fieldErrors.name} disabled={isSubmitting}>
+							<FieldLabel htmlFor="template-name">Name</FieldLabel>
+							<Input
+								id="template-name"
+								value={name}
+								onChange={(event) => setName(event.target.value)}
+								placeholder="Pro"
+								maxLength={120}
+								disabled={isSubmitting}
+								aria-invalid={!!fieldErrors.name}
+								aria-describedby={
+									fieldErrors.name ? "template-name-error" : undefined
+								}
+							/>
+							{fieldErrors.name && (
+								<FieldError id="template-name-error">
+									{fieldErrors.name}
+								</FieldError>
+							)}
+						</Field>
+						<Field disabled={isSubmitting}>
+							<FieldLabel htmlFor="template-description">
+								Description
+							</FieldLabel>
+							<Textarea
+								id="template-description"
+								value={description}
+								onChange={(event) => setDescription(event.target.value)}
+								placeholder="Optional"
+								rows={2}
+								disabled={isSubmitting}
+							/>
+						</Field>
+					</FieldGroup>
+				</CardContent>
+			</Card>
 			<Stack aria-labelledby="template-values-heading" space="md" as="section">
 				<Stack space="xs">
 					<Heading id="template-values-heading" level={2}>

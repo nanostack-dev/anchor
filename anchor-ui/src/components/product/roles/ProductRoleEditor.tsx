@@ -25,6 +25,7 @@ import {
 } from "@nanostackorg/design-system/components/alert";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
 	Field,
 	FieldDescription,
@@ -157,7 +158,7 @@ function ScopeSummary({ types, scope }: { types: ScopeType[]; scope: string }) {
 	const inScope = typesInScope(types, scope);
 	const outside = typesOutsideScope(types, scope);
 	return (
-		<Box className="rounded-xl border border-border bg-muted/40 p-4">
+		<Box className="rounded-2xl bg-muted/50 p-4">
 			<Stack space="sm">
 				<Text weight="medium">
 					It can hold permissions of{" "}
@@ -319,197 +320,220 @@ export function ProductRoleEditor({
 
 				{!editing && (
 					<TabsContent value="scope">
-						<Stack space="lg">
-							<Stack space="xs">
-								<Heading level={2}>Where is this role held?</Heading>
-								<Text tone="muted">
-									Choose the resource type members hold this role on. It decides
-									which permissions the role can hold, and it never changes
-									after you create the role.
-								</Text>
-							</Stack>
-							<Field>
-								<FieldLabel htmlFor="role-scope">Resource type</FieldLabel>
-								<ResourceTypeSelect
-									id="role-scope"
-									productId={productId}
-									value={draft.scope}
-									onChange={(scope) => change({ scope })}
-								/>
-								{!draft.scope && (
-									<FieldDescription>
-										Choose a resource type to continue.
-									</FieldDescription>
-								)}
-							</Field>
-							{scopeKnown && <ScopeSummary types={types} scope={draft.scope} />}
-							<StepFooter>
-								{cancel}
-								<Button
-									variant="solid"
-									tone="brand"
-									disabled={!scopeKnown}
-									onClick={next}
-								>
-									Continue
-								</Button>
-							</StepFooter>
-						</Stack>
+						<Card>
+							<CardContent>
+								<Stack space="lg">
+									<Stack space="xs">
+										<Heading level={2}>Where is this role held?</Heading>
+										<Text tone="muted">
+											Choose the resource type members hold this role on. It
+											decides which permissions the role can hold, and it never
+											changes after you create the role.
+										</Text>
+									</Stack>
+									<Field>
+										<FieldLabel htmlFor="role-scope">Resource type</FieldLabel>
+										<ResourceTypeSelect
+											id="role-scope"
+											productId={productId}
+											value={draft.scope}
+											onChange={(scope) => change({ scope })}
+										/>
+										{!draft.scope && (
+											<FieldDescription>
+												Choose a resource type to continue.
+											</FieldDescription>
+										)}
+									</Field>
+									{scopeKnown && (
+										<ScopeSummary types={types} scope={draft.scope} />
+									)}
+									<StepFooter>
+										{cancel}
+										<Button
+											variant="solid"
+											tone="brand"
+											disabled={!scopeKnown}
+											onClick={next}
+										>
+											Continue
+										</Button>
+									</StepFooter>
+								</Stack>
+							</CardContent>
+						</Card>
 					</TabsContent>
 				)}
 
 				<TabsContent value="details">
-					<Stack space="lg">
-						<Stack space="xs">
-							<Heading level={2}>Details</Heading>
-							<Text tone="muted">
-								{editing
-									? "Rename the role or change its description."
-									: `Name the ${scopeName} role.`}
-							</Text>
-						</Stack>
-						{editing && typesQuery.isError && (
-							<TypesError retry={() => void typesQuery.refetch()} />
-						)}
-						<FieldGroup>
-							<Field invalid={touched && Boolean(errors.name)}>
-								<FieldLabel htmlFor="role-name">Name</FieldLabel>
-								<Input
-									id="role-name"
-									value={draft.name}
-									maxLength={120}
-									placeholder="e.g. Project admin"
-									aria-invalid={(touched && Boolean(errors.name)) || undefined}
-									onChange={(event) => change({ name: event.target.value })}
-									onBlur={() => setTouched(true)}
-								/>
-								{touched && errors.name && (
-									<FieldError>{errors.name}</FieldError>
+					<Card>
+						<CardContent>
+							<Stack space="lg">
+								<Stack space="xs">
+									<Heading level={2}>Details</Heading>
+									<Text tone="muted">
+										{editing
+											? "Rename the role or change its description."
+											: `Name the ${scopeName} role.`}
+									</Text>
+								</Stack>
+								{editing && typesQuery.isError && (
+									<TypesError retry={() => void typesQuery.refetch()} />
 								)}
-							</Field>
-							<Field invalid={Boolean(errors.description)}>
-								<FieldLabel htmlFor="role-description">Description</FieldLabel>
-								<Textarea
-									id="role-description"
-									value={draft.description}
-									rows={3}
-									onChange={(event) =>
-										change({ description: event.target.value })
-									}
-								/>
-								{errors.description && (
-									<FieldError>{errors.description}</FieldError>
-								)}
-							</Field>
-							{editing && (
-								<Field>
-									<FieldLabel htmlFor="role-scope-fixed">
-										Resource type
-									</FieldLabel>
-									<Input id="role-scope-fixed" value={scopeName} readOnly />
-									<FieldDescription>
-										A role's resource type never changes.
-									</FieldDescription>
-								</Field>
-							)}
-						</FieldGroup>
-						<StepFooter onBack={editing ? undefined : back}>
-							{cancel}
-							<Button
-								variant="solid"
-								tone="brand"
-								disabled={Object.keys(errors).length > 0}
-								onClick={() => {
-									setTouched(true);
-									if (Object.keys(errors).length === 0) next();
-								}}
-							>
-								Continue
-							</Button>
-						</StepFooter>
-					</Stack>
+								<FieldGroup>
+									<Field invalid={touched && Boolean(errors.name)}>
+										<FieldLabel htmlFor="role-name">Name</FieldLabel>
+										<Input
+											id="role-name"
+											value={draft.name}
+											maxLength={120}
+											placeholder="e.g. Project admin"
+											aria-invalid={
+												(touched && Boolean(errors.name)) || undefined
+											}
+											onChange={(event) => change({ name: event.target.value })}
+											onBlur={() => setTouched(true)}
+										/>
+										{touched && errors.name && (
+											<FieldError>{errors.name}</FieldError>
+										)}
+									</Field>
+									<Field invalid={Boolean(errors.description)}>
+										<FieldLabel htmlFor="role-description">
+											Description
+										</FieldLabel>
+										<Textarea
+											id="role-description"
+											value={draft.description}
+											rows={3}
+											onChange={(event) =>
+												change({ description: event.target.value })
+											}
+										/>
+										{errors.description && (
+											<FieldError>{errors.description}</FieldError>
+										)}
+									</Field>
+									{editing && (
+										<Field>
+											<FieldLabel htmlFor="role-scope-fixed">
+												Resource type
+											</FieldLabel>
+											<Input id="role-scope-fixed" value={scopeName} readOnly />
+											<FieldDescription>
+												A role's resource type never changes.
+											</FieldDescription>
+										</Field>
+									)}
+								</FieldGroup>
+								<StepFooter onBack={editing ? undefined : back}>
+									{cancel}
+									<Button
+										variant="solid"
+										tone="brand"
+										disabled={Object.keys(errors).length > 0}
+										onClick={() => {
+											setTouched(true);
+											if (Object.keys(errors).length === 0) next();
+										}}
+									>
+										Continue
+									</Button>
+								</StepFooter>
+							</Stack>
+						</CardContent>
+					</Card>
 				</TabsContent>
 
 				<TabsContent value="permissions">
-					<Stack space="lg">
-						<Stack space="xs">
-							<Heading level={2}>Permissions</Heading>
-							<Text tone="muted">
-								Grouped by resource type, from {scopeName} down.
-							</Text>
-						</Stack>
-						{scopeKnown ? (
-							<ScopedPermissionPicker
-								types={types}
-								scope={draft.scope}
-								state={permissionState}
-								selected={draft.permissions}
-								onChange={(permissions) => change({ permissions })}
-								newPermissionHref={`${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_NEW}?resource_type=${encodeURIComponent(draft.scope)}`}
-							/>
-						) : typesQuery.isError ? (
-							<TypesError retry={() => void typesQuery.refetch()} />
-						) : (
-							<Text tone="muted">Loading the resource types…</Text>
-						)}
-						<StepFooter onBack={back}>
-							{cancel}
-							<Button
-								variant="solid"
-								tone="brand"
-								disabled={permissionState.status !== "ready"}
-								onClick={next}
-							>
-								Continue
-							</Button>
-						</StepFooter>
-					</Stack>
+					<Card>
+						<CardContent>
+							<Stack space="lg">
+								<Stack space="xs">
+									<Heading level={2}>Permissions</Heading>
+									<Text tone="muted">
+										Grouped by resource type, from {scopeName} down.
+									</Text>
+								</Stack>
+								{scopeKnown ? (
+									<ScopedPermissionPicker
+										types={types}
+										scope={draft.scope}
+										state={permissionState}
+										selected={draft.permissions}
+										onChange={(permissions) => change({ permissions })}
+										newPermissionHref={`${ROUTE_PATHS.PRODUCT_RESOURCE_PERMISSION_NEW}?resource_type=${encodeURIComponent(draft.scope)}`}
+									/>
+								) : typesQuery.isError ? (
+									<TypesError retry={() => void typesQuery.refetch()} />
+								) : (
+									<Text tone="muted">Loading the resource types…</Text>
+								)}
+								<StepFooter onBack={back}>
+									{cancel}
+									<Button
+										variant="solid"
+										tone="brand"
+										disabled={permissionState.status !== "ready"}
+										onClick={next}
+									>
+										Continue
+									</Button>
+								</StepFooter>
+							</Stack>
+						</CardContent>
+					</Card>
 				</TabsContent>
 
 				<TabsContent value="review">
-					<Stack space="lg">
-						<Stack space="xs">
-							<Heading level={2}>Review</Heading>
-							<Text tone="muted">
-								{editing
-									? "Check the changes, then save."
-									: "Check the role, then create it."}
-							</Text>
-						</Stack>
-						{saveError && (
-							<Alert tone="critical" icon={WarningCircleIcon}>
-								<AlertTitle>
-									Anchor didn't {editing ? "save" : "create"} the role
-								</AlertTitle>
-								<AlertDescription>
-									{getApiErrorMessage(saveError) ?? "Try again in a moment."}
-								</AlertDescription>
-							</Alert>
-						)}
-						<RoleReview
-							draft={draft}
-							types={types}
-							permissions={permissionsQuery.data ?? []}
-							kept={keptPermissions}
-							original={
-								existingRole?.permissions.map(
-									(grant) => grant.permission_name,
-								) ?? []
-							}
-							editing={editing}
-						/>
-						<StepFooter onBack={back}>
-							{cancel}
-							<Button
-								variant="solid"
-								tone="brand"
-								loading={saving}
-								onClick={save}
-							>
-								{editing ? "Save changes" : "Create role"}
-							</Button>
-						</StepFooter>
-					</Stack>
+					<Card>
+						<CardContent>
+							<Stack space="lg">
+								<Stack space="xs">
+									<Heading level={2}>Review</Heading>
+									<Text tone="muted">
+										{editing
+											? "Check the changes, then save."
+											: "Check the role, then create it."}
+									</Text>
+								</Stack>
+								{saveError && (
+									<Alert tone="critical" icon={WarningCircleIcon}>
+										<AlertTitle>
+											Anchor didn't {editing ? "save" : "create"} the role
+										</AlertTitle>
+										<AlertDescription>
+											{getApiErrorMessage(saveError) ??
+												"Try again in a moment."}
+										</AlertDescription>
+									</Alert>
+								)}
+								<RoleReview
+									draft={draft}
+									types={types}
+									permissions={permissionsQuery.data ?? []}
+									kept={keptPermissions}
+									original={
+										existingRole?.permissions.map(
+											(grant) => grant.permission_name,
+										) ?? []
+									}
+									editing={editing}
+								/>
+								<StepFooter onBack={back}>
+									{cancel}
+									<Button
+										variant="solid"
+										tone="brand"
+										loading={saving}
+										onClick={save}
+									>
+										{editing ? "Save changes" : "Create role"}
+									</Button>
+								</StepFooter>
+							</Stack>
+						</CardContent>
+					</Card>
 				</TabsContent>
 			</Stack>
 		</Tabs>
@@ -547,7 +571,7 @@ function RoleReview({
 		}))
 		.filter((group) => group.names.length > 0);
 	return (
-		<Box className="rounded-xl border border-border">
+		<Box className="rounded-2xl bg-muted/50">
 			<dl className="grid gap-x-6 gap-y-4 p-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
 				<dt className="text-muted-foreground text-sm">Resource type</dt>
 				<dd className="min-w-0 text-sm [overflow-wrap:anywhere]">

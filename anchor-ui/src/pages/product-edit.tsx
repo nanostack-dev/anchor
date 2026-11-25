@@ -7,13 +7,7 @@ import { ProductEditForm } from "@/components/product/ProductEditForm";
 import { productEditRoute } from "@/routes/products/$productId.edit";
 import { productsRoute } from "@/routes/products/products";
 import { Button } from "@nanostackorg/design-system/components/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@nanostackorg/design-system/components/card";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Inline } from "@nanostackorg/design-system/layout/inline";
 import { Stack } from "@nanostackorg/design-system/layout/stack";
 import { useNavigate } from "@tanstack/react-router";
@@ -42,6 +36,7 @@ export default function ProductEditPage() {
 			title="Edit Product"
 			description="Update product details and configuration"
 			variant="full"
+			breadCrumbLabels={{ [productId]: product.name }}
 		>
 			<Stack space="lg">
 				<Inline space="md">
@@ -52,12 +47,6 @@ export default function ProductEditPage() {
 				</Inline>
 
 				<Card>
-					<CardHeader>
-						<CardTitle>Product</CardTitle>
-						<CardDescription>
-							Update product information and configuration.
-						</CardDescription>
-					</CardHeader>
 					<CardContent>
 						<ProductEditForm
 							product={product}

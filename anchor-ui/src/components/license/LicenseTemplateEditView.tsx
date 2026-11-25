@@ -10,6 +10,7 @@ import {
 	Button,
 	ButtonLink,
 } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Heading } from "@nanostackorg/design-system/components/heading";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
@@ -88,15 +89,21 @@ export function LicenseTemplateEditView({
 					)}
 				</Inline>
 				{template && (
-					<Inline space="md">
-						<StatusBadge tone={archived ? "neutral" : "success"}>
-							{template.status}
-						</StatusBadge>
-						<Text size="xs" tone="muted">
-							Created {dayjs(template.created_at).format("D MMMM YYYY H:mm")} ·
-							Updated {dayjs(template.updated_at).format("D MMMM YYYY H:mm")}
-						</Text>
-					</Inline>
+					<Card>
+						<CardContent>
+							<Inline space="md">
+								<StatusBadge tone={archived ? "neutral" : "success"}>
+									{template.status}
+								</StatusBadge>
+								<Text size="xs" tone="muted">
+									Created{" "}
+									{dayjs(template.created_at).format("D MMMM YYYY H:mm")} ·
+									Updated{" "}
+									{dayjs(template.updated_at).format("D MMMM YYYY H:mm")}
+								</Text>
+							</Inline>
+						</CardContent>
+					</Card>
 				)}
 				{archived && (
 					<Text tone="muted">

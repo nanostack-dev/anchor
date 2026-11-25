@@ -10,8 +10,10 @@ export function AuthScreen({ children }: { children: ReactNode }) {
 			<Box className="relative flex flex-col items-center justify-center gap-8 p-6 md:p-10">
 				<Box className="self-start">
 					<TextLink href="/" aria-label="Anchor home">
-						<AnchorIcon size="sm" />
-						Anchor
+						<Box className="inline-flex items-center gap-1.5 whitespace-nowrap">
+							<AnchorIcon size="sm" />
+							Anchor
+						</Box>
 					</TextLink>
 				</Box>
 				<Box className="grid w-full max-w-lg flex-1 content-center">

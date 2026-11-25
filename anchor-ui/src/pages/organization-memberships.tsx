@@ -3,13 +3,13 @@ import { Page } from "@/components/common/Page";
 import { OrganizationMembershipDatatable } from "@/components/organization/OrganizationMembershipDatatable";
 import { OrganizationInvitationDatatable } from "@/components/organization/invitation/OrganizationInvitationDatatable";
 import { useProduct } from "@/context/product/ProductContext";
+import { Inline, Stack } from "@nanostackorg/design-system";
+import { EmptyState } from "@nanostackorg/design-system/blocks/empty-state";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import {
-	Heading,
-	Inline,
-	Label,
-	Stack,
-	Text,
-} from "@nanostackorg/design-system";
+	Field,
+	FieldLabel,
+} from "@nanostackorg/design-system/components/field";
 import {
 	Select,
 	SelectContent,
@@ -23,8 +23,8 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@nanostackorg/design-system/components/tabs";
+import { BuildingsIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2 } from "lucide-react";
 import { useState } from "react";
 
 export default function OrganizationMembershipsPage() {
@@ -47,40 +47,55 @@ export default function OrganizationMembershipsPage() {
 			description="View members and invitations across your product's organizations."
 		>
 			<Stack space="lg">
-				<Stack space="lg">
-					<Label htmlFor="org-select">Organization</Label>
-					<Select
-						items={organizations.map((org) => ({
-							value: org.id,
-							label: org.name,
-						}))}
-						value={selectedOrgId ?? null}
-						onValueChange={(value) => setSelectedOrgId(value ?? "")}
-						disabled={isLoading || organizations.length === 0}
-					>
-						<SelectTrigger id="org-select" width="fill">
-							<SelectValue
-								placeholder={
-									isLoading
-										? "Loading organizations..."
-										: organizations.length === 0
-											? "No organizations found"
-											: "Select an organization..."
-								}
-							/>
-						</SelectTrigger>
-						<SelectContent aria-label="Organization options">
-							{organizations.map((org) => (
-								<SelectItem key={org.id} value={org.id}>
-									<Inline space="xs">
-										<Building2 />
-										<span>{org.name}</span>
-									</Inline>
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Stack>
+				<Card>
+					<CardContent>
+						<Stack space="lg">
+							<Field>
+								<FieldLabel htmlFor="org-select">Organization</FieldLabel>
+								<Inline>
+									<Select
+										items={organizations.map((org) => ({
+											value: org.id,
+											label: org.name,
+										}))}
+										value={selectedOrgId ?? null}
+										onValueChange={(value) => setSelectedOrgId(value ?? "")}
+										disabled={isLoading || organizations.length === 0}
+									>
+										<SelectTrigger id="org-select" width="auto">
+											<SelectValue
+												placeholder={
+													isLoading
+														? "Loading organizations..."
+														: organizations.length === 0
+															? "No organizations found"
+															: "Select an organization..."
+												}
+											/>
+										</SelectTrigger>
+										<SelectContent aria-label="Organization options">
+											{organizations.map((org) => (
+												<SelectItem key={org.id} value={org.id}>
+													<Inline space="xs">
+														<BuildingsIcon />
+														<span>{org.name}</span>
+													</Inline>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</Inline>
+							</Field>
+							{selectedOrgId ? null : (
+								<EmptyState
+									icon={BuildingsIcon}
+									title="No Organization Selected"
+									description="Please select an organization from the dropdown above to view its members."
+								/>
+							)}
+						</Stack>
+					</CardContent>
+				</Card>
 
 				{selectedOrgId ? (
 					<Tabs defaultValue="members">
@@ -95,16 +110,7 @@ export default function OrganizationMembershipsPage() {
 							<OrganizationInvitationDatatable organizationId={selectedOrgId} />
 						</TabsContent>
 					</Tabs>
-				) : (
-					<Stack space="lg" align="center">
-						<Building2 />
-						<Heading level={3}>No Organization Selected</Heading>
-						<Text tone="muted">
-							Please select an organization from the dropdown above to view its
-							members.
-						</Text>
-					</Stack>
-				)}
+				) : null}
 			</Stack>
 		</Page>
 	);

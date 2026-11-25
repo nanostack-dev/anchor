@@ -169,111 +169,117 @@ export function ProductEditForm({
 					</TabsList>
 
 					<TabsContent value="details">
-						<FieldGroup>
-							<form.Field name="name">
-								{(field) => (
-									<Field
-										data-disabled={updateMutation.isPending}
-										data-invalid={field.state.meta.errors.length > 0}
-									>
-										<FieldLabel htmlFor="product-name">Product Name</FieldLabel>
-										<Input
-											id="product-name"
-											placeholder="Enter product name"
-											value={field.state.value}
-											onChange={(e) => field.handleChange(e.target.value)}
-											onBlur={field.handleBlur}
-											disabled={updateMutation.isPending}
-											aria-invalid={field.state.meta.errors.length > 0}
-										/>
-										<FormValidationError field={field} />
-									</Field>
-								)}
-							</form.Field>
+						<Box className="pt-4">
+							<FieldGroup>
+								<form.Field name="name">
+									{(field) => (
+										<Field
+											data-disabled={updateMutation.isPending}
+											data-invalid={field.state.meta.errors.length > 0}
+										>
+											<FieldLabel htmlFor="product-name">
+												Product Name
+											</FieldLabel>
+											<Input
+												id="product-name"
+												placeholder="Enter product name"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												disabled={updateMutation.isPending}
+												aria-invalid={field.state.meta.errors.length > 0}
+											/>
+											<FormValidationError field={field} />
+										</Field>
+									)}
+								</form.Field>
 
-							<form.Field name="description">
-								{(field) => (
-									<Field
-										data-disabled={updateMutation.isPending}
-										data-invalid={field.state.meta.errors.length > 0}
-									>
-										<FieldLabel htmlFor="product-description">
-											Description
-										</FieldLabel>
-										<Textarea
-											id="product-description"
-											placeholder="Enter product description (optional)"
-											rows={4}
-											value={field.state.value || ""}
-											onChange={(e) => field.handleChange(e.target.value)}
-											onBlur={field.handleBlur}
-											disabled={updateMutation.isPending}
-											aria-invalid={field.state.meta.errors.length > 0}
-										/>
-										<FormValidationError field={field} />
-									</Field>
-								)}
-							</form.Field>
-						</FieldGroup>
+								<form.Field name="description">
+									{(field) => (
+										<Field
+											data-disabled={updateMutation.isPending}
+											data-invalid={field.state.meta.errors.length > 0}
+										>
+											<FieldLabel htmlFor="product-description">
+												Description
+											</FieldLabel>
+											<Textarea
+												id="product-description"
+												placeholder="Enter product description (optional)"
+												rows={4}
+												value={field.state.value || ""}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												disabled={updateMutation.isPending}
+												aria-invalid={field.state.meta.errors.length > 0}
+											/>
+											<FormValidationError field={field} />
+										</Field>
+									)}
+								</form.Field>
+							</FieldGroup>
+						</Box>
 					</TabsContent>
 
 					<TabsContent value="config">
-						<FieldGroup>
-							<form.Field name="protected">
-								{(field) => (
-									<Field
-										orientation="horizontal"
-										data-disabled={updateMutation.isPending}
-									>
-										<FieldContent>
-											<FieldLabel htmlFor="product-protected">
-												Protected product
+						<Box className="pt-4">
+							<FieldGroup>
+								<form.Field name="protected">
+									{(field) => (
+										<Field
+											orientation="horizontal"
+											data-disabled={updateMutation.isPending}
+										>
+											<FieldContent>
+												<FieldLabel htmlFor="product-protected">
+													Protected product
+												</FieldLabel>
+												<FieldDescription id="product-protected-description">
+													Prevents this product and its associated data from
+													being deleted. Turn this off and save before deleting
+													the product.
+												</FieldDescription>
+											</FieldContent>
+											<Switch
+												id="product-protected"
+												checked={field.state.value ?? false}
+												aria-describedby="product-protected-description"
+												onCheckedChange={field.handleChange}
+												onBlur={field.handleBlur}
+												disabled={updateMutation.isPending}
+											/>
+										</Field>
+									)}
+								</form.Field>
+								<form.Field name="organizationApiKeyPrefix">
+									{(field) => (
+										<Field
+											data-disabled={updateMutation.isPending}
+											data-invalid={field.state.meta.errors.length > 0}
+										>
+											<FieldLabel htmlFor="organization-api-key-prefix">
+												Organization API key prefix
 											</FieldLabel>
-											<FieldDescription id="product-protected-description">
-												Prevents this product and its associated data from being
-												deleted. Turn this off and save before deleting the
-												product.
+											<Input
+												id="organization-api-key-prefix"
+												placeholder="anchor"
+												value={field.state.value}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												disabled={updateMutation.isPending}
+												aria-invalid={field.state.meta.errors.length > 0}
+											/>
+											<FieldDescription>
+												Changing this prefix only affects newly generated
+												organization API keys. Organization keys created with a
+												previous prefix remain valid.
 											</FieldDescription>
-										</FieldContent>
-										<Switch
-											id="product-protected"
-											checked={field.state.value ?? false}
-											aria-describedby="product-protected-description"
-											onCheckedChange={field.handleChange}
-											onBlur={field.handleBlur}
-											disabled={updateMutation.isPending}
-										/>
-									</Field>
-								)}
-							</form.Field>
-							<form.Field name="organizationApiKeyPrefix">
-								{(field) => (
-									<Field
-										data-disabled={updateMutation.isPending}
-										data-invalid={field.state.meta.errors.length > 0}
-									>
-										<FieldLabel htmlFor="organization-api-key-prefix">
-											Organization API key prefix
-										</FieldLabel>
-										<Input
-											id="organization-api-key-prefix"
-											placeholder="anchor"
-											value={field.state.value}
-											onChange={(e) => field.handleChange(e.target.value)}
-											onBlur={field.handleBlur}
-											disabled={updateMutation.isPending}
-											aria-invalid={field.state.meta.errors.length > 0}
-										/>
-										<FieldDescription>
-											Changing this prefix only affects newly generated
-											organization API keys. Organization keys created with a
-											previous prefix remain valid.
-										</FieldDescription>
-										<FormValidationError field={field} />
-									</Field>
-								)}
-							</form.Field>
-						</FieldGroup>
+											<FormValidationError field={field} />
+										</Field>
+									)}
+								</form.Field>
+							</FieldGroup>
+						</Box>
 					</TabsContent>
 				</Tabs>
 

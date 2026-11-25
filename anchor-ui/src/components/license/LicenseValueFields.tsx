@@ -3,6 +3,7 @@ import {
 	LicenseFieldType,
 	type LicenseTemplateValues,
 } from "@/client";
+import { DataTableFrame } from "@nanostackorg/design-system/blocks/data-table-frame";
 import { Input } from "@nanostackorg/design-system/components/input";
 import { Label } from "@nanostackorg/design-system/components/label";
 import {
@@ -71,102 +72,115 @@ export function LicenseValueFields({
 	}
 
 	return (
-		<Box className="divide-y divide-border rounded-lg border border-border">
-			{fields.map((field) => {
-				const value = values[field.name];
-				const enumItems = enumItemsByField.get(field.id) ?? [];
-				const inputId = `license-value-${field.name}`;
-				const error = errors?.[field.name];
-				const errorId = `${inputId}-error`;
-				// Red text under an otherwise normal-looking control is the only
-				// signal a sighted mouse user gets, and none at all for a screen
-				// reader. Both are wired to the control that caused it.
-				const invalid = error
-					? { "aria-invalid": true, "aria-describedby": errorId }
-					: {};
+		<DataTableFrame aria-label="License values">
+			<Box className="divide-y divide-border">
+				{fields.map((field) => {
+					const value = values[field.name];
+					const enumItems = enumItemsByField.get(field.id) ?? [];
+					const inputId = `license-value-${field.name}`;
+					const error = errors?.[field.name];
+					const errorId = `${inputId}-error`;
+					// Red text under an otherwise normal-looking control is the only
+					// signal a sighted mouse user gets, and none at all for a screen
+					// reader. Both are wired to the control that caused it.
+					const invalid = error
+						? { "aria-invalid": true, "aria-describedby": errorId }
+						: {};
 
-				return (
-					<Box key={field.id} className="flex flex-col gap-1.5 p-3">
-						<Stack space="xs">
-							<Label htmlFor={inputId}>{field.name}</Label>
-							{field.description && (
-								<Text as="span" size="xs" tone="muted">
-									{field.description}
-								</Text>
-							)}
-						</Stack>
+					return (
+						<Box
+							key={field.id}
+							className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:items-center md:gap-8"
+						>
+							<Stack space="xs">
+								<Stack space="xs">
+									<Label htmlFor={inputId}>{field.name}</Label>
+									{field.description && (
+										<Text as="span" size="xs" tone="muted">
+											{field.description}
+										</Text>
+									)}
+								</Stack>
 
-						{/* A sentence, so it reads as one rather than as a status chip
+								{/* A sentence, so it reads as one rather than as a status chip
 							that cannot wrap on a narrow screen. */}
-						{notes?.[field.name] && (
-							<Text size="xs" tone="muted">
-								{notes[field.name]}
-							</Text>
-						)}
+								{notes?.[field.name] && (
+									<Text size="xs" tone="muted">
+										{notes[field.name]}
+									</Text>
+								)}
+							</Stack>
 
-						{readOnly ? (
-							<Text id={inputId}>{formatFieldValue(field.type, value)}</Text>
-						) : field.type === LicenseFieldType.BOOLEAN ? (
-							<Switch
-								id={inputId}
-								{...invalid}
-								checked={Boolean(value)}
-								onCheckedChange={(checked) => onChange(field.name, checked)}
-								disabled={disabled}
-							/>
-						) : field.type === LicenseFieldType.ENUM ? (
-							<Select
-								items={enumItems}
-								value={typeof value === "string" ? value : null}
-								onValueChange={(v) => onChange(field.name, v)}
-								disabled={disabled}
-							>
-								<SelectTrigger width="fill" id={inputId} {...invalid}>
-									<SelectValue placeholder="Select a value" />
-								</SelectTrigger>
-								<SelectContent aria-label={`${field.name} options`}>
-									{enumItems.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						) : field.type === LicenseFieldType.LIMIT ||
-							field.type === LicenseFieldType.NUMBER ? (
-							<Input
-								id={inputId}
-								{...invalid}
-								type="number"
-								value={typeof value === "number" ? value : ""}
-								onWheel={(event) => event.currentTarget.blur()}
-								onChange={(e) =>
-									onChange(
-										field.name,
-										e.target.value === "" ? undefined : Number(e.target.value),
-									)
-								}
-								min={field.type === LicenseFieldType.LIMIT ? 0 : undefined}
-								disabled={disabled}
-							/>
-						) : (
-							<Input
-								id={inputId}
-								{...invalid}
-								value={typeof value === "string" ? value : ""}
-								onChange={(e) => onChange(field.name, e.target.value)}
-								disabled={disabled}
-							/>
-						)}
+							<Stack space="xs">
+								{readOnly ? (
+									<Text id={inputId}>
+										{formatFieldValue(field.type, value)}
+									</Text>
+								) : field.type === LicenseFieldType.BOOLEAN ? (
+									<Switch
+										id={inputId}
+										{...invalid}
+										checked={Boolean(value)}
+										onCheckedChange={(checked) => onChange(field.name, checked)}
+										disabled={disabled}
+									/>
+								) : field.type === LicenseFieldType.ENUM ? (
+									<Select
+										items={enumItems}
+										value={typeof value === "string" ? value : null}
+										onValueChange={(v) => onChange(field.name, v)}
+										disabled={disabled}
+									>
+										<SelectTrigger width="fill" id={inputId} {...invalid}>
+											<SelectValue placeholder="Select a value" />
+										</SelectTrigger>
+										<SelectContent aria-label={`${field.name} options`}>
+											{enumItems.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								) : field.type === LicenseFieldType.LIMIT ||
+									field.type === LicenseFieldType.NUMBER ? (
+									<Input
+										id={inputId}
+										{...invalid}
+										type="number"
+										value={typeof value === "number" ? value : ""}
+										onWheel={(event) => event.currentTarget.blur()}
+										onChange={(e) =>
+											onChange(
+												field.name,
+												e.target.value === ""
+													? undefined
+													: Number(e.target.value),
+											)
+										}
+										min={field.type === LicenseFieldType.LIMIT ? 0 : undefined}
+										disabled={disabled}
+									/>
+								) : (
+									<Input
+										id={inputId}
+										{...invalid}
+										value={typeof value === "string" ? value : ""}
+										onChange={(e) => onChange(field.name, e.target.value)}
+										disabled={disabled}
+									/>
+								)}
 
-						{error && (
-							<Text id={errorId} tone="critical">
-								{error}
-							</Text>
-						)}
-					</Box>
-				);
-			})}
-		</Box>
+								{error && (
+									<Text id={errorId} tone="critical">
+										{error}
+									</Text>
+								)}
+							</Stack>
+						</Box>
+					);
+				})}
+			</Box>
+		</DataTableFrame>
 	);
 }

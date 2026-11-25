@@ -18,8 +18,8 @@ import {
 	CardContent,
 	CardDescription,
 	CardHeader,
+	CardTitle,
 } from "@nanostackorg/design-system/components/card";
-import { Heading } from "@nanostackorg/design-system/components/heading";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Text } from "@nanostackorg/design-system/components/text";
 import { Box } from "@nanostackorg/design-system/layout/box";
@@ -49,11 +49,18 @@ interface IntegrationDetailPageProps {
 	auditIsLoadingMore?: boolean;
 	auditLoadMoreErrorMessage?: string | null;
 	auditTotal?: number;
+	breadCrumbLabels?: Record<string, string>;
 }
 const auditTone: Record<
 	NonNullable<IntegrationAuditEntry["severity"]>,
 	BadgeTone
 > = { info: "info", success: "success", warning: "warning", error: "critical" };
+const summaryColumns: Record<number, string> = {
+	1: "md:grid-cols-1",
+	2: "md:grid-cols-2",
+	3: "md:grid-cols-3",
+	4: "md:grid-cols-4",
+};
 export function IntegrationDetailPage({
 	title,
 	description,
@@ -68,16 +75,23 @@ export function IntegrationDetailPage({
 	auditIsLoadingMore = false,
 	auditLoadMoreErrorMessage = null,
 	auditTotal,
+	breadCrumbLabels,
 }: IntegrationDetailPageProps) {
 	const sortedAuditEntries = [...auditEntries].sort(
 		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
 	);
 	return (
-		<Page title={title} description={description}>
+		<Page
+			title={title}
+			description={description}
+			breadCrumbLabels={breadCrumbLabels}
+		>
 			<Stack space="lg">
 				{backLink}
 				{summary.length > 0 && (
-					<Box className="grid grid-cols-2 gap-3 md:grid-cols-4">
+					<Box
+						className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${summaryColumns[Math.min(summary.length, 4)] ?? "md:grid-cols-4"}`}
+					>
 						{summary.map((item) => (
 							<StatCard key={item.label} variant="outline" size="sm">
 								<StatCardLabel>{item.label}</StatCardLabel>
@@ -89,7 +103,7 @@ export function IntegrationDetailPage({
 				{children}
 				<Card variant="outline">
 					<CardHeader>
-						<Heading level={2}>{auditTitle}</Heading>
+						<CardTitle>{auditTitle}</CardTitle>
 						<CardDescription>
 							Recent integration activity. Most recent events appear first.
 						</CardDescription>

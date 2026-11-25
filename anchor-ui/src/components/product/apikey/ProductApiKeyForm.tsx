@@ -11,9 +11,15 @@ import {
 import { apiErrorHasCode } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/routes/routePaths";
+import {
+	Alert,
+	AlertDescription,
+} from "@nanostackorg/design-system/components/alert";
 import { Badge } from "@nanostackorg/design-system/components/badge";
 import { Button } from "@nanostackorg/design-system/components/button";
+import { Card, CardContent } from "@nanostackorg/design-system/components/card";
 import { Input } from "@nanostackorg/design-system/components/input";
+import { Item } from "@nanostackorg/design-system/components/item";
 import { Label } from "@nanostackorg/design-system/components/label";
 import { Spinner } from "@nanostackorg/design-system/components/spinner";
 import { Switch } from "@nanostackorg/design-system/components/switch";
@@ -36,7 +42,6 @@ import {
 	Eye,
 	EyeOff,
 	Key,
-	Lock,
 	Plus,
 	Shield,
 } from "lucide-react";
@@ -273,8 +278,10 @@ export function ProductApiKeyForm({
 			{/* Header */}
 			<Box className="flex flex-col gap-2">
 				<TextLink href={ROUTE_PATHS.PRODUCT_API_KEYS}>
-					<ArrowLeft className="size-4" />
-					API Keys
+					<Box className="inline-flex items-center gap-1.5 whitespace-nowrap">
+						<ArrowLeft className="size-4" />
+						API Keys
+					</Box>
 				</TextLink>
 				<Box className="flex flex-wrap items-center gap-2">
 					<h1 className="text-2xl font-semibold tracking-tight">
@@ -294,117 +301,122 @@ export function ProductApiKeyForm({
 			<Stepper steps={steps} current={currentStep} />
 
 			{/* Step content */}
-			<Box className="rounded-xl border border-border bg-card p-4 sm:p-6">
-				{activeStep === "details" && (
-					<Box className="flex flex-col gap-6">
-						<Box className="flex flex-col gap-2">
-							<Label htmlFor="name">
-								Name{" "}
-								<Box as="span" className="text-destructive">
-									*
+			<Card>
+				<CardContent>
+					{activeStep === "details" && (
+						<Box className="flex flex-col gap-6">
+							<Box className="flex flex-col gap-2">
+								<Label htmlFor="name">
+									Name{" "}
+									<Box as="span" className="text-destructive">
+										*
+									</Box>
+								</Label>
+								<Input
+									id="name"
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									onBlur={() => setNameTouched(true)}
+									placeholder="e.g. Production Key, Analytics API"
+								/>
+								{nameTouched && nameError && (
+									<Box as="p" className="text-xs text-destructive">
+										{nameError}
+									</Box>
+								)}
+							</Box>
+
+							<Box className="flex flex-col gap-2">
+								<Label htmlFor="description">Description</Label>
+								<Textarea
+									id="description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Describe what this API key is used for…"
+									rows={4}
+								/>
+								<Box
+									as="p"
+									className={cn(
+										"text-xs",
+										description.length > DESCRIPTION_MAX
+											? "text-destructive"
+											: "text-muted-foreground",
+									)}
+								>
+									{description.length}/{DESCRIPTION_MAX}
 								</Box>
-							</Label>
-							<Input
-								id="name"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								onBlur={() => setNameTouched(true)}
-								placeholder="e.g. Production Key, Analytics API"
-							/>
-							{nameTouched && nameError && (
-								<Box as="p" className="text-xs text-destructive">
-									{nameError}
-								</Box>
+							</Box>
+
+							{!isEditMode && (
+								<Item variant="soft">
+									<Box className="space-y-1">
+										<Label htmlFor="mutable">Mutable permissions</Label>
+										<Box as="p" className="text-xs text-muted-foreground">
+											Allow this key's permissions to be changed after creation.
+											This can't be toggled later.
+										</Box>
+									</Box>
+									<Switch
+										id="mutable"
+										checked={mutable}
+										onCheckedChange={setMutable}
+									/>
+								</Item>
+							)}
+
+							{isEditMode && !canEditPermissions && (
+								<Alert tone="info">
+									<AlertDescription>
+										This API key was created as immutable, so its permissions
+										cannot be changed. You can still update its name and
+										description.
+									</AlertDescription>
+								</Alert>
 							)}
 						</Box>
+					)}
 
-						<Box className="flex flex-col gap-2">
-							<Label htmlFor="description">Description</Label>
-							<Textarea
-								id="description"
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-								placeholder="Describe what this API key is used for…"
-								rows={4}
+					{activeStep === "permissions" && (
+						<Box className="flex flex-col gap-4">
+							<div>
+								<h2 className="text-sm font-semibold">Permissions</h2>
+								<Box as="p" className="text-xs text-muted-foreground mt-0.5">
+									Select at least one permission to grant this API key.
+								</Box>
+							</div>
+							<ApiKeyPermissionSelector
+								productId={productId}
+								value={permissions}
+								onChange={setPermissions}
+								originalPermissions={
+									existingApiKey?.permissions?.map((p) => p.permission_name) ??
+									[]
+								}
 							/>
-							<Box
-								as="p"
-								className={cn(
-									"text-xs",
-									description.length > DESCRIPTION_MAX
-										? "text-destructive"
-										: "text-muted-foreground",
-								)}
-							>
-								{description.length}/{DESCRIPTION_MAX}
-							</Box>
 						</Box>
+					)}
 
-						{!isEditMode && (
-							<Box className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
-								<Box className="space-y-1">
-									<Label htmlFor="mutable">Mutable permissions</Label>
-									<Box as="p" className="text-xs text-muted-foreground">
-										Allow this key's permissions to be changed after creation.
-										This can't be toggled later.
-									</Box>
-								</Box>
-								<Switch
-									id="mutable"
-									checked={mutable}
-									onCheckedChange={setMutable}
-								/>
-							</Box>
-						)}
-
-						{isEditMode && !canEditPermissions && (
-							<Box className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4">
-								<Lock className="size-4 mt-0.5 text-muted-foreground shrink-0" />
-								<Box as="p" className="text-xs text-muted-foreground">
-									This API key was created as immutable, so its permissions
-									cannot be changed. You can still update its name and
-									description.
-								</Box>
-							</Box>
-						)}
-					</Box>
-				)}
-
-				{activeStep === "permissions" && (
-					<Box className="flex flex-col gap-4">
-						<div>
-							<h2 className="text-sm font-semibold">Permissions</h2>
-							<Box as="p" className="text-xs text-muted-foreground mt-0.5">
-								Select at least one permission to grant this API key.
-							</Box>
-						</div>
-						<ApiKeyPermissionSelector
-							productId={productId}
-							value={permissions}
-							onChange={setPermissions}
-							originalPermissions={
-								existingApiKey?.permissions?.map((p) => p.permission_name) ?? []
+					{activeStep === "review" && (
+						<ReviewContent
+							name={name}
+							description={description}
+							mutable={
+								isEditMode ? (existingApiKey?.mutable ?? false) : mutable
 							}
+							permissions={
+								isEditMode && !canEditPermissions
+									? (existingApiKey?.permissions?.map(
+											(p) => p.permission_name,
+										) ?? [])
+									: permissions
+							}
+							isEditMode={isEditMode}
+							permissionsEditable={!isEditMode || canEditPermissions}
 						/>
-					</Box>
-				)}
-
-				{activeStep === "review" && (
-					<ReviewContent
-						name={name}
-						description={description}
-						mutable={isEditMode ? (existingApiKey?.mutable ?? false) : mutable}
-						permissions={
-							isEditMode && !canEditPermissions
-								? (existingApiKey?.permissions?.map((p) => p.permission_name) ??
-									[])
-								: permissions
-						}
-						isEditMode={isEditMode}
-						permissionsEditable={!isEditMode || canEditPermissions}
-					/>
-				)}
-			</Box>
+					)}
+				</CardContent>
+			</Card>
 
 			{/* Footer actions */}
 			<Box className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -506,7 +518,7 @@ function Stepper({ steps, current }: { steps: StepDef[]; current: number }) {
 										state === "completed" &&
 											"bg-success text-success-foreground border-success",
 										state === "pending" &&
-											"bg-muted text-muted-foreground border-border",
+											"bg-card text-muted-foreground border-border-strong",
 									)}
 								>
 									{state === "completed" ? (
@@ -530,7 +542,7 @@ function Stepper({ steps, current }: { steps: StepDef[]; current: number }) {
 								</Box>
 							</Box>
 							{i < steps.length - 1 && (
-								<Box className="mx-3 h-px w-10 bg-border" />
+								<Box className="mx-3 h-px w-10 bg-border-strong" />
 							)}
 						</Box>
 					);
@@ -560,13 +572,12 @@ function ReviewContent({
 }) {
 	return (
 		<Box className="flex flex-col gap-5">
-			<Box className="flex items-center gap-3 rounded-xl border border-border bg-success/10 p-4">
-				<CheckCircle className="size-5 text-success shrink-0" />
-				<Box as="p" className="text-sm text-success">
+			<Alert tone="success">
+				<AlertDescription>
 					Review the configuration below, then{" "}
 					{isEditMode ? "update" : "create"} the API key.
-				</Box>
-			</Box>
+				</AlertDescription>
+			</Alert>
 
 			<Box className="grid gap-4 sm:grid-cols-2">
 				<Box className="rounded-lg bg-muted/50 p-4">
@@ -623,13 +634,12 @@ function ReviewContent({
 			</Box>
 
 			{!isEditMode && (
-				<Box className="flex items-start gap-3 rounded-xl border border-border bg-warning/10 p-4">
-					<Lock className="size-5 text-warning shrink-0 mt-0.5" />
-					<Box as="p" className="text-sm text-warning-on-tint">
+				<Alert tone="warning">
+					<AlertDescription>
 						The API key value is shown only once, right after creation. Make
 						sure to copy and store it securely.
-					</Box>
-				</Box>
+					</AlertDescription>
+				</Alert>
 			)}
 		</Box>
 	);

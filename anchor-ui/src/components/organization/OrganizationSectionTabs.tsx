@@ -31,7 +31,6 @@ export function OrganizationSectionTabs({
 					)}
 					variant={active === section.id ? "solid" : "outline"}
 					tone={active === section.id ? "brand" : "neutral"}
-					size="sm"
 					aria-current={active === section.id ? "page" : undefined}
 				>
 					{section.label}
