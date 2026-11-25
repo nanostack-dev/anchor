@@ -94,3 +94,55 @@ func TestErrorLogsAServerFaultAtErrorWithItsStatus(t *testing.T) {
 func TestErrorNamesTheCallSiteAsCaller(t *testing.T) {
 	assert.Contains(t, errorLine(errors.New("boom")), `level_test.go:`)
 }
+
+// rawErrorLine logs err the way a raw call site does, logger.Error with
+// log.Err, on the logger that New builds.
+func rawErrorLine(scoped bool, err error) string {
+	var buf bytes.Buffer
+	loggers := applog.New(log.Config{Wire: log.WireLegacy, Output: &buf, Level: slog.LevelDebug})
+	logger := loggers.Component
+	if scoped {
+		logger = loggers.Scoped.Logger
+	}
+	logger.ErrorContext(context.Background(), "failed to search members", log.Err(err))
+	return buf.String()
+}
+
+func TestRawErrorLineLogsACancellationAtWarn(t *testing.T) {
+	err := fmt.Errorf("query.Count: jet: %w", context.Canceled)
+
+	assert.Contains(t, rawErrorLine(false, err), `"level":"warn"`)
+	assert.Contains(t, rawErrorLine(true, err), `"level":"warn"`)
+}
+
+func TestRawErrorLineLogsADeadlineAndADriverCancelAtWarn(t *testing.T) {
+	canceled := &pq.Error{Code: "57014", Message: "canceling statement due to user request"}
+
+	assert.Contains(t, rawErrorLine(false, context.DeadlineExceeded), `"level":"warn"`)
+	assert.Contains(t, rawErrorLine(false, fmt.Errorf("query: %w", canceled)), `"level":"warn"`)
+}
+
+func TestRawErrorLineKeepsARealFailureAtError(t *testing.T) {
+	timeout := &pq.Error{Code: "57014", Message: "canceling statement due to statement timeout"}
+
+	assert.Contains(t, rawErrorLine(false, errors.New("connection refused")), `"level":"error"`)
+	assert.Contains(t, rawErrorLine(false, fmt.Errorf("query: %w", timeout)), `"level":"error"`)
+}
+
+func TestRawErrorLineReadsACancellationFromWithAttributes(t *testing.T) {
+	var buf bytes.Buffer
+	logger := applog.New(log.Config{Wire: log.WireLegacy, Output: &buf, Level: slog.LevelDebug}).Component
+
+	logger.With(log.Err(context.Canceled)).Error("role assignment operation failed")
+
+	assert.Contains(t, buf.String(), `"level":"warn"`)
+}
+
+func TestRawErrorLineLeavesAnotherKeyAlone(t *testing.T) {
+	var buf bytes.Buffer
+	logger := applog.New(log.Config{Wire: log.WireLegacy, Output: &buf, Level: slog.LevelDebug}).Component
+
+	logger.Error("sweep failed", slog.Any("cause", context.Canceled))
+
+	assert.Contains(t, buf.String(), `"level":"error"`)
+}

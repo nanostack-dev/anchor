@@ -59,7 +59,7 @@ func New(cfg log.Config) Loggers {
 		}
 		return attrs
 	}
-	handler := log.NewHandler(cfg)
+	handler := cancellationHandler{inner: log.NewHandler(cfg)}
 	return Loggers{
 		Scoped:    Scoped{slog.New(handler)},
 		Component: slog.New(detachedHandler{handler}),
