@@ -9,7 +9,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/db/transactor"
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/require"
 
@@ -35,7 +35,7 @@ func TestTemplateSyncValidationFailure(t *testing.T) {
 			sync := service.NewLicenseTemplateSyncService(
 				syncTemplateRepository{}, syncLicenseRepository{}, nil,
 				syncSchemaFailure{err: test.err}, transactor.New(testDB), nil,
-				nanocache.Cache[license.OrganizationLicense]{}, nil, slog.New(slog.DiscardHandler),
+				cache.Cache[license.OrganizationLicense]{}, nil, slog.New(slog.DiscardHandler),
 			)
 			err := sync.ProcessQueueJob(t.Context(), queue.Job{Payload: []byte(
 				`{"tenant_id":"tenant_1","product_id":"prd_1","template_id":"ltpl_1"}`,

@@ -7,7 +7,7 @@ import (
 
 	"github.com/nanostack-dev/nanostack-framework/core/log"
 
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 
 	"anchor/internal/domain/license"
 )
@@ -18,7 +18,7 @@ import (
 // foreign key, with no license write), degrading to a no-op when Redis is
 // unavailable. A read-through load that started before an eviction can still
 // store the row it read after that eviction, until the TTL: closing that race
-// needs a versioned store in nanocache. See
+// needs a versioned store in cache. See
 // docs/api-key-permission-cache.md and
 // docs/adr/0012-license-status-derived-on-read.md.
 //
@@ -34,22 +34,22 @@ const (
 // license to one eviction discipline. Both the per-Organization writes and a
 // bulk migration go through it, so neither can acquire its own key layout.
 type organizationLicenseCache struct {
-	entries nanocache.Cache[license.OrganizationLicense]
+	entries cache.Cache[license.OrganizationLicense]
 	logger  *slog.Logger
 }
 
 // NewOrganizationLicenseEntries builds the cache of Organization licenses
 // that the licence services share.
 func NewOrganizationLicenseEntries(
-	store nanocache.Store, logger *slog.Logger,
-) (nanocache.Cache[license.OrganizationLicense], error) {
-	return nanocache.New[license.OrganizationLicense](
+	store cache.Store, logger *slog.Logger,
+) (cache.Cache[license.OrganizationLicense], error) {
+	return cache.New[license.OrganizationLicense](
 		store, organizationLicenseCachePrefix, organizationLicenseCacheTTL, logger,
 	)
 }
 
 func newOrganizationLicenseCache(
-	entries nanocache.Cache[license.OrganizationLicense], logger *slog.Logger,
+	entries cache.Cache[license.OrganizationLicense], logger *slog.Logger,
 ) *organizationLicenseCache {
 	return &organizationLicenseCache{entries: entries, logger: logger}
 }
@@ -59,7 +59,7 @@ func newOrganizationLicenseCache(
 // tenant does not need to be part of the key.
 func (c *organizationLicenseCache) key(
 	productID, organizationID string,
-) nanocache.Entry[license.OrganizationLicense] {
+) cache.Entry[license.OrganizationLicense] {
 	return c.entries.Key(productID, organizationID)
 }
 

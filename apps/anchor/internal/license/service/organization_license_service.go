@@ -11,7 +11,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 
 	"anchor/internal/domain/license"
 	"anchor/internal/domain/organization"
@@ -106,7 +106,7 @@ func NewOrganizationLicenseService(
 	usage licenserepo.UsageObservationRepository,
 	changes licenserepo.OrganizationLicenseChangeRepository,
 	tx transactor.Transactor,
-	licenseEntries nanocache.Cache[license.OrganizationLicense],
+	licenseEntries cache.Cache[license.OrganizationLicense],
 	eventEmitter events.Emitter,
 	logger *slog.Logger,
 ) OrganizationLicenseService {
@@ -200,7 +200,7 @@ func (s *organizationLicenseService) Instantiate(
 	}
 
 	// Nothing can be cached before the license exists — a not-found read is
-	// never cached, see nanocache.Cache.GetOrElse — so this is a no-op today. It
+	// never cached, see cache.Cache.GetOrElse — so this is a no-op today. It
 	// stays here so every license write follows the same eviction discipline,
 	// rather than relying on that invariant to hold forever. Inside a caller's
 	// transaction it runs before their commit, the harmless direction: a read
