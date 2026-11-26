@@ -14,7 +14,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/otel/nanotrace"
 	"github.com/nanostack-dev/nanostack-framework/pg/nanomigrate"
 	"github.com/nanostack-dev/nanostack-framework/pg/nanopg"
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 
 	httpserver "anchor/cmd/http"
 	serviceconfig "anchor/internal/service/config"
@@ -29,7 +29,7 @@ type Config struct {
 	Tracing    nanotrace.Config         `config:"tracing"`
 	Postgres   nanopg.Config            `config:"postgres"`
 	Migrations nanomigrate.Config       `config:"migrations"`
-	Redis      nanocache.Config         `config:"redis"`
+	Redis      cache.Config             `config:"redis"`
 	Server     httpserver.Config        `config:"server"`
 	Core       serviceconfig.CoreConfig `config:"core"`
 }

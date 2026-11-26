@@ -13,7 +13,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/pkg/fault"
 	"github.com/nanostack-dev/nanostack-framework/pkg/functional"
 	"github.com/nanostack-dev/nanostack-framework/pkg/validate"
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 	"github.com/nanostack-dev/pgkit/pglock"
 
 	"anchor/internal/domain/license"
@@ -92,7 +92,7 @@ func NewLicenseMigrationService(
 	organizations intrepo.OrganizationRepository,
 	tx transactor.Transactor,
 	lock *pglock.Client,
-	licenseEntries nanocache.Cache[license.OrganizationLicense],
+	licenseEntries cache.Cache[license.OrganizationLicense],
 	eventEmitter events.Emitter,
 	logger *slog.Logger,
 ) LicenseMigrationService {

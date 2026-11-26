@@ -7,7 +7,7 @@ import (
 	"github.com/nanostack-dev/nanostack-framework/otel/nanotrace"
 	"github.com/nanostack-dev/nanostack-framework/pg/nanomigrate"
 	"github.com/nanostack-dev/nanostack-framework/pg/nanopg"
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 
 	httpserver "anchor/cmd/http"
 	"anchor/internal/access"
@@ -35,7 +35,7 @@ var App = nano.Manifest("anchor",
 	nanotrace.Module,
 	nanopg.Module,
 	nanomigrate.Module,
-	nanocache.Module,
+	cache.Module,
 	mapper.Module,
 	repository.Module,
 	resourcetype.Module,

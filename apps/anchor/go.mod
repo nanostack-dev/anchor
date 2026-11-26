@@ -15,7 +15,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/moby/moby/api v1.56.1
 	github.com/nanostack-dev/anchor/clients/go v0.2.2
-	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.8
+	github.com/nanostack-dev/nanostack-framework v0.23.0-beta.10
 	github.com/nanostack-dev/nanostack-framework/db v0.23.0-beta.6
 	github.com/nanostack-dev/nanostack-framework/gen v0.23.0-beta.11
 	github.com/nanostack-dev/nanostack-framework/pkg/functional v0.23.0-beta.1

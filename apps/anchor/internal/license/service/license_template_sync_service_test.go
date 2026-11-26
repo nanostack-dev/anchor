@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/nanostack-dev/nanostack-framework/redis/nanocache"
+	"github.com/nanostack-dev/nanostack-framework/redis/nanoredis/cache"
 	"github.com/nanostack-dev/pgkit/queue"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +20,7 @@ func TestTemplateSyncRejectsMalformedPayload(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nanocache.Cache[license.OrganizationLicense]{},
+		cache.Cache[license.OrganizationLicense]{},
 		nil,
 		slog.New(slog.DiscardHandler),
 	)
