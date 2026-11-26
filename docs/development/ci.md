@@ -21,6 +21,7 @@ The bar: lint and each test job under 1 min, and a cached binary build under 10 
 ## Layout
 
 - **`detect_changes`** decides which surfaces a pull request touched (backend, frontend). A push to `main` runs everything, because the deploy dispatch follows the jobs.
+- **`last_success`** (ci-workflows `last-success-sha.yml`) gives `detect_changes` the commit of the newest green push run on `main`, so a push diffs from it rather than from the previous push and a red run's change still counts as changed ([postmortem](https://github.com/nanostack-dev/ci-workflows/blob/main/docs/postmortems/2026-11-25-per-push-diff-stranded-backend.md)). It runs on every event, answers empty off a push to `main`, and never takes an `if:`: a skipped job skips everything downstream of it. `ci-ok` fails when it fails.
 - **`backend`** is a matrix with one runner per group:
   - `lint`
   - `component-tests-a`..`p` (16 parts)

@@ -65,11 +65,33 @@ concurrency:
   queue: ${{ github.event_name == 'pull_request' && 'single' || 'max' }}
 
 jobs:
+  # The commit of the newest green push run on main. detect_changes diffs a push
+  # against it rather than against the previous push, so a change whose run
+  # failed still counts as changed on the next push. Nothing on a push gates on
+  # the diff today (frontend and publish run on every push), so this keeps the
+  # outputs right for a future push gate. On 2026-11-25 echopoint shipped a
+  # frontend against an API that never got the backend change of a red run
+  # (ci-workflows docs/postmortems/2026-11-25-per-push-diff-stranded-backend.md).
+  # It runs on every event and answers empty except on a push to main (empty
+  # means "the previous push"). Never skip it with an `if:`: GitHub skips every
+  # job downstream of a skipped job unless that job has its own always() or
+  # !cancelled(), so frontend and migration-lint would skip on every pull
+  # request and ci-ok would still pass. ci-ok fails if it fails.
+  last_success:
+    uses: nanostack-dev/ci-workflows/.github/workflows/last-success-sha.yml@main
+    permissions:
+      actions: read
+
   detect_changes:
+    needs: last_success
+    # !cancelled(): a failed lookup must not skip change detection; the diff
+    # then falls back to the previous push.
+    if: ${{ !cancelled() }}
     uses: nanostack-dev/ci-workflows/.github/workflows/detect-changes.yml@main
     permissions:
       contents: read
     with:
+      base_sha: ${{ needs.last_success.outputs.sha }}
       # Backend and frontend are two surfaces. publish is gated on the
       # backend surface for pull requests only. On a push to main it always runs,
       # because infra's anchor-deploy.yml runs its wrangler frontend deploy
@@ -539,7 +561,7 @@ jobs:
   # this job only; the others are skipped, which counts as passing here.
   ci-ok:
     name: ci-ok
-    needs: [detect_changes, frontend, backend, publish, migration-lint]
+    needs: [last_success, detect_changes, frontend, backend, publish, migration-lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -578,6 +600,7 @@ jobs:
       - name: Verify required jobs
         shell: bash
         env:
+          LAST_SUCCESS_RESULT: ${{ needs.last_success.result }}
           DETECT_RESULT: ${{ needs.detect_changes.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
@@ -585,7 +608,10 @@ jobs:
           MIGRATION_LINT_RESULT: ${{ needs.migration-lint.result }}
         run: |
           set -euo pipefail
-          echo "detect_changes=$DETECT_RESULT frontend=$FRONTEND_RESULT backend=$BACKEND_RESULT publish=$PUBLISH_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          echo "last_success=$LAST_SUCCESS_RESULT detect_changes=$DETECT_RESULT frontend=$FRONTEND_RESULT backend=$BACKEND_RESULT publish=$PUBLISH_RESULT migration-lint=$MIGRATION_LINT_RESULT"
+          # last_success never skips: its failure would skip every job gated on
+          # detect_changes, which this loop would count as passed.
+          [[ "$LAST_SUCCESS_RESULT" == 'success' ]] || exit 1
           for result in "$DETECT_RESULT" "$FRONTEND_RESULT" "$BACKEND_RESULT" "$PUBLISH_RESULT" "$MIGRATION_LINT_RESULT"; do
             [[ "$result" == 'success' || "$result" == 'skipped' ]] || exit 1
           done
