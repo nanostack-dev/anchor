@@ -20,6 +20,13 @@ UI changes) and readable videos using gh pr create/edit --attach.
 For changes with no browser-visible behavior, explain that boundary and give the
 appropriate service/contract/tooling evidence instead. -->
 
+## Gate flows
+
+<!-- Post-deploy gate flows run the `anchor` and `echopoint` tags of the prod CI org on dev after merge.
+List each gate flow that calls a route whose status, error code, response field,
+check order or permission precondition this PR changes, and how you updated it.
+Write "None: no route behaviour changed" when that holds. -->
+
 ## Preview environment
 
 - [ ] Deploy a preview environment for this pull request <!-- preview-deploy -->
