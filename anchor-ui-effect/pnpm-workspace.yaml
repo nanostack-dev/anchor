@@ -1,0 +1,10 @@
+packages:
+  - "."
+
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - "effect"
+  - "@nanostackorg/design-system"
+allowBuilds:
+  "@nanostackorg/design-system@https://codeload.github.com/nanostack-dev/nanostack-design-system/tar.gz/3dcd84ee58eba923c284301941099c9cbd11fcb6": true
+  esbuild: true
