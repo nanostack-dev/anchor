@@ -1,4 +1,4 @@
-import { AuthSession } from "#domain/Session"
+import { AuthSession, isUnauthorized } from "#domain/Session"
 import { GetCurrentUser } from "#queries/GetCurrentUser"
 import { AnchorApi } from "#services/AnchorApi"
 import { SessionStore } from "#services/SessionStore"
@@ -35,23 +35,34 @@ const routeAfterLogin = (redirect: string | undefined): AppRoute =>
     ? AppRoute.Index()
     : Option.getOrElse(AppRoute.parse(redirect), () => AppRoute.Index())
 
-export class ClearSession extends Command.Service<ClearSession>()("auth/ClearSession", {}) {
-  static readonly layer = this.toLayer(
-    Effect.gen(function*() {
-      const api = yield* AnchorApi
-      const sessions = yield* SessionStore
-      return () => api.logout.pipe(Effect.andThen(sessions.clear))
-    })
-  )
-}
-
 export const AppMessage = UiSchema.TaggedEnum({
   ChangedRoute: { route: AppRoute },
   LoggedIn: { session: AuthSession },
+  LoadedCurrentUser: { unauthorized: Schema.Boolean },
+  CompletedClearSession: { redirect: Schema.NullOr(Schema.String) },
   RequestedOpenUserMenu: {},
   RequestedCloseUserMenu: {},
   PickedUserMenuItem: { value: Schema.String }
 })
+
+export class ClearSession extends Command.Service<ClearSession>()("auth/ClearSession", {
+  args: { redirect: Schema.NullOr(Schema.String) },
+  success: AppMessage
+}) {
+  static readonly layer = this.toLayer(
+    Effect.gen(function*() {
+      const api = yield* AnchorApi
+      const sessions = yield* SessionStore
+      return ({ redirect }) =>
+        Effect.gen(function*() {
+          const session = yield* sessions.current
+          yield* sessions.clear
+          if (session !== null) yield* api.logout(session.token).pipe(Effect.timeout("2 seconds"), Effect.ignore)
+          return AppMessage.CompletedClearSession({ redirect })
+        })
+    })
+  )
+}
 
 const redirect = (route: AppRoute, session: AuthSession | null) => {
   const target = requiredRoute(route, session)
@@ -72,7 +83,8 @@ const AppNoDeps = Html.component({
   queries: {
     user: {
       query: GetCurrentUser,
-      args: ({ model }) => (model.session === null ? undefined : { userId: model.session.userId })
+      args: ({ model }) => (model.session === null ? undefined : { userId: model.session.userId }),
+      onChange: (result) => AppMessage.LoadedCurrentUser({ unauthorized: isUnauthorized(result) })
     }
   }
 }).make({
@@ -93,14 +105,23 @@ const AppNoDeps = Html.component({
         Router.replace(AppRoute, routeAfterLogin(redirectParam)).pipe(Command.asNoop)
       )
     },
+    LoadedCurrentUser: ($, { unauthorized }) =>
+      unauthorized && $.model.session !== null
+        ? $.evolve({ session: null, userMenuOpen: false }).run(
+          ClearSession.make({ redirect: AppRoute.print($.model.route) })
+        )
+        : $.model,
+    CompletedClearSession: ($, { redirect }) =>
+      $.run(
+        Router.replace(AppRoute, AppRoute.Login(redirect === null ? {} : { search: { redirect } })).pipe(
+          Command.asNoop
+        )
+      ),
     RequestedOpenUserMenu: ($) => $.evolve({ userMenuOpen: true }),
     RequestedCloseUserMenu: ($) => $.evolve({ userMenuOpen: false }),
     PickedUserMenuItem: ($, { value }) =>
       value === "logout"
-        ? $.evolve({ session: null, userMenuOpen: false }).run(
-          ClearSession.make(),
-          Router.replace(AppRoute, AppRoute.Login()).pipe(Command.asNoop)
-        )
+        ? $.evolve({ session: null, userMenuOpen: false }).run(ClearSession.make({ redirect: null }))
         : $.model
   },
   subscriptions: ({ model }) => [

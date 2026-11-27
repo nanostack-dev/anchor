@@ -111,7 +111,7 @@ const LoginPageNoDeps = Html.component({
                   .children(
                     h.div.class("space-y-2").children(
                       Label(h).attr("for", "login-email").children("Email"),
-                      Input(h).attrs({ id: "login-email", type: "email", placeholder: "m@example.com" })
+                      Input(h, { material: "glass" }).attrs({ id: "login-email", type: "email", placeholder: "m@example.com" })
                         .value(fields.email.value)
                         .disabled(model.submitting)
                         .on("input", ({ value }) => LoginPageMessage.UpdatedEmail({ value })),
@@ -122,7 +122,7 @@ const LoginPageNoDeps = Html.component({
                         Label(h).attr("for", "login-password").children("Password"),
                         TextLink(h, { href: "/login" }).children("Forgot your password?")
                       ),
-                      Input(h).attrs({ id: "login-password", type: "password", placeholder: "••••••••" })
+                      Input(h, { material: "glass" }).attrs({ id: "login-password", type: "password", placeholder: "••••••••" })
                         .value(Redacted.value(fields.password.value))
                         .disabled(model.submitting)
                         .on("input", ({ value }) => LoginPageMessage.UpdatedPassword({ value: Redacted.make(value) })),

@@ -35,7 +35,7 @@ const decodeOk = <A, I>(schema: Schema.Codec<A, I>, fallback: string) =>
 
 export class AnchorApi extends Context.Service<AnchorApi, {
   login(email: string, password: string): Effect.Effect<string, ApiError>
-  readonly logout: Effect.Effect<void>
+  logout(token: string): Effect.Effect<void>
   readonly currentUser: Effect.Effect<CurrentUser, ApiError>
   searchProducts(search: ProductSearch): Effect.Effect<ProductPage, ApiError>
   createProduct(input: { readonly name: string; readonly description: string }): Effect.Effect<void, ApiError>
@@ -67,7 +67,10 @@ export class AnchorApi extends Context.Service<AnchorApi, {
             AccessToken,
             "An error occurred during login."
           ).pipe(Effect.map(({ accessToken }) => accessToken)),
-        logout: send(HttpClientRequest.post("/v1/auth/logout"), Schema.Unknown, "Logout failed.").pipe(Effect.ignore),
+        logout: (token) =>
+          http.execute(HttpClientRequest.post("/v1/auth/logout").pipe(HttpClientRequest.bearerToken(token))).pipe(
+            Effect.ignore
+          ),
         currentUser: send(HttpClientRequest.get("/v1/me"), CurrentUser, "Unable to load your account."),
         searchProducts: ({ limit, offset, sortBy, sortDirection, text }) =>
           postJson(

@@ -1,4 +1,5 @@
 import { type Product, type ProductPage, ProductSortField, ProductsTag, SortDirection } from "#domain/Product"
+import { apiErrorOf } from "#domain/Session"
 import { SearchProducts } from "#queries/SearchProducts"
 import { AnchorApi } from "#services/AnchorApi"
 import { Command, Component, Head, UiSchema } from "@effect/ui"
@@ -228,14 +229,14 @@ const ProductsPageNoDeps = Html.component({
                   ),
                   h.div.class("space-y-2").children(
                     Label(h).attr("for", "new-product-name").children("Name"),
-                    Input(h).attrs({ id: "new-product-name", autocomplete: "off" })
+                    Input(h, { material: "glass" }).attrs({ id: "new-product-name", autocomplete: "off" })
                       .value(model.newProduct.name)
                       .disabled(model.newProduct.submitting)
                       .on("input", ({ value }) => ProductsPageMessage.UpdatedNewProductName({ value }))
                   ),
                   h.div.class("space-y-2").children(
                     Label(h).attr("for", "new-product-description").children("Description"),
-                    Input(h).attrs({ id: "new-product-description", autocomplete: "off" })
+                    Input(h, { material: "glass" }).attrs({ id: "new-product-description", autocomplete: "off" })
                       .value(model.newProduct.description)
                       .disabled(model.newProduct.submitting)
                       .on("input", ({ value }) => ProductsPageMessage.UpdatedNewProductDescription({ value }))
@@ -259,7 +260,7 @@ const ProductsPageNoDeps = Html.component({
       }),
       h.div.class("flex items-center justify-between gap-4").children(
         createDialog,
-        Input(h).attrs({ type: "text", placeholder: "Search products", "aria-label": "Search products" })
+        Input(h, { material: "glass" }).attrs({ type: "text", placeholder: "Search products", "aria-label": "Search products" })
           .class("max-w-xs")
           .value(model.text)
           .on("input", ({ value }) => ProductsPageMessage.UpdatedSearch({ text: value }))
@@ -268,7 +269,7 @@ const ProductsPageNoDeps = Html.component({
         onInitial: () => h.p.attr("role", "status").class("text-sm text-muted-foreground").children("Loading products…"),
         onFailure: ({ cause }) =>
           h.div.attr("role", "alert").class("text-sm text-destructive").children(
-            `Products could not be loaded. ${String(cause)}`
+            apiErrorOf(cause)?.message ?? "Products could not be loaded."
           ),
         onSuccess: ({ value, waiting }) => table(value, waiting)
       })

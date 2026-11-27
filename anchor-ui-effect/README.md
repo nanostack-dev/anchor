@@ -20,7 +20,9 @@ Styling comes from the design system's `effect` branch ([nanostack-design-system
 | --- | --- |
 | `anchor-ui/e2e/smoke/login.e2e.ts`, unchanged, run against this build and a local disposable backend | 2 of 2 pass (guest redirect; log in, Products, search, no match, Clear search, reload keeps session, log out) |
 | Same spec against the React build, same backend | 2 of 2 pass |
-| Create Product end to end (dialog, POST, list refresh) | Works (manual Playwright script) |
+| Smoke spec repeated 5 times after the logout fix (see Findings) | 5 of 5 pass |
+| Browser script with 13 products: Create Product end to end, Next/Previous (10 then 3 rows, Next disabled on the last page), sort by Name both ways (`aria-sort`), Escape closes the dialog, an expired token (401) ends the session and returns to `/login?redirect=%2Fproducts` | All pass |
+| Visual parity with `anchor-ui` | Not reached: no icons, breadcrumbs, top bar, table toolbar (filters, columns, bulk actions, selection), toasts or login illustration. Tokens, type, glass backdrop, buttons, cards, table, dialog and menu match the design system. Fields look different because `anchor-ui` pins design system 0.2.7 and the `effect` branch is based on 0.4.1 |
 | `pnpm typecheck` (`strict`, `exactOptionalPropertyTypes`) | Passes |
 | Design-system component tests touched by the recipe move | 194 of 194 pass |
 
@@ -34,17 +36,29 @@ What worked well:
 - Queries with `debounce`, `invalidates` tags and kept results replace TanStack Query cleanly. `ui-kit` Dialog and Menu gave correct roles, focus handling, Escape and top-layer rendering with no extra work.
 - The unchanged Playwright smoke spec passed against the new build, so the accessible roles and names carried over.
 
+What bit:
+
+- Commands issued in one step run concurrently. Log out first issued "clear the session" and "go to /login" together; after a reload the URL changed before storage was cleared, so a navigation right after logout kept the session. The fix is to navigate from the clear's `Completed` message. Ordering has to be modelled as messages, which is correct but easy to miss.
+- A query with `staleTime` serves cached results without a request, unlike TanStack Query's refetch of stale data on key change; the smoke spec waits for that request, so the product search uses `staleTime: "0 millis"`.
+
 What blocks a full migration:
 
 1. **Preview software.** `@effect/ui` is not on npm. It installs from pkg.pr.new snapshots (pinned here to `290db1a`), and `@effect/ui-kit` needs `effect` 4.1.6, which was a day old (the repository's 7-day release-age rule had to exempt it). The README calls the packages experimental and the API is still changing.
 2. **The generated API client does not compile.** Effect UI requires `exactOptionalPropertyTypes`, and the `@hey-api/client-fetch` runtime fails it. This slice keeps hey-api for the request and response *types* only, calls the API with `effect/http`, and hand-writes Effect Schemas for each response. URLs are hand-written and not checked against the contract. A full migration needs an OpenAPI to Effect Schema/HttpClient generator in place of hey-api.
 3. **Everything is a rewrite.** `anchor-ui` is about 70,000 lines in 327 files on React 19, TanStack Router, Query, Form and Table, `@xyflow/react`, Monaco and Recharts. None of these run in Effect UI. The data table alone is 805 lines of TanStack Table. Flow diagrams, the code editor and charts would need mounts around the vanilla libraries or SVG/canvas rewrites.
-4. **The design system needs a second implementation.** Recipes are shared, but each component's markup, ARIA and behaviour is written again on `ui-kit` parts. The `effect` branch covers about 14 of the 66 components and blocks it would need (button, input, label, field error, heading, text, text link, card, table, dialog and menu styling, sidebar item, app shell, page header), and its `AppShell` has no collapse, mobile sheet or icons (Phosphor icons are React components).
+4. **The design system needs a second implementation.** Recipes are shared, but each component's markup, ARIA and behaviour is written again on `ui-kit` parts. The `effect` branch covers about 14 of the 66 components and blocks it would need (button, input, label, field error, heading, text, text link, card, table, dialog and menu styling, sidebar item, app shell, page header), and its `AppShell` has no collapse, mobile sheet or icons (Phosphor icons are React components). Seven design-system parts wrap React-only libraries and have no Effect UI counterpart at all: calendar (react-day-picker), carousel (embla), chart (Recharts), command palette (cmdk), OTP input, resizable panels and the data-table block (TanStack Table). 39 components are built on Base UI React; `ui-kit` mirrors Base UI's component set, so those port part by part.
 5. **Tooling.** Storybook, the `check:ui` contract, e2e impact selection and coverage tooling all assume React and would need replacements. Effect UI's own `Story`/`Scene` tests would replace component tests.
 
-Not covered by the slice: token refresh (a 401 shows an error instead of refreshing), tenant initialisation (`/init`), registration, toasts and mobile layout.
+Not covered by the slice: token refresh (a 401 ends the session instead of refreshing it), tenant initialisation (`/init`), registration, toasts and mobile layout.
 
-Recommendation: do not migrate now. Revisit when Effect UI is on npm with a stable API and an OpenAPI generator for Effect exists. The `src/recipes` split in the design system is useful on its own, so it could merge independently.
+## Would we pick it from scratch?
+
+Not today. Judged on the end state, not the cost of getting there:
+
+- For: explicit state transitions and Commands make the auth and data flows easier to follow and test than the React contexts, effects and query hooks they replace, and the kit's accessibility matched Base UI's on the parts tried.
+- Against: a new Anchor UI would sit on a framework with no npm release and a moving API, with no OpenAPI client generator (so the API contract stops being compiler-checked), no flow-diagram, code-editor or chart components, and a design system maintained twice. Those are gaps in the end state, not migration steps.
+
+Revisit when Effect UI is on npm with a stable API and an OpenAPI to Effect generator exists. The migration cost (about 70,000 lines rewritten, not converted) is a separate, large fact. The `src/recipes` split in the design system is useful on its own and could merge independently, without making `react` an optional peer.
 
 ## Run it
 

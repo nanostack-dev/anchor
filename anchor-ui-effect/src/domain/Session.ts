@@ -1,4 +1,5 @@
-import { Schema } from "effect"
+import { Cause, Option, Schema } from "effect"
+import { AsyncResult } from "effect/reactivity"
 
 export const AuthSession = Schema.Struct({
   token: Schema.String,
@@ -35,3 +36,9 @@ export const sessionFromToken = (token: string): AuthSession | null => {
     return null
   }
 }
+
+export const apiErrorOf = (cause: Cause.Cause<ApiError>): ApiError | null =>
+  Option.getOrNull(Cause.findErrorOption(cause))
+
+export const isUnauthorized = (result: AsyncResult.AsyncResult<unknown, ApiError>): boolean =>
+  AsyncResult.isFailure(result) && apiErrorOf(result.cause)?.status === 401
